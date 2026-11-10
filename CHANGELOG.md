@@ -16,6 +16,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > therefore reports `1.4.2` in `/health`. This is a deliberate, temporary deviation from strict semver; each
 > increment still gets its own Added/Fixed/Changed section here.
 
+## [2.3.0] - 2026-11-10
+
+### Fixed
+
+- **Sign-in popups finish and return to the tab that started them.** Google, Microsoft and other
+  OAuth/SAML providers used to open in a managed tab: the window-open request was denied and
+  re-issued as a tab, which removed `window.opener`. The provider's final `postMessage` was
+  dropped and the flow never completed. Authorization URLs, `window.open` popups and form POSTs
+  now open as a real child window that keeps its opener, closes itself via `window.close()`, and
+  returns focus to the browsing tab. Ordinary links still open as managed tabs.
+
+### Added
+
+- **Session-gated sites can be tested end to end.** Because sign-in flows now hand control back to
+  the page that started them, a human or agent can authenticate with Google, Microsoft, or any
+  OAuth/SAML identity provider once and then browse or drive pages that require the resulting
+  session — no detached window, no manual cookie hand-off.
+
 ## [2.2.0] - 2026-11-06
 
 ### Added

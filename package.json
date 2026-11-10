@@ -1,6 +1,6 @@
 {
   "name": "hypagon-gateway",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "license": "MIT",
   "description": "Hypagon Gateway — the local browser for AI agents (Hypagon Browser + Hypagon REST).",
   "main": "dist-electron/main/index.js",
@@ -75,6 +75,7 @@
     "test:settings:dom": "node scripts/test-settings-dom.mjs",
     "prune:pack": "node scripts/prune-pack.cjs",
     "test:zoom": "node --test scripts/test-zoom.mjs",
+    "test:window-open": "node --test scripts/test-window-open-policy.mjs",
     "test:data-paths": "node --test scripts/test-data-paths.mjs",
     "test:user-data-migration": "node --test scripts/test-user-data-migration.mjs",
     "test:forceopen": "node scripts/test-force-open.mjs",

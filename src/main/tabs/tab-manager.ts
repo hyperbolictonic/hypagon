@@ -1,10 +1,19 @@
-import { BrowserWindow, WebContentsView, type RenderProcessGoneDetails, type WebContents } from 'electron';
+import {
+  BrowserWindow,
+  WebContentsView,
+  type BrowserWindowConstructorOptions,
+  type HandlerDetails,
+  type RenderProcessGoneDetails,
+  type WebContents,
+  type WindowOpenHandlerResponse,
+} from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { HostBrowserProfile } from '../telemetry/host-fingerprint.js';
 import type { TabSummary } from '../../shared/types.js';
 import { attachContextMenu } from '../menu/context-menu.js';
+import { isPopupWindowRequest, popupWindowSize } from './window-open-policy.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -42,6 +51,8 @@ export class TabManager {
   private counter: number = 0;
   /** Set while a full-window settings/dialog surface owns the UI. */
   private viewportHidden: boolean = false;
+  /** Tabs/popups already have a window-open handler; reused WebContents must not stack them. */
+  private wiredWindowOpen: WeakSet<WebContents> = new WeakSet();
 
   constructor(private options: TabManagerOptions) {}
 
@@ -161,11 +172,7 @@ export class TabManager {
     });
 
     // Auto-spawn new tabs for target="_blank" and window.open
-    wc.setWindowOpenHandler((details) => {
-      this.options.onLog?.('action', `Intercepted popup/external link: opening new Cyberdeck tab -> ${details.url}`);
-      this.createTab(details.url);
-      return { action: 'deny' };
-    });
+    this.wireWindowOpen(wc);
 
     const tab: TabInstance = {
       id,
@@ -261,6 +268,129 @@ export class TabManager {
     // Switch focus to new tab
     this.switchTab(id);
     return tab;
+  }
+
+  /**
+   * Route `window.open()` / `target="_blank"` requests.
+   *
+   * Plain links keep the tab treatment (so they stay inside the Cyberdeck tab bar). Sign-in
+   * popups and form POSTs become a real child window instead: they need `window.opener` to
+   * exist so the provider's `postMessage` reaches the page that started the flow, and so the
+   * provider's `window.close()` actually closes the popup and returns to the browsing tab.
+   */
+  private wireWindowOpen(wc: WebContents): void {
+    if (this.wiredWindowOpen.has(wc)) return;
+    this.wiredWindowOpen.add(wc);
+
+    wc.setWindowOpenHandler((details) => this.onWindowOpenRequested(details));
+    // Electron creates the child window before this event fires. Wire the popup so it can open
+    // nested popups, share the stealth UA/zoom policy, and hand focus back when it closes.
+    wc.on('did-create-window', (popup) => this.configurePopupWindow(popup));
+  }
+
+  private onWindowOpenRequested(details: HandlerDetails): WindowOpenHandlerResponse {
+    if (isPopupWindowRequest(details)) {
+      this.options.onLog?.('action', `Sign-in/popup link: opening a child window -> ${details.url}`);
+      return {
+        action: 'allow',
+        // A human can close the originating tab while the provider is still mid-flow. Keeping
+        // the popup alive lets them finish (or read the error) instead of losing the window.
+        outlivesOpener: true,
+        overrideBrowserWindowOptions: this.popupWindowOptions(details),
+      };
+    }
+
+    this.options.onLog?.('action', `Intercepted popup/external link: opening new Cyberdeck tab -> ${details.url}`);
+    try {
+      this.createTab(details.url);
+    } catch (err) {
+      // The tab could not be created (window tearing down); do not let the click vanish silently.
+      this.options.onLog?.('warn', `Could not open link in a new tab: ${(err as Error)?.message || err}`);
+    }
+    return { action: 'deny' };
+  }
+
+  private popupWindowOptions(details: HandlerDetails): BrowserWindowConstructorOptions {
+    const { width, height } = popupWindowSize(details.features);
+    return {
+      // Owned by the browser window: it stays above the tab strip without blocking it.
+      parent: this.options.mainWindow,
+      modal: false,
+      show: true,
+      width,
+      height,
+      minWidth: 320,
+      minHeight: 320,
+      autoHideMenuBar: true,
+      backgroundColor: '#f4f4f5',
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: true,
+        // A sign-in popup is often occluded by the tab the human is watching; keep its
+        // timers and redirects running at full speed.
+        backgroundThrottling: false,
+      },
+    };
+  }
+
+  private configurePopupWindow(popup: BrowserWindow): void {
+    const wc = popup.webContents;
+
+    try {
+      popup.setMenuBarVisibility(false);
+    } catch {
+      // Window already gone or unsupported on this platform.
+    }
+
+    try {
+      wc.setUserAgent(this.options.hostProfile.userAgent);
+    } catch {
+      // Best effort, same as the tab path.
+    }
+
+    this.options.applyZoom?.(wc);
+    wc.on('did-navigate', () => this.options.applyZoom?.(wc));
+
+    if (!(wc as any).__kuangContextMenu) {
+      (wc as any).__kuangContextMenu = true;
+      attachContextMenu(wc, {
+        window: popup,
+        onOpenLinkInNewTab: (url) => {
+          try {
+            const tab = this.createTab(url);
+            this.switchTab(tab.id);
+          } catch (err) {
+            this.options.onLog?.('warn', `Could not open link in a new tab: ${(err as Error)?.message || err}`);
+          }
+        },
+        onLog: (level, message) => this.options.onLog?.(level, message),
+      });
+    }
+
+    // The popup may itself call window.open() (nested provider hops).
+    this.wireWindowOpen(wc);
+
+    wc.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      if (!isMainFrame) return;
+      this.options.onLog?.('warn', `Popup barrier [${errorCode}]: ${errorDescription} (${validatedURL})`);
+    });
+
+    popup.on('closed', () => {
+      const mainWindow = this.options.mainWindow;
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      this.options.onLog?.('info', 'Popup closed; returning focus to the browsing tab.');
+      try {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.show();
+        mainWindow.focus();
+        this.tabs.get(this.activeTabId)?.view.webContents.focus();
+      } catch {
+        // The shell is tearing down.
+      }
+    });
+
+    this.options.onLog?.('info', `Opened popup window (${wc.getURL() || 'pending navigation'})`);
   }
 
   public switchTab(tabId: string): void {

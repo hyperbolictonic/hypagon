@@ -10,7 +10,7 @@
 > — **Dade Murphy (AKA Crash Override)**, Circa 1995
 
 <p align="center">
-  <img alt="version" src="https://img.shields.io/badge/version-2.2.0-22d3ee" />
+  <img alt="version" src="https://img.shields.io/badge/version-2.3.0-22d3ee" />
   <img alt="tools" src="https://img.shields.io/badge/MCP%20tools-16%20%2B2%20optional-a3e635" />
   <img alt="resources" src="https://img.shields.io/badge/MCP%20resources-7-f472b6" />
   <img alt="license" src="https://img.shields.io/badge/license-MIT-blue" />
@@ -861,12 +861,12 @@ Type-check and bundles: `npx tsc --noEmit`, `npm run build`, `npm run build:mcp`
 ## 📦 Release notes
 
 > [!NOTE]
-> **What's new in 2.2.0** - **Display-scale-aware page zoom, and a resilient HUD.**
-> Pages are fitted to the OS display scale by default (67% on a 150% Windows display), with a
-> `FIT`/`WIN` toolbar toggle, `Ctrl+=` / `Ctrl+-` / `Ctrl+0`, and `browser_workspace` zoom actions
-> for agents. Screenshots now carry CSS/physical proportions. Renderer crashes, lost heartbeats and
-> post-sleep repaint failures are logged to `data/logs/main.log` and recovered automatically instead
-> of leaving a white window.
+> **What's new in 2.3.0** - **Sign-ins work, so authenticated sites are testable.**
+> OAuth/SAML sign-in popups (Google, Microsoft and friends) now stay attached to the page that
+> opened them: they return control when finished, close themselves, and hand focus back to your
+> tab. That makes it possible to sign in once and then browse or drive pages that require a
+> session. Ordinary links still open as managed tabs, and display-scale page zoom plus automatic
+> renderer recovery from 2.2.0 are unchanged.
 > Earlier releases are in [CHANGELOG.md](./CHANGELOG.md).
 
 ---
