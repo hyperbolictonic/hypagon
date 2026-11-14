@@ -6,3 +6,9 @@ allowBuilds:
 # electron-builder needs a flat production tree; pnpm's isolated store leaves peer deps
 # (apache-arrow, @opentelemetry/api) outside the asar.
 nodeLinker: hoisted
+# These are first-party packages published by this project alongside the app. CI must be able to
+# install a fresh release immediately; the default supply-chain age gate (24h) would otherwise
+# hold back every research release until the next day.
+minimumReleaseAgeExclude:
+  - hypagon-scrap
+  - hypagon-scrap-libxml2
