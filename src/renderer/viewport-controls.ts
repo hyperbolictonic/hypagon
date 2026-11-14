@@ -1,9 +1,8 @@
 /**
- * Human-facing Responsive device toolbar.
+ * Human-facing Responsive device controls, rendered inside the Command Deck.
  *
- * The menu is rendered by the native popup window (`MenuPopup`) because shell DOM cannot paint
- * above the native browsing view. Presets apply straight from the menu; custom sizes and saved
- * profiles live in a HUD dialog that pauses the page view while it is open.
+ * The deck is its own native view, so these controls can live inline without the popup-window
+ * workaround the old top-toolbar button needed. Agents use the smaller `browser_viewport` tool.
  */
 import type { ElectronAPI } from '../preload/index.js';
 import type { DeviceProfile, ViewportState } from '../shared/viewport.js';
@@ -12,22 +11,23 @@ const api = (window as unknown as { electronAPI?: ElectronAPI }).electronAPI;
 const byId = <T extends HTMLElement>(id: string): T | null => document.getElementById(id) as T | null;
 
 export function initViewportControls(): void {
-  const button = byId<HTMLButtonElement>('viewport-btn');
-  const devtoolsButton = byId<HTMLButtonElement>('devtools-btn');
-  const modal = byId<HTMLDialogElement>('viewport-modal');
-  const closeButton = byId<HTMLButtonElement>('viewport-close');
   const presetSelect = byId<HTMLSelectElement>('viewport-preset');
+  const fitButton = byId<HTMLButtonElement>('viewport-fit');
+  const editButton = byId<HTMLButtonElement>('viewport-edit');
+  const status = byId<HTMLElement>('viewport-status');
+  const detail = byId<HTMLElement>('viewport-detail');
   const widthInput = byId<HTMLInputElement>('viewport-width');
   const heightInput = byId<HTMLInputElement>('viewport-height');
   const dprInput = byId<HTMLInputElement>('viewport-dpr');
   const mobileInput = byId<HTMLInputElement>('viewport-mobile');
   const touchInput = byId<HTMLInputElement>('viewport-touch');
   const rotateButton = byId<HTMLButtonElement>('viewport-rotate');
-  const resetButton = byId<HTMLButtonElement>('viewport-reset');
   const saveButton = byId<HTMLButtonElement>('viewport-save');
+  const fitDetailButton = byId<HTMLButtonElement>('viewport-fit-detail');
   const profilesList = byId<HTMLElement>('viewport-profiles');
+  const devtoolsButton = byId<HTMLButtonElement>('devtools-btn');
 
-  if (!button || !modal) return;
+  if (!presetSelect) return;
 
   let current: ViewportState | null = null;
   let profiles: DeviceProfile[] = [];
@@ -49,12 +49,12 @@ export function initViewportControls(): void {
       row.className = 'flex items-center gap-1';
       const apply = document.createElement('button');
       apply.type = 'button';
-      apply.className = 'btn btn-ghost btn-sm flex-1 justify-start font-mono text-[11px]';
+      apply.className = 'btn btn-ghost btn-xs flex-1 justify-start font-mono text-[10px]';
       apply.textContent = `${profile.name} · ${profile.width}×${profile.height}`;
       apply.addEventListener('click', () => void applyPreset(profile.id));
       const remove = document.createElement('button');
       remove.type = 'button';
-      remove.className = 'btn btn-ghost btn-sm text-error';
+      remove.className = 'btn btn-ghost btn-xs text-error';
       remove.textContent = '×';
       remove.title = `Delete ${profile.name}`;
       remove.addEventListener('click', async () => {
@@ -71,12 +71,11 @@ export function initViewportControls(): void {
   };
 
   const populatePresets = (): void => {
-    if (!presetSelect) return;
     const previous = presetSelect.value;
     presetSelect.replaceChildren();
     const auto = document.createElement('option');
     auto.value = '';
-    auto.textContent = 'Custom';
+    auto.textContent = 'Custom / fit';
     presetSelect.appendChild(auto);
     for (const group of [
       { label: 'Devices', list: profiles.filter((profile) => profile.builtin) },
@@ -103,8 +102,13 @@ export function initViewportControls(): void {
 
     suppress = true;
     const spec = state.spec;
-    button.textContent = state.active && spec ? `${spec.width}×${spec.height}` : 'RESP';
-    button.classList.toggle('text-accent', state.active);
+    if (status) {
+      status.textContent = state.active && spec ? `${spec.width}×${spec.height} @${spec.deviceScaleFactor}x` : 'off';
+      status.className = `badge badge-xs font-mono ${state.active ? 'badge-accent' : 'badge-ghost'}`;
+      status.title = state.active
+        ? `Emulated viewport, fit at ${Math.round(state.scale * 100)}% of the browsing area`
+        : 'Full browser area';
+    }
     if (state.active && spec) {
       if (widthInput) widthInput.value = String(spec.width);
       if (heightInput) heightInput.value = String(spec.height);
@@ -121,7 +125,7 @@ export function initViewportControls(): void {
     suppress = false;
 
     populatePresets();
-    if (presetSelect && spec && profiles.some((profile) => profile.id === spec.profileId)) presetSelect.value = spec.profileId;
+    presetSelect.value = spec && profiles.some((profile) => profile.id === spec.profileId) ? spec.profileId : '';
     renderProfiles();
   };
 
@@ -160,35 +164,7 @@ export function initViewportControls(): void {
     }
   };
 
-  const openModal = (): void => {
-    populatePresets();
-    renderProfiles();
-    api?.setViewportVisibility?.(false);
-    if (!modal.open) modal.showModal();
-  };
-
-  button.addEventListener('click', async () => {
-    const rect = button.getBoundingClientRect();
-    const result = await api?.openViewportMenu({
-      x: rect.x,
-      y: rect.y,
-      width: rect.width,
-      height: rect.height,
-    });
-    if (!result) return;
-    if (result.action === 'applied' && result.state) applyState(result.state);
-    else if (result.action === 'profiles') {
-      profiles = result.profiles ?? profiles;
-      renderProfiles();
-      populatePresets();
-    } else if (result.action === 'custom') openModal();
-    else if (result.action === 'save') await saveCurrent();
-  });
-
-  modal.addEventListener('close', () => api?.setViewportVisibility?.(true));
-  closeButton?.addEventListener('click', () => modal.close());
-
-  presetSelect?.addEventListener('change', () => {
+  presetSelect.addEventListener('change', () => {
     if (!suppress) void applyPreset(presetSelect.value);
   });
   for (const input of [widthInput, heightInput, dprInput]) {
@@ -198,9 +174,16 @@ export function initViewportControls(): void {
     input?.addEventListener('change', () => void applyCustom());
   }
 
+  fitButton?.addEventListener('click', async () => applyState(await api?.resetViewport()));
+  fitDetailButton?.addEventListener('click', async () => applyState(await api?.resetViewport()));
   rotateButton?.addEventListener('click', async () => applyState(await api?.setViewport({ action: 'rotate' })));
-  resetButton?.addEventListener('click', async () => applyState(await api?.resetViewport()));
   saveButton?.addEventListener('click', () => void saveCurrent());
+  editButton?.addEventListener('click', () => {
+    if (!detail) return;
+    const hidden = detail.classList.toggle('hidden');
+    editButton.textContent = hidden ? 'EDIT' : 'CLOSE';
+    editButton.classList.toggle('btn-active', !hidden);
+  });
   devtoolsButton?.addEventListener('click', () => void api?.openDevTools());
 
   api?.getViewport?.().then(applyState).catch(() => undefined);

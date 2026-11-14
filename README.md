@@ -334,7 +334,7 @@ Hypagon Gateway features an embedded, serverless vector database (**LanceDB**) c
 - **Automatic Popup Trapping:** Links configured with `target="_blank"` or `window.open` are cleanly trapped into managed child tabs rather than escaping as detached OS windows.
 - **Dynamic DaisyUI 5 Tab Bar Strip:** Real-time loading spinners, active indicators, title truncations, and memory reclamation upon tab closure.
 - **Display-scale-aware page zoom:** Pages are fitted to the OS scale by default (67% on a 150% Windows display), with a `FIT`/`WIN` toggle for humans and `Ctrl+=` / `Ctrl+-` / `Ctrl+0`. `browser_zoom` reports CSS and physical viewports so agents can map screenshots and coordinates correctly.
-- **Responsive device testing:** The `RESP` toolbar emulates phone, tablet and custom viewports through Chromium's device mode (CSS size, DPR, mobile, touch), letterboxes the page inside the browser area, and saves personal device profiles. Agents get the same capability through the small `browser_viewport` tool (`status`, `set`, `reset`, `rotate`), and `DEV` opens the native Chromium DevTools for the active tab.
+- **Responsive device testing:** A **Viewport** row in the Command Deck emulates phone, tablet and custom viewports through Chromium's device mode (CSS size, DPR, mobile, touch), letterboxes the page inside the browser area, and saves personal device profiles. Page zoom is pinned while a device is active. Agents get the same capability through the small `browser_viewport` tool (`status`, `set`, `reset`, `rotate`), and `DEV` opens the native Chromium DevTools for the active tab.
 
 ---
 

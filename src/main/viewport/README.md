@@ -8,4 +8,4 @@ Chromium device emulation for browsing tabs, kept separate from zoom, research a
 - **`profiles.ts`** — human-saved device profiles in `<userData>/device-profiles.json`, atomic writes,
   capped and validated. Built-ins live in `src/shared/viewport.ts`.
 - The agent surface is deliberately tiny: one `browser_viewport` tool (`status` / `set` / `reset` /
-  `rotate`). Profile management stays in the HUD's native `RESP` menu and dialog.
+  `rotate`). Profile management stays in the Command Deck's Viewport row and its inline editor.

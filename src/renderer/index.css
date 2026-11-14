@@ -190,10 +190,6 @@ html.sidebar-mode #sidebar-rail-toggle:active {
   }
 }
 
-/* Orb pressed while its radial menu is open: the hub becomes the origin. */
-html.sidebar-mode #sidebar-rail-toggle.orb-menu-open {
-  transform: scale(0.92);
-}
 /* Dragged orb loses its hover scale so it tracks the pointer cleanly. */
 html.sidebar-mode #sidebar-rail-toggle.orb-dragging {
   transform: none !important;
@@ -247,79 +243,6 @@ html.sidebar-mode #deck-orb-count {
   line-height: 15px;
   text-align: center;
   box-shadow: 0 0 0 2px rgb(13 18 33 / 0.9);
-}
-
-/* Radial petal menu stage. The native view grows to 404x404 around the same
-   corner; petals fan out from under the hub with a staggered spring. The
-   container never captures clicks outside its petals (`pointer-events: none`). */
-html.sidebar-mode #deck-menu {
-  display: none;
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  width: 404px;
-  height: 404px;
-  z-index: 2147483000;
-  pointer-events: none;
-}
-html.sidebar-mode #deck-menu.open {
-  display: block;
-}
-html.sidebar-mode .deck-petal {
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-  width: 52px;
-  height: 52px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 0;
-  border-radius: 50%;
-  border: 1px solid color-mix(in oklab, var(--color-accent) 40%, transparent);
-  background: color-mix(in oklab, var(--color-base-300) 74%, transparent);
-  color: var(--color-accent);
-  font-size: 8px;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  pointer-events: auto;
-  opacity: 0;
-  transform: translate(0, 0) scale(0.3);
-  box-shadow: 0 6px 20px rgb(0 0 0 / 0.4);
-  transition:
-    transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--i, 0) * 30ms),
-    opacity 180ms ease calc(var(--i, 0) * 30ms),
-    background 120ms ease,
-    box-shadow 120ms ease;
-}
-html.sidebar-mode .deck-petal svg {
-  width: 16px;
-  height: 16px;
-}
-html.sidebar-mode #deck-menu.open .deck-petal {
-  transform: translate(var(--dx), var(--dy)) scale(1);
-  opacity: 1;
-}
-html.sidebar-mode #deck-menu.open .deck-petal:hover {
-  transform: translate(var(--dx), var(--dy)) scale(1.14);
-  background: color-mix(in oklab, var(--color-base-300) 88%, transparent);
-  box-shadow:
-    0 8px 26px rgb(0 0 0 / 0.5),
-    0 0 0 4px color-mix(in oklab, var(--color-accent) 16%, transparent);
-}
-
-/* Left-edge orb: mirror the fan so petals grow inward instead of off-screen. */
-html.sidebar-mode #deck-menu.deck-left .deck-petal {
-  right: auto;
-  left: 16px;
-}
-html.sidebar-mode #deck-menu.deck-left.open .deck-petal {
-  transform: translate(calc(-1 * var(--dx)), var(--dy)) scale(1);
-}
-html.sidebar-mode #deck-menu.deck-left.open .deck-petal:hover {
-  transform: translate(calc(-1 * var(--dx)), var(--dy)) scale(1.14);
 }
 
 /* ── Themed popup menu (MenuPopup window surface, ?menupopup=1) ─────────── */
@@ -421,7 +344,6 @@ html.menu-popup-mode #menu-popup-host {
 
 /* ── Collab-mode toolbar (the orb becomes the collab controls) ──────────── */
 html.collab-disabled #collab-btn,
-html.collab-disabled .deck-petal[data-action="collab"],
 html.collab-disabled #collab-toolbar,
 html.collab-disabled #collab-count {
   display: none !important;

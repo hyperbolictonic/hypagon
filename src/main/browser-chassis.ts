@@ -26,7 +26,6 @@ import {
 } from './collaboration/overlay.js';
 import type { CollaborationTarget, CollaborationThread } from '../shared/collaboration.js';
 import type { SidebarSurfaceState } from '../shared/menu.js';
-import type { PopupAnchor, PopupMenuItem } from '../shared/menu.js';
 import { bump } from './metrics.js';
 import { ActionLedger } from './telemetry/action-ledger.js';
 import { ConstructHarvester } from './harvester/markdown.js';
@@ -111,10 +110,6 @@ const DECK_ORB_SIZE = 56;
 const DECK_ORB_VIEW = 84;
 const DECK_ORB_VIEW_PAD = (DECK_ORB_VIEW - DECK_ORB_SIZE) / 2;
 const DECK_ORB_MARGIN = 12;
-/** Square stage the orb grows into while its radial menu is open: big enough
- *  that the outermost petal (r=165 from the hub centre) plus its hover scale
- *  and shadow fits inside the native view. */
-const DECK_MENU_SIZE = 404;
 /** Collab-mode toolbar pill: the orb is replaced by this bar. */
 const TOOLBAR_BAR_WIDTH = 248;
 
@@ -200,8 +195,6 @@ export class BrowserChassis {
   private lastOpenSidebarMode: 'docked' | 'floating' = 'floating';
   /** Running sidebar bounds animation, so a new target or a snap can cancel it. */
   private sidebarBoundsAnimation: { cancelled: boolean } | null = null;
-  /** Radial orb menu stage (only meaningful while the deck is collapsed). */
-  private sidebarMenuOpen = false;
   /** Collab mode: the orb is replaced by the collaborations toolbar pill. */
   private collabMode = false;
   /** Current note in the back/forward cycle through open collaboration threads. */
@@ -998,8 +991,6 @@ export class BrowserChassis {
     if (mode === 'docked' || mode === 'floating') this.lastOpenSidebarMode = mode;
     const previous = this.sidebarMode;
     this.sidebarMode = mode;
-    // Any deck state change cancels the radial menu; the orb stays collapsed.
-    this.sidebarMenuOpen = false;
     // Leaving collapsed mode also leaves collab mode.
     if (mode !== 'collapsed' && this.collabMode) {
       this.collabMode = false;
@@ -1086,7 +1077,6 @@ export class BrowserChassis {
   public getSidebarSurfaceState(): SidebarSurfaceState {
     return {
       mode: this.sidebarMode,
-      menuOpen: this.sidebarMenuOpen,
       collabMode: this.collabMode,
       collabEnabled: this.isCollabEnabled(),
       orbEdge: this.orbEdge,
@@ -1109,7 +1099,6 @@ export class BrowserChassis {
     this.collabMode = next;
     this.collabFocusIndex = -1;
     if (next) {
-      this.sidebarMenuOpen = false;
       void this.enterCollabModeOnPage();
     } else {
       void this.exitCollabModeOnPage();
@@ -1349,18 +1338,12 @@ export class BrowserChassis {
     if (this.sidebarMode === 'collapsed') {
       // The collapsed deck shrinks to a free-floating orb chip anchored at a
       // bottom corner, clear of the scrollbar track. The native view is the
-      // chip plus padding (hover scale, pulse ring, count badge must not clip),
-      // and grows into the radial-menu stage around the *same* chip corner.
+      // chip plus padding (hover scale, pulse ring, count badge must not clip).
       // In collab mode the orb is replaced by a horizontal toolbar pill with
       // its own sized view, same corner.
-      const menuStage = { width: DECK_MENU_SIZE, height: DECK_MENU_SIZE };
       const orbView = { width: DECK_ORB_VIEW, height: DECK_ORB_VIEW };
       const pillView = { width: TOOLBAR_BAR_WIDTH + 2 * DECK_ORB_VIEW_PAD, height: DECK_ORB_VIEW };
-      const viewSize = this.sidebarMenuOpen
-        ? menuStage
-        : this.collabMode
-          ? pillView
-          : orbView;
+      const viewSize = this.collabMode ? pillView : orbView;
       const anchorX = this.orbEdge === 'left'
         ? Math.max(0, DECK_ORB_MARGIN - DECK_ORB_VIEW_PAD)
         : usableWidth - DECK_ORB_MARGIN + DECK_ORB_VIEW_PAD;
@@ -1812,60 +1795,6 @@ export class BrowserChassis {
     return this.viewportController.deleteProfile(id);
   }
 
-  /** Native device menu anchored to the HUD button (the shell DOM cannot paint above the page). */
-  public async openViewportMenu(anchor: PopupAnchor): Promise<{
-    action: string;
-    state?: ViewportState;
-    profiles?: ReturnType<ViewportController['profiles']>;
-  }> {
-    const win = this.mainWindow;
-    const controller = this.viewportController;
-    if (!win || win.isDestroyed() || !controller) return { action: 'unavailable' };
-
-    const state = controller.state();
-    const safeAnchor: PopupAnchor = {
-      x: Number(anchor?.x) || 0,
-      y: Number(anchor?.y) || 0,
-      width: Math.max(1, Number(anchor?.width) || 1),
-      height: Math.max(1, Number(anchor?.height) || 1),
-    };
-    const items: PopupMenuItem[] = [{ id: 'heading', label: 'DEVICES', disabled: true }];
-    for (const profile of state.profiles) {
-      const active = state.spec?.profileId === profile.id;
-      items.push({
-        id: `preset:${profile.id}`,
-        label: `${active ? '●' : ' '} ${profile.name}`,
-        hint: `${profile.width}×${profile.height}`,
-        ...(profile.builtin
-          ? {}
-          : { secondaryAction: { id: 'delete', label: '×', title: `Delete ${profile.name}` } }),
-      });
-    }
-    items.push({ id: 'rotate', label: 'Rotate' });
-    items.push({ id: 'custom', label: 'Custom size…' });
-    if (state.spec) items.push({ id: 'save', label: 'Save current device…' });
-    items.push({ id: 'reset', label: 'Fit to browser area' });
-
-    const selection = await MenuPopup.shared(path.join(__dirname, '../preload/index.js')).open(win, safeAnchor, items, {
-      width: 300,
-      itemHeight: 30,
-    });
-    if (!selection) return { action: 'dismissed' };
-
-    if (selection.id.startsWith('preset:')) {
-      const id = selection.id.slice('preset:'.length);
-      if (selection.action === 'delete') {
-        const result = controller.deleteProfile(id);
-        return { action: 'profiles', profiles: result.profiles };
-      }
-      return { action: 'applied', state: await controller.set({ action: 'set', preset: id }) };
-    }
-    if (selection.id === 'rotate') return { action: 'applied', state: await controller.rotate() };
-    if (selection.id === 'reset') return { action: 'applied', state: await controller.reset() };
-    if (selection.id === 'custom' || selection.id === 'save') return { action: selection.id };
-    return { action: 'dismissed' };
-  }
-
   /** Open or close the native Chromium DevTools for the active tab. */
   public toggleDevTools(): boolean {
     try {
@@ -1893,6 +1822,10 @@ export class BrowserChassis {
     factor?: number;
     mode?: ZoomMode;
   } = {}): ZoomState {
+    // Device emulation pins the page to 100%: page zoom would change CSS widths inside the
+    // emulated viewport. Keep the zoom controls inert until the device is reset.
+    if (this.viewportController?.state().active) return this.getZoomState();
+
     if (input.mode === 'compensate' || input.mode === 'native') {
       this.zoomMode = input.mode;
       this.zoomOverride = null;
@@ -1977,7 +1910,6 @@ export class BrowserChassis {
       this.saveDeviceProfile(input ?? {}),
     );
     ipcMain.handle('viewport:profile:delete', (_, id: unknown) => this.deleteDeviceProfile(id));
-    ipcMain.handle('chassis:viewport:menu', (_, anchor: PopupAnchor) => this.openViewportMenu(anchor));
     ipcMain.handle('chassis:devtools:open', () => this.toggleDevTools());
 
     const setVisibility = (_: any, visible: boolean) => {
@@ -1997,24 +1929,17 @@ export class BrowserChassis {
     );
     ipcMain.on('chassis:toggle-sidebar-mode', () => this.toggleSidebarMode());
 
-    // Orb menu and drag choreography (only meaningful while collapsed).
-    ipcMain.on('chassis:set-sidebar-menu-open', (_: any, open: boolean) => {
-      const next = Boolean(open);
-      if (next === this.sidebarMenuOpen) return;
-      this.sidebarMenuOpen = next;
-      if (this.sidebarMode === 'collapsed') this.positionSidebar(true);
-      this.broadcastSidebarSurfaceState();
-    });
+    // Orb drag choreography (only meaningful while collapsed).
     ipcMain.on('chassis:set-sidebar-orb-edge', (_: any, edge: 'left' | 'right') => {
       const next = edge === 'left' ? 'left' : 'right';
       if (next === this.orbEdge) return;
       this.orbEdge = next;
-      if (this.sidebarMode === 'collapsed' && !this.sidebarMenuOpen) this.positionSidebar(true);
+      if (this.sidebarMode === 'collapsed') this.positionSidebar(true);
       this.broadcastSidebarSurfaceState();
     });
     // Live drag: forward pointer deltas, clamped inside the content area.
     ipcMain.on('chassis:orbit-drag', (_: any, delta: { dx: number; dy: number }) => {
-      if (this.sidebarMode !== 'collapsed' || this.sidebarMenuOpen) return;
+      if (this.sidebarMode !== 'collapsed') return;
       if (!this.mainWindow || !this.sidebarView) return;
       if (this.sidebarBoundsAnimation) this.sidebarBoundsAnimation.cancelled = true;
       const [winWidth, winHeight] = this.mainWindow.getContentSize();
@@ -2043,7 +1968,7 @@ export class BrowserChassis {
     });
     // Drop: dock to the nearest vertical edge with the standard margin.
     ipcMain.on('chassis:orbit-drag-end', () => {
-      if (this.sidebarMode !== 'collapsed' || this.sidebarMenuOpen) return;
+      if (this.sidebarMode !== 'collapsed') return;
       if (!this.mainWindow || !this.sidebarView) return;
       const [winWidth] = this.mainWindow.getContentSize();
       const current = this.sidebarView.getBounds();

@@ -41,7 +41,6 @@ export interface ElectronAPI {
   getSidebarState: () => Promise<SidebarSurfaceState>;
   getSidebarBounds?: () => Promise<{ x: number; y: number; width: number; height: number } | null>;
   onSidebarState: (callback: (state: SidebarSurfaceState) => void) => () => void;
-  setSidebarMenuOpen: (open: boolean) => void;
   setCollabMode: (open: boolean) => void;
   collabNavigate: (delta: number) => void;
   collabToggleList: (anchor?: PopupAnchor) => void;
@@ -69,11 +68,6 @@ export interface ElectronAPI {
   resetViewport: () => Promise<ViewportState>;
   saveDeviceProfile: (input: { name: string; spec: unknown }) => Promise<{ ok: boolean; profiles: DeviceProfile[] }>;
   deleteDeviceProfile: (id: string) => Promise<{ ok: boolean; profiles: DeviceProfile[] }>;
-  openViewportMenu: (anchor: { x: number; y: number; width: number; height: number }) => Promise<{
-    action: string;
-    state?: ViewportState;
-    profiles?: DeviceProfile[];
-  }>;
   openDevTools: () => Promise<boolean>;
   hudHeartbeat: () => void;
   recallMemory: (query: string, options?: any) => Promise<any[]>;
@@ -305,7 +299,6 @@ const api: ElectronAPI = {
     ipcRenderer.on('chassis:sidebar-mode', handler);
     return () => ipcRenderer.removeListener('chassis:sidebar-mode', handler);
   },
-  setSidebarMenuOpen: (open: boolean) => ipcRenderer.send('chassis:set-sidebar-menu-open', Boolean(open)),
   setSidebarOrbEdge: (edge: 'left' | 'right') => ipcRenderer.send('chassis:set-sidebar-orb-edge', edge),
   orbitDragMove: (dx, dy) => ipcRenderer.send('chassis:orbit-drag', { dx, dy }),
   orbitDragEnd: () => ipcRenderer.send('chassis:orbit-drag-end'),
@@ -333,7 +326,6 @@ const api: ElectronAPI = {
   resetViewport: () => ipcRenderer.invoke('chassis:viewport:reset'),
   saveDeviceProfile: (input) => ipcRenderer.invoke('viewport:profile:save', input),
   deleteDeviceProfile: (id) => ipcRenderer.invoke('viewport:profile:delete', id),
-  openViewportMenu: (anchor) => ipcRenderer.invoke('chassis:viewport:menu', anchor),
   openDevTools: () => ipcRenderer.invoke('chassis:devtools:open'),
   hudHeartbeat: () => ipcRenderer.send('chassis:hud-heartbeat'),
 

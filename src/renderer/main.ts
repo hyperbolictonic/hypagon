@@ -166,67 +166,29 @@ sidebarDockBtn?.addEventListener('click', () => {
   applySidebarMode(target);
   window.electronAPI?.setSidebarMode(target);
 });
-// ---- Deck orb: press toggles the radial menu, press-and-move drags it ----
-const deckMenuRoot = document.getElementById('deck-menu');
-let deckMenuOpen = false;
-
-function setDeckMenuOpenVisuals(open: boolean): void {
-  deckMenuOpen = open;
-  deckMenuRoot?.classList.toggle('open', open);
-  deckMenuRoot?.setAttribute('aria-hidden', String(!open));
-  sidebarRailToggle?.classList.toggle('orb-menu-open', open);
-}
-
-function setDeckMenu(open: boolean): void {
-  setDeckMenuOpenVisuals(open);
-  window.electronAPI?.setSidebarMenuOpen(open);
-}
-
-/**
- * Apply the authoritative sidebar state from the main process. The native
- * view bounds and the DOM classes come from the same object, so they can
- * never disagree (the stuck-open / dead-zone class of bugs).
- */
+// ---- Deck orb: click restores the deck, press-and-move drags it ----
 function applySidebarState(state: {
   mode: 'docked' | 'floating' | 'collapsed';
-  menuOpen: boolean;
   collabMode: boolean;
   collabEnabled: boolean;
   orbEdge: 'left' | 'right';
 }): void {
-  const collapsed = state.mode === 'collapsed';
   applySidebarMode(state.mode);
-  setDeckMenuOpenVisuals(state.menuOpen && collapsed);
-  document.documentElement.classList.toggle('collab-mode', state.collabMode && collapsed);
+  document.documentElement.classList.toggle('collab-mode', state.collabMode && state.mode === 'collapsed');
   document.documentElement.classList.toggle('collab-disabled', state.collabEnabled === false);
-  collabModeOn = state.collabMode && collapsed;
+  collabModeOn = state.collabMode && state.mode === 'collapsed';
   const collabButton = document.getElementById('collab-btn');
   collabButton?.classList.toggle('btn-warning', collabModeOn);
   collabButton?.classList.toggle('btn-ghost', !collabModeOn);
   collabButton?.classList.toggle('text-accent', !collabModeOn);
   collabButton?.setAttribute('aria-pressed', String(collabModeOn));
   sidebarRailToggle?.classList.toggle('orb-left', state.orbEdge === 'left');
-  // The petal fan is authored for a right-edge orb (negative --dx). Mirror it for the left edge,
-  // otherwise the menu grows off-screen and clips against the overlay view.
-  deckMenuRoot?.classList.toggle('deck-left', state.orbEdge === 'left');
   try {
     localStorage.setItem('deck.orb-edge', state.orbEdge);
   } catch {
     /* storage unavailable */
   }
 }
-
-// A trusted press anywhere outside the orb/menu closes the radial menu.
-document.addEventListener(
-  'pointerdown',
-  (event) => {
-    if (!deckMenuOpen) return;
-    const target = event.target as HTMLElement | null;
-    if (target?.closest?.('#sidebar-rail-toggle, #deck-menu')) return;
-    setDeckMenu(false);
-  },
-  true,
-);
 
 sidebarRailToggle?.addEventListener('pointerdown', (event) => {
   if (event.button !== 0) return;
@@ -258,7 +220,7 @@ sidebarRailToggle?.addEventListener('pointerdown', (event) => {
       window.electronAPI?.orbitDragEnd();
       return;
     }
-    setDeckMenu(!deckMenuOpen);
+    window.electronAPI?.setSidebarMode('floating');
   };
   hub.addEventListener('pointermove', onMove);
   hub.addEventListener('pointerup', onUp);
@@ -267,49 +229,8 @@ sidebarRailToggle?.addEventListener('pointerdown', (event) => {
 sidebarRailToggle?.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault();
-    setDeckMenu(!deckMenuOpen);
+    window.electronAPI?.setSidebarMode('floating');
   }
-});
-
-// Petals: one action each, then the stage collapses back into the orb.
-function dispatchTrustedClick(el: HTMLElement | null): void {
-  if (!el) return;
-  const rect = el.getBoundingClientRect();
-  const x = rect.left + rect.width / 2;
-  const y = rect.top + rect.height / 2;
-  const base = { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0 } as const;
-  el.dispatchEvent(new PointerEvent('pointerdown', { ...base, pointerId: 1, pointerType: 'mouse', isPrimary: true }));
-  el.dispatchEvent(new PointerEvent('pointerup', { ...base, pointerId: 1, pointerType: 'mouse', isPrimary: true }));
-  el.dispatchEvent(new MouseEvent('click', base));
-}
-
-deckMenuRoot?.querySelectorAll<HTMLButtonElement>('.deck-petal').forEach((petal) => {
-  petal.addEventListener('click', () => {
-    switch (petal.dataset.action) {
-      case 'deck':
-        // Expanding the deck broadcasts menu=false; no IPC round needed.
-        window.electronAPI?.setSidebarMode('floating');
-        break;
-      case 'collab':
-        // Collab mode: the orb becomes the collaborations toolbar — no panel.
-        window.electronAPI?.setCollabMode(true);
-        break;
-      case 'harvest':
-        // Harvest = a markdown view of the page: open the deck on CONSTRUCT.
-        setDeckMenu(false);
-        window.electronAPI?.setSidebarMode('floating');
-        dispatchTrustedClick(document.getElementById('harvest-btn'));
-        break;
-      case 'record':
-        // Record = the timelapse screen recorder; the orb's red pulse is the
-        // running indicator, so the deck stays closed.
-        setDeckMenu(false);
-        dispatchTrustedClick(document.getElementById('record-btn'));
-        break;
-      default:
-        setDeckMenu(false);
-    }
-  });
 });
 
 // ---- Collab-mode toolbar: [(‹) prev] [(›) next] [list] [pen] [ESC] ------------
@@ -327,12 +248,6 @@ window.addEventListener('keydown', (event) => {
   // Deck focus owns Escape while the note picker/toolbar is in play.
   if (collabModeOn) window.electronAPI?.setCollabMode(false);
   else window.electronAPI?.escapeCollabUi();
-});
-
-window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && deckMenuOpen) {
-    setDeckMenu(false);
-  }
 });
 
 // Orb status lights (the docked side is handled by applySidebarState).
@@ -1000,6 +915,16 @@ async function applyZoomAction(action: 'in' | 'out' | 'reset'): Promise<void> {
   }
 }
 
+/** Page zoom is pinned while a device viewport is emulated. */
+function setZoomPinned(pinned: boolean): void {
+  for (const control of [zoomOutBtn, zoomInBtn, zoomLevelBtn, zoomModeBtn]) {
+    if (!control) continue;
+    control.disabled = pinned;
+    if (pinned) control.title = 'Page zoom is pinned to 100% while a responsive device is active';
+  }
+  if (!pinned) renderZoom(currentZoom);
+}
+
 zoomOutBtn?.addEventListener('click', () => void applyZoomAction('out'));
 zoomInBtn?.addEventListener('click', () => void applyZoomAction('in'));
 zoomLevelBtn?.addEventListener('click', () => void applyZoomAction('reset'));
@@ -1076,6 +1001,7 @@ function updateState(state: ChassisState) {
     (window as unknown as { __applyViewportState?: (viewport: ChassisState['viewport']) => void }).__applyViewportState?.(
       state.viewport,
     );
+    setZoomPinned(Boolean(state.viewport.active));
   }
 }
 
