@@ -310,6 +310,18 @@ html.sidebar-mode #deck-menu.open .deck-petal:hover {
     0 0 0 4px color-mix(in oklab, var(--color-accent) 16%, transparent);
 }
 
+/* Left-edge orb: mirror the fan so petals grow inward instead of off-screen. */
+html.sidebar-mode #deck-menu.deck-left .deck-petal {
+  right: auto;
+  left: 16px;
+}
+html.sidebar-mode #deck-menu.deck-left.open .deck-petal {
+  transform: translate(calc(-1 * var(--dx)), var(--dy)) scale(1);
+}
+html.sidebar-mode #deck-menu.deck-left.open .deck-petal:hover {
+  transform: translate(calc(-1 * var(--dx)), var(--dy)) scale(1.14);
+}
+
 /* ── Themed popup menu (MenuPopup window surface, ?menupopup=1) ─────────── */
 html.menu-popup-mode,
 html.menu-popup-mode body {

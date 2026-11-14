@@ -4,6 +4,7 @@ import type { ZoomState } from '../shared/zoom.js';
 import { BRAND } from '../shared/brand.js';
 import { beginRecording, finishRecording } from './recording';
 import { refreshToolsPanel } from './tools-panel';
+import { initResearchPanel } from './research-panel';
 import { bootMenuPopup } from './menu-popup';
 
 declare global {
@@ -204,6 +205,9 @@ function applySidebarState(state: {
   collabButton?.classList.toggle('text-accent', !collabModeOn);
   collabButton?.setAttribute('aria-pressed', String(collabModeOn));
   sidebarRailToggle?.classList.toggle('orb-left', state.orbEdge === 'left');
+  // The petal fan is authored for a right-edge orb (negative --dx). Mirror it for the left edge,
+  // otherwise the menu grows off-screen and clips against the overlay view.
+  deckMenuRoot?.classList.toggle('deck-left', state.orbEdge === 'left');
   try {
     localStorage.setItem('deck.orb-edge', state.orbEdge);
   } catch {
@@ -472,6 +476,8 @@ tabBtnLogs.addEventListener('click', () => {
   switchTab('logs');
   void refreshWebState();
 });
+
+initResearchPanel();
 
 // ---- WEB STATE: breadcrumbs, cookies, localStorage/sessionStorage ----------
 async function refreshWebState(): Promise<void> {

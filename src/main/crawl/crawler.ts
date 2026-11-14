@@ -21,6 +21,8 @@ export interface CrawlOptions {
   sameOrigin?: boolean;
   /** Try content-negotiated Markdown/Text before rendering (default true). */
   preferLlm?: boolean;
+  /** Try a static impersonating fetch before rendering (default true when available). */
+  preferStatic?: boolean;
   /** Index each harvested page into LanceDB Cortex (default true). */
   harvestToCortex?: boolean;
   /** Scope link extraction to a CSS selector. */
@@ -37,11 +39,15 @@ export interface CrawlPage {
   url: string;
   title: string;
   depth: number;
-  via: 'llm' | 'render';
+  via: 'llm' | 'static' | 'render';
   bytes: number;
   links: number;
   indexed: boolean;
   error?: string;
+  /** Wall-clock time spent on this page, including tier attempts. */
+  ms?: number;
+  /** Set when a cheaper tier was attempted and the page had to be rendered instead. */
+  escalation?: { from: 'llm' | 'static'; to: 'render'; reason: string };
   /** Leading excerpt of the page's Markdown, when `includeContent` was set. */
   excerpt?: string;
 }
@@ -62,6 +68,14 @@ export interface CrawlerDeps {
   tryLlm?: (url: string) => Promise<{ content: string; via: string } | null>;
   /** Renders a page in a detached view and returns its Markdown + outgoing links. */
   renderPage: (url: string, pageOpts: { selector?: string }) => Promise<{ title: string; markdown: string; links: string[]; status: number }>;
+  /**
+   * Cheap HTML fetch without a browser (impersonating client, then distilled to Markdown).
+   * `ok: false` escalates to `renderPage`; the reason is reported to the caller.
+   */
+  fetchStatic?: (url: string) => Promise<
+    | { ok: true; title: string; markdown: string; status: number }
+    | { ok: false; reason: string }
+  >;
   /** Called before any page fetch; lets stealth mode enforce a domain cooldown. */
   beforePage?: (url: string) => void | Promise<void>;
   indexPage?: (url: string, title: string, content: string) => Promise<void>;
@@ -224,9 +238,10 @@ export class Crawler {
     opts: CrawlOptions,
   ): Promise<{ page: CrawlPage; links: string[]; indexed: boolean; notes: string[] }> {
     const notes: string[] = [];
+    const pageStarted = Date.now();
     let title = '';
     let content = '';
-    let via: 'llm' | 'render' = 'render';
+    let via: 'llm' | 'static' | 'render' = 'render';
     let links: string[] = [];
     let error: string | undefined;
 
@@ -236,28 +251,51 @@ export class Crawler {
       error = err?.message || String(err);
       notes.push(`skipped ${url}: ${error}`);
       return {
-        page: { url, title: url, depth, via: 'render', bytes: 0, links: 0, indexed: false, error },
+        page: { url, title: url, depth, via: 'render', bytes: 0, links: 0, indexed: false, error, ms: Date.now() - pageStarted },
         links: [],
         indexed: false,
         notes,
       };
     }
 
-    let usedLlm = false;
+    let usedCheap = false;
+    let staticFailure: string | null = null;
+    let escalation: CrawlPage['escalation'] | undefined;
     if (opts.preferLlm !== false && this.deps.tryLlm) {
       try {
         const r = await this.deps.tryLlm(url);
         if (r && r.content && r.content.trim().length > 0) {
           content = r.content;
           via = 'llm';
-          usedLlm = true;
+          usedCheap = true;
         }
       } catch (err: any) {
         notes.push(`llm path failed for ${url}: ${err?.message || err}`);
       }
     }
 
-    if (!usedLlm) {
+    // Static impersonating fetch: Chrome-identical at the network layer, no browser.
+    if (!usedCheap && opts.preferStatic !== false && this.deps.fetchStatic) {
+      try {
+        const r = await this.deps.fetchStatic(url);
+        if (r.ok && r.markdown && r.markdown.trim().length > 0) {
+          content = r.markdown;
+          title = r.title;
+          via = 'static';
+          usedCheap = true;
+        } else if (!r.ok) {
+          staticFailure = r.reason;
+          notes.push(`static tier skipped for ${url}: ${r.reason}`);
+        } else {
+          staticFailure = 'static fetch produced no content';
+        }
+      } catch (err: any) {
+        staticFailure = err?.message || String(err);
+        notes.push(`static path failed for ${url}: ${staticFailure}`);
+      }
+    }
+
+    if (!usedCheap) {
       try {
         const r = await this.deps.renderPage(url, { selector: opts.selector });
         title = r.title;
@@ -266,6 +304,12 @@ export class Crawler {
       } catch (err: any) {
         error = err?.message || String(err);
         notes.push(`render failed for ${url}: ${error}`);
+      }
+
+      // Only claim an escalation when the render actually produced the page.
+      if (!error && staticFailure) {
+        escalation = { from: 'static', to: 'render', reason: staticFailure };
+        notes.push(`escalated ${url} to render: ${staticFailure}`);
       }
     } else {
       links = linksFromMarkdown(content, url);
@@ -291,6 +335,8 @@ export class Crawler {
         links: links.length,
         indexed,
         error,
+        escalation,
+        ms: Date.now() - pageStarted,
         excerpt: opts.includeContent ? content.slice(0, opts.includeContent) : undefined,
       },
       links,

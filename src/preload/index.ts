@@ -8,6 +8,7 @@ import type { PopupAnchor, PopupMenuItem, SidebarSurfaceState } from '../shared/
 import type { WebPageState } from '../shared/web-state.js';
 import type { ExperimentalSettings } from '../shared/experimental.js';
 import type { MediaSettings, MediaUpdaterState } from '../shared/media.js';
+import type { ResearchEvent } from '../shared/research-events.js';
 
 export interface ElectronAPI {
   getState: () => Promise<ChassisState>;
@@ -85,6 +86,14 @@ export interface ElectronAPI {
   onTelemetry: (callback: (event: TelemetryEvent) => void) => () => void;
   onConstructHarvested: (callback: (construct: HarvestedConstruct) => void) => () => void;
   onLog: (callback: (log: any) => void) => () => void;
+  researchRun: (opts: {
+    query: string;
+    maxSources?: number;
+    engine?: string;
+    preferLlm?: boolean;
+    harvestToCortex?: boolean;
+  }) => Promise<any>;
+  onResearchEvent: (callback: (event: ResearchEvent) => void) => () => void;
   resolveHil: (id?: string, notes?: string) => Promise<boolean>;
   cancelHil: (id?: string) => Promise<boolean>;
   getActiveHil: () => Promise<any>;
@@ -365,6 +374,14 @@ const api: ElectronAPI = {
     const handler = (_: any, event: TelemetryEvent) => callback(event);
     ipcRenderer.on('chassis:telemetry', handler);
     return () => ipcRenderer.removeListener('chassis:telemetry', handler);
+  },
+
+  researchRun: (opts) => ipcRenderer.invoke('research:run', opts),
+
+  onResearchEvent: (callback) => {
+    const handler = (_: any, event: ResearchEvent) => callback(event);
+    ipcRenderer.on('research:event', handler);
+    return () => ipcRenderer.removeListener('research:event', handler);
   },
 
   onConstructHarvested: (callback) => {

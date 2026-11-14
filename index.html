@@ -143,6 +143,11 @@
         <!-- Tab pills dynamically populated by renderer -->
       </div>
       <div class="flex items-center gap-1 ml-2 shrink-0">
+        <button id="research-tab-btn" class="btn btn-ghost btn-xs font-mono text-[10px] gap-1.5" title="Open the research workspace">
+          <span id="research-tab-dot" class="w-1.5 h-1.5 rounded-full bg-base-content/30" aria-hidden="true"></span>
+          RESEARCH
+          <span id="research-tab-badge" class="badge badge-xs badge-neutral hidden">0</span>
+        </button>
         <button id="new-tab-btn" class="btn btn-ghost btn-xs btn-square text-base-content/70 hover:text-accent hover:bg-base-100 font-mono text-base font-bold" title="Open new browsing tab (+)">
           +
         </button>
@@ -151,6 +156,68 @@
 
     <!-- Main Workspace Split -->
     <div id="main-workspace" class="flex-1 flex overflow-hidden relative">
+
+      <!-- Research workspace: full-bleed dashboard, covers viewport + sidebar -->
+      <div id="research-view" class="absolute inset-0 z-40 bg-base-200 hidden flex-col font-mono text-xs">
+        <div class="flex items-center gap-2 px-3 py-2 border-b border-base-300 bg-base-300/60">
+          <span class="text-[10px] uppercase tracking-wider text-base-content/50">Research</span>
+          <input id="research-query" class="input input-xs input-bordered flex-1 max-w-md" placeholder="Research query..." />
+          <select id="research-engine" class="select select-xs select-bordered w-28">
+            <option value="">AUTO</option>
+            <option value="duckduckgo">DDG</option>
+            <option value="google">GOOGLE</option>
+            <option value="bing">BING</option>
+            <option value="brave">BRAVE</option>
+            <option value="startpage">STARTPAGE</option>
+          </select>
+          <button id="research-run" class="btn btn-xs btn-accent">RUN</button>
+          <div class="flex-1"></div>
+          <span id="research-status" class="badge badge-xs badge-neutral">idle</span>
+          <span id="research-elapsed" class="text-[10px] text-base-content/40 w-14 text-right">0ms</span>
+          <span id="research-escalations" class="badge badge-xs badge-neutral">0 esc</span>
+          <button id="research-close" class="btn btn-xs btn-ghost" title="Back to browsing">✕</button>
+        </div>
+
+        <div class="flex-1 flex overflow-hidden">
+          <div class="flex-1 flex flex-col overflow-hidden">
+            <div class="flex items-center gap-4 px-3 py-1.5 border-b border-base-300 bg-base-300/30 text-[10px] text-base-content/60">
+              <span>SOURCES <b id="research-stat-sources" class="text-base-content">0</b></span>
+              <span>INDEXED <b id="research-stat-indexed" class="text-base-content">0</b></span>
+              <span>DATA <b id="research-stat-bytes" class="text-base-content">0 KB</b></span>
+              <span>LLM <b id="research-tier-llm" class="text-success">0</b></span>
+              <span>STATIC <b id="research-tier-static" class="text-info">0</b></span>
+              <span>RENDER <b id="research-tier-render" class="text-warning">0</b></span>
+            </div>
+            <div class="flex-1 overflow-y-auto">
+              <table class="table table-xs table-pin-rows w-full">
+                <thead>
+                  <tr class="text-[10px] uppercase text-base-content/50">
+                    <th class="w-8">#</th>
+                    <th>Source</th>
+                    <th class="w-16">Tier</th>
+                    <th class="w-14 text-right">KB</th>
+                    <th class="w-14 text-right">ms</th>
+                    <th class="w-10 text-right">HL</th>
+                    <th class="w-56">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="research-rows"></tbody>
+              </table>
+              <div id="research-empty" class="p-6 text-center text-[11px] text-base-content/40">
+                No run yet — enter a query and press RUN.
+              </div>
+            </div>
+          </div>
+
+          <aside class="w-[420px] border-l border-base-300 flex flex-col bg-base-300/20">
+            <div class="px-3 py-2 text-[10px] uppercase tracking-wider text-base-content/50 border-b border-base-300 flex items-center justify-between">
+              <span>Terminal</span>
+              <span id="research-log-count" class="text-base-content/30">0 lines</span>
+            </div>
+            <div id="research-log" class="flex-1 overflow-y-auto p-2 space-y-0.5 text-[10px] leading-tight"></div>
+          </aside>
+        </div>
+      </div>
       <!-- Left Area: Browser Viewport Placeholder / Canvas Overlay -->
       <div id="viewport-container" class="flex-1 relative bg-base-100 flex flex-col justify-between overflow-hidden">
         <!-- Floating HUD Header inside Viewport area -->
@@ -272,6 +339,7 @@
         </div>
 
         <!-- Tab 3: WEB STATE (page signals) -->
+        <!-- Tab 3: Web State View -->
         <div id="tab-content-logs" class="flex-1 p-3 overflow-hidden flex-col hidden font-mono text-xs">
           <div class="flex items-center justify-between mb-2">
             <span class="font-bold text-base-content text-[11px]">WEB STATE</span>

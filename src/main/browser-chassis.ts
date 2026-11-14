@@ -26,6 +26,7 @@ import type { SidebarSurfaceState } from '../shared/menu.js';
 import { bump } from './metrics.js';
 import { ActionLedger } from './telemetry/action-ledger.js';
 import { ConstructHarvester } from './harvester/markdown.js';
+import { fetchStatic } from './network/impersonate.js';
 import { JevEngine, type JevStatus } from './jev/engine.js';
 import { decideFunnel, FunnelBreaker } from './jev/policy.js';
 import { captureComposedDom } from './harvester/dom-serializer.js';
@@ -399,6 +400,28 @@ export class BrowserChassis {
         const r = await this.researchLlmSurface.fetch({ url, as: 'markdown' });
         return { content: r.content, via: r.via };
       },
+      fetchStatic: async (url) => {
+        const outcome = await fetchStatic(url);
+        if (outcome.kind === 'blocked') {
+          this.addLog('warn', `static fetch challenged for ${url} (${outcome.status}); escalating to render`);
+          return { ok: false as const, reason: `challenge page (${outcome.status})` };
+        }
+        if (outcome.kind === 'unavailable') return { ok: false as const, reason: outcome.reason };
+        if (outcome.kind === 'error') return { ok: false as const, reason: outcome.reason };
+        if (outcome.result.status >= 400) return { ok: false as const, reason: `HTTP ${outcome.result.status}` };
+
+        const harvested = this.harvester.harvest(outcome.result.body, url, url);
+        // A JS-only shell harvests to almost nothing; escalate rather than index a stub.
+        if (!harvested.content || harvested.content.trim().length < 200) {
+          return { ok: false as const, reason: 'content too thin (possible JS-only shell)' };
+        }
+        return {
+          ok: true as const,
+          title: harvested.title,
+          markdown: harvested.content,
+          status: outcome.result.status,
+        };
+      },
       renderPage: (url, pageOpts) => this.crawlRenderPage(url, pageOpts),
       beforePage: (url) => this.assertResearchCooldown(url),
       indexPage: async (url, title, content) => {
@@ -412,6 +435,7 @@ export class BrowserChassis {
       search: (q, o) => this.searchHub.search(q, o),
       crawl: (o) => this.crawler.crawl(o),
       log: (level, msg) => this.addLog(level, msg),
+      events: (event) => this.broadcast('research:event', event),
     });
 
     setInterval(() => {
