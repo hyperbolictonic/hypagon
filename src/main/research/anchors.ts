@@ -117,6 +117,14 @@ export async function relocateCitation(
 }
 
 
+export async function relocateCitations(
+  html: string,
+  fingerprints: Fingerprint[],
+  threshold = 40,
+): Promise<CitationRelocation[]> {
+  return Promise.all(fingerprints.map((fingerprint) => relocateCitation(html, fingerprint, threshold)));
+}
+
 const BLOCK_XPATH = '//p | //li | //h2 | //h3 | //h4 | //blockquote | //td';
 const MAX_HTML_BYTES = 2_000_000;
 const MIN_TEXT = 60;

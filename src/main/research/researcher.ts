@@ -238,6 +238,11 @@ export class Researcher {
         const humanAssisted = !!page?.humanAssisted;
         const humanMs = page?.humanMs ?? 0;
         const anchors = page?.anchors;
+        const anchorDetails = (anchors ?? []).map((anchor) => ({
+          text: anchor.text,
+          path: anchor.path,
+          fingerprint: anchor.fingerprint as unknown as Record<string, unknown>,
+        }));
         anchorTotal += anchors?.length ?? 0;
         totalBytes += bytes;
         tiers[via] += 1;
@@ -269,6 +274,7 @@ export class Researcher {
           humanAssisted,
           humanMs,
           anchors: anchors?.length ?? 0,
+          anchorDetails,
           highlights: highlights.length,
           indexed,
           escalation,

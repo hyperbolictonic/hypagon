@@ -13,6 +13,7 @@
  */
 import type { ElectronAPI } from '../preload/index.js';
 import type { ResearchEvent, ResearchTier } from '../shared/research-events.js';
+import type { ResearchAnchorDetail } from '../shared/research-events.js';
 
 const api = (window as unknown as { electronAPI?: ElectronAPI }).electronAPI;
 const byId = <T extends HTMLElement>(id: string): T | null =>
@@ -32,6 +33,8 @@ const TIER_BADGE: Record<ResearchTier, string> = {
 
 interface Row {
   root: HTMLTableRowElement;
+  url: string;
+  anchors?: ResearchAnchorDetail[];
   tier: HTMLElement;
   kb: HTMLElement;
   ms: HTMLElement;
@@ -226,8 +229,7 @@ export function initResearchPanel(): void {
     }, 100);
   };
 
-  const rowFor = (key: string, rank: string, url: string, title: string): Row => {
-    const existing = rows.get(key);
+  const rowFor = (key: string, rank: string, url: string, title: string): Row => {    const existing = rows.get(key);
     if (existing) return existing;
 
     emptyEl?.classList.add('hidden');
@@ -256,9 +258,42 @@ export function initResearchPanel(): void {
     root.append(rankCell, sourceCell, tierCell, kbCell, msCell, hlCell, statusCell);
     rowsEl.appendChild(root);
 
-    const entry: Row = { root, tier: tierCell, kb: kbCell, ms: msCell, hl: hlCell, status: statusCell };
+    const entry: Row = { root, url, tier: tierCell, kb: kbCell, ms: msCell, hl: hlCell, status: statusCell };
     rows.set(key, entry);
     return entry;
+  };
+
+  const checkCitation = async (row: Row, button: HTMLButtonElement): Promise<void> => {
+    const anchor = row.anchors?.[0];
+    if (!anchor) return;
+    button.disabled = true;
+    button.textContent = 'CHECKING…';
+    try {
+      const result = await api?.relocateCitation({
+        url: row.url,
+        fingerprint: anchor.fingerprint,
+      });
+      if (!result) {
+        button.textContent = 'NO RESULT';
+        return;
+      }
+      if (result.found) {
+        button.textContent = `${result.score}%`;
+        button.className = `btn btn-xs ${result.score >= 80 ? 'btn-success' : 'btn-warning'} mt-1`;
+        button.title = result.text || '';
+      } else {
+        const best = result.candidates?.[0] ? ` (best candidate ${result.candidates[0].score}%)` : '';
+        button.textContent = 'MISSING';
+        button.className = 'btn btn-xs btn-error mt-1';
+        button.title = `${result.error || 'not found'}${best}`;
+      }
+    } catch (err) {
+      button.textContent = 'FAILED';
+      button.className = 'btn btn-xs btn-error mt-1';
+      button.title = (err as Error).message;
+    } finally {
+      button.disabled = false;
+    }
   };
 
   api?.onResearchEvent?.((event: ResearchEvent) => {
@@ -313,6 +348,16 @@ export function initResearchPanel(): void {
           anchorNote.className = 'text-[9px] text-base-content/40 mt-0.5';
           anchorNote.textContent = `${event.anchors} anchor(s)`;
           row.status.appendChild(anchorNote);
+        }
+
+        row.anchors = event.anchorDetails;
+        if (event.anchorDetails?.length) {
+          const check = document.createElement('button');
+          check.className = 'btn btn-xs btn-ghost mt-1';
+          check.textContent = 'CHECK CITATION';
+          check.title = 'Revalidate the top anchor against the live page';
+          check.addEventListener('click', () => void checkCitation(row, check));
+          row.status.appendChild(check);
         }
 
         if (event.escalation) {

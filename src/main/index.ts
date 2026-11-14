@@ -249,6 +249,7 @@ ipcMain.handle('recording:status', () => getRecordingStatus());
 
 // ---- research run IPC (streams events on 'research:event') --------------------------------
 ipcMain.handle('research:run', (_event, opts: any) => chassis.researchTopic(opts ?? {}));
+ipcMain.handle('research:relocate', (_event, opts: any) => chassis.relocateCitation(opts ?? {}));
 ipcMain.handle('recording:list', () => listRecordings());
 ipcMain.handle('recording:save', (_event, buffer: ArrayBuffer, frames: number) => saveRecording(buffer, Number(frames) || 0));
 ipcMain.on('recording:ready', () => readyRecording());

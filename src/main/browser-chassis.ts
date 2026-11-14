@@ -86,7 +86,7 @@ import { PrerenderEngine, type PrerenderOptions } from './prerender/prerender-en
 import { LlmSurface, type LlmSurfaceReport, type LlmSurfaceKind, type LlmFetchResult, type ReadUrlResult } from './llm/llm-surface.js';
 import { SearchHub, type SearchOutcome } from './search/search-engine.js';
 import { Crawler, type CrawlOptions, type CrawlOutcome, type HumanAssistInfo } from './crawl/crawler.js';
-import { anchorHighlights, relocateCitation, type CitationAnchor, type CitationRelocation } from './research/anchors.js';
+import { anchorHighlights, relocateCitation as relocateAgainstHtml, relocateCitations as relocateMany, type CitationAnchor, type CitationRelocation } from './research/anchors.js';
 import { MenuPopup } from './ui/menu-popup.js';
 import { Researcher, type ResearchOptions, type ResearchOutcome } from './research/researcher.js';
 
@@ -3671,7 +3671,7 @@ export class BrowserChassis {
       };
     }
 
-    const result = await relocateCitation(html, opts.fingerprint as any, opts.threshold ?? 40);
+    const result = await relocateAgainstHtml(html, opts.fingerprint as any, opts.threshold ?? 40);
     return { ...result, via };
   }
 

@@ -100,6 +100,7 @@ export interface ElectronAPI {
   onHilRequested: (callback: (request: any) => void) => () => void;
   onHilCleared: (callback: () => void) => () => void;
   reloadHil: () => Promise<boolean>;
+  relocateCitation: (opts: { url: string; fingerprint: unknown; threshold?: number }) => Promise<any>;
   getRecordingConfig: () => Promise<any>;
   getMediaSettings: () => Promise<{ ok: boolean; settings?: MediaSettings; updater?: MediaUpdaterState; error?: string }>;
   saveMediaSettings: (patch: Partial<MediaSettings>) => Promise<{
@@ -402,6 +403,8 @@ const api: ElectronAPI = {
   getActiveHil: () => ipcRenderer.invoke('hil:get-active'),
 
   reloadHil: () => ipcRenderer.invoke('hil:reload'),
+
+  relocateCitation: (opts) => ipcRenderer.invoke('research:relocate', opts),
 
   onHilRequested: (callback) => {
     const handler = (_: any, req: any) => callback(req);

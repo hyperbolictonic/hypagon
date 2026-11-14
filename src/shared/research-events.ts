@@ -14,6 +14,12 @@ export interface ResearchEscalation {
   reason: string;
 }
 
+export interface ResearchAnchorDetail {
+  text: string;
+  path: string;
+  fingerprint: Record<string, unknown>;
+}
+
 export type ResearchEvent =
   | { type: 'run-start'; runId: string; query: string; maxSources: number; at: number }
   | {
@@ -40,6 +46,7 @@ export type ResearchEvent =
       humanAssisted?: boolean;
       humanMs?: number;
       anchors?: number;
+      anchorDetails?: ResearchAnchorDetail[];
       escalation?: ResearchEscalation;
       error?: string;
       at: number;
