@@ -274,47 +274,48 @@
           </div>
         </div>
 
-        <!-- Responsive device row: the human viewport controls live in the deck, not the page toolbar. -->
-        <div class="px-3 py-1.5 border-b border-base-300 bg-base-300/30 flex items-center gap-1.5" aria-label="Responsive device">
-          <span class="font-mono text-[9px] uppercase tracking-wider text-base-content/40 shrink-0">Viewport</span>
-          <select id="viewport-preset" class="select select-xs flex-1 min-w-0 font-mono text-[10px]" aria-label="Device preset"></select>
-          <button id="viewport-fit" type="button" class="btn btn-xs btn-ghost font-mono text-[10px]" title="Return to the full browser area">FIT</button>
-          <button id="viewport-edit" type="button" class="btn btn-xs btn-ghost font-mono text-[10px]" title="Edit custom size and saved devices">EDIT</button>
-          <span id="viewport-status" class="badge badge-xs badge-ghost font-mono" title="Emulated viewport">off</span>
-        </div>
-        <div id="viewport-detail" class="hidden px-3 py-2 border-b border-base-300 bg-base-200/60 font-mono text-[11px]">
-          <div class="grid grid-cols-3 gap-2">
-            <fieldset class="fieldset p-0">
-              <legend class="fieldset-legend text-[10px]">Width</legend>
-              <input id="viewport-width" type="number" min="200" max="5000" step="1" class="input input-xs w-full" placeholder="390" />
-            </fieldset>
-            <fieldset class="fieldset p-0">
-              <legend class="fieldset-legend text-[10px]">Height</legend>
-              <input id="viewport-height" type="number" min="200" max="5000" step="1" class="input input-xs w-full" placeholder="844" />
-            </fieldset>
-            <fieldset class="fieldset p-0">
-              <legend class="fieldset-legend text-[10px]">DPR</legend>
-              <input id="viewport-dpr" type="number" min="0.5" max="5" step="0.25" class="input input-xs w-full" placeholder="3" />
-            </fieldset>
+        <!-- Responsive device row: compact, and the editor overlays the deck instead of taking layout space. -->
+        <div class="relative border-b border-base-300 bg-base-300/30">
+          <div class="px-3 py-1 flex items-center gap-1.5" aria-label="Responsive device">
+            <span class="font-mono text-[9px] uppercase tracking-wider text-base-content/40 shrink-0">Viewport</span>
+            <select id="viewport-preset" class="select select-xs flex-1 min-w-0 font-mono text-[10px]" aria-label="Device preset"></select>
+            <button id="viewport-fit" type="button" class="btn btn-xs btn-ghost font-mono text-[9px]" title="Switch off device emulation">OFF</button>
+            <button id="viewport-edit" type="button" class="btn btn-xs btn-ghost font-mono text-[9px]" title="Edit custom size and saved devices">EDIT</button>
           </div>
-          <div class="flex items-center gap-4 mt-2">
-            <label class="flex items-center gap-1.5 cursor-pointer text-[10px]">
-              <input id="viewport-mobile" type="checkbox" class="toggle toggle-xs" />
-              mobile
-            </label>
-            <label class="flex items-center gap-1.5 cursor-pointer text-[10px]">
-              <input id="viewport-touch" type="checkbox" class="toggle toggle-xs" />
-              touch
-            </label>
-          </div>
-          <div class="grid grid-cols-3 gap-1.5 mt-2">
-            <button id="viewport-rotate" type="button" class="btn btn-xs" title="Rotate portrait/landscape">ROTATE</button>
-            <button id="viewport-save" type="button" class="btn btn-xs btn-accent" title="Save the current size as a device">SAVE</button>
-            <button id="viewport-fit-detail" type="button" class="btn btn-xs" title="Return to the full browser area">FIT</button>
-          </div>
-          <div class="mt-2">
-            <span class="text-[9px] uppercase tracking-wider text-base-content/40">Saved devices</span>
-            <div id="viewport-profiles" class="menu menu-xs w-full rounded-box bg-base-100/50 p-1 mt-1 max-h-32 overflow-y-auto"></div>
+          <div id="viewport-detail" class="hidden absolute left-2 right-2 top-full z-50 mt-1 rounded-box border border-base-300 bg-base-200 p-3 shadow-2xl font-mono text-[11px]">
+            <div class="grid grid-cols-3 gap-2">
+              <fieldset class="fieldset p-0">
+                <legend class="fieldset-legend text-[10px]">Width</legend>
+                <input id="viewport-width" type="number" min="200" max="5000" step="1" class="input input-xs w-full" placeholder="390" />
+              </fieldset>
+              <fieldset class="fieldset p-0">
+                <legend class="fieldset-legend text-[10px]">Height</legend>
+                <input id="viewport-height" type="number" min="200" max="5000" step="1" class="input input-xs w-full" placeholder="844" />
+              </fieldset>
+              <fieldset class="fieldset p-0">
+                <legend class="fieldset-legend text-[10px]">DPR</legend>
+                <input id="viewport-dpr" type="number" min="0.5" max="5" step="0.25" class="input input-xs w-full" placeholder="3" />
+              </fieldset>
+            </div>
+            <div class="flex items-center gap-4 mt-2">
+              <label class="flex items-center gap-1.5 cursor-pointer text-[10px]">
+                <input id="viewport-mobile" type="checkbox" class="toggle toggle-xs" />
+                mobile
+              </label>
+              <label class="flex items-center gap-1.5 cursor-pointer text-[10px]">
+                <input id="viewport-touch" type="checkbox" class="toggle toggle-xs" />
+                touch
+              </label>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5 mt-2">
+              <button id="viewport-rotate" type="button" class="btn btn-xs" title="Rotate portrait/landscape">ROTATE</button>
+              <button id="viewport-save" type="button" class="btn btn-xs btn-accent" title="Save the current size as a device">SAVE</button>
+              <button id="viewport-fit-detail" type="button" class="btn btn-xs" title="Switch off device emulation">OFF</button>
+            </div>
+            <div class="mt-2">
+              <span class="text-[9px] uppercase tracking-wider text-base-content/40">Saved devices</span>
+              <div id="viewport-profiles" class="menu menu-xs w-full rounded-box bg-base-100/50 p-1 mt-1 max-h-32 overflow-y-auto"></div>
+            </div>
           </div>
         </div>
 

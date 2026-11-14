@@ -14,7 +14,6 @@ export function initViewportControls(): void {
   const presetSelect = byId<HTMLSelectElement>('viewport-preset');
   const fitButton = byId<HTMLButtonElement>('viewport-fit');
   const editButton = byId<HTMLButtonElement>('viewport-edit');
-  const status = byId<HTMLElement>('viewport-status');
   const detail = byId<HTMLElement>('viewport-detail');
   const widthInput = byId<HTMLInputElement>('viewport-width');
   const heightInput = byId<HTMLInputElement>('viewport-height');
@@ -106,16 +105,9 @@ export function initViewportControls(): void {
 
     suppress = true;
     const spec = state.spec;
-    if (status) {
-      status.textContent = state.active && spec ? `${spec.width}×${spec.height} @${spec.deviceScaleFactor}x` : 'off';
-      status.className = `badge badge-xs font-mono ${state.active ? 'badge-accent' : 'badge-ghost'}`;
-      status.title = state.active
-        ? `Emulated viewport, fit at ${Math.round(state.scale * 100)}% of the browsing area`
-        : 'Full browser area';
-    }
     for (const button of [fitButton, fitDetailButton]) {
       if (!button) continue;
-      button.textContent = state.active ? 'OFF' : 'FIT';
+      button.textContent = 'OFF';
       button.disabled = !state.active;
       button.title = state.active ? 'Switch off device emulation' : 'No device emulation is active';
     }
