@@ -99,6 +99,7 @@ export interface ElectronAPI {
   getActiveHil: () => Promise<any>;
   onHilRequested: (callback: (request: any) => void) => () => void;
   onHilCleared: (callback: () => void) => () => void;
+  reloadHil: () => Promise<boolean>;
   getRecordingConfig: () => Promise<any>;
   getMediaSettings: () => Promise<{ ok: boolean; settings?: MediaSettings; updater?: MediaUpdaterState; error?: string }>;
   saveMediaSettings: (patch: Partial<MediaSettings>) => Promise<{
@@ -399,6 +400,8 @@ const api: ElectronAPI = {
   resolveHil: (id?: string, notes?: string) => ipcRenderer.invoke('hil:resolve', { id, notes }),
   cancelHil: (id?: string) => ipcRenderer.invoke('hil:cancel', { id }),
   getActiveHil: () => ipcRenderer.invoke('hil:get-active'),
+
+  reloadHil: () => ipcRenderer.invoke('hil:reload'),
 
   onHilRequested: (callback) => {
     const handler = (_: any, req: any) => callback(req);

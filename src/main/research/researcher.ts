@@ -4,7 +4,7 @@
  * search → fetch the top sources (cheap `llm` path first) → distill to Markdown → index into
  * LanceDB Cortex → return **extractive**, cited evidence.
  *
- * It is deliberately **not** a summarizer: Kuang has no LLM, so the tool gathers and ranks cited
+ * It is deliberately **not** a summarizer: the app has no LLM, so the tool gathers and ranks cited
  * evidence (per-source highlights are paragraphs from the sources that mention the query terms)
  * and leaves the prose synthesis to the calling agent. Sources are indexed into Cortex so the
  * agent can follow up with `recall_memory`.
@@ -13,7 +13,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { ResearchEvent, ResearchEscalation, ResearchTier } from '../../shared/research-events.js';
 import type { SearchOutcome, SearchAttempt } from '../search/search-engine.js';
-import type { CrawlOptions, CrawlOutcome } from '../crawl/crawler.js';
+import type { CrawlOptions, CrawlOutcome, HumanAssistInfo } from '../crawl/crawler.js';
 
 export interface ResearchOptions {
   query: string;
@@ -28,6 +28,8 @@ export interface ResearchOptions {
   harvestToCortex?: boolean;
   /** Try content-negotiated Markdown/Text before rendering (default true). */
   preferLlm?: boolean;
+  /** Try the impersonating static fetch before rendering (default true). */
+  preferStatic?: boolean;
   /** Politeness delay between gathered sources (default 0; stealth mode raises it). */
   delayMs?: number;
 }
@@ -40,6 +42,10 @@ export interface ResearchSource {
   via: 'llm' | 'static' | 'render';
   bytes: number;
   indexed: boolean;
+  /** True when a human cleared a challenge for this source. */
+  humanAssisted?: boolean;
+  /** Time spent waiting for the human (included in `ms`). */
+  humanMs?: number;
   /** Wall-clock time spent fetching/distilling this source. */
   ms?: number;
   highlights: string[];
@@ -59,6 +65,8 @@ export interface ResearchOutcome {
   bytes: number;
   /** How many sources used each acquisition tier. */
   tiers: Record<ResearchTier, number>;
+  /** Sources a human had to unblock. */
+  humans: number;
   /** Sources that needed a render after a cheaper tier failed. Surfaced for the calling agent. */
   escalations: number;
   searchAttempts: SearchAttempt[];
@@ -80,6 +88,19 @@ function coded(code: string, message: string): Error {
   const e = new Error(message) as Error & { code: string };
   e.code = code;
   return e;
+}
+
+/** Provider interstitials that must never become research sources. */
+function isChallengeUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    if (/(^|\.)google\./i.test(url.hostname) && /^\/sorry(\/|$)/.test(url.pathname)) return true;
+    if (/(^|\.)consent\./i.test(url.hostname)) return true;
+    if (/^\/(captcha|challenge|verify)(\/|$)/i.test(url.pathname)) return true;
+  } catch {
+    return true;
+  }
+  return false;
 }
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -157,6 +178,7 @@ export class Researcher {
     const picked: typeof results = [];
     for (const r of results) {
       if (seen.has(r.url)) continue;
+      if (isChallengeUrl(r.url)) continue;
       seen.add(r.url);
       picked.push(r);
       if (picked.length >= maxSources) break;
@@ -176,8 +198,22 @@ export class Researcher {
           maxPages: 1,
           delayMs: opts.delayMs ?? 0,
           preferLlm: opts.preferLlm !== false,
+          preferStatic: opts.preferStatic !== false,
           harvestToCortex: opts.harvestToCortex !== false,
           includeContent: excerptChars,
+          onHuman: (info: HumanAssistInfo) => {
+            if (info.phase === 'needed') {
+              emit({
+                type: 'human-needed',
+                runId,
+                url: info.url,
+                reason: 'challenge',
+                at: Date.now(),
+              });
+            } else {
+              emit({ type: 'human-done', runId, url: info.url, via: 'human', at: Date.now() });
+            }
+          },
         });
         const page = crawled.pages[0];
         cortexIndexed += crawled.cortexIndexed;
@@ -189,6 +225,8 @@ export class Researcher {
         const highlights = extractHighlights(excerpt, query, 3);
         const ms = page?.ms ?? 0;
         const title = page?.title || r.title;
+        const humanAssisted = !!page?.humanAssisted;
+        const humanMs = page?.humanMs ?? 0;
         totalBytes += bytes;
         tiers[via] += 1;
         sources.push({
@@ -200,6 +238,8 @@ export class Researcher {
           bytes,
           ms,
           indexed,
+          humanAssisted,
+          humanMs,
           highlights,
           error: page?.error,
           escalation,
@@ -213,6 +253,8 @@ export class Researcher {
           via,
           bytes,
           ms,
+          humanAssisted,
+          humanMs,
           highlights: highlights.length,
           indexed,
           escalation,
@@ -250,10 +292,14 @@ export class Researcher {
     }
 
     const escalations = sources.filter((source) => source.escalation).length;
+    const humans = sources.filter((source) => source.humanAssisted).length;
     if (escalations > 0) {
       notes.push(
         `${escalations} source(s) were rendered after a cheaper tier failed — see each source's "escalation".`,
       );
+    }
+    if (humans > 0) {
+      notes.push(`${humans} source(s) required human intervention to clear a challenge.`);
     }
 
     if (sources.length && !sources.some((s) => s.highlights.length)) {
@@ -270,6 +316,7 @@ export class Researcher {
       cortexIndexed,
       bytes: totalBytes,
       tiers,
+      humans,
       escalations,
       searchAttempts: search.attempts || [],
       notes,
@@ -281,6 +328,7 @@ export class Researcher {
       indexed: cortexIndexed,
       bytes: totalBytes,
       tiers,
+      humans,
       elapsedMs: Date.now() - startedAt,
       escalations,
       notes,

@@ -49,8 +49,8 @@ interface EngineSpec {
 }
 
 export const KNOWN_ENGINES = ['google', 'duckduckgo', 'bing', 'brave', 'startpage', 'custom'] as const;
-/** Default fallback chain: a JS-free, consent-resistant provider last. */
-export const DEFAULT_ENGINE_CHAIN = ['google', 'duckduckgo', 'brave'];
+/** Default fallback chain: JS-free, consent-resistant providers first; Google last (it challenges often). */
+export const DEFAULT_ENGINE_CHAIN = ['duckduckgo', 'brave', 'google'];
 
 function coded(code: string, message: string): Error {
   const e = new Error(message) as Error & { code: string };
@@ -75,7 +75,17 @@ const EXTRACT_SCRIPT = `(() => {
   };
   const bodyText = (document.body ? document.body.innerText : '').toLowerCase();
   const hasResults = !!document.querySelector('.result, .b_algo, #search a h3, .g, .snippet, .w-gl__result');
-  const blocked = !hasResults && /unusual traffic|captcha|are you a robot|verify you are human|automated queries|before you continue|aws waf|cloudflare|datadome|access denied/.test(bodyText);
+  // A provider's own interstitial must never be treated as a result, even if it contains links.
+  const isChallengeUrl = (raw) => {
+    try {
+      const u = new URL(raw);
+      if (/(^|\\.)google\\./i.test(u.hostname) && /^\\/sorry(\\/|$)/.test(u.pathname)) return true;
+      if (/(^|\\.)consent\\./i.test(u.hostname)) return true;
+      if (/^\\/(captcha|challenge|verify)(\\/|$)/i.test(u.pathname)) return true;
+      return false;
+    } catch (e) { return false; }
+  };
+  const blocked = isChallengeUrl(location.href) || (!hasResults && /unusual traffic|captcha|are you a robot|verify you are human|automated queries|before you continue|aws waf|cloudflare|datadome|access denied/.test(bodyText));
   const containers = Array.from(document.querySelectorAll('.result, .b_algo, #search .g, .g, .snippet, .w-gl__result, article'));
   const pool = containers.length ? containers : Array.from(document.querySelectorAll('li, section, div'));
   const rows = [];
@@ -86,6 +96,7 @@ const EXTRACT_SCRIPT = `(() => {
     let href = a.href || '';
     if (!/^https?:\\/\\//i.test(href)) continue;
     href = unwrap(href);
+    if (isChallengeUrl(href)) continue;
     if (seen.has(href)) continue;
     const title = norm(a.innerText) || norm(a.getAttribute('aria-label') || '');
     if (title.length < 8) continue;
@@ -128,6 +139,9 @@ const ENGINES: Record<string, EngineSpec> = {
 };
 
 export class SearchHub {
+  /** Engines that recently returned a bot-check are tried last for a while. */
+  private blockedUntil = new Map<string, number>();
+
   constructor(private deps: SearchHubDeps) {}
 
   public async search(
@@ -143,6 +157,14 @@ export class SearchHub {
     if (Array.isArray(opts.engines) && opts.engines.length > 0) ids = opts.engines.map((s) => String(s).toLowerCase());
     else if (opts.engine) ids = [String(opts.engine).toLowerCase()];
     else ids = [...DEFAULT_ENGINE_CHAIN];
+
+    // Stable reorder: an engine that recently challenged sinks to the back of the queue, so a
+    // guaranteed 9-second interstitial is not paid on every run. An explicit single engine wins.
+    if (!opts.engine) {
+      const now = Date.now();
+      const cooling = (id: string) => (this.blockedUntil.get(id) ?? 0) > now;
+      ids = [...ids].sort((a, b) => Number(cooling(a)) - Number(cooling(b)));
+    }
 
     const customTemplate = opts.urlTemplate || process.env.KUANG_SEARCH_URL || '';
     if (ids.includes('custom') && !customTemplate.includes('{query}')) {
@@ -172,9 +194,12 @@ export class SearchHub {
         });
         const rows: any[] = Array.isArray(result?.rows) ? result.rows : [];
         const blocked = !!result?.blocked;
-        attempts.push({ engine: id, ok: rows.length > 0, count: rows.length, blocked });
+        if (blocked) this.blockedUntil.set(id, Date.now() + 10 * 60_000);
+        attempts.push({ engine: id, ok: rows.length > 0 && !blocked, count: rows.length, blocked });
 
-        if (rows.length > 0) {
+        // A challenge page can contain links; never return them, and always fall through to the
+        // next engine rather than accepting a provider's interstitial as search results.
+        if (rows.length > 0 && !blocked) {
           const results: SearchResult[] = rows.slice(0, max).map((r, i) => ({
             rank: i + 1,
             title: String(r.title || ''),
@@ -185,7 +210,10 @@ export class SearchHub {
           return { query: q, engine: id, results, attempts, blocked: false, notes: `via ${spec.label}` };
         }
 
-        this.deps.log?.('warn', `search_web: engine "${id}" yielded no results${blocked ? ' (bot-check/consent wall)' : ''}; trying next.`);
+        this.deps.log?.(
+          'warn',
+          `search_web: engine "${id}" ${blocked ? 'returned a bot-check/consent page' : 'yielded no results'}; trying next.`,
+        );
       } catch (err: any) {
         attempts.push({ engine: id, ok: false, count: 0, blocked: false, error: err?.message || String(err) });
       }

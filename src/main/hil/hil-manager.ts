@@ -33,6 +33,7 @@ export class HilManager {
   private activeResolver: ((res: HilResolution) => void) | null = null;
   private activeTimer: NodeJS.Timeout | null = null;
   private requestHistory: HilRequest[] = [];
+  private inPageBannerEnabled = true;
   private onHilStateChanged?: (pending: boolean, req: HilRequest | null) => void;
   private getActiveWebContents?: () => Electron.WebContents | null;
   private broadcastAll?: (channel: string, payload?: unknown) => void;
@@ -75,6 +76,8 @@ export class HilManager {
     ipcMain.handle('hil:cancel', (_event, data?: { id?: string }) => {
       return this.cancelIntervention(data?.id);
     });
+
+    ipcMain.handle('hil:reload', () => this.reloadActive());
   }
 
   private resolveIcon(): Electron.NativeImage {
@@ -144,6 +147,8 @@ export class HilManager {
     url?: string;
     timeoutSeconds?: number;
     bringToFront?: boolean;
+    /** Default true. Research hand-offs use the app HIL toast instead. */
+    inPageBanner?: boolean;
   }): Promise<HilResolution> {
     // If a request is already active, cancel it before starting new one
     if (this.activeRequest) {
@@ -180,7 +185,8 @@ export class HilManager {
 
     // 3. Inject In-Page Cyberdeck Alert Banner into active WebContents
     const targetWc = this.getActiveWebContents?.();
-    if (targetWc && !targetWc.isDestroyed()) {
+    this.inPageBannerEnabled = options.inPageBanner !== false;
+    if (this.inPageBannerEnabled && targetWc && !targetWc.isDestroyed()) {
       this.injectInPageBanner(targetWc, request);
     }
 
@@ -303,6 +309,26 @@ export class HilManager {
 
   public getActiveRequest(): HilRequest | null {
     return this.activeRequest;
+  }
+
+  /** Reloads the page under hand-off (a stale challenge often clears on refresh). */
+  public reloadActive(): boolean {
+    if (!this.activeRequest || this.activeRequest.status !== 'pending') return false;
+    const wc = this.getActiveWebContents?.();
+    if (!wc || wc.isDestroyed()) return false;
+    wc.reload();
+    return true;
+  }
+
+  /**
+   * Re-injects the banner into the active page. A challenge page usually navigates once solved,
+   * which wipes the original banner — without this the human loses the RESUME affordance.
+   */
+  public refreshBanner(): void {
+    if (!this.inPageBannerEnabled) return;
+    if (!this.activeRequest || this.activeRequest.status !== 'pending') return;
+    const wc = this.getActiveWebContents?.();
+    if (wc && !wc.isDestroyed()) this.injectInPageBanner(wc, this.activeRequest);
   }
 
   public getHistory(): HilRequest[] {

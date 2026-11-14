@@ -77,8 +77,34 @@ export function initResearchPanel(): void {
   const tierLlm = byId<HTMLElement>('research-tier-llm');
   const tierStatic = byId<HTMLElement>('research-tier-static');
   const tierRender = byId<HTMLElement>('research-tier-render');
+  const statHumans = byId<HTMLElement>('research-stat-humans');
+  const fontDec = byId<HTMLButtonElement>('research-font-dec');
+  const fontInc = byId<HTMLButtonElement>('research-font-inc');
+  const fontLabel = byId<HTMLElement>('research-font-label');
 
   if (!view || !runButton || !rowsEl || !logEl) return;
+
+  // Readability control: zoom the whole dashboard (table, terminal, stats) and remember it.
+  let fontScale = Number(localStorage.getItem('research.fontScale') ?? '1');
+  if (!Number.isFinite(fontScale)) fontScale = 1;
+  const applyFontScale = (): void => {
+    view.style.setProperty('zoom', String(fontScale));
+    if (fontLabel) fontLabel.textContent = `${Math.round(fontScale * 100)}%`;
+    try {
+      localStorage.setItem('research.fontScale', String(fontScale));
+    } catch {
+      /* storage unavailable */
+    }
+  };
+  fontDec?.addEventListener('click', () => {
+    fontScale = Math.max(0.8, Math.round((fontScale - 0.1) * 100) / 100);
+    applyFontScale();
+  });
+  fontInc?.addEventListener('click', () => {
+    fontScale = Math.min(1.8, Math.round((fontScale + 0.1) * 100) / 100);
+    applyFontScale();
+  });
+  applyFontScale();
 
   const rows = new Map<string, Row>();
   let startedAt = 0;
@@ -92,6 +118,7 @@ export function initResearchPanel(): void {
     sources: 0,
     indexed: 0,
     bytes: 0,
+    humans: 0,
     tiers: { llm: 0, static: 0, render: 0 } as Record<ResearchTier, number>,
   };
 
@@ -123,6 +150,7 @@ export function initResearchPanel(): void {
     if (tierLlm) tierLlm.textContent = String(stats.tiers.llm);
     if (tierStatic) tierStatic.textContent = String(stats.tiers.static);
     if (tierRender) tierRender.textContent = String(stats.tiers.render);
+    if (statHumans) statHumans.textContent = String(stats.humans);
   };
 
   const openView = async (): Promise<void> => {
@@ -179,6 +207,7 @@ export function initResearchPanel(): void {
     stats.sources = 0;
     stats.indexed = 0;
     stats.bytes = 0;
+    stats.humans = 0;
     stats.tiers = { llm: 0, static: 0, render: 0 };
     renderStats();
     if (logCountEl) logCountEl.textContent = '0 lines';
@@ -268,6 +297,13 @@ export function initResearchPanel(): void {
             ? 'indexed'
             : 'ok';
 
+        if (event.humanAssisted) {
+          const note = document.createElement('div');
+          note.className = 'text-[9px] text-error mt-0.5';
+          note.textContent = `human-assisted (${Math.round((event.humanMs ?? 0) / 1000)}s)`;
+          row.status.appendChild(note);
+        }
+
         if (event.escalation) {
           escalationCount++;
           if (escBadge) escBadge.textContent = `${escalationCount} esc`;
@@ -284,6 +320,7 @@ export function initResearchPanel(): void {
         );
         stats.bytes += event.bytes;
         stats.tiers[event.via] += 1;
+        if (event.humanAssisted) stats.humans += 1;
         if (event.indexed) stats.indexed += 1;
         renderStats();
         setLauncherBadge(stats.sources);
@@ -298,15 +335,23 @@ export function initResearchPanel(): void {
         badge.textContent = event.reason;
         row.tier.appendChild(badge);
         row.status.className = 'w-56 text-[10px] text-error';
-        row.status.textContent = '';
-        const button = document.createElement('button');
-        button.className = 'btn btn-xs btn-error';
-        button.textContent = 'OPEN';
-        button.addEventListener('click', () => {
-          void api?.navigate(event.url);
-        });
-        row.status.appendChild(button);
+        row.status.textContent = 'waiting for you in the page…';
         log(`human needed · ${event.url} · ${event.reason}`, 'text-error');
+        break;
+      }
+
+      case 'human-done': {
+        const row = rows.get(`h${event.url}`);
+        if (row) {
+          row.tier.replaceChildren();
+          const badge = document.createElement('span');
+          badge.className = 'badge badge-xs badge-success';
+          badge.textContent = 'resolved';
+          row.tier.appendChild(badge);
+          row.status.className = 'w-56 text-[10px] text-success';
+          row.status.textContent = 'human completed';
+        }
+        log(`human done · ${event.url}`, 'text-success');
         break;
       }
 
@@ -318,6 +363,7 @@ export function initResearchPanel(): void {
         stats.sources = event.sources;
         stats.indexed = event.indexed;
         stats.bytes = event.bytes;
+        stats.humans = event.humans;
         stats.tiers = { ...event.tiers };
         renderStats();
         setLauncherBadge(event.sources);

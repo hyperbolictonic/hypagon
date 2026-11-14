@@ -9,6 +9,12 @@
  * Politeness: same-origin by default, a per-page delay, a hard page budget, and `match_patterns`
  * for scoping. URLs are de-duplicated (fragments stripped).
  */
+export interface HumanAssistInfo {
+  phase: 'needed' | 'done';
+  url: string;
+  reason?: string;
+}
+
 export interface CrawlOptions {
   startUrl: string;
   /** Link depth from the seed (default 2, max 5). Depth 0 = the seed only. */
@@ -33,6 +39,8 @@ export interface CrawlOptions {
   concurrency?: number;
   /** Include a leading excerpt (this many chars) of each page's Markdown in the result. */
   includeContent?: number;
+  /** Notified when a page needs a human (challenge/login) and when the human is done. */
+  onHuman?: (info: HumanAssistInfo) => void;
 }
 
 export interface CrawlPage {
@@ -44,6 +52,10 @@ export interface CrawlPage {
   links: number;
   indexed: boolean;
   error?: string;
+  /** True when a human cleared a challenge for this page. */
+  humanAssisted?: boolean;
+  /** Wall-clock time spent waiting for the human (included in `ms`). */
+  humanMs?: number;
   /** Wall-clock time spent on this page, including tier attempts. */
   ms?: number;
   /** Set when a cheaper tier was attempted and the page had to be rendered instead. */
@@ -67,14 +79,24 @@ export interface CrawlerDeps {
   /** Content-negotiated Markdown/Text, or null when the page advertises none. */
   tryLlm?: (url: string) => Promise<{ content: string; via: string } | null>;
   /** Renders a page in a detached view and returns its Markdown + outgoing links. */
-  renderPage: (url: string, pageOpts: { selector?: string }) => Promise<{ title: string; markdown: string; links: string[]; status: number }>;
+  renderPage: (
+    url: string,
+    pageOpts: { selector?: string; onHuman?: (info: HumanAssistInfo) => void },
+  ) => Promise<{
+    title: string;
+    markdown: string;
+    links: string[];
+    status: number;
+    humanAssisted?: boolean;
+    humanMs?: number;
+  }>;
   /**
    * Cheap HTML fetch without a browser (impersonating client, then distilled to Markdown).
    * `ok: false` escalates to `renderPage`; the reason is reported to the caller.
    */
   fetchStatic?: (url: string) => Promise<
     | { ok: true; title: string; markdown: string; status: number }
-    | { ok: false; reason: string }
+    | { ok: false; reason: string; disabled?: boolean }
   >;
   /** Called before any page fetch; lets stealth mode enforce a domain cooldown. */
   beforePage?: (url: string) => void | Promise<void>;
@@ -244,6 +266,8 @@ export class Crawler {
     let via: 'llm' | 'static' | 'render' = 'render';
     let links: string[] = [];
     let error: string | undefined;
+    let humanAssisted = false;
+    let humanMs = 0;
 
     try {
       await this.deps.beforePage?.(url);
@@ -284,8 +308,14 @@ export class Crawler {
           via = 'static';
           usedCheap = true;
         } else if (!r.ok) {
-          staticFailure = r.reason;
-          notes.push(`static tier skipped for ${url}: ${r.reason}`);
+          if (r.disabled) {
+            // Not a failure: the tier is simply unavailable (e.g. no vendored binary). Reporting
+            // this as an escalation would tell the agent every page changed tier.
+            notes.push(`static tier unavailable for ${url}: ${r.reason}`);
+          } else {
+            staticFailure = r.reason;
+            notes.push(`static tier skipped for ${url}: ${r.reason}`);
+          }
         } else {
           staticFailure = 'static fetch produced no content';
         }
@@ -297,10 +327,12 @@ export class Crawler {
 
     if (!usedCheap) {
       try {
-        const r = await this.deps.renderPage(url, { selector: opts.selector });
+        const r = await this.deps.renderPage(url, { selector: opts.selector, onHuman: opts.onHuman });
         title = r.title;
         content = r.markdown;
         links = r.links || [];
+        humanAssisted = !!r.humanAssisted;
+        humanMs = r.humanMs ?? 0;
       } catch (err: any) {
         error = err?.message || String(err);
         notes.push(`render failed for ${url}: ${error}`);
@@ -336,6 +368,8 @@ export class Crawler {
         indexed,
         error,
         escalation,
+        humanAssisted,
+        humanMs,
         ms: Date.now() - pageStarted,
         excerpt: opts.includeContent ? content.slice(0, opts.includeContent) : undefined,
       },

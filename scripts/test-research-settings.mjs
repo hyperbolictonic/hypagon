@@ -21,6 +21,9 @@ test('loads defaults when no settings file exists', () => {
   assert.equal(settings.enabled, false);
   assert.deepEqual(settings.engineChain, DEFAULT_RESEARCH_SETTINGS.engineChain);
   assert.equal(settings.domainCooldownSec, 300);
+  assert.equal(settings.preferStatic, true);
+  assert.equal(settings.humanInLoop, true);
+  assert.equal(settings.hilTimeoutSec, 300);
 });
 
 test('saves and reloads stealth settings', () => {
@@ -34,6 +37,9 @@ test('saves and reloads stealth settings', () => {
     delayMs: 1500,
     crawlConcurrency: 2,
     preferLlm: false,
+    preferStatic: false,
+    humanInLoop: false,
+    hilTimeoutSec: 120,
     defaultMaxPages: 7,
     defaultMaxSources: 4,
     searchMaxResults: 12,
@@ -49,6 +55,9 @@ test('saves and reloads stealth settings', () => {
   assert.equal(loaded.delayMs, 1500);
   assert.equal(loaded.crawlConcurrency, 2);
   assert.equal(loaded.preferLlm, false);
+  assert.equal(loaded.preferStatic, false);
+  assert.equal(loaded.humanInLoop, false);
+  assert.equal(loaded.hilTimeoutSec, 120);
   assert.equal(loaded.defaultMaxPages, 7);
   assert.equal(loaded.defaultMaxSources, 4);
   assert.equal(loaded.searchMaxResults, 12);
@@ -75,6 +84,9 @@ test('rejects invalid research settings', () => {
 
   const badConcurrency = normalizeResearchSettings({ crawlConcurrency: 9 });
   assert.equal(badConcurrency.ok, false);
+
+  const badHilTimeout = normalizeResearchSettings({ hilTimeoutSec: 5 });
+  assert.equal(badHilTimeout.ok, false);
 });
 
 test('detects WAF and challenge pages', () => {

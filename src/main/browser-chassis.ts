@@ -85,7 +85,7 @@ import { RenderedSnapshotEngine, type RenderedSnapshotOptions, type RenderedSnap
 import { PrerenderEngine, type PrerenderOptions } from './prerender/prerender-engine.js';
 import { LlmSurface, type LlmSurfaceReport, type LlmSurfaceKind, type LlmFetchResult, type ReadUrlResult } from './llm/llm-surface.js';
 import { SearchHub, type SearchOutcome } from './search/search-engine.js';
-import { Crawler, type CrawlOptions, type CrawlOutcome } from './crawl/crawler.js';
+import { Crawler, type CrawlOptions, type CrawlOutcome, type HumanAssistInfo } from './crawl/crawler.js';
 import { MenuPopup } from './ui/menu-popup.js';
 import { Researcher, type ResearchOptions, type ResearchOutcome } from './research/researcher.js';
 
@@ -154,6 +154,13 @@ export class BrowserChassis {
   };
   private researchCooldowns = new Map<string, number>();
   private researchSessionConfigured = false;
+  private researchSessionMigrated = false;
+  /** Origins a human has authenticated; skip the anonymous static tier for them. */
+  private warmOrigins = new Set<string>();
+  /** Only one human hand-off at a time (the shared research view is serialized). */
+  private hilActive = false;
+  /** Why the last hand-off was skipped (surfaced in the WAF error). */
+  private handoffSkipReason: string | null = null;
 
   private sidebarView: WebContentsView | null = null;
   private sidebarMode: 'docked' | 'floating' | 'collapsed' = 'floating';
@@ -401,12 +408,28 @@ export class BrowserChassis {
         return { content: r.content, via: r.via };
       },
       fetchStatic: async (url) => {
+        if (!this.researchSettings.preferStatic) {
+          return { ok: false as const, reason: 'static tier disabled in settings', disabled: true };
+        }
+        try {
+          if (this.warmOrigins.has(new URL(url).origin)) {
+            // A human authenticated this origin in the real browser; keep the cookie and the
+            // browser together rather than replaying the session through a static client.
+            return {
+              ok: false as const,
+              reason: 'origin is using the human-authenticated browser session',
+              disabled: true,
+            };
+          }
+        } catch {
+          /* malformed URL falls through to the normal path */
+        }
         const outcome = await fetchStatic(url);
         if (outcome.kind === 'blocked') {
           this.addLog('warn', `static fetch challenged for ${url} (${outcome.status}); escalating to render`);
           return { ok: false as const, reason: `challenge page (${outcome.status})` };
         }
-        if (outcome.kind === 'unavailable') return { ok: false as const, reason: outcome.reason };
+        if (outcome.kind === 'unavailable') return { ok: false as const, reason: outcome.reason, disabled: true };
         if (outcome.kind === 'error') return { ok: false as const, reason: outcome.reason };
         if (outcome.result.status >= 400) return { ok: false as const, reason: `HTTP ${outcome.result.status}` };
 
@@ -1345,10 +1368,50 @@ export class BrowserChassis {
   }
 
   private getResearchSession(): Session {
-    return session.fromPartition('persist:kuang-research');
+    // Legacy partition name; the app is branded Hypagon now. Cookies are migrated once in
+    // configureResearchSession so existing research logins survive the rename.
+    return session.fromPartition('persist:hypagon-research');
+  }
+
+  /** One-time cookie carry-over from the pre-rename research partition. */
+  private async migrateLegacyResearchSession(): Promise<void> {
+    if (this.researchSessionMigrated) return;
+    this.researchSessionMigrated = true;
+    try {
+      const current = this.getResearchSession();
+      const existing = await current.cookies.get({});
+      if (existing.length > 0) return;
+
+      const legacy = session.fromPartition('persist:kuang-research');
+      const legacyCookies = await legacy.cookies.get({});
+      for (const cookie of legacyCookies) {
+        const host = (cookie.domain || '').replace(/^\./, '');
+        if (!host) continue;
+        const cookiePath = cookie.path || '/';
+        await current.cookies
+          .set({
+            url: `${cookie.secure ? 'https' : 'http'}://${host}${cookiePath}`,
+            name: cookie.name,
+            value: cookie.value,
+            domain: cookie.domain,
+            path: cookiePath,
+            secure: cookie.secure,
+            httpOnly: cookie.httpOnly,
+            expirationDate: cookie.expirationDate,
+            sameSite: cookie.sameSite,
+          })
+          .catch(() => undefined);
+      }
+      if (legacyCookies.length > 0) {
+        this.addLog('info', `Migrated ${legacyCookies.length} research cookie(s) to the Hypagon partition.`);
+      }
+    } catch {
+      /* best effort; a fresh research session is acceptable */
+    }
   }
 
   private async configureResearchSession(): Promise<void> {
+    await this.migrateLegacyResearchSession();
     const researchSession = this.getResearchSession();
     try {
       researchSession.setUserAgent(this.hostProfile.userAgent);
@@ -3343,7 +3406,7 @@ export class BrowserChassis {
           contextIsolation: true,
           sandbox: true,
           backgroundThrottling: false,
-          partition: 'persist:kuang-research',
+          partition: 'persist:hypagon-research',
         },
       });
       try {
@@ -3419,11 +3482,280 @@ export class BrowserChassis {
     return outcome;
   }
 
+  /** Bounds of the browser viewport as actually laid out in the HUD (zoom-aware). */
+  private async computeViewportBounds(): Promise<{ x: number; y: number; width: number; height: number }> {
+    const win = this.mainWindow;
+    if (!win || win.isDestroyed()) return this.getViewportBounds();
+    try {
+      const rect = await win.webContents.executeJavaScript(
+        `(() => {
+          const el = document.getElementById('viewport-container');
+          if (!el) return null;
+          const r = el.getBoundingClientRect();
+          return { x: r.x, y: r.y, width: r.width, height: r.height };
+        })()`,
+      );
+      if (rect && rect.width > 0 && rect.height > 0) {
+        const zoom = win.webContents.getZoomFactor() || 1;
+        return {
+          x: Math.round(rect.x * zoom),
+          y: Math.round(rect.y * zoom),
+          width: Math.round(rect.width * zoom),
+          height: Math.round(rect.height * zoom),
+        };
+      }
+    } catch {
+      /* fall back to the static calculation */
+    }
+    return this.getViewportBounds();
+  }
+
+  /**
+   * Can a human actually do anything on this page?
+   *
+   * A bare 403 ("Access Denied", "Request blocked") has no control to interact with; showing it
+   * only interrupts the run. A real challenge has a CAPTCHA widget, a credential/OTP field, a form,
+   * or an explicit verify/continue control.
+   */
+  private async probeHumanActionable(
+    wc: Electron.WebContents,
+  ): Promise<{ actionable: boolean; why: string }> {
+    const script = `(() => {
+      const visible = (el) => {
+        try {
+          const r = el.getBoundingClientRect();
+          if (r.width < 4 || r.height < 4) return false;
+          const s = getComputedStyle(el);
+          return s.visibility !== 'hidden' && s.display !== 'none' && Number(s.opacity) > 0.05;
+        } catch (e) { return false; }
+      };
+      const anyVisible = (sel) => {
+        try {
+          for (const el of document.querySelectorAll(sel)) if (visible(el)) return true;
+        } catch (e) {}
+        return false;
+      };
+
+      const captcha = [
+        'iframe[src*="challenges.cloudflare.com"]',
+        'iframe[src*="hcaptcha.com"]',
+        'iframe[src*="recaptcha"]',
+        'iframe[src*="captcha"]',
+        '.cf-turnstile', '.h-captcha', '.g-recaptcha', '[data-sitekey]',
+      ].find(anyVisible);
+
+      const credential = [
+        'input[type="password"]',
+        'input[autocomplete="one-time-code"]',
+        'input[name*="otp" i]',
+        'input[name*="code" i]',
+        'input[type="email"]',
+      ].find(anyVisible);
+
+      const form = anyVisible('form') && anyVisible('form button, form input[type="submit"]');
+      const control = anyVisible('button, [role="button"], input[type="submit"], input[type="checkbox"], input[type="radio"]');
+      const text = (document.body ? document.body.innerText : '').toLowerCase();
+      const verify = /verify|human|robot|check|continue|login|sign in|unusual traffic|challenge/.test(text);
+      const hardBlock =
+        /access denied|request blocked|you have been blocked|forbidden|banned|not allowed|ip has been/.test(text) &&
+        !captcha && !credential && !form;
+
+      if (captcha) return { actionable: true, why: 'captcha widget' };
+      if (credential) return { actionable: true, why: 'credential/OTP field' };
+      if (form) return { actionable: true, why: 'form' };
+      if (hardBlock) return { actionable: false, why: 'hard block with no controls' };
+      if (control && verify) return { actionable: true, why: 'interactive control' };
+      return { actionable: false, why: 'no interactive element' };
+    })()`;
+
+    try {
+      const result = await wc.executeJavaScript(script);
+      if (result && typeof result.actionable === 'boolean' && typeof result.why === 'string') {
+        return result;
+      }
+    } catch {
+      /* page not scriptable yet */
+    }
+    return { actionable: true, why: 'probe unavailable' };
+  }
+
+  /**
+   * Human hand-off for a challenged page.
+   *
+   * Research renders in `persist:hypagon-research`; solving the challenge in a normal browsing tab
+   * would populate a different cookie jar. This temporarily attaches the shared research util view
+   * to the window so the human solves it in the same session, then harvests that live view.
+   */
+  private async attemptHumanHandoff(
+    url: string,
+    onHuman?: (info: HumanAssistInfo) => void,
+  ): Promise<{
+    title: string;
+    markdown: string;
+    links: string[];
+    status: number;
+    humanAssisted?: boolean;
+    humanMs?: number;
+  } | null> {
+    const win = this.mainWindow;
+    if (!win || win.isDestroyed()) return null;
+    if (process.env.HYPAGON_HIL === '0') return null;
+    if (!this.researchSettings.humanInLoop) return null;
+    if (this.hilActive) return null;
+
+    this.handoffSkipReason = null;
+    this.hilActive = true;
+    const view = this.getUtilView();
+    const wc = view.webContents;
+    let attached = false;
+    let humanMs = 0;
+
+    try {
+      const probe = await this.probeHumanActionable(wc);
+      if (!probe.actionable && process.env.HYPAGON_HIL_FORCE !== '1') {
+        this.handoffSkipReason = probe.why;
+        this.addLog('info', `Skipping human hand-off for ${url}: ${probe.why}.`);
+        return null;
+      }
+
+      win.contentView.addChildView(view);
+      attached = true;
+      view.setBounds(await this.computeViewportBounds());
+      win.show();
+      win.focus();
+      // The hand-off page is a WebContentsView, not a tab: give it keyboard focus so F5/Ctrl+R
+      // reach it, and route reload explicitly (the app menu reloads the active tab otherwise).
+      try {
+        wc.focus();
+      } catch {
+        /* focus is best-effort */
+      }
+      const onKey = (event: Electron.Event, input: Electron.Input) => {
+        const reload =
+          input.key === 'F5' || ((input.control || input.meta) && input.key.toLowerCase() === 'r');
+        if (reload) {
+          event.preventDefault();
+          wc.reload();
+        }
+      };
+      wc.on('before-input-event', onKey);
+
+      // Off-screen research renders force a 1280x900 metrics override. For a human to solve a
+      // challenge the page should lay out at the real viewport, not a fake capture size.
+      try {
+        if (wc.debugger.isAttached()) {
+          await wc.debugger.sendCommand('Emulation.clearDeviceMetricsOverride');
+          await wc.debugger.sendCommand('Emulation.setFocusEmulationEnabled', { enabled: true });
+        }
+      } catch {
+        /* metrics override is optional */
+      }
+
+      // Route the intervention banner to the page the human is actually looking at.
+      this.hilManager.setActiveWebContentsGetter(() => wc);
+      onHuman?.({ phase: 'needed', url, reason: 'challenge' });
+      this.addLog('warn', `Human hand-off requested for ${url}.`);
+
+      // Solving a challenge usually navigates; re-inject the banner so RESUME stays reachable.
+      const refresh = () => setTimeout(() => this.hilManager.refreshBanner(), 400);
+      wc.on('did-navigate', refresh);
+      wc.on('did-finish-load', refresh);
+
+      try {
+        const humanStarted = Date.now();
+        const resolution = await this.hilManager.requestIntervention({
+          reason:
+            'A bot challenge or login wall blocked this page. Complete it here, then press RESUME AGENT.',
+          url,
+          timeoutSeconds: this.researchSettings.hilTimeoutSec,
+          bringToFront: true,
+          inPageBanner: false,
+        });
+        humanMs = Date.now() - humanStarted;
+        if (resolution.status !== 'resolved') return null;
+      } finally {
+        wc.removeListener('before-input-event', onKey);
+        wc.removeListener('did-navigate', refresh);
+        wc.removeListener('did-finish-load', refresh);
+      }
+
+      const state = await wc
+        .executeJavaScript(
+          `(() => ({
+            title: document.title || '',
+            text: (document.body ? document.body.innerText : '').slice(0, 4000),
+            links: Array.from(document.querySelectorAll('a[href]'))
+              .map((a) => a.href)
+              .filter((h) => /^https?:/i.test(h))
+              .slice(0, 400),
+          }))()`,
+        )
+        .catch(() => null);
+      if (!state) return null;
+
+      // A login may be resolved while the WAF is still up — don't pretend it worked.
+      if (looksLikeChallenge(200, state.text || '')) return null;
+
+      const snapshot = await RenderedSnapshotEngine.capture(wc, {
+        format: 'markdown',
+        waitUntilIdleMs: 400,
+      });
+
+      try {
+        this.warmOrigins.add(new URL(url).origin);
+      } catch {
+        /* ignore */
+      }
+      onHuman?.({ phase: 'done', url });
+      this.addLog('action', `Human hand-off cleared the challenge for ${url}.`);
+
+      return {
+        title: state.title || url,
+        markdown: snapshot.content || '',
+        links: Array.isArray(state.links) ? state.links : [],
+        status: 200,
+        humanAssisted: true,
+        humanMs,
+      };
+    } catch (err: any) {
+      this.addLog('warn', `Human hand-off failed for ${url}: ${err?.message || err}`);
+      return null;
+    } finally {
+      this.hilActive = false;
+      this.hilManager.setActiveWebContentsGetter(() => {
+        try {
+          return this.getActiveWebContents();
+        } catch {
+          return null;
+        }
+      });
+      if (attached && !win.isDestroyed()) {
+        try {
+          win.contentView.removeChildView(view);
+        } catch {
+          /* already detached */
+        }
+      }
+      this.reassertViewport();
+    }
+  }
+
   /** Renders a page in a detached view and returns its Markdown + outgoing links (for deep_crawl). */
   public async crawlRenderPage(
     url: string,
-    opts: { selector?: string; waitUntilIdleMs?: number } = {},
-  ): Promise<{ title: string; markdown: string; links: string[]; status: number }> {
+    opts: {
+      selector?: string;
+      waitUntilIdleMs?: number;
+      onHuman?: (info: HumanAssistInfo) => void;
+    } = {},
+  ): Promise<{
+    title: string;
+    markdown: string;
+    links: string[];
+    status: number;
+    humanAssisted?: boolean;
+    humanMs?: number;
+  }> {
     this.assertResearchCooldown(url);
     const sel = opts.selector ? JSON.stringify(opts.selector) : "'a[href]'";
     const script = `(() => {
@@ -3441,15 +3773,26 @@ export class BrowserChassis {
         (await RenderedSnapshotEngine.capture(wc, { format: 'markdown', waitUntilIdleMs: opts.waitUntilIdleMs ?? 400 })).content,
     });
 
-    if (this.researchSettings.enabled && looksLikeChallenge(r.status, r.after || '')) {
+    // A challenge must always stop the pipeline — otherwise the interstitial is returned and
+    // indexed as if it were the page. Human hand-off is attempted before failing.
+    if (looksLikeChallenge(r.status, r.after || '')) {
       let host = '';
       try {
         host = new URL(url).hostname;
       } catch {
         /* ignore */
       }
+
+      // Give the human a chance to clear the challenge in the same session.
+      const handoff = await this.attemptHumanHandoff(url, opts.onHuman);
+      if (handoff) return handoff;
+
+      const skip = this.handoffSkipReason ? ` — ${this.handoffSkipReason}` : '';
       this.markResearchCooldown(host, 'WAF/challenge page');
-      throw this.researchError('WAF_CHALLENGE', `${host || url} returned a WAF/challenge page.`);
+      throw this.researchError(
+        'WAF_CHALLENGE',
+        `${host || url} returned a WAF/challenge page${skip}.`,
+      );
     }
 
     return { title: r.result?.title || url, links: r.result?.links || [], markdown: r.after || '', status: r.status };
@@ -3461,6 +3804,7 @@ export class BrowserChassis {
       ...opts,
       maxPages: opts.maxPages ?? this.researchSettings.defaultMaxPages,
       preferLlm: opts.preferLlm ?? this.researchSettings.preferLlm,
+      preferStatic: opts.preferStatic ?? this.researchSettings.preferStatic,
       concurrency: opts.concurrency ?? this.researchSettings.crawlConcurrency,
     };
     if (this.researchSettings.enabled) {
@@ -3479,7 +3823,17 @@ export class BrowserChassis {
       ...opts,
       maxSources: opts.maxSources ?? this.researchSettings.defaultMaxSources,
       preferLlm: opts.preferLlm ?? this.researchSettings.preferLlm,
+      preferStatic: opts.preferStatic ?? this.researchSettings.preferStatic,
     };
+    // Research must honour the configured engine chain; otherwise the hub's default decides.
+    if (!effective.engine && (!effective.engines || effective.engines.length === 0)) {
+      effective.engines = this.researchSettings.urlTemplate
+        ? ['custom', ...this.researchSettings.engineChain]
+        : [...this.researchSettings.engineChain];
+    }
+    if (this.researchSettings.urlTemplate && !effective.urlTemplate) {
+      effective.urlTemplate = this.researchSettings.urlTemplate;
+    }
     if (this.researchSettings.enabled) {
       effective.delayMs = Math.max(Number(opts.delayMs ?? 0), this.researchSettings.delayMs);
     }

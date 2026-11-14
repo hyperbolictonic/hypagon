@@ -37,6 +37,8 @@ export type ResearchEvent =
       ms: number;
       highlights: number;
       indexed: boolean;
+      humanAssisted?: boolean;
+      humanMs?: number;
       escalation?: ResearchEscalation;
       error?: string;
       at: number;
@@ -63,6 +65,7 @@ export type ResearchEvent =
       indexed: number;
       bytes: number;
       tiers: Record<ResearchTier, number>;
+      humans: number;
       elapsedMs: number;
       escalations: number;
       notes: string[];

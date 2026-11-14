@@ -24,6 +24,12 @@
     "!**/.cache/**"
   ],
   "asar": true,
+  "extraResources": [
+    {
+      "from": "node_modules/hypagon-scrap/bin",
+      "to": "curl-impersonate"
+    }
+  ],
   "asarUnpack": [
     "**/*.node",
     "**/*.dll",

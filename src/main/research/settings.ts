@@ -26,6 +26,12 @@ export interface ResearchSettings {
   crawlConcurrency: number;
   /** Try content-negotiated Markdown/Text before rendering. */
   preferLlm: boolean;
+  /** Try the impersonating static fetch before rendering. */
+  preferStatic: boolean;
+  /** Open a challenge page for a human to clear, then resume the crawl. */
+  humanInLoop: boolean;
+  /** Seconds to wait for the human before treating the page as blocked. */
+  hilTimeoutSec: number;
   defaultMaxPages: number;
   defaultMaxSources: number;
   searchMaxResults: number;
@@ -42,6 +48,9 @@ export const DEFAULT_RESEARCH_SETTINGS: ResearchSettings = {
   activateView: true,
   crawlConcurrency: 1,
   preferLlm: true,
+  preferStatic: true,
+  humanInLoop: true,
+  hilTimeoutSec: 300,
   defaultMaxPages: 5,
   defaultMaxSources: 5,
   searchMaxResults: 8,
@@ -172,6 +181,18 @@ export function normalizeResearchSettings(input: unknown): ResearchSettingsResul
     errors,
   );
   const preferLlm = typeof source.preferLlm === 'boolean' ? source.preferLlm : DEFAULT_RESEARCH_SETTINGS.preferLlm;
+  const preferStatic =
+    typeof source.preferStatic === 'boolean' ? source.preferStatic : DEFAULT_RESEARCH_SETTINGS.preferStatic;
+  const humanInLoop =
+    typeof source.humanInLoop === 'boolean' ? source.humanInLoop : DEFAULT_RESEARCH_SETTINGS.humanInLoop;
+  const hilTimeoutSec = integerInRange(
+    source.hilTimeoutSec,
+    DEFAULT_RESEARCH_SETTINGS.hilTimeoutSec,
+    15,
+    1800,
+    'hilTimeoutSec',
+    errors,
+  );
 
   if (errors.length > 0) {
     return { ok: false, settings: cloneDefaults(), errors };
@@ -190,6 +211,9 @@ export function normalizeResearchSettings(input: unknown): ResearchSettingsResul
       activateView,
       crawlConcurrency,
       preferLlm,
+      preferStatic,
+      humanInLoop,
+      hilTimeoutSec,
       defaultMaxPages,
       defaultMaxSources,
       searchMaxResults,

@@ -154,6 +154,16 @@
       </div>
     </div>
 
+    <!-- Human-in-the-loop toast: in the app chrome so the native page view cannot cover it. -->
+    <div id="hil-toast" class="hidden fixed left-1/2 -translate-x-1/2 top-[66px] z-[60] flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full border border-warning/60 bg-base-300/95 shadow-2xl font-mono text-[11px]">
+      <span class="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" aria-hidden="true"></span>
+      <span class="text-[10px] uppercase tracking-wider text-warning">Human hand-off</span>
+      <span id="hil-toast-reason" class="text-base-content/80 max-w-[420px] truncate">…</span>
+      <button id="hil-toast-reload" class="btn btn-xs btn-ghost h-6 min-h-0">RELOAD</button>
+      <button id="hil-toast-resume" class="btn btn-xs btn-success h-6 min-h-0">RESUME</button>
+      <button id="hil-toast-cancel" class="btn btn-xs btn-ghost h-6 min-h-0">CANCEL</button>
+    </div>
+
     <!-- Main Workspace Split -->
     <div id="main-workspace" class="flex-1 flex overflow-hidden relative">
 
@@ -172,6 +182,11 @@
           </select>
           <button id="research-run" class="btn btn-xs btn-accent">RUN</button>
           <div class="flex-1"></div>
+          <div class="flex items-center gap-0.5">
+            <button id="research-font-dec" class="btn btn-xs btn-ghost px-1" title="Smaller text">A−</button>
+            <span id="research-font-label" class="text-[9px] text-base-content/40 w-8 text-center">100%</span>
+            <button id="research-font-inc" class="btn btn-xs btn-ghost px-1" title="Larger text">A+</button>
+          </div>
           <span id="research-status" class="badge badge-xs badge-neutral">idle</span>
           <span id="research-elapsed" class="text-[10px] text-base-content/40 w-14 text-right">0ms</span>
           <span id="research-escalations" class="badge badge-xs badge-neutral">0 esc</span>
@@ -187,6 +202,7 @@
               <span>LLM <b id="research-tier-llm" class="text-success">0</b></span>
               <span>STATIC <b id="research-tier-static" class="text-info">0</b></span>
               <span>RENDER <b id="research-tier-render" class="text-warning">0</b></span>
+              <span>HUMAN <b id="research-stat-humans" class="text-error">0</b></span>
             </div>
             <div class="flex-1 overflow-y-auto">
               <table class="table table-xs table-pin-rows w-full">
@@ -935,8 +951,8 @@
         <p class="text-xs text-base-content/60 mt-1">
           Controls for <code class="font-mono">search_web</code>, <code class="font-mono">deep_crawl</code>, and
           <code class="font-mono">research_topic</code>. Stealth mode uses a separate research session, optional proxy,
-          provider preference, politeness delays, and per-domain backoff after WAF/challenge pages. It does not bypass
-          CAPTCHAs.
+          provider preference, politeness delays, and per-domain backoff after WAF/challenge pages. Challenges are never
+          bypassed: when one blocks a page, the human hand-off can open it for you to clear, then the crawl resumes.
         </p>
 
         <form id="settings-research-form" class="mt-5 space-y-4">
@@ -960,7 +976,7 @@
           <fieldset class="fieldset">
             <legend class="fieldset-legend font-mono text-xs">Research proxy (optional)</legend>
             <input id="settings-research-proxy" type="text" class="input input-sm w-full font-mono text-xs" placeholder="http://proxy.example:8080 or socks5://proxy.example:1080" autocomplete="off" />
-            <p class="label font-mono text-[10px]">Applied only to the isolated <code class="font-mono">persist:kuang-research</code> session, not your normal browsing tabs.</p>
+            <p class="label font-mono text-[10px]">Applied only to the isolated <code class="font-mono">persist:hypagon-research</code> session, not your normal browsing tabs.</p>
           </fieldset>
 
           <div class="settings-grid settings-grid-2">
@@ -1007,6 +1023,22 @@
             <input id="settings-research-activate-view" type="checkbox" class="toggle toggle-sm toggle-accent" />
             <span class="label-text font-mono text-xs">Activate the hidden view (focus/lifecycle emulation)</span>
           </label>
+
+          <label class="label cursor-pointer justify-start gap-3 py-0">
+            <input id="settings-research-prefer-static" type="checkbox" class="toggle toggle-sm toggle-info" />
+            <span class="label-text font-mono text-xs">Try the static impersonating fetch before rendering</span>
+          </label>
+
+          <label class="label cursor-pointer justify-start gap-3 py-0">
+            <input id="settings-research-human" type="checkbox" class="toggle toggle-sm toggle-error" />
+            <span class="label-text font-mono text-xs">Human hand-off on a challenge (open the page for a person to clear it)</span>
+          </label>
+
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend font-mono text-xs">Human hand-off timeout (seconds)</legend>
+            <input id="settings-research-hil-timeout" type="number" min="15" max="1800" step="15" class="input input-sm w-full font-mono text-xs" />
+            <p class="label font-mono text-[10px]">How long to wait for a person before the page is treated as blocked.</p>
+          </fieldset>
 
           <div id="settings-research-result" class="alert alert-ghost alert-sm font-mono text-xs hidden"></div>
 

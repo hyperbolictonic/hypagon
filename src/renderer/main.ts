@@ -385,8 +385,32 @@ async function refreshCollaborationCount(): Promise<void> {
 window.electronAPI?.onCollaborationUpdated(() => void refreshCollaborationCount());
 void refreshCollaborationCount();
 
-window.electronAPI?.onHilRequested(() => sidebarRailToggle?.classList.add('is-hil'));
-window.electronAPI?.onHilCleared(() => sidebarRailToggle?.classList.remove('is-hil'));
+const hilToast = document.getElementById('hil-toast');
+const hilToastReason = document.getElementById('hil-toast-reason');
+const hilToastResume = document.getElementById('hil-toast-resume');
+const hilToastCancel = document.getElementById('hil-toast-cancel');
+const hilToastReload = document.getElementById('hil-toast-reload');
+
+window.electronAPI?.onHilRequested((request) => {
+  sidebarRailToggle?.classList.add('is-hil');
+  if (hilToast && hilToastReason) {
+    hilToastReason.textContent = request?.reason || 'Human intervention required';
+    hilToast.classList.remove('hidden');
+  }
+});
+window.electronAPI?.onHilCleared(() => {
+  sidebarRailToggle?.classList.remove('is-hil');
+  hilToast?.classList.add('hidden');
+});
+hilToastResume?.addEventListener('click', () => {
+  void window.electronAPI?.resolveHil();
+});
+hilToastCancel?.addEventListener('click', () => {
+  void window.electronAPI?.cancelHil();
+});
+hilToastReload?.addEventListener('click', () => {
+  void window.electronAPI?.reloadHil();
+});
 try {
   const savedEdge = localStorage.getItem('deck.orb-edge');
   if (savedEdge === 'left' || savedEdge === 'right') {
@@ -1668,6 +1692,9 @@ if (settingsBtn && settingsModal) {
   const researchMaxSourcesEl = document.getElementById('settings-research-max-sources') as HTMLInputElement;
   const researchMaxResultsEl = document.getElementById('settings-research-max-results') as HTMLInputElement;
   const researchActivateEl = document.getElementById('settings-research-activate-view') as HTMLInputElement;
+const researchPreferStaticEl = document.getElementById('settings-research-prefer-static') as HTMLInputElement;
+const researchHumanEl = document.getElementById('settings-research-human') as HTMLInputElement;
+const researchHilTimeoutEl = document.getElementById('settings-research-hil-timeout') as HTMLInputElement;
   const researchResultEl = document.getElementById('settings-research-result') as HTMLElement;
   const researchResetEl = document.getElementById('settings-research-reset') as HTMLButtonElement;
 
@@ -1849,6 +1876,9 @@ if (settingsBtn && settingsModal) {
       researchDelayEl.value = String(settings.delayMs ?? 1000);
       researchConcurrencyEl.value = String(settings.crawlConcurrency ?? 1);
       researchPreferLlmEl.checked = settings.preferLlm !== false;
+      researchPreferStaticEl.checked = settings.preferStatic !== false;
+      researchHumanEl.checked = settings.humanInLoop !== false;
+      researchHilTimeoutEl.value = String(settings.hilTimeoutSec ?? 300);
       researchMaxPagesEl.value = String(settings.defaultMaxPages ?? 5);
       researchMaxSourcesEl.value = String(settings.defaultMaxSources ?? 5);
       researchMaxResultsEl.value = String(settings.searchMaxResults ?? 8);
@@ -1875,6 +1905,9 @@ if (settingsBtn && settingsModal) {
         delayMs: Number(researchDelayEl.value) || 0,
         crawlConcurrency: Number(researchConcurrencyEl.value) || 1,
         preferLlm: researchPreferLlmEl.checked,
+        preferStatic: researchPreferStaticEl.checked,
+        humanInLoop: researchHumanEl.checked,
+        hilTimeoutSec: Number(researchHilTimeoutEl.value) || 300,
         defaultMaxPages: Number(researchMaxPagesEl.value) || 5,
         defaultMaxSources: Number(researchMaxSourcesEl.value) || 5,
         searchMaxResults: Number(researchMaxResultsEl.value) || 8,

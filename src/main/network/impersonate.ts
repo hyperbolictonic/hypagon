@@ -7,7 +7,62 @@
  * error, or JS-only shell escalates to the real Chromium path.
  */
 import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+
 import { CurlImpersonateTransport, curlImpersonateBinaryPath } from 'hypagon-scrap';
+
+const requireFromHere = createRequire(import.meta.url);
+
+/**
+ * Resolve the pinned binary robustly.
+ *
+ * The package default (`import.meta.url` + `../../bin`) is correct when the package is loaded from
+ * node_modules, but this app bundles the dependency into `dist-electron/main`, so that relative path
+ * points at the app's own `bin/`. Resolve the package root explicitly instead, with fallbacks.
+ */
+export function resolveCurlBinaryPath(): string {
+  const key = `${process.platform}-${process.arch}`;
+  const exe = process.platform === 'win32' ? 'curl-impersonate.exe' : 'curl-impersonate';
+
+  const candidates: string[] = [];
+  const override = process.env.HYPAGON_SCRAP_CURL_BIN;
+  if (override) candidates.push(override);
+
+  // Packaged app: electron-builder copies the pinned build to resources/curl-impersonate.
+  const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
+  if (resourcesPath) {
+    candidates.push(path.join(resourcesPath, 'curl-impersonate', key, exe));
+  }
+
+  try {
+    const entry = requireFromHere.resolve('hypagon-scrap'); // …/dist/index.js
+    candidates.push(path.join(path.resolve(path.dirname(entry), '..'), 'bin', key, exe));
+  } catch {
+    /* not resolvable from the bundle */
+  }
+
+  candidates.push(path.join(process.cwd(), 'node_modules', 'hypagon-scrap', 'bin', key, exe));
+
+  // Packaged builds: electron-builder puts node_modules under resources/app (or unpacked).
+  if (resourcesPath) {
+    candidates.push(path.join(resourcesPath, 'app', 'node_modules', 'hypagon-scrap', 'bin', key, exe));
+    candidates.push(
+      path.join(resourcesPath, 'app.asar.unpacked', 'node_modules', 'hypagon-scrap', 'bin', key, exe),
+    );
+  }
+  candidates.push(
+    path.join(path.dirname(process.execPath), 'resources', 'app', 'node_modules', 'hypagon-scrap', 'bin', key, exe),
+  );
+
+  try {
+    candidates.push(curlImpersonateBinaryPath());
+  } catch {
+    /* package path unavailable */
+  }
+
+  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0] ?? '';
+}
 
 export interface StaticFetchResult {
   status: number;
@@ -61,21 +116,22 @@ function resolveProfile(): { profile: string; chromeMajor: string } {
 
 export function impersonateAvailable(): boolean {
   if (unavailableReason) return false;
-  try {
-    return existsSync(curlImpersonateBinaryPath());
-  } catch {
-    return false;
-  }
+  const binary = resolveCurlBinaryPath();
+  return Boolean(binary) && existsSync(binary);
 }
 
 function getClient(): CurlImpersonateTransport | null {
   if (client) return client;
-  if (!impersonateAvailable()) {
+
+  const binaryPath = resolveCurlBinaryPath();
+  if (!binaryPath || !existsSync(binaryPath)) {
     unavailableReason =
       'curl-impersonate binary not installed (run `pnpm exec hypagon-scrap-fetch-curl`)';
     return null;
   }
-  client = new CurlImpersonateTransport({ profile: resolveProfile().profile });
+
+  const { profile } = resolveProfile();
+  client = new CurlImpersonateTransport({ binaryPath, profile });
   return client;
 }
 
