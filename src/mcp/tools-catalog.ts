@@ -1662,6 +1662,25 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
     },
   },
   {
+    name: 'revalidate_citations',
+    description:
+      'Revalidates saved citation anchors against the live pages and updates their health scores. Anchors are captured automatically by research_topic/deep_crawl when a query is anchored, and stored in <userData>/research-anchors.json. Omit url to check the most recent stored URLs.',
+    parameters: {
+      url: z.string().optional().describe('Limit to one URL (default: the most recent stored URLs)'),
+      max_urls: z.coerce.number().optional().default(5).describe('Maximum URLs to check (default 5)'),
+    },
+    endpoint: '/citation/revalidate',
+    payload: (args) => ({ url: args?.url, max_urls: args?.max_urls }),
+    format: (data) => {
+      const results = Array.isArray(data.results) ? data.results : [];
+      const head = `### Citations revalidated\n- ${data.checked} checked · ${data.found} found · ${data.missing} missing over ${data.urls} URL(s)`;
+      const rows = results.map(
+        (r: any) => `- ${r.url}: ${r.found}/${r.checked}${r.error ? ` (${r.error})` : ''}`,
+      );
+      return `${head}\n${rows.join('\n')}`;
+    },
+  },
+  {
     name: 'collect_all',
     description:
       'Scroll a virtualized/lazy list to the bottom and collect every distinct row (deduped by text+href) in ONE call. The abstraction that replaces a manual scroll-and-harvest sweep. ' +
@@ -2093,6 +2112,7 @@ export const DEFAULT_TOOL_ORDER: string[] = [
   'deep_crawl',
   'research_topic',
   'relocate_citation',
+  'revalidate_citations',
   'prerender_links',
   'get_network_traffic',
   'query_json_data',

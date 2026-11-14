@@ -106,6 +106,11 @@ try {
   });
   check('deleted citation reports not found', deleted.found === false, deleted);
   check('not-found response still ranks candidates', Array.isArray(deleted.candidates) && deleted.candidates.length > 0, deleted.candidates?.length);
+
+  // 5. Anchors from the crawl are stored and can be revalidated wholesale.
+  const revalidated = await post('/citation/revalidate', { url: `${origin}/original` });
+  check('stored revalidation checks the captured anchors', revalidated.checked >= 1, revalidated);
+  check('stored revalidation finds the unchanged page', revalidated.found >= 1, revalidated);
 } finally {
   server.close();
 }

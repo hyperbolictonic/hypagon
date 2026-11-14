@@ -218,6 +218,7 @@ export const TOOL_GROUPS: ToolGroupDefinition[] = [
       { action: 'crawl', tool: 'deep_crawl', description: 'Breadth-first crawl.' },
       { action: 'topic', tool: 'research_topic', description: 'Search, gather and cite sources.' },
       { action: 'relocate', tool: 'relocate_citation', description: 'Revalidate a saved citation anchor after a redesign.' },
+      { action: 'revalidate', tool: 'revalidate_citations', description: 'Revalidate every saved citation anchor and update scores.' },
       { action: 'prerender', tool: 'prerender_links', description: 'Pre-render candidate links.' },
     ],
   },

@@ -38252,6 +38252,26 @@ ${data.text}`;
     }
   },
   {
+    name: "revalidate_citations",
+    description: "Revalidates saved citation anchors against the live pages and updates their health scores. Anchors are captured automatically by research_topic/deep_crawl when a query is anchored, and stored in <userData>/research-anchors.json. Omit url to check the most recent stored URLs.",
+    parameters: {
+      url: external_exports.string().optional().describe("Limit to one URL (default: the most recent stored URLs)"),
+      max_urls: external_exports.coerce.number().optional().default(5).describe("Maximum URLs to check (default 5)")
+    },
+    endpoint: "/citation/revalidate",
+    payload: (args) => ({ url: args?.url, max_urls: args?.max_urls }),
+    format: (data) => {
+      const results = Array.isArray(data.results) ? data.results : [];
+      const head = `### Citations revalidated
+- ${data.checked} checked \xB7 ${data.found} found \xB7 ${data.missing} missing over ${data.urls} URL(s)`;
+      const rows = results.map(
+        (r) => `- ${r.url}: ${r.found}/${r.checked}${r.error ? ` (${r.error})` : ""}`
+      );
+      return `${head}
+${rows.join("\n")}`;
+    }
+  },
+  {
     name: "collect_all",
     description: 'Scroll a virtualized/lazy list to the bottom and collect every distinct row (deduped by text+href) in ONE call. The abstraction that replaces a manual scroll-and-harvest sweep. Auto-detects the repeating item container; use selector/ref to scope it and scroll="window" for page-level infinite scroll.',
     parameters: {
@@ -38640,6 +38660,7 @@ var DEFAULT_TOOL_ORDER = [
   "deep_crawl",
   "research_topic",
   "relocate_citation",
+  "revalidate_citations",
   "prerender_links",
   "get_network_traffic",
   "query_json_data",
@@ -38867,6 +38888,7 @@ var TOOL_GROUPS = [
       { action: "crawl", tool: "deep_crawl", description: "Breadth-first crawl." },
       { action: "topic", tool: "research_topic", description: "Search, gather and cite sources." },
       { action: "relocate", tool: "relocate_citation", description: "Revalidate a saved citation anchor after a redesign." },
+      { action: "revalidate", tool: "revalidate_citations", description: "Revalidate every saved citation anchor and update scores." },
       { action: "prerender", tool: "prerender_links", description: "Pre-render candidate links." }
     ]
   },

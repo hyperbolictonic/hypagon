@@ -85,6 +85,7 @@ export function initResearchPanel(): void {
   const fontDec = byId<HTMLButtonElement>('research-font-dec');
   const fontInc = byId<HTMLButtonElement>('research-font-inc');
   const fontLabel = byId<HTMLElement>('research-font-label');
+  const revalidateBtn = byId<HTMLButtonElement>('research-revalidate');
 
   if (!view || !runButton || !rowsEl || !logEl) return;
 
@@ -441,6 +442,28 @@ export function initResearchPanel(): void {
   launcher?.addEventListener('click', () => {
     if (isOpen) void closeView();
     else void openView();
+  });
+
+  revalidateBtn?.addEventListener('click', async () => {
+    revalidateBtn.disabled = true;
+    const label = revalidateBtn.textContent;
+    revalidateBtn.textContent = 'CHECKING…';
+    try {
+      const result = await api?.revalidateCitations({ maxUrls: 5 });
+      if (!result || result.checked === 0) {
+        log('saved citations · none to check', 'text-warning');
+      } else {
+        log(
+          `saved citations · ${result.checked} checked · ${result.found} found · ${result.missing} missing`,
+          result.missing > 0 ? 'text-warning' : 'text-success',
+        );
+      }
+    } catch (err) {
+      log(`saved citation check failed · ${(err as Error).message}`, 'text-error');
+    } finally {
+      revalidateBtn.disabled = false;
+      revalidateBtn.textContent = label || 'CHECK SAVED';
+    }
   });
 
   closeButton?.addEventListener('click', () => {

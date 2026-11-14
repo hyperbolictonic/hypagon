@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BrowserWindow, nativeImage, ipcMain, clipboard, powerMonitor, screen, session, WebContentsView, type Session, type WebContents } from 'electron';
+import { BrowserWindow, app, nativeImage, ipcMain, clipboard, powerMonitor, screen, session, WebContentsView, type Session, type WebContents } from 'electron';
 import type { AgentStatus, ChassisState, HarvestedConstruct, TelemetryEvent, TabSummary } from '../shared/types.js';
 import {
   clampZoomFactor,
@@ -87,6 +87,7 @@ import { LlmSurface, type LlmSurfaceReport, type LlmSurfaceKind, type LlmFetchRe
 import { SearchHub, type SearchOutcome } from './search/search-engine.js';
 import { Crawler, type CrawlOptions, type CrawlOutcome, type HumanAssistInfo } from './crawl/crawler.js';
 import { anchorHighlights, relocateCitation as relocateAgainstHtml, relocateCitations as relocateMany, type CitationAnchor, type CitationRelocation } from './research/anchors.js';
+import { AnchorStore } from './research/anchor-store.js';
 import { MenuPopup } from './ui/menu-popup.js';
 import { Researcher, type ResearchOptions, type ResearchOutcome } from './research/researcher.js';
 
@@ -162,6 +163,20 @@ export class BrowserChassis {
   private hilActive = false;
   /** Why the last hand-off was skipped (surfaced in the WAF error). */
   private handoffSkipReason: string | null = null;
+  #anchorStore: AnchorStore | null = null;
+
+  private get anchorStore(): AnchorStore {
+    if (!this.#anchorStore) {
+      let dir = process.cwd();
+      try {
+        dir = app.getPath('userData');
+      } catch {
+        /* fall back to the working directory */
+      }
+      this.#anchorStore = new AnchorStore(path.join(dir, 'research-anchors.json'));
+    }
+    return this.#anchorStore;
+  }
 
   private sidebarView: WebContentsView | null = null;
   private sidebarMode: 'docked' | 'floating' | 'collapsed' = 'floating';
@@ -439,14 +454,17 @@ export class BrowserChassis {
         if (!harvested.content || harvested.content.trim().length < 200) {
           return { ok: false as const, reason: 'content too thin (possible JS-only shell)' };
         }
+        let anchors: CitationAnchor[] | undefined;
+        if (pageOpts?.anchorsFor) {
+          anchors = await anchorHighlights(outcome.result.body, pageOpts.anchorsFor);
+          if (anchors.length) this.anchorStore.upsert(url, anchors);
+        }
         return {
           ok: true as const,
           title: harvested.title,
           markdown: harvested.content,
           status: outcome.result.status,
-          anchors: pageOpts?.anchorsFor
-            ? await anchorHighlights(outcome.result.body, pageOpts.anchorsFor)
-            : undefined,
+          anchors,
         };
       },
       renderPage: (url, pageOpts) => this.crawlRenderPage(url, pageOpts),
@@ -3584,17 +3602,72 @@ export class BrowserChassis {
   }
 
   /** Parse the live rendered page and fingerprint the blocks behind matching highlights. */
-  private async captureAnchors(query: string): Promise<CitationAnchor[]> {
+  private async captureAnchors(url: string, query: string): Promise<CitationAnchor[]> {
     try {
       const wc = this.getUtilView().webContents;
       if (wc.isDestroyed()) return [];
       const html = await wc.executeJavaScript('document.documentElement.outerHTML');
       if (typeof html !== 'string' || !html) return [];
-      return await anchorHighlights(html, query);
+      const anchors = await anchorHighlights(html, query);
+      if (anchors.length) this.anchorStore.upsert(url, anchors);
+      return anchors;
     } catch (err: any) {
       this.addLog('warn', `Citation anchoring failed: ${err?.message || err}`);
       return [];
     }
+  }
+
+  /** Revalidate a stored citation anchor against the page's current markup. */
+  /** Fetch a URL for citation work, following the research tier policy. */
+  private async fetchCitationHtml(url: string): Promise<{
+    html: string;
+    status: number;
+    via: 'static' | 'render';
+    error?: string;
+  }> {
+    let html = '';
+    let status = 0;
+    let via: 'static' | 'render' = 'render';
+
+    if (this.researchSettings.preferStatic) {
+      try {
+        const outcome = await fetchStatic(url);
+        if (outcome.kind === 'ok' && outcome.result.status < 400) {
+          html = outcome.result.body;
+          status = outcome.result.status;
+          via = 'static';
+        }
+      } catch {
+        /* fall through to render */
+      }
+    }
+
+    if (!html) {
+      const rendered = await this.loadDetached<string>(
+        url,
+        'document.documentElement.outerHTML',
+        { timeoutMs: 25_000, settleMs: 400 },
+      );
+      html = typeof rendered.result === 'string' ? rendered.result : '';
+      status = rendered.status;
+      via = 'render';
+    }
+
+    if (!html) return { html: '', status, via, error: 'could not read the page' };
+
+    // Judge the challenge on visible text: raw HTML contains scripts/meta that can trip a marker.
+    const visible = html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 4000);
+    if (looksLikeChallenge(status, visible)) {
+      return { html: '', status, via, error: 'challenge page' };
+    }
+
+    return { html, status, via };
   }
 
   /** Revalidate a stored citation anchor against the page's current markup. */
@@ -3610,69 +3683,63 @@ export class BrowserChassis {
       throw this.researchError('BAD_REQUEST', 'relocate_citation needs a fingerprint object.');
     }
 
-    let html = '';
-    let status = 0;
-    let via: 'static' | 'render' = 'render';
+    const fetched = await this.fetchCitationHtml(opts.url);
+    if (fetched.error) {
+      return {
+        found: false,
+        score: null,
+        path: null,
+        text: null,
+        candidates: [],
+        via: fetched.via,
+        error: fetched.error,
+      };
+    }
 
-    // Follow the same tier policy as research: cheap static first, render only as fallback.
-    if (this.researchSettings.preferStatic) {
-      try {
-        const outcome = await fetchStatic(opts.url);
-        if (outcome.kind === 'ok' && outcome.result.status < 400) {
-          html = outcome.result.body;
-          status = outcome.result.status;
-          via = 'static';
-        }
-      } catch {
-        /* fall through to render */
+    const result = await relocateAgainstHtml(fetched.html, opts.fingerprint as any, opts.threshold ?? 40);
+    return { ...result, via: fetched.via };
+  }
+
+  /** Revalidate every stored anchor for one URL (or the most recent URLs). */
+  public async revalidateStored(opts: { url?: string; maxUrls?: number } = {}): Promise<{
+    urls: number;
+    checked: number;
+    found: number;
+    missing: number;
+    results: Array<{ url: string; checked: number; found: number; error?: string }>;
+  }> {
+    const urls = opts.url
+      ? [opts.url]
+      : this.anchorStore.urls().slice(0, Math.max(1, opts.maxUrls ?? 5));
+
+    let checked = 0;
+    let found = 0;
+    const results: Array<{ url: string; checked: number; found: number; error?: string }> = [];
+
+    for (const url of urls) {
+      const records = this.anchorStore.list(url);
+      if (records.length === 0) continue;
+
+      const fetched = await this.fetchCitationHtml(url);
+      if (fetched.error) {
+        results.push({ url, checked: 0, found: 0, error: fetched.error });
+        continue;
       }
-    }
 
-    if (!html) {
-      const rendered = await this.loadDetached<string>(
-        opts.url,
-        'document.documentElement.outerHTML',
-        { timeoutMs: 25_000, settleMs: 400 },
+      const relocations = await relocateMany(
+        fetched.html,
+        records.map((record) => record.fingerprint),
+        40,
       );
-      html = typeof rendered.result === 'string' ? rendered.result : '';
-      status = rendered.status;
-      via = 'render';
+      this.anchorStore.applyChecks(url, relocations);
+
+      const urlFound = relocations.filter((result) => result.found).length;
+      checked += relocations.length;
+      found += urlFound;
+      results.push({ url, checked: relocations.length, found: urlFound });
     }
 
-    if (!html) {
-      return {
-        found: false,
-        score: null,
-        path: null,
-        text: null,
-        candidates: [],
-        via,
-        error: 'could not read the page',
-      };
-    }
-
-    // Judge the challenge on visible text: raw HTML contains scripts/meta that can trip a marker.
-    const visible = html
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 4000);
-    if (looksLikeChallenge(status, visible)) {
-      return {
-        found: false,
-        score: null,
-        path: null,
-        text: null,
-        candidates: [],
-        via,
-        error: 'challenge page',
-      };
-    }
-
-    const result = await relocateAgainstHtml(html, opts.fingerprint as any, opts.threshold ?? 40);
-    return { ...result, via };
+    return { urls: results.length, checked, found, missing: checked - found, results };
   }
 
   /**
@@ -3886,7 +3953,7 @@ export class BrowserChassis {
       if (handoff) {
         return {
           ...handoff,
-          anchors: opts.anchorsFor ? await this.captureAnchors(opts.anchorsFor) : undefined,
+          anchors: opts.anchorsFor ? await this.captureAnchors(url, opts.anchorsFor) : undefined,
         };
       }
 
@@ -3903,7 +3970,7 @@ export class BrowserChassis {
       links: r.result?.links || [],
       markdown: r.after || '',
       status: r.status,
-      anchors: opts.anchorsFor ? await this.captureAnchors(opts.anchorsFor) : undefined,
+      anchors: opts.anchorsFor ? await this.captureAnchors(url, opts.anchorsFor) : undefined,
     };
   }
 
