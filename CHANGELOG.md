@@ -30,7 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **The radial deck menu is gone.** Its actions already existed in the main toolbar (COLLAB,
-  HARVEST, REC), and clicking the collapsed orb now simply restores the Command Deck.
+  HARVEST, REC), and clicking the collapsed orb now simply restores the Command Deck. The old
+  toolbar `FIT`/`WIN` zoom-policy toggle is also removed; page zoom keeps the fitted policy and
+  the deck's `FIT` is now only the device reset.
 
 ## [2.3.1] - 2026-11-14
 

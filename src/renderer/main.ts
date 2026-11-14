@@ -50,7 +50,6 @@ const aboutVersion = document.getElementById('about-version');
 const zoomOutBtn = document.getElementById('zoom-out-btn') as HTMLButtonElement | null;
 const zoomInBtn = document.getElementById('zoom-in-btn') as HTMLButtonElement | null;
 const zoomLevelBtn = document.getElementById('zoom-level-btn') as HTMLButtonElement | null;
-const zoomModeBtn = document.getElementById('zoom-mode-btn') as HTMLButtonElement | null;
 
 function renderAppVersion(version: string | undefined) {
   if (!version) return;
@@ -895,14 +894,6 @@ function renderZoom(zoom: ZoomState | null | undefined): void {
     zoomLevelBtn.textContent = `${percent}%`;
     zoomLevelBtn.title = `Reset page zoom to the ${zoom.mode === 'compensate' ? 'fitted' : 'Windows'} default (Ctrl+0)`;
   }
-  if (zoomModeBtn) {
-    const fitted = zoom.mode === 'compensate';
-    zoomModeBtn.textContent = fitted ? 'FIT' : 'WIN';
-    zoomModeBtn.classList.toggle('text-accent', fitted);
-    zoomModeBtn.title = fitted
-      ? `Fitted to ${Math.round(zoom.displayScale * 100)}% Windows scale (click for Windows scale)`
-      : `Matching ${Math.round(zoom.displayScale * 100)}% Windows scale (click to fit)`;
-  }
   if (zoomOutBtn) zoomOutBtn.title = `Zoom out (Ctrl+-) - ${percent}%`;
   if (zoomInBtn) zoomInBtn.title = `Zoom in (Ctrl+=) - ${percent}%`;
 }
@@ -917,7 +908,7 @@ async function applyZoomAction(action: 'in' | 'out' | 'reset'): Promise<void> {
 
 /** Page zoom is pinned while a device viewport is emulated. */
 function setZoomPinned(pinned: boolean): void {
-  for (const control of [zoomOutBtn, zoomInBtn, zoomLevelBtn, zoomModeBtn]) {
+  for (const control of [zoomOutBtn, zoomInBtn, zoomLevelBtn]) {
     if (!control) continue;
     control.disabled = pinned;
     if (pinned) control.title = 'Page zoom is pinned to 100% while a responsive device is active';
@@ -928,14 +919,6 @@ function setZoomPinned(pinned: boolean): void {
 zoomOutBtn?.addEventListener('click', () => void applyZoomAction('out'));
 zoomInBtn?.addEventListener('click', () => void applyZoomAction('in'));
 zoomLevelBtn?.addEventListener('click', () => void applyZoomAction('reset'));
-zoomModeBtn?.addEventListener('click', async () => {
-  const next = currentZoom?.mode === 'compensate' ? 'native' : 'compensate';
-  try {
-    renderZoom(await window.electronAPI?.setZoomMode?.(next));
-  } catch {
-    // Ignore; the next state broadcast carries the authoritative value.
-  }
-});
 
 // Update State from Electron
 function updateState(state: ChassisState) {
