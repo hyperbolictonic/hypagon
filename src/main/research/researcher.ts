@@ -11,6 +11,8 @@
  */
 import { randomUUID } from 'node:crypto';
 
+import type { CitationAnchor } from './anchors.js';
+
 import type { ResearchEvent, ResearchEscalation, ResearchTier } from '../../shared/research-events.js';
 import type { SearchOutcome, SearchAttempt } from '../search/search-engine.js';
 import type { CrawlOptions, CrawlOutcome, HumanAssistInfo } from '../crawl/crawler.js';
@@ -30,6 +32,8 @@ export interface ResearchOptions {
   preferLlm?: boolean;
   /** Try the impersonating static fetch before rendering (default true). */
   preferStatic?: boolean;
+  /** Anchor matching blocks to fingerprints for later relocation (default true). */
+  anchors?: boolean;
   /** Politeness delay between gathered sources (default 0; stealth mode raises it). */
   delayMs?: number;
 }
@@ -46,6 +50,8 @@ export interface ResearchSource {
   humanAssisted?: boolean;
   /** Time spent waiting for the human (included in `ms`). */
   humanMs?: number;
+  /** Fingerprints for the DOM blocks behind the highlights. */
+  anchors?: CitationAnchor[];
   /** Wall-clock time spent fetching/distilling this source. */
   ms?: number;
   highlights: string[];
@@ -67,6 +73,8 @@ export interface ResearchOutcome {
   tiers: Record<ResearchTier, number>;
   /** Sources a human had to unblock. */
   humans: number;
+  /** Total citation anchors captured across sources. */
+  anchors: number;
   /** Sources that needed a render after a cheaper tier failed. Surfaced for the calling agent. */
   escalations: number;
   searchAttempts: SearchAttempt[];
@@ -187,6 +195,7 @@ export class Researcher {
     const sources: ResearchSource[] = [];
     const tiers: Record<ResearchTier, number> = { llm: 0, static: 0, render: 0 };
     let totalBytes = 0;
+    let anchorTotal = 0;
     let cortexIndexed = 0;
 
     for (const r of picked) {
@@ -199,6 +208,7 @@ export class Researcher {
           delayMs: opts.delayMs ?? 0,
           preferLlm: opts.preferLlm !== false,
           preferStatic: opts.preferStatic !== false,
+          anchorsFor: opts.anchors !== false ? query : undefined,
           harvestToCortex: opts.harvestToCortex !== false,
           includeContent: excerptChars,
           onHuman: (info: HumanAssistInfo) => {
@@ -227,6 +237,8 @@ export class Researcher {
         const title = page?.title || r.title;
         const humanAssisted = !!page?.humanAssisted;
         const humanMs = page?.humanMs ?? 0;
+        const anchors = page?.anchors;
+        anchorTotal += anchors?.length ?? 0;
         totalBytes += bytes;
         tiers[via] += 1;
         sources.push({
@@ -240,6 +252,7 @@ export class Researcher {
           indexed,
           humanAssisted,
           humanMs,
+          anchors,
           highlights,
           error: page?.error,
           escalation,
@@ -255,6 +268,7 @@ export class Researcher {
           ms,
           humanAssisted,
           humanMs,
+          anchors: anchors?.length ?? 0,
           highlights: highlights.length,
           indexed,
           escalation,
@@ -284,6 +298,7 @@ export class Researcher {
           bytes: 0,
           ms: 0,
           highlights: 0,
+          anchors: 0,
           indexed: false,
           error: message,
           at: Date.now(),
@@ -317,6 +332,7 @@ export class Researcher {
       bytes: totalBytes,
       tiers,
       humans,
+      anchors: anchorTotal,
       escalations,
       searchAttempts: search.attempts || [],
       notes,
@@ -329,6 +345,7 @@ export class Researcher {
       bytes: totalBytes,
       tiers,
       humans,
+      anchors: anchorTotal,
       elapsedMs: Date.now() - startedAt,
       escalations,
       notes,

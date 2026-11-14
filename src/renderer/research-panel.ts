@@ -78,6 +78,7 @@ export function initResearchPanel(): void {
   const tierStatic = byId<HTMLElement>('research-tier-static');
   const tierRender = byId<HTMLElement>('research-tier-render');
   const statHumans = byId<HTMLElement>('research-stat-humans');
+  const statAnchors = byId<HTMLElement>('research-stat-anchors');
   const fontDec = byId<HTMLButtonElement>('research-font-dec');
   const fontInc = byId<HTMLButtonElement>('research-font-inc');
   const fontLabel = byId<HTMLElement>('research-font-label');
@@ -119,6 +120,7 @@ export function initResearchPanel(): void {
     indexed: 0,
     bytes: 0,
     humans: 0,
+    anchors: 0,
     tiers: { llm: 0, static: 0, render: 0 } as Record<ResearchTier, number>,
   };
 
@@ -151,6 +153,7 @@ export function initResearchPanel(): void {
     if (tierStatic) tierStatic.textContent = String(stats.tiers.static);
     if (tierRender) tierRender.textContent = String(stats.tiers.render);
     if (statHumans) statHumans.textContent = String(stats.humans);
+    if (statAnchors) statAnchors.textContent = String(stats.anchors);
   };
 
   const openView = async (): Promise<void> => {
@@ -208,6 +211,7 @@ export function initResearchPanel(): void {
     stats.indexed = 0;
     stats.bytes = 0;
     stats.humans = 0;
+    stats.anchors = 0;
     stats.tiers = { llm: 0, static: 0, render: 0 };
     renderStats();
     if (logCountEl) logCountEl.textContent = '0 lines';
@@ -304,6 +308,13 @@ export function initResearchPanel(): void {
           row.status.appendChild(note);
         }
 
+        if (event.anchors) {
+          const anchorNote = document.createElement('div');
+          anchorNote.className = 'text-[9px] text-base-content/40 mt-0.5';
+          anchorNote.textContent = `${event.anchors} anchor(s)`;
+          row.status.appendChild(anchorNote);
+        }
+
         if (event.escalation) {
           escalationCount++;
           if (escBadge) escBadge.textContent = `${escalationCount} esc`;
@@ -321,6 +332,7 @@ export function initResearchPanel(): void {
         stats.bytes += event.bytes;
         stats.tiers[event.via] += 1;
         if (event.humanAssisted) stats.humans += 1;
+        if (event.anchors) stats.anchors += event.anchors;
         if (event.indexed) stats.indexed += 1;
         renderStats();
         setLauncherBadge(stats.sources);
@@ -364,6 +376,7 @@ export function initResearchPanel(): void {
         stats.indexed = event.indexed;
         stats.bytes = event.bytes;
         stats.humans = event.humans;
+        stats.anchors = event.anchors;
         stats.tiers = { ...event.tiers };
         renderStats();
         setLauncherBadge(event.sources);

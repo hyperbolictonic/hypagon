@@ -39,6 +39,8 @@
     "**/onnxruntime-node/**",
     "**/@img/**",
     "**/sharp/**",
+    "**/hypagon-scrap/**",
+    "**/hypagon-scrap-libxml2/**",
     "bin/**/*"
   ],
   "afterPack": "scripts/verify-pack.cjs",

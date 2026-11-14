@@ -86,6 +86,7 @@ import { PrerenderEngine, type PrerenderOptions } from './prerender/prerender-en
 import { LlmSurface, type LlmSurfaceReport, type LlmSurfaceKind, type LlmFetchResult, type ReadUrlResult } from './llm/llm-surface.js';
 import { SearchHub, type SearchOutcome } from './search/search-engine.js';
 import { Crawler, type CrawlOptions, type CrawlOutcome, type HumanAssistInfo } from './crawl/crawler.js';
+import { anchorHighlights, type CitationAnchor } from './research/anchors.js';
 import { MenuPopup } from './ui/menu-popup.js';
 import { Researcher, type ResearchOptions, type ResearchOutcome } from './research/researcher.js';
 
@@ -407,7 +408,7 @@ export class BrowserChassis {
         const r = await this.researchLlmSurface.fetch({ url, as: 'markdown' });
         return { content: r.content, via: r.via };
       },
-      fetchStatic: async (url) => {
+      fetchStatic: async (url, pageOpts) => {
         if (!this.researchSettings.preferStatic) {
           return { ok: false as const, reason: 'static tier disabled in settings', disabled: true };
         }
@@ -443,6 +444,9 @@ export class BrowserChassis {
           title: harvested.title,
           markdown: harvested.content,
           status: outcome.result.status,
+          anchors: pageOpts?.anchorsFor
+            ? await anchorHighlights(outcome.result.body, pageOpts.anchorsFor)
+            : undefined,
         };
       },
       renderPage: (url, pageOpts) => this.crawlRenderPage(url, pageOpts),
@@ -3579,6 +3583,20 @@ export class BrowserChassis {
     return { actionable: true, why: 'probe unavailable' };
   }
 
+  /** Parse the live rendered page and fingerprint the blocks behind matching highlights. */
+  private async captureAnchors(query: string): Promise<CitationAnchor[]> {
+    try {
+      const wc = this.getUtilView().webContents;
+      if (wc.isDestroyed()) return [];
+      const html = await wc.executeJavaScript('document.documentElement.outerHTML');
+      if (typeof html !== 'string' || !html) return [];
+      return await anchorHighlights(html, query);
+    } catch (err: any) {
+      this.addLog('warn', `Citation anchoring failed: ${err?.message || err}`);
+      return [];
+    }
+  }
+
   /**
    * Human hand-off for a challenged page.
    *
@@ -3747,6 +3765,7 @@ export class BrowserChassis {
       selector?: string;
       waitUntilIdleMs?: number;
       onHuman?: (info: HumanAssistInfo) => void;
+      anchorsFor?: string;
     } = {},
   ): Promise<{
     title: string;
@@ -3755,6 +3774,7 @@ export class BrowserChassis {
     status: number;
     humanAssisted?: boolean;
     humanMs?: number;
+    anchors?: CitationAnchor[];
   }> {
     this.assertResearchCooldown(url);
     const sel = opts.selector ? JSON.stringify(opts.selector) : "'a[href]'";
@@ -3785,7 +3805,12 @@ export class BrowserChassis {
 
       // Give the human a chance to clear the challenge in the same session.
       const handoff = await this.attemptHumanHandoff(url, opts.onHuman);
-      if (handoff) return handoff;
+      if (handoff) {
+        return {
+          ...handoff,
+          anchors: opts.anchorsFor ? await this.captureAnchors(opts.anchorsFor) : undefined,
+        };
+      }
 
       const skip = this.handoffSkipReason ? ` — ${this.handoffSkipReason}` : '';
       this.markResearchCooldown(host, 'WAF/challenge page');
@@ -3795,7 +3820,13 @@ export class BrowserChassis {
       );
     }
 
-    return { title: r.result?.title || url, links: r.result?.links || [], markdown: r.after || '', status: r.status };
+    return {
+      title: r.result?.title || url,
+      links: r.result?.links || [],
+      markdown: r.after || '',
+      status: r.status,
+      anchors: opts.anchorsFor ? await this.captureAnchors(opts.anchorsFor) : undefined,
+    };
   }
 
   /** Depth/page-budgeted BFS crawl that indexes each page into Cortex (Feature 1). */

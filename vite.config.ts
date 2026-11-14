@@ -16,7 +16,7 @@ export default defineConfig({
           build: {
             outDir: 'dist-electron/main',
             rollupOptions: {
-              external: ['electron', '@modelcontextprotocol/sdk', 'turndown', '@mozilla/readability', 'jsdom', '@lancedb/lancedb'],
+              external: ['electron', '@modelcontextprotocol/sdk', 'turndown', '@mozilla/readability', 'jsdom', '@lancedb/lancedb', 'hypagon-scrap', 'hypagon-scrap-libxml2'],
             },
           },
         },

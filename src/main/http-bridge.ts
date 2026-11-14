@@ -1569,6 +1569,7 @@ export function startHttpBridge(
           selector: body?.selector,
           delayMs: body?.delay_ms ?? body?.delayMs,
           concurrency: body?.concurrency,
+          anchorsFor: body?.anchors_for ?? body?.anchorsFor,
         });
         sendJson({ success: true, ...outcome });
         return;

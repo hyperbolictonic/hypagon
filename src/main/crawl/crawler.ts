@@ -9,14 +9,15 @@
  * Politeness: same-origin by default, a per-page delay, a hard page budget, and `match_patterns`
  * for scoping. URLs are de-duplicated (fragments stripped).
  */
+import type { CitationAnchor } from '../research/anchors.js';
+
 export interface HumanAssistInfo {
   phase: 'needed' | 'done';
   url: string;
   reason?: string;
 }
 
-export interface CrawlOptions {
-  startUrl: string;
+export interface CrawlOptions {  startUrl: string;
   /** Link depth from the seed (default 2, max 5). Depth 0 = the seed only. */
   maxDepth?: number;
   /** Hard page budget (default 5, max 25). */
@@ -41,6 +42,8 @@ export interface CrawlOptions {
   includeContent?: number;
   /** Notified when a page needs a human (challenge/login) and when the human is done. */
   onHuman?: (info: HumanAssistInfo) => void;
+  /** When set, anchor matching text blocks to fingerprints for this query. */
+  anchorsFor?: string;
 }
 
 export interface CrawlPage {
@@ -56,6 +59,8 @@ export interface CrawlPage {
   humanAssisted?: boolean;
   /** Wall-clock time spent waiting for the human (included in `ms`). */
   humanMs?: number;
+  /** Citation anchors when `anchorsFor` was supplied. */
+  anchors?: CitationAnchor[];
   /** Wall-clock time spent on this page, including tier attempts. */
   ms?: number;
   /** Set when a cheaper tier was attempted and the page had to be rendered instead. */
@@ -81,7 +86,11 @@ export interface CrawlerDeps {
   /** Renders a page in a detached view and returns its Markdown + outgoing links. */
   renderPage: (
     url: string,
-    pageOpts: { selector?: string; onHuman?: (info: HumanAssistInfo) => void },
+    pageOpts: {
+      selector?: string;
+      onHuman?: (info: HumanAssistInfo) => void;
+      anchorsFor?: string;
+    },
   ) => Promise<{
     title: string;
     markdown: string;
@@ -89,13 +98,23 @@ export interface CrawlerDeps {
     status: number;
     humanAssisted?: boolean;
     humanMs?: number;
+    anchors?: CitationAnchor[];
   }>;
   /**
    * Cheap HTML fetch without a browser (impersonating client, then distilled to Markdown).
    * `ok: false` escalates to `renderPage`; the reason is reported to the caller.
    */
-  fetchStatic?: (url: string) => Promise<
-    | { ok: true; title: string; markdown: string; status: number }
+  fetchStatic?: (
+    url: string,
+    opts?: { anchorsFor?: string },
+  ) => Promise<
+    | {
+        ok: true;
+        title: string;
+        markdown: string;
+        status: number;
+        anchors?: CitationAnchor[];
+      }
     | { ok: false; reason: string; disabled?: boolean }
   >;
   /** Called before any page fetch; lets stealth mode enforce a domain cooldown. */
@@ -268,6 +287,7 @@ export class Crawler {
     let error: string | undefined;
     let humanAssisted = false;
     let humanMs = 0;
+    let anchors: CitationAnchor[] | undefined;
 
     try {
       await this.deps.beforePage?.(url);
@@ -301,11 +321,12 @@ export class Crawler {
     // Static impersonating fetch: Chrome-identical at the network layer, no browser.
     if (!usedCheap && opts.preferStatic !== false && this.deps.fetchStatic) {
       try {
-        const r = await this.deps.fetchStatic(url);
+        const r = await this.deps.fetchStatic(url, { anchorsFor: opts.anchorsFor });
         if (r.ok && r.markdown && r.markdown.trim().length > 0) {
           content = r.markdown;
           title = r.title;
           via = 'static';
+          anchors = r.anchors;
           usedCheap = true;
         } else if (!r.ok) {
           if (r.disabled) {
@@ -327,12 +348,17 @@ export class Crawler {
 
     if (!usedCheap) {
       try {
-        const r = await this.deps.renderPage(url, { selector: opts.selector, onHuman: opts.onHuman });
+        const r = await this.deps.renderPage(url, {
+          selector: opts.selector,
+          onHuman: opts.onHuman,
+          anchorsFor: opts.anchorsFor,
+        });
         title = r.title;
         content = r.markdown;
         links = r.links || [];
         humanAssisted = !!r.humanAssisted;
         humanMs = r.humanMs ?? 0;
+        anchors = r.anchors;
       } catch (err: any) {
         error = err?.message || String(err);
         notes.push(`render failed for ${url}: ${error}`);
@@ -370,6 +396,7 @@ export class Crawler {
         escalation,
         humanAssisted,
         humanMs,
+        anchors,
         ms: Date.now() - pageStarted,
         excerpt: opts.includeContent ? content.slice(0, opts.includeContent) : undefined,
       },
