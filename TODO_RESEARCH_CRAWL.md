@@ -159,3 +159,76 @@ Instead of dumping 50,000 tokens of raw text into the LLM context window right a
 | **Interface** | Visual badges (Set-of-Marks), Bézier clicks, telemetry | Schema.org JSON, Readability Markdown, Cortex RAG |
 | **Execution** | Step-by-step turn-based control with screenshots | Batch concurrent execution (3-10 pages in parallel) |
 | **Token Cost** | Medium (images + coordinates) | Ultra-low (distilled text + JSON-LD) |
+
+---
+
+## 7. Research Hardening (implemented 2026-11-14)
+
+### 7.1 Acquisition tiers and the escalation contract
+
+Every page now takes the cheapest usable tier:
+
+1. **`llm`** — content-negotiated Markdown/Text (site advertises it).
+2. **`static`** — impersonating `curl-impersonate` fetch (Chrome-identical TLS/H2, no browser).
+3. **`render`** — detached Chromium render.
+
+A tier change is never silent. `CrawlPage` / `ResearchSource` carry
+`escalation: { from, to: 'render', reason }`, `ResearchOutcome.escalations` counts them, a note is
+added for the agent, and `source-done` events include it. A missing tier (e.g. no vendored binary,
+disabled in settings) is reported as **`disabled`**, not an escalation.
+
+### 7.2 Human-in-the-loop (HIL)
+
+When the render tier detects a challenge (`403/429` or a WAF interstitial), the run pauses and the
+human clears it **in the research session** (`persist:hypagon-research`): the shared research view is
+temporarily attached to the window (there is no cookie replay into a static client). On resume:
+
+- the live page is re-checked (a still-blocked page is not accepted),
+- the page is harvested in place and the origin is marked **warm** (static tier skipped for it),
+- `humanAssisted` / `humanMs` are carried through the outcome and events.
+
+Safety: an **actionability probe** skips the hand-off for bare blocks with no CAPTCHA widget,
+credential/OTP field, form or verify control, and the WAF error includes the reason. The HIL toast
+(not the old in-page banner) offers RESUME / RELOAD / CANCEL; F5 and Ctrl/Cmd+R reload the
+hand-off view. `HYPAGON_HIL=0` disables, `HYPAGON_HIL_FORCE=1` overrides the probe.
+
+### 7.3 Citation anchors and revalidation
+
+`research_topic` / `deep_crawl` (with `anchors_for`) fingerprint the DOM blocks behind matching
+highlights:
+
+```json
+"anchors": [{ "text": "…", "score": 3, "path": "...", "fingerprint": { ... } }]
+```
+
+`relocate_citation({ url, fingerprint, threshold? })` (MCP research group, `POST /citation/relocate`)
+re-renders the URL and returns `{ found, score, path, text, candidates }`. Relocation requires both a
+structural score and a **text-similarity guard**, so a deleted paragraph is not replaced by a
+differently-shaped neighbour. Anchors are plain JSON and survive a database round-trip.
+
+### 7.4 Settings
+
+`preferStatic`, `humanInLoop`, `hilTimeoutSec` join the existing engine chain / proxy / cooldowns /
+prefer-llm / budgets. Research honours the configured engine chain (default
+`duckduckgo → brave → google`); a provider that returns a challenge sinks to the back for 10 minutes.
+
+### 7.5 Tests
+
+| Script | Covers |
+|---|---|
+| `npm run test:research:settings` | schema defaults/validation, challenge patterns |
+| `npm run test:research:events` | event lifecycle, escalations visible to the agent |
+| `npm run test:static-tier` | static fetch, challenge detection, escalation |
+| `npm run test:anchors` | fingerprint → JSON → redesign relocation, deletion guard |
+| `npm run test:relocate` | bridge-level anchor capture → redesign → relocate (SKIP if app down) |
+| `npm run test:research:all` | the unit/local suite above |
+
+### 7.6 Packaging
+
+`curl-impersonate` ships via `extraResources` (outside asar); `hypagon-scrap` is externalised in the
+main bundle and both parser packages are `asarUnpack`ed so the WASM loads from
+`app.asar.unpacked`. Verified in a packaged app: `via=static`, anchors captured.
+
+Caveats: the actionability heuristic is conservative (tune against real pages); warm origins and the
+engine cooldown are in-memory only; only win32-x64 has been executed.
+

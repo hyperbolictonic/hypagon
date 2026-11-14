@@ -3610,12 +3610,35 @@ export class BrowserChassis {
       throw this.researchError('BAD_REQUEST', 'relocate_citation needs a fingerprint object.');
     }
 
-    const rendered = await this.loadDetached<string>(
-      opts.url,
-      'document.documentElement.outerHTML',
-      { timeoutMs: 25_000, settleMs: 400 },
-    );
-    const html = typeof rendered.result === 'string' ? rendered.result : '';
+    let html = '';
+    let status = 0;
+    let via: 'static' | 'render' = 'render';
+
+    // Follow the same tier policy as research: cheap static first, render only as fallback.
+    if (this.researchSettings.preferStatic) {
+      try {
+        const outcome = await fetchStatic(opts.url);
+        if (outcome.kind === 'ok' && outcome.result.status < 400) {
+          html = outcome.result.body;
+          status = outcome.result.status;
+          via = 'static';
+        }
+      } catch {
+        /* fall through to render */
+      }
+    }
+
+    if (!html) {
+      const rendered = await this.loadDetached<string>(
+        opts.url,
+        'document.documentElement.outerHTML',
+        { timeoutMs: 25_000, settleMs: 400 },
+      );
+      html = typeof rendered.result === 'string' ? rendered.result : '';
+      status = rendered.status;
+      via = 'render';
+    }
+
     if (!html) {
       return {
         found: false,
@@ -3623,25 +3646,33 @@ export class BrowserChassis {
         path: null,
         text: null,
         candidates: [],
+        via,
         error: 'could not read the page',
       };
     }
-    if (looksLikeChallenge(rendered.status, html.slice(0, 4000))) {
+
+    // Judge the challenge on visible text: raw HTML contains scripts/meta that can trip a marker.
+    const visible = html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 4000);
+    if (looksLikeChallenge(status, visible)) {
       return {
         found: false,
         score: null,
         path: null,
         text: null,
         candidates: [],
+        via,
         error: 'challenge page',
       };
     }
 
-    return await relocateCitation(
-      html,
-      opts.fingerprint as any,
-      opts.threshold ?? 40,
-    );
+    const result = await relocateCitation(html, opts.fingerprint as any, opts.threshold ?? 40);
+    return { ...result, via };
   }
 
   /**

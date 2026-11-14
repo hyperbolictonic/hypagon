@@ -33,6 +33,8 @@ export interface CitationRelocation {
   path: string | null;
   text: string | null;
   candidates: CitationCandidate[];
+  /** Which tier produced the HTML. */
+  via?: 'static' | 'render';
   error?: string;
 }
 
