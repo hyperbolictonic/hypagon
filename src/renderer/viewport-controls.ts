@@ -73,10 +73,14 @@ export function initViewportControls(): void {
   const populatePresets = (): void => {
     const previous = presetSelect.value;
     presetSelect.replaceChildren();
-    const auto = document.createElement('option');
-    auto.value = '';
-    auto.textContent = 'Custom / fit';
-    presetSelect.appendChild(auto);
+    const off = document.createElement('option');
+    off.value = '__off__';
+    off.textContent = 'Off — full browser area';
+    presetSelect.appendChild(off);
+    const custom = document.createElement('option');
+    custom.value = '';
+    custom.textContent = 'Custom size';
+    presetSelect.appendChild(custom);
     for (const group of [
       { label: 'Devices', list: profiles.filter((profile) => profile.builtin) },
       { label: 'Saved', list: profiles.filter((profile) => !profile.builtin) },
@@ -109,6 +113,12 @@ export function initViewportControls(): void {
         ? `Emulated viewport, fit at ${Math.round(state.scale * 100)}% of the browsing area`
         : 'Full browser area';
     }
+    for (const button of [fitButton, fitDetailButton]) {
+      if (!button) continue;
+      button.textContent = state.active ? 'OFF' : 'FIT';
+      button.disabled = !state.active;
+      button.title = state.active ? 'Switch off device emulation' : 'No device emulation is active';
+    }
     if (state.active && spec) {
       if (widthInput) widthInput.value = String(spec.width);
       if (heightInput) heightInput.value = String(spec.height);
@@ -125,7 +135,11 @@ export function initViewportControls(): void {
     suppress = false;
 
     populatePresets();
-    presetSelect.value = spec && profiles.some((profile) => profile.id === spec.profileId) ? spec.profileId : '';
+    presetSelect.value = !state.active
+      ? '__off__'
+      : spec && profiles.some((profile) => profile.id === spec.profileId)
+        ? spec.profileId
+        : '';
     renderProfiles();
   };
 
@@ -165,7 +179,13 @@ export function initViewportControls(): void {
   };
 
   presetSelect.addEventListener('change', () => {
-    if (!suppress) void applyPreset(presetSelect.value);
+    if (suppress) return;
+    if (presetSelect.value === '__off__') {
+      void api?.resetViewport().then(applyState);
+      return;
+    }
+    if (!presetSelect.value) return;
+    void applyPreset(presetSelect.value);
   });
   for (const input of [widthInput, heightInput, dprInput]) {
     input?.addEventListener('change', () => void applyCustom());
