@@ -1636,6 +1636,32 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
     },
   },
   {
+    name: 'relocate_citation',
+    description:
+      'Revalidates a citation anchor captured by research_topic/deep_crawl (`source.anchors[].fingerprint`). Renders the URL, relocates the fingerprint, and returns whether it was found, the match score, the current path/text and the top candidates. Use this before trusting a saved quote after a site redesign.',
+    parameters: {
+      url: z.string().describe('URL to re-check'),
+      fingerprint: z.any().describe('The fingerprint object saved from source.anchors[].fingerprint'),
+      threshold: z.coerce.number().optional().default(40).describe('Minimum score 0-100 (default 40)'),
+    },
+    endpoint: '/citation/relocate',
+    payload: (args) => ({
+      url: args?.url,
+      fingerprint: args?.fingerprint,
+      threshold: args?.threshold,
+    }),
+    format: (data) => {
+      if (!data.found) {
+        const best =
+          Array.isArray(data.candidates) && data.candidates[0]
+            ? ` — best candidate ${data.candidates[0].score}%`
+            : '';
+        return `### Citation not found${data.error ? ` — ${data.error}` : best}`;
+      }
+      return `### Citation found (${data.score}%)\n- ${data.path}\n\n${data.text}`;
+    },
+  },
+  {
     name: 'collect_all',
     description:
       'Scroll a virtualized/lazy list to the bottom and collect every distinct row (deduped by text+href) in ONE call. The abstraction that replaces a manual scroll-and-harvest sweep. ' +
@@ -2066,6 +2092,7 @@ export const DEFAULT_TOOL_ORDER: string[] = [
   'llm_fetch',
   'deep_crawl',
   'research_topic',
+  'relocate_citation',
   'prerender_links',
   'get_network_traffic',
   'query_json_data',

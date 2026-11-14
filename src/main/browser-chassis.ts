@@ -86,7 +86,7 @@ import { PrerenderEngine, type PrerenderOptions } from './prerender/prerender-en
 import { LlmSurface, type LlmSurfaceReport, type LlmSurfaceKind, type LlmFetchResult, type ReadUrlResult } from './llm/llm-surface.js';
 import { SearchHub, type SearchOutcome } from './search/search-engine.js';
 import { Crawler, type CrawlOptions, type CrawlOutcome, type HumanAssistInfo } from './crawl/crawler.js';
-import { anchorHighlights, type CitationAnchor } from './research/anchors.js';
+import { anchorHighlights, relocateCitation, type CitationAnchor, type CitationRelocation } from './research/anchors.js';
 import { MenuPopup } from './ui/menu-popup.js';
 import { Researcher, type ResearchOptions, type ResearchOutcome } from './research/researcher.js';
 
@@ -3595,6 +3595,53 @@ export class BrowserChassis {
       this.addLog('warn', `Citation anchoring failed: ${err?.message || err}`);
       return [];
     }
+  }
+
+  /** Revalidate a stored citation anchor against the page's current markup. */
+  public async relocateCitation(opts: {
+    url: string;
+    fingerprint: unknown;
+    threshold?: number;
+  }): Promise<CitationRelocation> {
+    if (!opts?.url || typeof opts.url !== 'string') {
+      throw this.researchError('BAD_REQUEST', 'relocate_citation needs a url.');
+    }
+    if (!opts.fingerprint || typeof opts.fingerprint !== 'object') {
+      throw this.researchError('BAD_REQUEST', 'relocate_citation needs a fingerprint object.');
+    }
+
+    const rendered = await this.loadDetached<string>(
+      opts.url,
+      'document.documentElement.outerHTML',
+      { timeoutMs: 25_000, settleMs: 400 },
+    );
+    const html = typeof rendered.result === 'string' ? rendered.result : '';
+    if (!html) {
+      return {
+        found: false,
+        score: null,
+        path: null,
+        text: null,
+        candidates: [],
+        error: 'could not read the page',
+      };
+    }
+    if (looksLikeChallenge(rendered.status, html.slice(0, 4000))) {
+      return {
+        found: false,
+        score: null,
+        path: null,
+        text: null,
+        candidates: [],
+        error: 'challenge page',
+      };
+    }
+
+    return await relocateCitation(
+      html,
+      opts.fingerprint as any,
+      opts.threshold ?? 40,
+    );
   }
 
   /**

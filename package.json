@@ -29,6 +29,7 @@
     "test:wrap:live": "node scripts/test-wrap-live.mjs",
     "test:research:settings": "node --test scripts/test-research-settings.mjs",
     "test:anchors": "node scripts/test-relocation-anchors.mjs",
+    "test:relocate": "node scripts/test-citation-relocate.mjs",
     "test:crawl:pool": "node --test scripts/test-crawl-pool.mjs",
     "typecheck:recipe": "tsc -p packages/recipe/tsconfig.json",
     "typecheck:mcp-http": "tsc -p packages/mcp-http/tsconfig.json",

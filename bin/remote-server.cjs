@@ -41394,6 +41394,31 @@ ${body}${notes}`;
     }
   },
   {
+    name: "relocate_citation",
+    description: "Revalidates a citation anchor captured by research_topic/deep_crawl (`source.anchors[].fingerprint`). Renders the URL, relocates the fingerprint, and returns whether it was found, the match score, the current path/text and the top candidates. Use this before trusting a saved quote after a site redesign.",
+    parameters: {
+      url: external_exports.string().describe("URL to re-check"),
+      fingerprint: external_exports.any().describe("The fingerprint object saved from source.anchors[].fingerprint"),
+      threshold: external_exports.coerce.number().optional().default(40).describe("Minimum score 0-100 (default 40)")
+    },
+    endpoint: "/citation/relocate",
+    payload: (args) => ({
+      url: args?.url,
+      fingerprint: args?.fingerprint,
+      threshold: args?.threshold
+    }),
+    format: (data) => {
+      if (!data.found) {
+        const best = Array.isArray(data.candidates) && data.candidates[0] ? ` \u2014 best candidate ${data.candidates[0].score}%` : "";
+        return `### Citation not found${data.error ? ` \u2014 ${data.error}` : best}`;
+      }
+      return `### Citation found (${data.score}%)
+- ${data.path}
+
+${data.text}`;
+    }
+  },
+  {
     name: "collect_all",
     description: 'Scroll a virtualized/lazy list to the bottom and collect every distinct row (deduped by text+href) in ONE call. The abstraction that replaces a manual scroll-and-harvest sweep. Auto-detects the repeating item container; use selector/ref to scope it and scroll="window" for page-level infinite scroll.',
     parameters: {
@@ -41781,6 +41806,7 @@ var DEFAULT_TOOL_ORDER = [
   "llm_fetch",
   "deep_crawl",
   "research_topic",
+  "relocate_citation",
   "prerender_links",
   "get_network_traffic",
   "query_json_data",
@@ -42007,6 +42033,7 @@ var TOOL_GROUPS = [
       { action: "fetch", tool: "llm_fetch", description: "Fetch the advertised surface." },
       { action: "crawl", tool: "deep_crawl", description: "Breadth-first crawl." },
       { action: "topic", tool: "research_topic", description: "Search, gather and cite sources." },
+      { action: "relocate", tool: "relocate_citation", description: "Revalidate a saved citation anchor after a redesign." },
       { action: "prerender", tool: "prerender_links", description: "Pre-render candidate links." }
     ]
   },

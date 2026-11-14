@@ -5,7 +5,7 @@
  * points at nothing. Anchoring finds the DOM block that produced each highlight and stores its
  * fingerprint, so a later run can relocate it (`Page.relocate`) and report a score.
  */
-import { Page } from 'hypagon-scrap';
+import { Page, ratio, similarityScore } from 'hypagon-scrap';
 import type { Fingerprint } from 'hypagon-scrap';
 
 export interface CitationAnchor {
@@ -18,6 +18,102 @@ export interface CitationAnchor {
   /** Plain-JSON fingerprint; survives a database round-trip. */
   fingerprint: Fingerprint;
 }
+
+export interface CitationCandidate {
+  score: number;
+  /** Similarity of the candidate's own text to the anchored text (0-1). */
+  textScore: number;
+  path: string;
+  text: string;
+}
+
+export interface CitationRelocation {
+  found: boolean;
+  score: number | null;
+  path: string | null;
+  text: string | null;
+  candidates: CitationCandidate[];
+  error?: string;
+}
+
+/**
+ * Revalidate a stored anchor against fresh HTML.
+ *
+ * Mirrors `Page.relocate` (descendants only, rounded scores) but returns the ranked candidates so
+ * the caller can see a near-miss after a redesign instead of a bare false.
+ */
+export async function relocateCitation(
+  html: string,
+  fingerprint: Fingerprint,
+  threshold = 40,
+  maxCandidates = 3,
+  minTextScore = 0.5,
+): Promise<CitationRelocation> {
+  if (!html) {
+    return { found: false, score: null, path: null, text: null, candidates: [], error: 'empty document' };
+  }
+
+  let page;
+  try {
+    page = await Page.load(html);
+  } catch (err: any) {
+    return {
+      found: false,
+      score: null,
+      path: null,
+      text: null,
+      candidates: [],
+      error: `parse failed: ${err?.message || err}`,
+    };
+  }
+
+  try {
+    const index = page.index;
+    const anchoredText =
+      typeof fingerprint.text === 'string' && fingerprint.text.trim().length >= 20
+        ? fingerprint.text.replace(/\s+/g, ' ').trim()
+        : '';
+
+    const scored: Array<{ i: number; score: number; textScore: number }> = [];
+    for (let i = 1; i < index.size; i++) {
+      const node = index.node(i);
+      const own = (node.ownText || node.text).replace(/\s+/g, ' ').trim();
+      scored.push({
+        i,
+        score: similarityScore(index, fingerprint, i),
+        textScore: anchoredText ? ratio(anchoredText, own) : 1,
+      });
+    }
+    scored.sort((a, b) => b.score - a.score);
+
+    const candidates = scored.slice(0, maxCandidates).map(({ i, score, textScore }) => ({
+      score,
+      textScore,
+      path: index.node(i).path,
+      text: index.node(i).text.replace(/\s+/g, ' ').trim().slice(0, 320),
+    }));
+
+    // Structural similarity alone can point at a different paragraph after a deletion; require
+    // the anchored text to still resemble the candidate when we have enough text to judge.
+    const matches = scored.filter(
+      (entry) => entry.score >= threshold && (!anchoredText || entry.textScore >= minTextScore),
+    );
+    const top = matches[0];
+    const found = Boolean(top);
+    const topNode = found ? index.node(top.i) : null;
+
+    return {
+      found,
+      score: found ? top.score : (scored[0]?.score ?? null),
+      path: topNode ? topNode.path : null,
+      text: topNode ? topNode.text.replace(/\s+/g, ' ').trim().slice(0, 320) : null,
+      candidates,
+    };
+  } finally {
+    page.dispose();
+  }
+}
+
 
 const BLOCK_XPATH = '//p | //li | //h2 | //h3 | //h4 | //blockquote | //td';
 const MAX_HTML_BYTES = 2_000_000;

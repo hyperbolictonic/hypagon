@@ -1591,6 +1591,17 @@ export function startHttpBridge(
         return;
       }
 
+      if (req.method === 'POST' && pathname === '/citation/relocate') {
+        const body = await readBody();
+        const result = await chassis.relocateCitation({
+          url: body?.url,
+          fingerprint: body?.fingerprint,
+          threshold: body?.threshold,
+        });
+        sendJson({ success: true, ...result });
+        return;
+      }
+
       if (req.method === 'POST' && pathname === '/collect') {
         const body = await readBody();
         const data = await chassis.getPrimitives().collectAll({
