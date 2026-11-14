@@ -10,7 +10,7 @@
 > — **Dade Murphy (AKA Crash Override)**, Circa 1995
 
 <p align="center">
-  <img alt="version" src="https://img.shields.io/badge/version-2.3.0-22d3ee" />
+  <img alt="version" src="https://img.shields.io/badge/version-2.3.1-22d3ee" />
   <img alt="tools" src="https://img.shields.io/badge/MCP%20tools-16%20%2B2%20optional-a3e635" />
   <img alt="resources" src="https://img.shields.io/badge/MCP%20resources-7-f472b6" />
   <img alt="license" src="https://img.shields.io/badge/license-MIT-blue" />
@@ -861,12 +861,14 @@ Type-check and bundles: `npx tsc --noEmit`, `npm run build`, `npm run build:mcp`
 ## 📦 Release notes
 
 > [!NOTE]
-> **What's new in 2.3.0** - **Sign-ins work, so authenticated sites are testable.**
-> OAuth/SAML sign-in popups (Google, Microsoft and friends) now stay attached to the page that
-> opened them: they return control when finished, close themselves, and hand focus back to your
-> tab. That makes it possible to sign in once and then browse or drive pages that require a
-> session. Ordinary links still open as managed tabs, and display-scale page zoom plus automatic
-> renderer recovery from 2.2.0 are unchanged.
+> **What's new in 2.3.1** - **Research that escalates honestly, cites what it saw, and asks when
+> blocked.**
+> `research_topic` and `deep_crawl` now walk three acquisition tiers — content-negotiated
+> Markdown, a static Chrome-impersonating fetch, then a rendered page — and report every
+> escalation instead of hiding it. When a challenge blocks a page, the app can hand the real page
+> to you to clear, then resume the crawl. Highlights carry durable citation anchors that survive
+> a redesign and can be re-checked with `relocate_citation` / `revalidate_citations`. A new
+> full-screen research workspace shows tiers, bytes, timing, anchors and a live terminal.
 > Earlier releases are in [CHANGELOG.md](./CHANGELOG.md).
 
 ---

@@ -230,7 +230,8 @@ export function initResearchPanel(): void {
     }, 100);
   };
 
-  const rowFor = (key: string, rank: string, url: string, title: string): Row => {    const existing = rows.get(key);
+  const rowFor = (key: string, rank: string, url: string, title: string): Row => {
+    const existing = rows.get(key);
     if (existing) return existing;
 
     emptyEl?.classList.add('hidden');

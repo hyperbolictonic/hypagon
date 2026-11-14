@@ -82,31 +82,37 @@ try {
   const anchor = anchors.find((a) => /Heatshiver/.test(a.text));
   check('anchor points at the gear paragraph', Boolean(anchor), anchors.map((a) => a.text.slice(0, 40)));
 
-  // 2. Relocate after the redesign.
-  const changed = await post('/citation/relocate', {
-    url: `${origin}/changed`,
-    fingerprint: anchor.fingerprint,
-  });
-  check('relocation succeeds after a redesign', changed.found === true, changed);
-  check('relocation score clears the default threshold', (changed.score ?? 0) >= 40, changed.score);
-  check('relocated text is the gear paragraph', /Heatshiver/.test(changed.text || ''), changed.text?.slice(0, 60));
-  check('relocated path is on the new branch', /layout|article/.test(changed.path || ''), changed.path);
+  if (anchor) {
+    // 2. Relocate after the redesign.
+    const changed = await post('/citation/relocate', {
+      url: `${origin}/changed`,
+      fingerprint: anchor.fingerprint,
+    });
+    check('relocation succeeds after a redesign', changed.found === true, changed);
+    check('relocation score clears the default threshold', (changed.score ?? 0) >= 40, changed.score);
+    check('relocated text is the gear paragraph', /Heatshiver/.test(changed.text || ''), changed.text?.slice(0, 60));
+    check('relocated path is on the new branch', /layout|article/.test(changed.path || ''), changed.path);
 
-  // 3. A stricter threshold rejects the drift.
-  const strict = await post('/citation/relocate', {
-    url: `${origin}/changed`,
-    fingerprint: anchor.fingerprint,
-    threshold: 95,
-  });
-  check('high threshold rejects the drifted block', strict.found === false, strict.score);
+    // 3. A stricter threshold rejects the drift.
+    const strict = await post('/citation/relocate', {
+      url: `${origin}/changed`,
+      fingerprint: anchor.fingerprint,
+      threshold: 95,
+    });
+    check('high threshold rejects the drifted block', strict.found === false, strict.score);
 
-  // 4. A deleted block is not resurrected.
-  const deleted = await post('/citation/relocate', {
-    url: `${origin}/deleted`,
-    fingerprint: anchor.fingerprint,
-  });
-  check('deleted citation reports not found', deleted.found === false, deleted);
-  check('not-found response still ranks candidates', Array.isArray(deleted.candidates) && deleted.candidates.length > 0, deleted.candidates?.length);
+    // 4. A deleted block is not resurrected.
+    const deleted = await post('/citation/relocate', {
+      url: `${origin}/deleted`,
+      fingerprint: anchor.fingerprint,
+    });
+    check('deleted citation reports not found', deleted.found === false, deleted);
+    check('not-found response still ranks candidates', Array.isArray(deleted.candidates) && deleted.candidates.length > 0, deleted.candidates?.length);
+  } else {
+    // The bridge is up but produced no anchor (normally an older running build). Report it as a
+    // failure instead of crashing on `anchor.fingerprint`.
+    console.log('SKIP relocation checks: the running bridge returned no anchors.');
+  }
 
   // 5. Anchors from the crawl are stored and can be revalidated wholesale.
   const revalidated = await post('/citation/revalidate', { url: `${origin}/original` });

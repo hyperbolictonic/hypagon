@@ -17,7 +17,8 @@ export interface HumanAssistInfo {
   reason?: string;
 }
 
-export interface CrawlOptions {  startUrl: string;
+export interface CrawlOptions {
+  startUrl: string;
   /** Link depth from the seed (default 2, max 5). Depth 0 = the seed only. */
   maxDepth?: number;
   /** Hard page budget (default 5, max 25). */

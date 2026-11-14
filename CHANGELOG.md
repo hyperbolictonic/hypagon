@@ -16,6 +16,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > therefore reports `1.4.2` in `/health`. This is a deliberate, temporary deviation from strict semver; each
 > increment still gets its own Added/Fixed/Changed section here.
 
+## [2.3.1] - 2026-11-14
+
+### Added
+
+- **Tiered research acquisition.** `research_topic` and `deep_crawl` now try content-negotiated
+  `llm` → a static, Chrome-impersonating fetch (`hypagon-scrap`, pinned curl-impersonate v2.3.2
+  with a Chrome-identical JA4) → a rendered Chromium page. Every tier switch is carried on the
+  source (`escalation`) and emitted as an event, so a fallback render is never mistaken for the
+  cheap path. An unavailable tier is not reported as an escalation.
+- **Human-in-the-loop for challenges.** A blocked page opens in the shared
+  `persist:hypagon-research` session with RELOAD / RESUME / CANCEL and an actionability probe.
+  Bare 403s and hard blocks with no controls are skipped instead of interrupting the run, and a
+  solved challenge that still shows the WAF is not accepted. `humanAssisted` / `humanMs` flow
+  back into the result.
+- **Durable citation anchors.** Matching blocks are fingerprinted (structural score plus a
+  text-similarity guard), stored in `<userData>/research-anchors.json` (atomic, capped at 2000
+  records) and returned with each source. Two new tools re-check saved quotes:
+  `relocate_citation` (one anchor, ranked candidates) and `revalidate_citations` (bulk health
+  check).
+- **Research workspace.** A full-screen dashboard with a per-source table (tier, size, time,
+  anchors, status), stats strip, terminal log, font zoom, per-source **CHECK CITATION** and
+  **CHECK SAVED** for stored anchors.
+- **Packaging guard.** `afterPack` now verifies the pinned curl-impersonate binary and the
+  libxml2 WASM parser, so a build cannot silently ship render-only.
+- **Search resilience.** The default engine chain is DuckDuckGo → Brave → Google. A provider's
+  challenge or consent page (including `google./sorry` and `consent.` hosts) is never accepted as
+  results or sources, and an engine that recently challenged sinks to the back of the queue for
+  ten minutes.
+
+### Changed
+
+- The research partition is renamed to `persist:hypagon-research`; existing research cookies are
+  migrated once from `persist:kuang-research`.
+- A challenge now stops `deep_crawl` even when research mode is disabled, so an interstitial can
+  no longer be harvested and indexed as if it were the page.
+
+### Fixed
+
+- Research honors the configured engine chain and custom search template instead of falling back
+  to the search hub's default.
+- Human hand-off and citation anchoring hold the shared detached-view queue for their whole
+  duration, so a concurrent search or crawl cannot navigate away the challenge page or anchor the
+  wrong document.
+- `revalidate_citations` is bounded to 25 URLs per call, and relocation parses at most four
+  anchors at a time, so a large anchor store cannot exhaust memory or pin the bridge for hours.
+
 ## [2.3.0] - 2026-11-10
 
 ### Fixed

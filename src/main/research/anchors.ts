@@ -122,7 +122,15 @@ export async function relocateCitations(
   fingerprints: Fingerprint[],
   threshold = 40,
 ): Promise<CitationRelocation[]> {
-  return Promise.all(fingerprints.map((fingerprint) => relocateCitation(html, fingerprint, threshold)));
+  // Parsing the same document once per anchor is CPU- and memory-heavy. Keep the batch small so
+  // a URL with many stored anchors cannot fork dozens of full DOM indexes at once.
+  const BATCH = 4;
+  const results: CitationRelocation[] = [];
+  for (let i = 0; i < fingerprints.length; i += BATCH) {
+    const batch = fingerprints.slice(i, i + BATCH);
+    results.push(...(await Promise.all(batch.map((fingerprint) => relocateCitation(html, fingerprint, threshold)))));
+  }
+  return results;
 }
 
 const BLOCK_XPATH = '//p | //li | //h2 | //h3 | //h4 | //blockquote | //td';

@@ -3339,6 +3339,21 @@ export class BrowserChassis {
    * result of `script`. Used for reading advertised Markdown/Text alternates and for `search_web`
    * SERPs — without hijacking the active tab. Optionally waits for `readyScript` to become truthy.
    */
+  /**
+   * Run a task that reads or drives the shared off-screen research view.
+   *
+   * `loadDetached` already serializes its own work; this extends the same queue to the human
+   * hand-off and anchor capture, which otherwise let a concurrent detached read steal the view.
+   */
+  private async withUtilView<T>(task: () => Promise<T>): Promise<T> {
+    const p = this.utilQueue.then(task, task);
+    this.utilQueue = p.then(
+      () => undefined,
+      () => undefined,
+    );
+    return await p;
+  }
+
   private async loadDetached<T = any>(
     url: string,
     script: string,
@@ -3602,21 +3617,6 @@ export class BrowserChassis {
   }
 
   /** Parse the live rendered page and fingerprint the blocks behind matching highlights. */
-  private async captureAnchors(url: string, query: string): Promise<CitationAnchor[]> {
-    try {
-      const wc = this.getUtilView().webContents;
-      if (wc.isDestroyed()) return [];
-      const html = await wc.executeJavaScript('document.documentElement.outerHTML');
-      if (typeof html !== 'string' || !html) return [];
-      const anchors = await anchorHighlights(html, query);
-      if (anchors.length) this.anchorStore.upsert(url, anchors);
-      return anchors;
-    } catch (err: any) {
-      this.addLog('warn', `Citation anchoring failed: ${err?.message || err}`);
-      return [];
-    }
-  }
-
   /** Revalidate a stored citation anchor against the page's current markup. */
   /** Fetch a URL for citation work, following the research tier policy. */
   private async fetchCitationHtml(url: string): Promise<{
@@ -3710,7 +3710,9 @@ export class BrowserChassis {
   }> {
     const urls = opts.url
       ? [opts.url]
-      : this.anchorStore.urls().slice(0, Math.max(1, opts.maxUrls ?? 5));
+      // Each URL is fetched sequentially with a 25s limit. Keep a single call bounded so an agent
+      // cannot pin the bridge for hours by asking for every stored URL at once.
+      : this.anchorStore.urls().slice(0, Math.min(25, Math.max(1, Number(opts.maxUrls) || 5)));
 
     let checked = 0;
     let found = 0;
@@ -3752,6 +3754,7 @@ export class BrowserChassis {
   private async attemptHumanHandoff(
     url: string,
     onHuman?: (info: HumanAssistInfo) => void,
+    anchorsFor?: string,
   ): Promise<{
     title: string;
     markdown: string;
@@ -3759,6 +3762,25 @@ export class BrowserChassis {
     status: number;
     humanAssisted?: boolean;
     humanMs?: number;
+    anchors?: CitationAnchor[];
+  } | null> {
+    // The util view is shared with every detached read. Hold its queue for the whole hand-off so a
+    // concurrent search/crawl cannot navigate the challenge out from under the human.
+    return this.withUtilView(() => this.attemptHumanHandoffExclusive(url, onHuman, anchorsFor));
+  }
+
+  private async attemptHumanHandoffExclusive(
+    url: string,
+    onHuman?: (info: HumanAssistInfo) => void,
+    anchorsFor?: string,
+  ): Promise<{
+    title: string;
+    markdown: string;
+    links: string[];
+    status: number;
+    humanAssisted?: boolean;
+    humanMs?: number;
+    anchors?: CitationAnchor[];
   } | null> {
     const win = this.mainWindow;
     if (!win || win.isDestroyed()) return null;
@@ -3774,6 +3796,16 @@ export class BrowserChassis {
     let humanMs = 0;
 
     try {
+      // A queued detached read can run between the failed render and this hand-off. Reload the
+      // challenged URL when the view no longer shows it, so the human never solves another page.
+      if (wc.getURL() !== url) {
+        try {
+          await wc.loadURL(url);
+        } catch {
+          /* probe whatever committed */
+        }
+      }
+
       const probe = await this.probeHumanActionable(wc);
       if (!probe.actionable && process.env.HYPAGON_HIL_FORCE !== '1') {
         this.handoffSkipReason = probe.why;
@@ -3864,6 +3896,21 @@ export class BrowserChassis {
         waitUntilIdleMs: 400,
       });
 
+      // Anchors are read from the live view here, before the queue is released, so they always
+      // describe the document the human actually cleared.
+      let anchors: CitationAnchor[] | undefined;
+      if (anchorsFor) {
+        try {
+          const html = await wc.executeJavaScript('document.documentElement.outerHTML');
+          if (typeof html === 'string' && html) {
+            anchors = await anchorHighlights(html, anchorsFor);
+            if (anchors.length) this.anchorStore.upsert(url, anchors);
+          }
+        } catch (err: any) {
+          this.addLog('warn', `Citation anchoring failed after hand-off: ${err?.message || err}`);
+        }
+      }
+
       try {
         this.warmOrigins.add(new URL(url).origin);
       } catch {
@@ -3879,6 +3926,7 @@ export class BrowserChassis {
         status: 200,
         humanAssisted: true,
         humanMs,
+        anchors,
       };
     } catch (err: any) {
       this.addLog('warn', `Human hand-off failed for ${url}: ${err?.message || err}`);
@@ -3934,13 +3982,27 @@ export class BrowserChassis {
     })()`;
     const r = await this.loadDetached<{ title: string; links: string[] }>(url, script, {
       timeoutMs: 25000,
-      after: async (wc) =>
-        (await RenderedSnapshotEngine.capture(wc, { format: 'markdown', waitUntilIdleMs: opts.waitUntilIdleMs ?? 400 })).content,
+      after: async (wc) => {
+        const markdown = (
+          await RenderedSnapshotEngine.capture(wc, { format: 'markdown', waitUntilIdleMs: opts.waitUntilIdleMs ?? 400 })
+        ).content;
+        // Read the document in the same queued slot as the render. Capturing it later would race
+        // another detached read and could anchor the wrong page.
+        const html = opts.anchorsFor
+          ? await wc.executeJavaScript('document.documentElement.outerHTML').catch(() => '')
+          : '';
+        return { markdown, html };
+      },
     });
+    const rendered =
+      r.after && typeof r.after === 'object'
+        ? (r.after as { markdown?: string; html?: string })
+        : { markdown: typeof r.after === 'string' ? r.after : '', html: '' };
+    const markdown = rendered.markdown || '';
 
     // A challenge must always stop the pipeline — otherwise the interstitial is returned and
     // indexed as if it were the page. Human hand-off is attempted before failing.
-    if (looksLikeChallenge(r.status, r.after || '')) {
+    if (looksLikeChallenge(r.status, markdown)) {
       let host = '';
       try {
         host = new URL(url).hostname;
@@ -3949,13 +4011,8 @@ export class BrowserChassis {
       }
 
       // Give the human a chance to clear the challenge in the same session.
-      const handoff = await this.attemptHumanHandoff(url, opts.onHuman);
-      if (handoff) {
-        return {
-          ...handoff,
-          anchors: opts.anchorsFor ? await this.captureAnchors(url, opts.anchorsFor) : undefined,
-        };
-      }
+      const handoff = await this.attemptHumanHandoff(url, opts.onHuman, opts.anchorsFor);
+      if (handoff) return handoff;
 
       const skip = this.handoffSkipReason ? ` — ${this.handoffSkipReason}` : '';
       this.markResearchCooldown(host, 'WAF/challenge page');
@@ -3965,12 +4022,18 @@ export class BrowserChassis {
       );
     }
 
+    let anchors: CitationAnchor[] | undefined;
+    if (opts.anchorsFor && rendered.html) {
+      anchors = await anchorHighlights(rendered.html, opts.anchorsFor);
+      if (anchors.length) this.anchorStore.upsert(url, anchors);
+    }
+
     return {
       title: r.result?.title || url,
       links: r.result?.links || [],
-      markdown: r.after || '',
+      markdown,
       status: r.status,
-      anchors: opts.anchorsFor ? await this.captureAnchors(url, opts.anchorsFor) : undefined,
+      anchors,
     };
   }
 
