@@ -206,6 +206,11 @@ re-renders the URL and returns `{ found, score, path, text, candidates }`. Reloc
 structural score and a **text-similarity guard**, so a deleted paragraph is not replaced by a
 differently-shaped neighbour. Anchors are plain JSON and survive a database round-trip.
 
+Anchors are also persisted to `<userData>/research-anchors.json` (URL + text key, capped at 2000,
+atomic writes) whenever a static or render capture produces them. `revalidate_citations`
+(`POST /citation/revalidate`, and **CHECK SAVED** in the workspace) re-checks the stored anchors in
+bulk — one fetch per URL — and records `lastFound` / `lastScore`.
+
 ### 7.4 Settings
 
 `preferStatic`, `humanInLoop`, `hilTimeoutSec` join the existing engine chain / proxy / cooldowns /
@@ -220,6 +225,7 @@ prefer-llm / budgets. Research honours the configured engine chain (default
 | `npm run test:research:events` | event lifecycle, escalations visible to the agent |
 | `npm run test:static-tier` | static fetch, challenge detection, escalation |
 | `npm run test:anchors` | fingerprint → JSON → redesign relocation, deletion guard |
+| `npm run test:anchor-store` | persistence, URL+text dedupe, last-check stats |
 | `npm run test:relocate` | bridge-level anchor capture → redesign → relocate (SKIP if app down) |
 | `npm run test:research:all` | the unit/local suite above |
 
