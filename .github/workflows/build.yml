@@ -77,6 +77,12 @@ jobs:
       - name: MCP contract test (offline)
         run: node scripts/test-mcp-contract.mjs
 
+      # `pnpm build` fetches the pinned curl-impersonate build for this runner. These tests cover
+      # the parser, the static tier against a local server, anchors and the anchor store on every
+      # platform. The bridge-level relocation test skips itself when no app is running.
+      - name: Research tests (parser, static tier, citations)
+        run: pnpm run test:research:all
+
       - name: Navigation error tests
         run: npm run test:navigation
 

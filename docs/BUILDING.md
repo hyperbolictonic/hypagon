@@ -141,6 +141,11 @@ Notes:
 - **The prune step must run *before* electron-builder.** electron-builder captures its dependency file
   tree early, so a `beforePack` hook is too late. `afterPack` then runs
   `scripts/verify-pack.cjs` for every platform; a missing runtime fails the build instead of shipping.
+- **`pnpm build` fetches the pinned curl-impersonate binary first.** The fetch is written as an explicit
+  step rather than a `prebuild` hook so it does not depend on pre/post-script semantics (pnpm 11 runs
+  them; older or differently configured installations may not). `verify-pack.cjs` also asserts the
+  platform binary (`resources/curl-impersonate/<platform>-<arch>/`) and the libxml2 `hx.mjs` /
+  `hx.wasm` are in the package — otherwise the build would silently ship a render-only app.
 - `electron-builder.json#files` also excludes `node_modules/@lancedb/lancedb/node_modules/**` (a
   duplicate optional embedding tree electron-builder re-adds) and `**/.cache/**` (models downloaded
   on the build machine). Without those exclusions the Windows payload carries ~184 MB of dead code.
@@ -148,7 +153,9 @@ Notes:
   (version, sha512, size, blockmap).
 - Builds are slow (~8–12 min each); caching pnpm + Electron helps.
 - Optional: a `lint`/`test` job first; the live MCP suites need the Electron app, so CI can only run the
-  offline ones (`test:mcp:contract`, `test:harvest` offline parts, `tsc`).
+  offline ones (`test:mcp:contract`, `test:harvest` offline parts, `tsc`). The build job does run
+  `test:research:all` on every platform — parser, static tier against a local server, anchors and the
+  anchor store — while the bridge-level relocation test skips itself when no app is running.
 
 ---
 

@@ -2,11 +2,12 @@
 // Citation revalidation regression: anchor -> redesign -> relocate.
 //
 // Run: node scripts/test-citation-relocate.mjs
-// Requires the Cyberdeck app running (bridge on 127.0.0.1:4111); prints SKIP and exits 0 when down.
+// Requires the Cyberdeck app running (bridge on 127.0.0.1:4111 by default); prints SKIP and exits 0
+// when down. Point it at another instance with HB_BRIDGE_URL, e.g. a freshly packaged build on 4112.
 import http from 'node:http';
 import assert from 'node:assert/strict';
 
-const BASE = 'http://127.0.0.1:4111';
+const BASE = (process.env.HB_BRIDGE_URL || 'http://127.0.0.1:4111').replace(/\/+$/, '');
 
 const ORIGINAL = `<html><body>
 <article class="post">
@@ -63,7 +64,7 @@ const check = (name, ok, detail) => {
 try {
   const health = await fetch(`${BASE}/health`).catch(() => null);
   if (!health || !health.ok) {
-    console.log('SKIP: bridge is not running on 127.0.0.1:4111');
+    console.log(`SKIP: bridge is not running on ${BASE}`);
     process.exit(0);
   }
 

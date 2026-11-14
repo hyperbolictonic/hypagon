@@ -70,6 +70,19 @@ module.exports = async function afterPack(context) {
     if (!fs.existsSync(path.join(unpacked, entry))) missing.push(`unpacked:${entry}`);
   }
 
+  // Runtime assets copied outside the asar: the pinned curl-impersonate transport (static tier)
+  // and the libxml2 parser WASM. Neither is a build artefact, so a forgotten fetch would only
+  // surface at runtime — assert them here and fail the package instead.
+  const curlExe = platformName === 'win32' ? 'curl-impersonate.exe' : 'curl-impersonate';
+  const requiredResources = [
+    path.join('curl-impersonate', `${platformName}-${archName}`, curlExe),
+    path.join('app.asar.unpacked', 'node_modules', 'hypagon-scrap-libxml2', 'build', 'hx.mjs'),
+    path.join('app.asar.unpacked', 'node_modules', 'hypagon-scrap-libxml2', 'build', 'hx.wasm'),
+  ];
+  for (const entry of requiredResources) {
+    if (!fs.existsSync(path.join(resources, entry))) missing.push(`resource:${entry}`);
+  }
+
   if (missing.length) {
     throw new Error(
       `[afterPack] missing packaged runtime files for ${platformName}/${archName}:\n  ${missing.join('\n  ')}`
@@ -77,6 +90,6 @@ module.exports = async function afterPack(context) {
   }
 
   console.log(
-    `[afterPack] verified ${requiredJs.length} JS runtimes + ${requiredUnpacked.length} unpacked native/bin paths for ${platformName}/${archName}`
+    `[afterPack] verified ${requiredJs.length} JS runtimes + ${requiredUnpacked.length} unpacked native/bin paths + ${requiredResources.length} pinned assets for ${platformName}/${archName}`
   );
 };
