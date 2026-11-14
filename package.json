@@ -83,6 +83,7 @@
     "prune:pack": "node scripts/prune-pack.cjs",
     "test:zoom": "node --test scripts/test-zoom.mjs",
     "test:window-open": "node --test scripts/test-window-open-policy.mjs",
+    "test:viewport": "node --test scripts/test-viewport.mjs",
     "test:data-paths": "node --test scripts/test-data-paths.mjs",
     "test:user-data-migration": "node --test scripts/test-user-data-migration.mjs",
     "test:forceopen": "node scripts/test-force-open.mjs",

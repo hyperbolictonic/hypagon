@@ -88,6 +88,12 @@
           <button id="zoom-in-btn" type="button" class="btn btn-sm btn-ghost join-item btn-square text-base-content/70" title="Zoom in (Ctrl+=)" aria-label="Zoom in">+</button>
           <button id="zoom-mode-btn" type="button" class="btn btn-sm btn-ghost join-item font-mono text-[10px] min-w-12" title="Page zoom follows the Windows display scale" aria-label="Toggle Windows display scale">FIT</button>
         </div>
+        <div class="tooltip tooltip-bottom z-50" data-tip="Responsive device viewport">
+          <button id="viewport-btn" type="button" class="btn btn-sm btn-ghost font-mono text-[10px] min-w-16" aria-label="Responsive device viewport">RESP</button>
+        </div>
+        <div class="tooltip tooltip-bottom z-50" data-tip="Open Chromium DevTools for this tab">
+          <button id="devtools-btn" type="button" class="btn btn-sm btn-ghost btn-square text-base-content/70 font-mono text-[9px]" aria-label="Open Chromium DevTools">DEV</button>
+        </div>
         <div class="tooltip tooltip-bottom z-50" data-tip="Cortex — recall &amp; bookmarks">
           <button id="cortex-btn" class="btn btn-sm btn-ghost btn-square text-secondary" aria-label="Cortex — semantic recall and bookmarks">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
@@ -1879,6 +1885,61 @@
       </form>
     </dialog>
 
-    <script type="module" src="./src/renderer/main.ts"></script>
+    <dialog id="viewport-modal" class="modal">
+    <div class="modal-box w-11/12 max-w-lg bg-base-300 border border-base-100 p-5 font-mono text-xs">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h3 class="font-bold text-base-content text-sm">Responsive device</h3>
+          <p class="text-[10px] text-base-content/50 mt-0.5">Chromium device emulation. The page stays live behind this panel when you close it.</p>
+        </div>
+        <button id="viewport-close" type="button" class="btn btn-sm btn-ghost btn-square" aria-label="Close responsive devices">✕</button>
+      </div>
+
+      <div class="mt-4">
+        <span class="text-[9px] uppercase tracking-wider text-base-content/40">Device</span>
+        <select id="viewport-preset" class="select select-sm w-full mt-1" aria-label="Device preset"></select>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 mt-3">
+        <fieldset class="fieldset p-0">
+          <legend class="fieldset-legend text-[10px]">Width</legend>
+          <input id="viewport-width" type="number" min="200" max="5000" step="1" class="input input-sm w-full" placeholder="390" />
+        </fieldset>
+        <fieldset class="fieldset p-0">
+          <legend class="fieldset-legend text-[10px]">Height</legend>
+          <input id="viewport-height" type="number" min="200" max="5000" step="1" class="input input-sm w-full" placeholder="844" />
+        </fieldset>
+        <fieldset class="fieldset p-0">
+          <legend class="fieldset-legend text-[10px]">DPR</legend>
+          <input id="viewport-dpr" type="number" min="0.5" max="5" step="0.25" class="input input-sm w-full" placeholder="3" />
+        </fieldset>
+      </div>
+
+      <div class="flex items-center gap-5 mt-3">
+        <label class="flex items-center gap-2 cursor-pointer text-[11px]">
+          <input id="viewport-mobile" type="checkbox" class="toggle toggle-sm" />
+          mobile
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer text-[11px]">
+          <input id="viewport-touch" type="checkbox" class="toggle toggle-sm" />
+          touch
+        </label>
+      </div>
+
+      <div class="grid grid-cols-4 gap-2 mt-4">
+        <button id="viewport-rotate" type="button" class="btn btn-sm" title="Rotate portrait/landscape">ROTATE</button>
+        <button id="viewport-reset" type="button" class="btn btn-sm" title="Return to the full browser area">FIT</button>
+        <button id="viewport-save" type="button" class="btn btn-sm btn-accent col-span-2" title="Save the current size as a device">SAVE DEVICE</button>
+      </div>
+
+      <div class="mt-4">
+        <span class="text-[9px] uppercase tracking-wider text-base-content/40">Saved devices</span>
+        <div id="viewport-profiles" class="menu menu-sm w-full rounded-box bg-base-200/60 p-1 mt-1 max-h-40 overflow-y-auto"></div>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  <script type="module" src="./src/renderer/main.ts"></script>
   </body>
 </html>

@@ -5,6 +5,7 @@ import { BRAND } from '../shared/brand.js';
 import { beginRecording, finishRecording } from './recording';
 import { refreshToolsPanel } from './tools-panel';
 import { initResearchPanel } from './research-panel';
+import { initViewportControls } from './viewport-controls';
 import { bootMenuPopup } from './menu-popup';
 
 declare global {
@@ -502,6 +503,7 @@ tabBtnLogs.addEventListener('click', () => {
 });
 
 initResearchPanel();
+initViewportControls();
 
 // ---- WEB STATE: breadcrumbs, cookies, localStorage/sessionStorage ----------
 async function refreshWebState(): Promise<void> {
@@ -1069,6 +1071,11 @@ function updateState(state: ChassisState) {
   }
   if (state.zoom) {
     renderZoom(state.zoom);
+  }
+  if (state.viewport) {
+    (window as unknown as { __applyViewportState?: (viewport: ChassisState['viewport']) => void }).__applyViewportState?.(
+      state.viewport,
+    );
   }
 }
 

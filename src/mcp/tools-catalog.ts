@@ -407,6 +407,37 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
     },
   },
 
+  {
+    name: 'browser_viewport',
+    description:
+      'Emulates a device viewport on the active tab (Chromium device mode): CSS size, DPR, mobile and touch. Actions: status (default), set (preset or width/height), reset, rotate. After changing it, re-observe: the viewport geometry changed. Screenshots report the CSS/image coordinate scale.',
+    parameters: {
+      action: z.enum(['status', 'set', 'reset', 'rotate']).optional().default('status').describe('Read, set, reset or rotate the emulated viewport'),
+      preset: z.string().optional().describe('Built-in device id (e.g. iphone-15, pixel-8, ipad-air)'),
+      width: z.coerce.number().optional().describe('CSS viewport width for a custom size'),
+      height: z.coerce.number().optional().describe('CSS viewport height for a custom size'),
+      device_scale_factor: z.coerce.number().optional().describe('Emulated DPR (0.5-5)'),
+      mobile: z.coerce.boolean().optional().describe('Enable mobile layout/viewport rules'),
+      touch: z.coerce.boolean().optional().describe('Enable touch emulation'),
+    },
+    endpoint: '/viewport',
+    payload: (args) => ({
+      action: args?.action || 'status',
+      preset: args?.preset,
+      width: args?.width,
+      height: args?.height,
+      device_scale_factor: args?.device_scale_factor,
+      mobile: args?.mobile,
+      touch: args?.touch,
+    }),
+    format: (data) => {
+      const viewport = data.viewport || {};
+      if (!viewport.active) return `Viewport: full browser area (no device emulation)`;
+      const spec = viewport.spec || {};
+      return `Viewport ${spec.width}x${spec.height} @${spec.deviceScaleFactor}x (${viewport.orientation})${spec.mobile ? ' mobile' : ''}${spec.touch ? ' touch' : ''} · scale ${viewport.scale}`;
+    },
+  },
+
   // 5. Memory & Cortex (LanceDB)
   {
     name: 'recall_memory',
@@ -2093,6 +2124,7 @@ export const DEFAULT_TOOL_ORDER: string[] = [
   'press_key',
   'fill_form',
   'browser_zoom',
+  'browser_viewport',
   'new_tab',
   'switch_tab',
   'list_tabs',

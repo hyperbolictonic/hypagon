@@ -1024,6 +1024,41 @@ export function startHttpBridge(
         return;
       }
 
+      if (req.method === 'GET' && pathname === '/viewport') {
+        sendJson({ success: true, viewport: chassis.getViewportState() });
+        return;
+      }
+
+      if (req.method === 'POST' && pathname === '/viewport') {
+        const body = await readBody();
+        const requested =
+          body?.action === 'reset' || body?.action === 'rotate' || body?.action === 'set' || body?.action === 'status'
+            ? body.action
+            : body?.preset !== undefined || body?.width !== undefined
+              ? 'set'
+              : 'status';
+        try {
+          const viewport = await chassis.setViewport({
+            action: requested,
+            preset: typeof body?.preset === 'string' ? body.preset : undefined,
+            width: body?.width !== undefined ? Number(body.width) : undefined,
+            height: body?.height !== undefined ? Number(body.height) : undefined,
+            deviceScaleFactor:
+              body?.device_scale_factor !== undefined
+                ? Number(body.device_scale_factor)
+                : body?.deviceScaleFactor !== undefined
+                  ? Number(body.deviceScaleFactor)
+                  : undefined,
+            mobile: typeof body?.mobile === 'boolean' ? body.mobile : undefined,
+            touch: typeof body?.touch === 'boolean' ? body.touch : undefined,
+          });
+          sendJson({ success: true, viewport });
+        } catch (error: any) {
+          sendJson({ success: false, error: error?.message || String(error), code: 'BAD_REQUEST' }, 400);
+        }
+        return;
+      }
+
       if (req.method === 'GET' && (pathname === '/tabs' || pathname === '/tabs/list')) {
         const tabs = chassis.getTabsSummary();
         sendJson({ success: true, tabs });

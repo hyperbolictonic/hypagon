@@ -3,6 +3,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BrowserWindow, app, nativeImage, ipcMain, clipboard, powerMonitor, screen, session, WebContentsView, type Session, type WebContents } from 'electron';
 import type { AgentStatus, ChassisState, HarvestedConstruct, TelemetryEvent, TabSummary } from '../shared/types.js';
+import type { ViewportState } from '../shared/viewport.js';
+import { DeviceProfileStore } from './viewport/profiles.js';
+import { ViewportController } from './viewport/controller.js';
 import {
   clampZoomFactor,
   nextZoomStep,
@@ -23,6 +26,7 @@ import {
 } from './collaboration/overlay.js';
 import type { CollaborationTarget, CollaborationThread } from '../shared/collaboration.js';
 import type { SidebarSurfaceState } from '../shared/menu.js';
+import type { PopupAnchor, PopupMenuItem } from '../shared/menu.js';
 import { bump } from './metrics.js';
 import { ActionLedger } from './telemetry/action-ledger.js';
 import { ConstructHarvester } from './harvester/markdown.js';
@@ -164,6 +168,8 @@ export class BrowserChassis {
   /** Why the last hand-off was skipped (surfaced in the WAF error). */
   private handoffSkipReason: string | null = null;
   #anchorStore: AnchorStore | null = null;
+  /** Responsive device emulation; one controller for the whole browser. */
+  private viewportController: ViewportController | null = null;
 
   private get anchorStore(): AnchorStore {
     if (!this.#anchorStore) {
@@ -591,10 +597,24 @@ export class BrowserChassis {
   private setupTabManager() {
     if (!this.mainWindow) return;
 
+    this.viewportController = new ViewportController({
+      store: new DeviceProfileStore(path.join(app.getPath('userData'), 'device-profiles.json')),
+      available: () => this.getViewportBounds(),
+      getTab: (tabId) => this.tabManager?.getTab(tabId) ?? null,
+      getActiveTabId: () => this.tabManager?.getActiveTabId() ?? '',
+      applyZoom: (wc) => this.applyZoom(wc),
+      setInputScale: (wc, scale) => this.simulator.setViewportScale(wc, scale),
+      relayout: () => this.tabManager?.updateActiveTabBounds(),
+      broadcast: () => this.broadcastState(),
+      log: (level, message) => this.addLog(level, message),
+    });
+
     this.tabManager = new TabManager({
       mainWindow: this.mainWindow,
       hostProfile: this.hostProfile,
       getViewportBounds: () => this.getViewportBounds(),
+      getTabBounds: (tabId) =>
+        this.viewportController?.frameFor(tabId, this.getViewportBounds()) ?? this.getViewportBounds(),
       applyZoom: (wc) => this.applyZoom(wc),
       onZoomShortcut: (action) => {
         this.setZoom({ action });
@@ -645,6 +665,7 @@ export class BrowserChassis {
       },
       onTabCreated: (tab: TabInstance) => {
         this.networkInterceptor.attach(tab.view.webContents);
+        this.viewportController?.registerTab(tab);
         // A tab created while force-open is armed must be patched *before* its document runs.
         // onTabCreated fires before the first load, but CDP arming is async; if the first document
         // already started, reload once so the patch is actually present.
@@ -659,6 +680,7 @@ export class BrowserChassis {
         });
       },
       onViewAdded: () => this.bringSidebarToFront(),
+      onTabClosed: (tabId) => this.viewportController?.unregisterTab(tabId),
       onLog: (level, msg) => this.addLog(level, msg),
       onConsoleLog: (log) => {
         this.targetConsoleLogs.push(log);
@@ -712,6 +734,7 @@ export class BrowserChassis {
     this.mainWindow.on('resize', () => {
       this.positionSidebar();
       this.tabManager?.updateActiveTabBounds();
+      this.viewportController?.scheduleRefresh();
     });
   }
 
@@ -1622,6 +1645,7 @@ export class BrowserChassis {
     this.addLog('action', `MCP Directive: switch_tab(${tabId})`);
     this.jev.purge();
     this.tabManager.switchTab(tabId);
+    void this.viewportController?.refreshActive();
   }
 
   public closeTab(tabId?: string): void {
@@ -1677,6 +1701,28 @@ export class BrowserChassis {
   /** Report the policy plus the CSS/physical proportions the page is rendered at. */
   public getZoomState(): ZoomState {
     const displayScale = this.getDisplayScale();
+    const responsive = this.viewportController?.state();
+    if (responsive?.active && responsive.spec) {
+      // Device emulation defines the page's CSS world; report those proportions so screenshots,
+      // marks and act coordinates still line up.
+      const spec = responsive.spec;
+      return {
+        mode: this.zoomMode,
+        displayScale,
+        baseFactor: 1,
+        factor: 1,
+        custom: true,
+        devicePixelRatio: spec.deviceScaleFactor,
+        viewport: {
+          css: { width: spec.width, height: spec.height },
+          physical: {
+            width: Math.round(spec.width * responsive.scale * displayScale),
+            height: Math.round(spec.height * responsive.scale * displayScale),
+          },
+        },
+      };
+    }
+
     const baseFactor = this.getZoomBaseFactor();
     const factor = this.getEffectiveZoomFactor();
     let bounds = { width: 0, height: 0 };
@@ -1706,6 +1752,7 @@ export class BrowserChassis {
 
   private applyZoom(wc: WebContents): void {
     try {
+      if (this.viewportController?.isEmulated(wc)) return;
       if (!wc.isDestroyed()) wc.setZoomFactor(this.getEffectiveZoomFactor());
     } catch {
       // A tab can be destroyed between the event and this call.
@@ -1714,6 +1761,124 @@ export class BrowserChassis {
 
   public applyZoomToAllTabs(): void {
     for (const tab of this.tabManager?.allTabs() ?? []) this.applyZoom(tab.view.webContents);
+  }
+
+  /** Responsive device state for the active tab (HUD toolbar, IPC and the agent tool). */
+  public getViewportState(): ViewportState {
+    if (this.viewportController) return this.viewportController.state();
+    const available = this.getViewportBounds();
+    return {
+      active: false,
+      spec: null,
+      orientation: 'portrait',
+      available: { width: available.width, height: available.height },
+      frame: { x: 0, y: 0, width: available.width, height: available.height },
+      scale: 1,
+      profiles: [],
+    };
+  }
+
+  public async setViewport(input: {
+    action?: 'status' | 'set' | 'rotate' | 'reset';
+    preset?: string;
+    width?: number;
+    height?: number;
+    deviceScaleFactor?: number;
+    mobile?: boolean;
+    touch?: boolean;
+  } = {}): Promise<ViewportState> {
+    if (!this.viewportController) throw new Error('Browser Chassis uninitialized');
+    return await this.viewportController.set(input);
+  }
+
+  public async resetViewport(): Promise<ViewportState> {
+    if (!this.viewportController) throw new Error('Browser Chassis uninitialized');
+    return await this.viewportController.reset();
+  }
+
+  public saveDeviceProfile(input: { name?: unknown; spec?: unknown }): {
+    ok: boolean;
+    profiles: ReturnType<ViewportController['profiles']>;
+  } {
+    if (!this.viewportController) return { ok: false, profiles: [] };
+    return this.viewportController.saveProfile(input);
+  }
+
+  public deleteDeviceProfile(id: unknown): {
+    ok: boolean;
+    profiles: ReturnType<ViewportController['profiles']>;
+  } {
+    if (!this.viewportController) return { ok: false, profiles: [] };
+    return this.viewportController.deleteProfile(id);
+  }
+
+  /** Native device menu anchored to the HUD button (the shell DOM cannot paint above the page). */
+  public async openViewportMenu(anchor: PopupAnchor): Promise<{
+    action: string;
+    state?: ViewportState;
+    profiles?: ReturnType<ViewportController['profiles']>;
+  }> {
+    const win = this.mainWindow;
+    const controller = this.viewportController;
+    if (!win || win.isDestroyed() || !controller) return { action: 'unavailable' };
+
+    const state = controller.state();
+    const safeAnchor: PopupAnchor = {
+      x: Number(anchor?.x) || 0,
+      y: Number(anchor?.y) || 0,
+      width: Math.max(1, Number(anchor?.width) || 1),
+      height: Math.max(1, Number(anchor?.height) || 1),
+    };
+    const items: PopupMenuItem[] = [{ id: 'heading', label: 'DEVICES', disabled: true }];
+    for (const profile of state.profiles) {
+      const active = state.spec?.profileId === profile.id;
+      items.push({
+        id: `preset:${profile.id}`,
+        label: `${active ? '●' : ' '} ${profile.name}`,
+        hint: `${profile.width}×${profile.height}`,
+        ...(profile.builtin
+          ? {}
+          : { secondaryAction: { id: 'delete', label: '×', title: `Delete ${profile.name}` } }),
+      });
+    }
+    items.push({ id: 'rotate', label: 'Rotate' });
+    items.push({ id: 'custom', label: 'Custom size…' });
+    if (state.spec) items.push({ id: 'save', label: 'Save current device…' });
+    items.push({ id: 'reset', label: 'Fit to browser area' });
+
+    const selection = await MenuPopup.shared(path.join(__dirname, '../preload/index.js')).open(win, safeAnchor, items, {
+      width: 300,
+      itemHeight: 30,
+    });
+    if (!selection) return { action: 'dismissed' };
+
+    if (selection.id.startsWith('preset:')) {
+      const id = selection.id.slice('preset:'.length);
+      if (selection.action === 'delete') {
+        const result = controller.deleteProfile(id);
+        return { action: 'profiles', profiles: result.profiles };
+      }
+      return { action: 'applied', state: await controller.set({ action: 'set', preset: id }) };
+    }
+    if (selection.id === 'rotate') return { action: 'applied', state: await controller.rotate() };
+    if (selection.id === 'reset') return { action: 'applied', state: await controller.reset() };
+    if (selection.id === 'custom' || selection.id === 'save') return { action: selection.id };
+    return { action: 'dismissed' };
+  }
+
+  /** Open or close the native Chromium DevTools for the active tab. */
+  public toggleDevTools(): boolean {
+    try {
+      const wc = this.getActiveWebContents();
+      if (wc.isDevToolsOpened()) {
+        wc.closeDevTools();
+        return false;
+      }
+      wc.openDevTools({ mode: 'detach' });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -1800,6 +1965,20 @@ export class BrowserChassis {
     ipcMain.handle('chassis:zoom:set', (_, input: { action?: 'status' | 'in' | 'out' | 'reset'; factor?: number } = {}) =>
       this.setZoom(input),
     );
+
+    // Responsive device emulation. The agent path is intentionally tiny (status/set/reset);
+    // profile management is a human-only convenience.
+    ipcMain.handle('chassis:viewport:get', () => this.getViewportState());
+    ipcMain.handle('chassis:viewport:set', (_, input: Parameters<BrowserChassis['setViewport']>[0] = {}) =>
+      this.setViewport(input),
+    );
+    ipcMain.handle('chassis:viewport:reset', () => this.resetViewport());
+    ipcMain.handle('viewport:profile:save', (_, input: { name?: unknown; spec?: unknown }) =>
+      this.saveDeviceProfile(input ?? {}),
+    );
+    ipcMain.handle('viewport:profile:delete', (_, id: unknown) => this.deleteDeviceProfile(id));
+    ipcMain.handle('chassis:viewport:menu', (_, anchor: PopupAnchor) => this.openViewportMenu(anchor));
+    ipcMain.handle('chassis:devtools:open', () => this.toggleDevTools());
 
     const setVisibility = (_: any, visible: boolean) => {
       this.tabManager?.setViewportVisibility(visible);
@@ -2130,6 +2309,7 @@ export class BrowserChassis {
 
   private broadcastState() {
     this.state.zoom = this.getZoomState();
+    this.state.viewport = this.viewportController?.state();
     // History availability is read at broadcast time, not cached on navigation: SPAs use pushState,
     // which fires no navigation event, and a tab switch swaps the history stack under the toolbar.
     try {

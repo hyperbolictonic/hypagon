@@ -1,4 +1,5 @@
 import type { ZoomState } from './zoom.js';
+import type { ViewportState } from './viewport.js';
 
 export type AgentStatus = 'IDLE' | 'TRAVERSING' | 'SIMULATING_INPUT' | 'HARVESTING' | 'ERROR' | 'AWAITING_INPUT' | 'HUMAN_INPUT';
 
@@ -59,6 +60,8 @@ export interface ChassisState {
   tabs?: TabSummary[];
   /** Page zoom policy and current CSS/physical proportions. */
   zoom?: ZoomState;
+  /** Responsive device emulation for the active tab. */
+  viewport?: ViewportState;
   stats: {
     totalInteractions: number;
     tokensHarvested: number;

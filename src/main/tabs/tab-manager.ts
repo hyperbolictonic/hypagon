@@ -30,9 +30,12 @@ export interface TabManagerOptions {
   mainWindow: BrowserWindow;
   hostProfile: HostBrowserProfile;
   getViewportBounds: () => { x: number; y: number; width: number; height: number };
+  /** Bounds for one tab, so a responsive/emulated view can be letterboxed. */
+  getTabBounds?: (tabId: string) => { x: number; y: number; width: number; height: number };
   onTabUpdated?: (tab: TabInstance) => void;
   onTabsChanged?: (tabs: TabSummary[]) => void;
   onTabCreated?: (tab: TabInstance) => void;
+  onTabClosed?: (tabId: string) => void;
   /** Called after a tab's native view is attached, so an overlay can stay on top. */
   onViewAdded?: () => void;
   onLog?: (level: 'info' | 'warn' | 'action', message: string) => void;
@@ -77,6 +80,11 @@ export class TabManager {
       throw new Error('No active tab available in Cyberdeck');
     }
     return active;
+  }
+
+  /** Look up a tab without throwing (used by viewport emulation). */
+  public getTab(tabId: string): TabInstance | undefined {
+    return this.tabs.get(tabId);
   }
 
   public getActiveTabId(): string {
@@ -410,9 +418,10 @@ export class TabManager {
 
     // Expand current active tab to viewport container, unless a settings
     // surface is currently covering the window.
-    current.view.setBounds(
-      this.viewportHidden ? { x: 0, y: 0, width: 0, height: 0 } : this.options.getViewportBounds(),
-    );
+    const bounds = this.viewportHidden
+      ? { x: 0, y: 0, width: 0, height: 0 }
+      : (this.options.getTabBounds?.(tabId) ?? this.options.getViewportBounds());
+    current.view.setBounds(bounds);
 
     this.options.onLog?.('info', `Switched active browsing node to [${current.id}] "${current.title}"`);
     this.options.onTabUpdated?.(current);
@@ -449,6 +458,7 @@ export class TabManager {
       this.notifyTabsChanged();
     }
 
+    this.options.onTabClosed?.(targetId);
     this.options.onLog?.('info', `Closed tab [${targetId}]`);
   }
 
@@ -456,7 +466,9 @@ export class TabManager {
     if (!this.activeTabId || !this.tabs.has(this.activeTabId)) return;
     const active = this.tabs.get(this.activeTabId)!;
     active.view.setBounds(
-      this.viewportHidden ? { x: 0, y: 0, width: 0, height: 0 } : this.options.getViewportBounds(),
+      this.viewportHidden
+        ? { x: 0, y: 0, width: 0, height: 0 }
+        : (this.options.getTabBounds?.(this.activeTabId) ?? this.options.getViewportBounds()),
     );
   }
 

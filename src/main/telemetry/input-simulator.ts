@@ -115,6 +115,27 @@ export class HumanizedInputSimulator {
 
   constructor(private reporter?: InputTelemetryReporter) {}
 
+  /** Per-WebContents emulation scale: CSS coordinates become view coordinates by multiplying. */
+  private viewportScales = new WeakMap<WebContents, number>();
+
+  /** Register the letterbox scale of a device-emulated tab (1 clears it). */
+  public setViewportScale(webContents: WebContents, scale: number): void {
+    if (!webContents) return;
+    if (Number.isFinite(scale) && scale > 0 && scale !== 1) this.viewportScales.set(webContents, scale);
+    else this.viewportScales.delete(webContents);
+  }
+
+  /** Map a CSS point into the native view's DIP space under device emulation. */
+  private toViewPoint(webContents: WebContents, point: Point): Point {
+    const scale = this.viewportScales.get(webContents);
+    if (!scale) return point;
+    return { x: point.x * scale, y: point.y * scale };
+  }
+
+  private viewportFactor(webContents: WebContents): number {
+    return this.viewportScales.get(webContents) ?? 1;
+  }
+
   public getCursorPosition(): Point {
     return { ...this.currentCursor };
   }
@@ -250,17 +271,19 @@ export class HumanizedInputSimulator {
 
     let sampleIndex = 0;
     for (const step of points) {
+      const viewStep = this.toViewPoint(webContents, step);
+      const factor = this.viewportFactor(webContents);
       await this.dispatch(
         webContents,
         'Input.dispatchMouseEvent',
-        { type: 'mouseMoved', x: step.x, y: step.y, button: 'none', buttons: 0, pointerType: 'mouse' },
+        { type: 'mouseMoved', x: viewStep.x, y: viewStep.y, button: 'none', buttons: 0, pointerType: 'mouse' },
         () => {
           webContents.sendInputEvent({
             type: 'mouseMove',
-            x: step.x,
-            y: step.y,
-            movementX: step.x - this.currentCursor.x,
-            movementY: step.y - this.currentCursor.y,
+            x: viewStep.x,
+            y: viewStep.y,
+            movementX: (step.x - this.currentCursor.x) * factor,
+            movementY: (step.y - this.currentCursor.y) * factor,
           });
         }
       );
@@ -284,12 +307,13 @@ export class HumanizedInputSimulator {
 
     // Land exactly on target (the sampled path can end a pixel or two off).
     if (points.length === 0 || this.currentCursor.x !== target.x || this.currentCursor.y !== target.y) {
+      const viewTarget = this.toViewPoint(webContents, target);
       await this.dispatch(
         webContents,
         'Input.dispatchMouseEvent',
-        { type: 'mouseMoved', x: target.x, y: target.y, button: 'none', buttons: 0, pointerType: 'mouse' },
+        { type: 'mouseMoved', x: viewTarget.x, y: viewTarget.y, button: 'none', buttons: 0, pointerType: 'mouse' },
         () => {
-          webContents.sendInputEvent({ type: 'mouseMove', x: target.x, y: target.y });
+          webContents.sendInputEvent({ type: 'mouseMove', x: viewTarget.x, y: viewTarget.y });
         }
       );
       this.currentCursor = { x: target.x, y: target.y };
@@ -436,16 +460,18 @@ export class HumanizedInputSimulator {
     // Pre-click hesitation (mimicking visual confirmation), scaled by the profile.
     await sleep(Math.max(0, this.profile.clickDwellMs * (0.6 + Math.random() * 0.6)));
 
+    const viewTarget = this.toViewPoint(webContents, target);
+
     // Mouse Down
     await this.dispatch(
       webContents,
       'Input.dispatchMouseEvent',
-      { type: 'mousePressed', x: target.x, y: target.y, button, buttons: 1, clickCount, pointerType: 'mouse' },
+      { type: 'mousePressed', x: viewTarget.x, y: viewTarget.y, button, buttons: 1, clickCount, pointerType: 'mouse' },
       () => {
         webContents.sendInputEvent({
           type: 'mouseDown',
-          x: target.x,
-          y: target.y,
+          x: viewTarget.x,
+          y: viewTarget.y,
           button,
           clickCount,
         });
@@ -459,12 +485,12 @@ export class HumanizedInputSimulator {
     await this.dispatch(
       webContents,
       'Input.dispatchMouseEvent',
-      { type: 'mouseReleased', x: target.x, y: target.y, button, buttons: 0, clickCount, pointerType: 'mouse' },
+      { type: 'mouseReleased', x: viewTarget.x, y: viewTarget.y, button, buttons: 0, clickCount, pointerType: 'mouse' },
       () => {
         webContents.sendInputEvent({
           type: 'mouseUp',
-          x: target.x,
-          y: target.y,
+          x: viewTarget.x,
+          y: viewTarget.y,
           button,
           clickCount,
         });
@@ -697,15 +723,16 @@ export class HumanizedInputSimulator {
     bump('action.scroll');
     const step = Math.round(deltaY / chunks);
     for (let i = 0; i < chunks; i++) {
+      const viewCursor = this.toViewPoint(webContents, this.currentCursor);
       await this.dispatch(
         webContents,
         'Input.dispatchMouseEvent',
-        { type: 'mouseWheel', x: this.currentCursor.x, y: this.currentCursor.y, deltaX: 0, deltaY: -step, pointerType: 'mouse' },
+        { type: 'mouseWheel', x: viewCursor.x, y: viewCursor.y, deltaX: 0, deltaY: -step, pointerType: 'mouse' },
         () => {
           webContents.sendInputEvent({
             type: 'mouseWheel',
-            x: this.currentCursor.x,
-            y: this.currentCursor.y,
+            x: viewCursor.x,
+            y: viewCursor.y,
             deltaX: 0,
             deltaY: -step,
             canScroll: true,

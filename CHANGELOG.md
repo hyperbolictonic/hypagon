@@ -16,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > therefore reports `1.4.2` in `/health`. This is a deliberate, temporary deviation from strict semver; each
 > increment still gets its own Added/Fixed/Changed section here.
 
+## [Unreleased]
+
+### Added
+
+- **Responsive device testing.** A new `browser_viewport` tool emulates a device on the active
+  tab through Chromium's device mode: `status`, `set` (built-in preset or custom width/height/
+  DPR/mobile/touch), `reset` and `rotate`. The page is letterboxed inside the browsing area, and
+  the HUD `RESP` menu adds built-in devices plus saved personal profiles
+  (`<userData>/device-profiles.json`). `DEV` opens the native Chromium DevTools for the tab.
+
 ## [2.3.1] - 2026-11-14
 
 ### Added

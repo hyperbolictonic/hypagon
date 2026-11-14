@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { ChassisState, HarvestedConstruct, TelemetryEvent, TabSummary } from '../shared/types.js';
 import type { ZoomMode, ZoomState } from '../shared/zoom.js';
+import type { DeviceProfile, ViewportState } from '../shared/viewport.js';
 import type { RemoteStatus } from '../shared/remote.js';
 import type { ToolManagerResult, ToolSettings } from '../shared/tool-settings.js';
 import type { CollaborationThread, CollaborationTarget } from '../shared/collaboration.js';
@@ -55,6 +56,25 @@ export interface ElectronAPI {
   getZoom: () => Promise<ZoomState>;
   setZoom: (input?: { action?: 'status' | 'in' | 'out' | 'reset'; factor?: number }) => Promise<ZoomState>;
   setZoomMode: (mode: ZoomMode) => Promise<ZoomState>;
+  getViewport: () => Promise<ViewportState>;
+  setViewport: (input?: {
+    action?: 'status' | 'set' | 'rotate' | 'reset';
+    preset?: string;
+    width?: number;
+    height?: number;
+    deviceScaleFactor?: number;
+    mobile?: boolean;
+    touch?: boolean;
+  }) => Promise<ViewportState>;
+  resetViewport: () => Promise<ViewportState>;
+  saveDeviceProfile: (input: { name: string; spec: unknown }) => Promise<{ ok: boolean; profiles: DeviceProfile[] }>;
+  deleteDeviceProfile: (id: string) => Promise<{ ok: boolean; profiles: DeviceProfile[] }>;
+  openViewportMenu: (anchor: { x: number; y: number; width: number; height: number }) => Promise<{
+    action: string;
+    state?: ViewportState;
+    profiles?: DeviceProfile[];
+  }>;
+  openDevTools: () => Promise<boolean>;
   hudHeartbeat: () => void;
   recallMemory: (query: string, options?: any) => Promise<any[]>;
   getHistory: (options?: any) => Promise<any[]>;
@@ -308,6 +328,13 @@ const api: ElectronAPI = {
   getZoom: () => ipcRenderer.invoke('chassis:zoom:get'),
   setZoom: (input) => ipcRenderer.invoke('chassis:zoom:set', input || {}),
   setZoomMode: (mode) => ipcRenderer.invoke('chassis:zoom:mode', mode),
+  getViewport: () => ipcRenderer.invoke('chassis:viewport:get'),
+  setViewport: (input) => ipcRenderer.invoke('chassis:viewport:set', input || {}),
+  resetViewport: () => ipcRenderer.invoke('chassis:viewport:reset'),
+  saveDeviceProfile: (input) => ipcRenderer.invoke('viewport:profile:save', input),
+  deleteDeviceProfile: (id) => ipcRenderer.invoke('viewport:profile:delete', id),
+  openViewportMenu: (anchor) => ipcRenderer.invoke('chassis:viewport:menu', anchor),
+  openDevTools: () => ipcRenderer.invoke('chassis:devtools:open'),
   hudHeartbeat: () => ipcRenderer.send('chassis:hud-heartbeat'),
 
   recallMemory: (query: string, options?: any) => ipcRenderer.invoke('cortex:recall', query, options),
