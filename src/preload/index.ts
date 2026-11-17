@@ -16,6 +16,7 @@ export interface ElectronAPI {
   getLatestConstruct: () => Promise<HarvestedConstruct | null>;
   getLogs: () => Promise<any[]>;
   resumeAgent: () => Promise<{ ok: boolean; resumed?: boolean; error?: string }>;
+  takeOverAgent: () => Promise<{ ok: boolean; control?: 'human'; error?: string }>;
   getHumanStatus: () => Promise<{ active: boolean; activeForMs: number; last: any }>;
   navigate: (url: string) => Promise<{ success: boolean }>;
   goBack: () => Promise<{ message: string }>;
@@ -277,6 +278,13 @@ const api: ElectronAPI = {
   resumeAgent: async () => {
     try {
       return { ok: true, ...(await ipcRenderer.invoke('chassis:resume-human')) };
+    } catch (error: any) {
+      return { ok: false, error: error?.message || String(error) };
+    }
+  },
+  takeOverAgent: async () => {
+    try {
+      return { ok: true, ...(await ipcRenderer.invoke('chassis:take-over-human')) };
     } catch (error: any) {
       return { ok: false, error: error?.message || String(error) };
     }

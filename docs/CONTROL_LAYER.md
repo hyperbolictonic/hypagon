@@ -130,25 +130,34 @@ A wall with no matchable control is **left for a human**: `blocked: true`, no DO
 
 ## Human takeover
 
-The agent must never fight the person at the keyboard.
+The agent must never fight the person at the keyboard, and the gateway must never confuse its
+own synthetic input with a person. Control is therefore **explicit**:
 
-- the page reports **trusted** pointer/key/wheel/touch activity over a console channel
-- every synthetic dispatch is stamped, so input inside the **180 ms grace window** is treated as the
-  agent's own
-- any trusted event outside it starts a **2 s quiet window**: synthetic input throws
-  `HUMAN_IN_PROGRESS` until it lapses
-- each new human event extends the window
+- **The bot owns input by default.** A trusted page pointer/key/wheel/touch event does **not**
+  pause the agent. Page activity is reported for telemetry and `last`, nothing more.
+- **A human takes over** with the HUD **TAKE OVER** button, `Ctrl+Shift+H`, or
+  `POST /human/takeover`. The deck shows `HUMAN_INPUT`, synthetic input is refused, and mutating
+  bridge calls return `409 HUMAN_CONTROL` until the person hands control back.
+- **RESUME** (HUD button, `Ctrl+Shift+H` again, or `POST /human/resume`) clears human control
+  and lets the agent act.
+- **HIL is separate.** A sensitive gate or research challenge still raises `AWAITING_INPUT` and
+  the existing RESUME/CANCEL hand-off; that is a deliberate request for a person, not a page
+  event taking over.
 
 ```
 GET  /human/status   -> { active, activeForMs, last: { kind, at, url, target } }
-POST /human/resume   -> hands control back immediately
+POST /human/takeover -> { control: "human" }
+POST /human/resume   -> { resumed: true }
 ```
 
-`bridge_health` reports `human.paused`. The HUD shows `HUMAN_INPUT` with the takeover description.
+`bridge_health` reports `human.paused`. The HUD shows `HUMAN_INPUT` while a person has control.
+The page-activity console channel still uses a **750 ms** synthetic grace window so the agent's
+own dispatch is not reported as a human event; that window is diagnostics, not the control path.
 
-**Why timing and not identity:** CDP and human input are both *trusted* in the DOM. A human event
-arriving inside the grace window is indistinguishable and is attributed to the agent; the
-alternative — blocking our own clicks — is worse.
+**Why explicit, not timing:** CDP input and human input are both *trusted* in the DOM. The old
+model inferred control from event timing, and a late event on a heavy page made the gateway pause
+itself mid-scroll (`HUMAN_IN_PROGRESS` while `/human/status` said inactive). A HUD/HTTP action is
+unambiguous; the bot keeps the wheel until a person asks for it.
 
 ---
 

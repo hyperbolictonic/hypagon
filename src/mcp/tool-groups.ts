@@ -82,14 +82,13 @@ export const TOOL_GROUPS: ToolGroupDefinition[] = [
   },
   {
     name: 'human_in_loop',
-    description: 'Human hand-off and desktop controls: request/status/resolve HIL, inspect/resume passive takeover, notify, show/hide or configure the tray.',
+    description: 'Human hand-off and desktop controls: request/status/resolve HIL, inspect/resume explicit human control, notify, show/hide or configure the tray.',
     tier: null,
     actions: [
       { action: 'request', tool: 'request_human_intervention', description: 'Ask the human for help.' },
       { action: 'status', tool: 'get_human_intervention_status', description: 'Pending HIL request.', map: () => ({}) },
       { action: 'resolve', tool: 'resolve_human_intervention', description: 'Resolve a HIL request.' },
-      { action: 'activity', tool: 'get_human_activity', description: 'Passive takeover status.', map: () => ({}) },
-      { action: 'resume', tool: 'resume_agent', description: 'Clear a passive takeover.', map: () => ({}) },
+      { action: 'activity', tool: 'get_human_activity', description: 'Explicit human-control status.', map: () => ({}) },
       { action: 'notify', tool: 'send_notification', description: 'Desktop notification.' },
       { action: 'show', tool: 'set_window_visibility', description: 'Show/focus the app.', map: (args) => ({ visible: true, focus: args.focus ?? true }) },
       { action: 'hide', tool: 'set_window_visibility', description: 'Hide to tray.', map: () => ({ visible: false, focus: false }) },

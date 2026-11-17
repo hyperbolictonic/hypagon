@@ -44,6 +44,8 @@ export interface TabManagerOptions {
   applyZoom?: (wc: WebContents) => void;
   /** Ctrl+= / Ctrl+- / Ctrl+0, owned by the browser rather than the page. */
   onZoomShortcut?: (action: 'in' | 'out' | 'reset') => void;
+  /** Ctrl+Shift+Space: explicit human takeover / hand-back. */
+  onTakeoverShortcut?: () => void;
   /** A tab renderer disappeared; the owner decides whether to reload it. */
   onRendererGone?: (tab: TabInstance, details: RenderProcessGoneDetails) => void;
 }
@@ -133,6 +135,14 @@ export class TabManager {
       if (input.type !== 'keyDown' || input.alt) return;
       const mod = process.platform === 'darwin' ? input.meta : input.control;
       if (!mod) return;
+      const takeoverKey =
+        input.shift &&
+        (input.key === ' ' || input.key === 'Space' || input.code === 'Space' || input.key.toLowerCase() === 'h');
+      if (takeoverKey) {
+        event.preventDefault();
+        this.options.onTakeoverShortcut?.();
+        return;
+      }
       if (input.key === '+' || input.key === '=') {
         event.preventDefault();
         this.options.onZoomShortcut?.('in');

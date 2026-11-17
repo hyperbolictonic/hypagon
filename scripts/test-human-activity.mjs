@@ -25,6 +25,14 @@ check(
   `${now - (now - 50)}ms after dispatch`
 );
 check(
+  'a delayed synthetic event (300ms) is still synthetic',
+  shouldCountAsHuman(true, now, now - 300) === false
+);
+check(
+  'a delayed synthetic event just inside the grace window is still synthetic',
+  shouldCountAsHuman(true, now, now - SYNTHETIC_GRACE_MS + 1) === false
+);
+check(
   'exactly at the grace boundary is still synthetic',
   shouldCountAsHuman(true, now, now - SYNTHETIC_GRACE_MS) === false
 );

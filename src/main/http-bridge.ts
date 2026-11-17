@@ -154,6 +154,32 @@ export function startHttpBridge(
     };
 
     try {
+      // Explicit human control pauses the agent, not just its synthetic clicks. Reads (GET) stay
+      // available for health/state/observations; mutations are refused until RESUME.
+      const HUMAN_CONTROL_ALLOWED = new Set([
+        '/health',
+        '/human/status',
+        '/human/takeover',
+        '/human/resume',
+        '/hil/active',
+        '/hil/history',
+        '/hil/request',
+        '/hil/resolve',
+        '/hil/cancel',
+      ]);
+      if (chassis.isHumanActive() && req.method !== 'GET' && !HUMAN_CONTROL_ALLOWED.has(pathname)) {
+        sendJson(
+          {
+            success: false,
+            error:
+              'HUMAN_CONTROL: a person has taken control of the browser. Wait for them to press RESUME before acting.',
+            code: 'HUMAN_CONTROL',
+          },
+          409,
+        );
+        return;
+      }
+
       if (req.method === 'GET' && (pathname === '/health' || pathname === '/page-info')) {
         const info = chassis.getPageInfo();
         sendJson({
@@ -407,6 +433,10 @@ export function startHttpBridge(
 
       if (req.method === 'GET' && pathname === '/human/status') {
         sendJson({ success: true, ...chassis.getHumanStatus() });
+        return;
+      }
+      if (req.method === 'POST' && pathname === '/human/takeover') {
+        sendJson({ success: true, ...chassis.takeOverHuman() });
         return;
       }
       if (req.method === 'POST' && pathname === '/human/resume') {

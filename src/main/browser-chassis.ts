@@ -15,7 +15,7 @@ import {
 } from '../shared/zoom.js';
 import { HumanizedInputSimulator } from './telemetry/input-simulator.js';
 import { loadInputProfile, saveInputProfile, type InputProfile } from './telemetry/input-profile.js';
-import { HumanActivityMonitor, humanListenerScript, SYNTHETIC_GRACE_MS, type HumanActivity } from './input/human-activity.js';
+import { HumanActivityMonitor, humanListenerScript, type HumanActivity } from './input/human-activity.js';
 import { classifyNavigationFailure } from './navigation-error.js';
 import {
   COLLABORATION_CLASS_PREFIX,
@@ -183,10 +183,14 @@ export class BrowserChassis {
   private sidebarMode: 'docked' | 'floating' | 'collapsed' = 'floating';
   /** Origins whose consent wall has already been answered (or deliberately left) this session. */
   private consentAnsweredOrigins = new Set<string>();
-  /** Human takeover state: synthetic input is refused until this timestamp. */
+  /** Human takeover is explicit: page input alone never pauses the agent. */
   private humanMonitor = new HumanActivityMonitor();
-  private humanActiveUntil = 0;
-  private humanResetTimer: NodeJS.Timeout | null = null;
+  /** True while a person has explicitly taken control from the HUD. */
+  private humanControl = false;
+  private humanControlSince = 0;
+  /** Throttle for the "human input detected while the bot has control" log line. */
+  private lastHumanNoticeAt = 0;
+  private hudShortcutBound = false;
   /** How to answer a consent wall. KUANG_CONSENT_POLICY=essential|accept|reject. */
   private consentPolicy: ConsentPolicy = (() => {
     const raw = String(process.env.HB_CONSENT_POLICY ?? process.env.KUANG_CONSENT_POLICY ?? '').toLowerCase();
@@ -497,6 +501,20 @@ export class BrowserChassis {
     this.hudLastHeartbeat = Date.now();
     this.hilManager.setWindow(win);
     this.bindViewportRecovery(win);
+    if (!this.hudShortcutBound) {
+      this.hudShortcutBound = true;
+      win.webContents.on('before-input-event', (event, input) => {
+        if (input.type !== 'keyDown' || input.alt) return;
+        const mod = process.platform === 'darwin' ? input.meta : input.control;
+        const takeoverKey =
+          input.shift &&
+          (input.key === ' ' || input.key === 'Space' || input.code === 'Space' || input.key.toLowerCase() === 'h');
+        if (mod && takeoverKey) {
+          event.preventDefault();
+          this.toggleHumanControl();
+        }
+      });
+    }
     this.trayManager = new TrayManager({
       mainWindow: win,
       closeToTrayDefault: false,
@@ -612,6 +630,7 @@ export class BrowserChassis {
       onZoomShortcut: (action) => {
         this.setZoom({ action });
       },
+      onTakeoverShortcut: () => this.toggleHumanControl(),
       onRendererGone: (tab, details) => {
         logMainEvent('tab-renderer-gone', {
           tabId: tab.id,
@@ -1851,6 +1870,7 @@ export class BrowserChassis {
     ipcMain.handle('chassis:get-state', () => this.state);
     ipcMain.handle('chassis:get-latest-construct', () => this.latestConstruct);
     ipcMain.handle('chassis:get-logs', () => this.logs);
+    ipcMain.handle('chassis:take-over-human', () => this.takeOverHuman());
     ipcMain.handle('chassis:resume-human', () => this.resumeHuman());
     ipcMain.handle('chassis:get-human-status', () => this.getHumanStatus());
 
@@ -2098,18 +2118,51 @@ export class BrowserChassis {
 
   // ---- human takeover ------------------------------------------------------
 
-  /** Synthetic input is refused while a human was active within the grace window. */
+  /**
+   * Explicit human control.
+   *
+   * Page events are never used to seize control: a synthetic CDP click and a real one look the
+   * same to the DOM, and renderer latency previously made the gateway pause itself. The human
+   * asks for control from the HUD (or `POST /human/takeover`); until then the bot owns input.
+   */
   public isHumanActive(): boolean {
-    return Date.now() < this.humanActiveUntil;
+    return this.humanControl;
   }
 
   public getHumanStatus(): { active: boolean; activeForMs: number; last: HumanActivity | null } {
-    const active = this.isHumanActive();
     return {
-      active,
-      activeForMs: active ? this.humanActiveUntil - Date.now() : 0,
+      active: this.humanControl,
+      activeForMs: this.humanControl ? Date.now() - this.humanControlSince : 0,
       last: this.humanMonitor.getLastHuman(),
     };
+  }
+
+  /** Give a person the wheel until they explicitly resume the agent. */
+  public takeOverHuman(): { control: 'human' } {
+    this.humanControl = true;
+    this.humanControlSince = Date.now();
+    this.state.agentStatus = 'HUMAN_INPUT';
+    this.state.activeAction = 'Human control — agent paused';
+    this.broadcastState();
+    this.addLog('warn', 'Human took control — synthetic input paused.');
+    try {
+      const wc = this.getActiveWebContents();
+      this.mainWindow?.focus();
+      wc.focus();
+    } catch {
+      /* window/tab closing */
+    }
+    return { control: 'human' };
+  }
+
+  /** Ctrl+Shift+Space: take control, or hand it back if already human. */
+  public toggleHumanControl(): { control: 'bot' | 'human' } {
+    if (this.humanControl) {
+      this.resumeHuman();
+      return { control: 'bot' };
+    }
+    this.takeOverHuman();
+    return { control: 'human' };
   }
 
   public setOnCollaborationNote(
@@ -2143,46 +2196,41 @@ export class BrowserChassis {
     } catch {}
   }
 
-  /** Clear the takeover window (the agent asks to resume, or the HUD button does). */
+  /** Hand control back to the agent. */
   public resumeHuman(): { resumed: boolean } {
-    this.humanActiveUntil = 0;
-    if (this.humanResetTimer) {
-      clearTimeout(this.humanResetTimer);
-      this.humanResetTimer = null;
-    }
+    const wasHuman = this.humanControl;
+    this.humanControl = false;
+    this.humanControlSince = 0;
     if (this.state.agentStatus === 'HUMAN_INPUT') {
       this.state.agentStatus = 'IDLE';
       this.state.activeAction = 'Human handed back control';
       this.broadcastState();
     }
-    this.addLog('info', 'Human takeover cleared — agent may act again.');
+    if (wasHuman) this.addLog('info', 'Human handed control back — agent may act again.');
     return { resumed: true };
   }
 
+  /**
+   * Record human page activity for telemetry and the HUD, but never pause the bot.
+   *
+   * Control only moves through `takeOverHuman()`. A note here is informational: the person can
+   * click TAKE OVER if they want the wheel. This is what removes the synthetic-vs-human race.
+   */
   private noteHumanInput(activity: HumanActivity): void {
     if (activity.url && this.state.currentUrl && activity.url !== this.state.currentUrl) return; // stale tab
-    // A human keeps the wheel for a short quiet period; every new event extends it.
-    this.humanActiveUntil = Date.now() + 2000;
-    if (this.humanResetTimer) clearTimeout(this.humanResetTimer);
-    this.humanResetTimer = setTimeout(() => {
-      if (this.state.agentStatus === 'HUMAN_INPUT' && !this.isHumanActive()) {
-        this.state.agentStatus = 'IDLE';
-        this.state.activeAction = 'Human idle — agent may resume';
-        this.broadcastState();
-        this.addLog('info', 'Human went idle — agent may resume.');
-      }
-    }, 2100);
-
-    const wasActive = this.state.agentStatus === 'HUMAN_INPUT';
-    this.state.agentStatus = 'HUMAN_INPUT';
-    this.state.activeAction = `Human takeover (${activity.kind}${activity.target ? `: ${activity.target}` : ''}) — agent paused`;
     this.emitTelemetry({
       type: 'click',
       timestamp: activity.at,
-      details: `HUMAN ${activity.kind}${activity.target ? ` on ${activity.target}` : ''} — synthetic input paused`,
+      details: `HUMAN ${activity.kind}${activity.target ? ` on ${activity.target}` : ''} — agent still has control`,
     });
-    if (!wasActive) this.addLog('warn', `Human takeover detected (${activity.kind}${activity.target ? `: ${activity.target}` : ''}) — synthetic input paused for ${SYNTHETIC_GRACE_MS}ms+ quiet.`);
-    this.broadcastState();
+    if (this.humanControl) return;
+    const now = Date.now();
+    if (now - this.lastHumanNoticeAt < 10_000) return;
+    this.lastHumanNoticeAt = now;
+    this.addLog(
+      'info',
+      `Human input detected (${activity.kind}${activity.target ? `: ${activity.target}` : ''}) — agent still has control; click TAKE OVER to pause.`,
+    );
   }
 
   /**

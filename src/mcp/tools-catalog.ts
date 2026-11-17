@@ -1136,7 +1136,7 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
   },
   {
     name: 'get_human_intervention_status',
-    description: 'Inspects pending Human-In-The-Loop (HIL) requests. This does not report the passive human-takeover window; use get_human_activity for that.',
+    description: 'Inspects pending Human-In-The-Loop (HIL) requests. This is distinct from explicit human control; use get_human_activity for that.',
     parameters: {},
     endpoint: '/hil/active',
     method: 'GET',
@@ -1144,19 +1144,11 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
   },
   {
     name: 'get_human_activity',
-    description: 'Reports whether a person is currently using the browser and therefore blocking synthetic input (HUMAN_IN_PROGRESS). Returns active, remaining pause time, and the last human event.',
+    description: 'Reports explicit human control: whether a person has pressed TAKE OVER and is blocking synthetic input (HUMAN_CONTROL / HUMAN_IN_PROGRESS), how long, and the last human page event. Page input alone no longer pauses the agent.',
     parameters: {},
     endpoint: '/human/status',
     method: 'GET',
     format: (data) => JSON.stringify(data, null, 2),
-  },
-  {
-    name: 'resume_agent',
-    description: 'Clears a passive human-takeover pause so the agent may act again. Use only when the human confirms they are done, or when a HUMAN_IN_PROGRESS block is a stale false positive. This does not resolve a pending request_human_intervention; use resolve_human_intervention for HIL.',
-    parameters: {},
-    endpoint: '/human/resume',
-    method: 'POST',
-    format: (data) => JSON.stringify({ success: data?.success !== false, resumed: data?.resumed !== false }, null, 2),
   },
   {
     name: 'send_notification',
@@ -2161,7 +2153,6 @@ export const DEFAULT_TOOL_ORDER: string[] = [
   'list_recordings',
   'request_human_intervention',
   'get_human_activity',
-  'resume_agent',
   'get_human_intervention_status',
   'resolve_human_intervention',
   'send_notification',

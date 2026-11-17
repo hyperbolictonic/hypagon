@@ -35,6 +35,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the deck's `FIT` is now only the device reset. The Viewport row also has an explicit
   **Off — full browser area** option and the reset button reads `OFF` while a device is active.
 
+## [2.3.2] - 2026-11-17
+
+### Fixed
+
+- **Synthetic input no longer takes the wheel from the agent.** A late CDP wheel/pointer event on a
+  heavy page was counted as a human takeover, set a 2 s pause, and made the next dispatch throw
+  `HUMAN_IN_PROGRESS` while `/human/status` reported inactive. The 180 ms synthetic grace window is
+  now 750 ms, and human control is no longer inferred from page events at all.
+- **Explicit human takeover.** The agent keeps control by default. A person clicks **TAKE OVER**
+  in the top bar (or presses `Ctrl+Shift+H`, or calls `POST /human/takeover`) to pause synthetic
+  input; mutating bridge calls return `409 HUMAN_CONTROL` until **RESUME**. HIL remains a separate
+  request-to-human flow.
+
+### Added
+
+- HUD TAKE OVER / RESUME controls and a `POST /human/takeover` endpoint.
+- `get_human_activity` now reports explicit control and the last human page event.
+- `resume_agent` is no longer advertised to agents: handing the browser back is a human action
+  (HUD **RESUME** or `POST /human/resume`).
+
 ## [2.3.1] - 2026-11-14
 
 ### Added

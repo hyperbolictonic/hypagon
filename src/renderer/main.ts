@@ -24,6 +24,7 @@ const viewportUrlDisplay = document.getElementById('viewport-url-display') as HT
 const viewportLoadingSpinner = document.getElementById('viewport-loading-spinner') as HTMLElement;
 const agentStatusBadge = document.getElementById('agent-status-badge') as HTMLElement;
 const resumeAgentBtn = document.getElementById('resume-agent-btn') as HTMLButtonElement | null;
+const takeOverBtn = document.getElementById('take-over-btn') as HTMLButtonElement | null;
 const activeActionText = document.getElementById('active-action-text') as HTMLElement;
 
 resumeAgentBtn?.addEventListener('click', async () => {
@@ -41,6 +42,18 @@ resumeAgentBtn?.addEventListener('click', async () => {
     activeActionText.textContent = `Could not resume the agent: ${error?.message || error}`;
   } finally {
     resumeAgentBtn.disabled = false;
+  }
+});
+takeOverBtn?.addEventListener('click', async () => {
+  if (!takeOverBtn) return;
+  takeOverBtn.disabled = true;
+  try {
+    const result = await window.electronAPI?.takeOverAgent();
+    if (!result?.ok) activeActionText.textContent = result?.error || 'Could not take control.';
+  } catch (error: any) {
+    activeActionText.textContent = `Could not take control: ${error?.message || error}`;
+  } finally {
+    takeOverBtn.disabled = false;
   }
 });
 const harvestBtn = document.getElementById('harvest-btn') as HTMLButtonElement;
@@ -968,6 +981,9 @@ function updateState(state: ChassisState) {
 
   if (resumeAgentBtn) {
     resumeAgentBtn.classList.toggle('hidden', state.agentStatus !== 'HUMAN_INPUT');
+  }
+  if (takeOverBtn) {
+    takeOverBtn.classList.toggle('hidden', state.agentStatus === 'HUMAN_INPUT' || state.agentStatus === 'AWAITING_INPUT');
   }
 
   // Update Stats

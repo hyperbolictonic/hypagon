@@ -40170,6 +40170,35 @@ ${lines.join("\n")}`;
 CSS viewport ${css.width || 0}x${css.height || 0} | physical ${physical.width || 0}x${physical.height || 0} | devicePixelRatio ${(zoom.devicePixelRatio || 1).toFixed(2)}`;
     }
   },
+  {
+    name: "browser_viewport",
+    description: "Emulates a device viewport on the active tab (Chromium device mode): CSS size, DPR, mobile and touch. Actions: status (default), set (preset or width/height), reset, rotate. After changing it, re-observe: the viewport geometry changed. Screenshots report the CSS/image coordinate scale.",
+    parameters: {
+      action: external_exports.enum(["status", "set", "reset", "rotate"]).optional().default("status").describe("Read, set, reset or rotate the emulated viewport"),
+      preset: external_exports.string().optional().describe("Built-in device id (e.g. iphone-15, pixel-8, ipad-air)"),
+      width: external_exports.coerce.number().optional().describe("CSS viewport width for a custom size"),
+      height: external_exports.coerce.number().optional().describe("CSS viewport height for a custom size"),
+      device_scale_factor: external_exports.coerce.number().optional().describe("Emulated DPR (0.5-5)"),
+      mobile: external_exports.coerce.boolean().optional().describe("Enable mobile layout/viewport rules"),
+      touch: external_exports.coerce.boolean().optional().describe("Enable touch emulation")
+    },
+    endpoint: "/viewport",
+    payload: (args) => ({
+      action: args?.action || "status",
+      preset: args?.preset,
+      width: args?.width,
+      height: args?.height,
+      device_scale_factor: args?.device_scale_factor,
+      mobile: args?.mobile,
+      touch: args?.touch
+    }),
+    format: (data) => {
+      const viewport = data.viewport || {};
+      if (!viewport.active) return `Viewport: full browser area (no device emulation)`;
+      const spec = viewport.spec || {};
+      return `Viewport ${spec.width}x${spec.height} @${spec.deviceScaleFactor}x (${viewport.orientation})${spec.mobile ? " mobile" : ""}${spec.touch ? " touch" : ""} \xB7 scale ${viewport.scale}`;
+    }
+  },
   // 5. Memory & Cortex (LanceDB)
   {
     name: "recall_memory",
@@ -40873,7 +40902,7 @@ ${lines.join("\n")}`;
   },
   {
     name: "get_human_intervention_status",
-    description: "Inspects pending Human-In-The-Loop (HIL) requests. This does not report the passive human-takeover window; use get_human_activity for that.",
+    description: "Inspects pending Human-In-The-Loop (HIL) requests. This is distinct from explicit human control; use get_human_activity for that.",
     parameters: {},
     endpoint: "/hil/active",
     method: "GET",
@@ -40881,19 +40910,11 @@ ${lines.join("\n")}`;
   },
   {
     name: "get_human_activity",
-    description: "Reports whether a person is currently using the browser and therefore blocking synthetic input (HUMAN_IN_PROGRESS). Returns active, remaining pause time, and the last human event.",
+    description: "Reports explicit human control: whether a person has pressed TAKE OVER and is blocking synthetic input (HUMAN_CONTROL / HUMAN_IN_PROGRESS), how long, and the last human page event. Page input alone no longer pauses the agent.",
     parameters: {},
     endpoint: "/human/status",
     method: "GET",
     format: (data) => JSON.stringify(data, null, 2)
-  },
-  {
-    name: "resume_agent",
-    description: "Clears a passive human-takeover pause so the agent may act again. Use only when the human confirms they are done, or when a HUMAN_IN_PROGRESS block is a stale false positive. This does not resolve a pending request_human_intervention; use resolve_human_intervention for HIL.",
-    parameters: {},
-    endpoint: "/human/resume",
-    method: "POST",
-    format: (data) => JSON.stringify({ success: data?.success !== false, resumed: data?.resumed !== false }, null, 2)
   },
   {
     name: "send_notification",
@@ -41808,6 +41829,7 @@ var DEFAULT_TOOL_ORDER = [
   "press_key",
   "fill_form",
   "browser_zoom",
+  "browser_viewport",
   "new_tab",
   "switch_tab",
   "list_tabs",
@@ -41844,7 +41866,6 @@ var DEFAULT_TOOL_ORDER = [
   "list_recordings",
   "request_human_intervention",
   "get_human_activity",
-  "resume_agent",
   "get_human_intervention_status",
   "resolve_human_intervention",
   "send_notification",
@@ -41919,14 +41940,13 @@ var TOOL_GROUPS = [
   },
   {
     name: "human_in_loop",
-    description: "Human hand-off and desktop controls: request/status/resolve HIL, inspect/resume passive takeover, notify, show/hide or configure the tray.",
+    description: "Human hand-off and desktop controls: request/status/resolve HIL, inspect/resume explicit human control, notify, show/hide or configure the tray.",
     tier: null,
     actions: [
       { action: "request", tool: "request_human_intervention", description: "Ask the human for help." },
       { action: "status", tool: "get_human_intervention_status", description: "Pending HIL request.", map: () => ({}) },
       { action: "resolve", tool: "resolve_human_intervention", description: "Resolve a HIL request." },
-      { action: "activity", tool: "get_human_activity", description: "Passive takeover status.", map: () => ({}) },
-      { action: "resume", tool: "resume_agent", description: "Clear a passive takeover.", map: () => ({}) },
+      { action: "activity", tool: "get_human_activity", description: "Explicit human-control status.", map: () => ({}) },
       { action: "notify", tool: "send_notification", description: "Desktop notification." },
       { action: "show", tool: "set_window_visibility", description: "Show/focus the app.", map: (args) => ({ visible: true, focus: args.focus ?? true }) },
       { action: "hide", tool: "set_window_visibility", description: "Hide to tray.", map: () => ({ visible: false, focus: false }) },
@@ -42019,6 +42039,10 @@ var TOOL_GROUPS = [
       { action: "zoom.out", tool: "browser_zoom", description: "Step page zoom out.", map: () => ({ action: "out" }) },
       { action: "zoom.reset", tool: "browser_zoom", description: "Reset to the fitted/Windows policy base.", map: () => ({ action: "reset" }) },
       { action: "zoom.set", tool: "browser_zoom", description: "Set an exact zoom factor (0.25-5); re-observe after changing geometry.", map: (args) => ({ action: "set", factor: args.factor }) },
+      { action: "viewport.status", tool: "browser_viewport", description: "Report the emulated device viewport.", map: () => ({ action: "status" }) },
+      { action: "viewport.set", tool: "browser_viewport", description: "Emulate a device preset or custom width/height.", map: (args) => ({ action: "set", preset: args.preset, width: args.width, height: args.height, device_scale_factor: args.device_scale_factor, mobile: args.mobile, touch: args.touch }) },
+      { action: "viewport.reset", tool: "browser_viewport", description: "Return to the full browser area.", map: () => ({ action: "reset" }) },
+      { action: "viewport.rotate", tool: "browser_viewport", description: "Swap width and height.", map: () => ({ action: "rotate" }) },
       { action: "downloads.list", tool: "list_downloads", description: "List downloads.", map: () => ({}) },
       { action: "downloads.read", tool: "read_download", description: "Read a downloaded document." },
       { action: "contexts.save", tool: "context_save", description: "Save cookies/storage." },
@@ -42087,7 +42111,7 @@ var CONSOLIDATED_HIDDEN_TOOLS = /* @__PURE__ */ new Set([
 ]);
 
 // src/shared/version.ts
-var APP_VERSION = "2.3.0";
+var APP_VERSION = "2.3.2";
 
 // src/main/decide/decision-client.ts
 var import_node_fs2 = __toESM(require("node:fs"), 1);

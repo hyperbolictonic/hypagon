@@ -19,7 +19,7 @@ export interface HumanActivity {
 }
 
 /** How long after our own dispatch a trusted event is still considered synthetic. */
-export const SYNTHETIC_GRACE_MS = 180;
+export const SYNTHETIC_GRACE_MS = 750;
 
 /**
  * Pure decision used by the monitor and by tests.
