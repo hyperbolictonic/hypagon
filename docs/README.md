@@ -25,6 +25,9 @@ handoffs are intentionally not published here; links to them go back to the repo
 
 ## Hypagon Browser
 
+- [Real browser sessions](./REAL_BROWSER_SESSIONS.html) — independent Chrome/CDP, extension sync, cookie fidelity and effort.
+- [Extraction and reuse map](./EXTRACTION_MAP.html) — reusable modules, target packages and the extraction waves.
+
 - [Architecture](./CODEBASE.html) — system maps, call paths and subsystem findings.
 - [Control layer](./CONTROL_LAYER.html) — targeting, consent, human takeover and input pacing.
 - [Shadow DOM & frames](./SHADOW_DOM_AND_FRAMES.html) — what the browser can see and click.
