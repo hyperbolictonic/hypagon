@@ -36986,6 +36986,12 @@ function bridgeFailure(err) {
   logWrap(`Bridge error: ${err?.message || err}`, "error");
   return toolError(`[Hypagon REST] ${err?.message || err}`);
 }
+function wrapperRejection(response) {
+  if (response.data?.success) return null;
+  const errors = Array.isArray(response.data?.errors) ? response.data.errors : [response.data?.error || `HTTP ${response.status}`];
+  return `Wrapper rejected:
+- ${errors.join("\n- ")}`;
+}
 async function createWrapMcpServer() {
   const server = new McpServer({
     name: "hb-rest",
@@ -37140,11 +37146,8 @@ Pass this as \`response\` to wrap_create (or wrap_update), then wrap_test it aga
     async ({ wrapper }) => {
       try {
         const response = await callBridge("/wrap/wrappers", "POST", { action: "create", wrapper: asObject(wrapper) });
-        if (!response.data?.success) {
-          const errors = Array.isArray(response.data?.errors) ? response.data.errors : [response.data?.error || `HTTP ${response.status}`];
-          return toolError(`Wrapper rejected:
-- ${errors.join("\n- ")}`);
-        }
+        const rejected = wrapperRejection(response);
+        if (rejected) return toolError(rejected);
         const saved = response.data.wrapper;
         const sync = await refreshGeneratedTools();
         return toolSuccess(
@@ -37164,11 +37167,8 @@ Pass this as \`response\` to wrap_create (or wrap_update), then wrap_test it aga
     async ({ wrapper }) => {
       try {
         const response = await callBridge("/wrap/wrappers", "POST", { action: "update", wrapper: asObject(wrapper) });
-        if (!response.data?.success) {
-          const errors = Array.isArray(response.data?.errors) ? response.data.errors : [response.data?.error || `HTTP ${response.status}`];
-          return toolError(`Wrapper rejected:
-- ${errors.join("\n- ")}`);
-        }
+        const rejected = wrapperRejection(response);
+        if (rejected) return toolError(rejected);
         const sync = await refreshGeneratedTools();
         const updated = response.data.wrapper;
         return toolSuccess(

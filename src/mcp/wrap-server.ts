@@ -381,6 +381,15 @@ function bridgeFailure(err: any) {
   return toolError(`[Hypagon REST] ${err?.message || err}`);
 }
 
+/** The rejection text for a create/update response, or null when it succeeded. */
+function wrapperRejection(response: any): string | null {
+  if (response.data?.success) return null;
+  const errors = Array.isArray(response.data?.errors)
+    ? response.data.errors
+    : [response.data?.error || `HTTP ${response.status}`];
+  return `Wrapper rejected:\n- ${errors.join('\n- ')}`;
+}
+
 /** When to use: booting the Hypagon REST MCP server (meta-tools plus generated wrappers). */
 export async function createWrapMcpServer() {
   const server = new McpServer({
@@ -568,10 +577,8 @@ export async function createWrapMcpServer() {
     async ({ wrapper }) => {
       try {
         const response = await callBridge('/wrap/wrappers', 'POST', { action: 'create', wrapper: asObject(wrapper) });
-        if (!response.data?.success) {
-          const errors = Array.isArray(response.data?.errors) ? response.data.errors : [response.data?.error || `HTTP ${response.status}`];
-          return toolError(`Wrapper rejected:\n- ${errors.join('\n- ')}`);
-        }
+        const rejected = wrapperRejection(response);
+        if (rejected) return toolError(rejected);
         const saved = response.data.wrapper;
         const sync = await refreshGeneratedTools();
         return toolSuccess(
@@ -592,10 +599,8 @@ export async function createWrapMcpServer() {
     async ({ wrapper }) => {
       try {
         const response = await callBridge('/wrap/wrappers', 'POST', { action: 'update', wrapper: asObject(wrapper) });
-        if (!response.data?.success) {
-          const errors = Array.isArray(response.data?.errors) ? response.data.errors : [response.data?.error || `HTTP ${response.status}`];
-          return toolError(`Wrapper rejected:\n- ${errors.join('\n- ')}`);
-        }
+        const rejected = wrapperRejection(response);
+        if (rejected) return toolError(rejected);
         const sync = await refreshGeneratedTools();
         const updated = response.data.wrapper;
         return toolSuccess(

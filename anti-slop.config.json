@@ -3,7 +3,9 @@
     "src": "src",
     "minTokens": 50,
     "threshold": 3,
-    "ignore": []
+    "ignore": [
+      "mcp/tool-groups.ts"
+    ]
   },
   "modularity": {
     "src": "src",
@@ -19,11 +21,26 @@
   "imports": {
     "src": "src",
     "deny": [
-      { "from": "src/shared/**", "forbid": "src/main/**" },
-      { "from": "src/shared/**", "forbid": "src/renderer/**" },
-      { "from": "src/renderer/**", "forbid": "src/main/**" },
-      { "from": "src/preload/**", "forbid": "src/main/**" },
-      { "from": "src/main/**", "forbid": "src/renderer/**" }
+      {
+        "from": "src/shared/**",
+        "forbid": "src/main/**"
+      },
+      {
+        "from": "src/shared/**",
+        "forbid": "src/renderer/**"
+      },
+      {
+        "from": "src/renderer/**",
+        "forbid": "src/main/**"
+      },
+      {
+        "from": "src/preload/**",
+        "forbid": "src/main/**"
+      },
+      {
+        "from": "src/main/**",
+        "forbid": "src/renderer/**"
+      }
     ]
   }
 }

@@ -25,6 +25,28 @@ export interface ToolCatalogItem {
   deprecatedInFavorOf?: string;
 }
 
+/** Bare-hostname destinations get https://; explicit schemes pass through. */
+function normalizeDestination(args: any): string {
+  let targetUrl = args?.url || args?.destination || args?.target || args?.link || args?.href || args?.address || '';
+  if (typeof targetUrl === 'string' && targetUrl) {
+    if (!/^https?:\/\//i.test(targetUrl) && !/^about:/i.test(targetUrl) && !/^mark-eleven:/i.test(targetUrl)) {
+      targetUrl = 'https://' + targetUrl;
+    }
+  }
+  if (!targetUrl) {
+    throw new Error('Missing destination URL. Please provide { "url": "https://..." }');
+  }
+  return targetUrl;
+}
+
+/** One mark table per line, or the raw payload when the route did not return marks. */
+function formatMarks(data: any): string {
+  return Array.isArray(data.marks) ? data.marks.map((m: any) => formatMark(m)).join('\n') : JSON.stringify(data);
+}
+
+/** Pretty JSON, the default result format for structured tools. */
+const jsonPretty = (data: any): string => JSON.stringify(data, null, 2);
+
 /** When to use: iterating or looking up the agent tool surface. */
 export const TOOLS_CATALOG: ToolCatalogItem[] = [
   // 1. Navigation
@@ -37,16 +59,7 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
     },
     endpoint: '/navigate',
     payload: (args) => {
-      let targetUrl = args?.url || args?.destination || args?.target || args?.link || args?.href || args?.address || '';
-      if (typeof targetUrl === 'string' && targetUrl) {
-        if (!/^https?:\/\//i.test(targetUrl) && !/^about:/i.test(targetUrl) && !/^mark-eleven:/i.test(targetUrl)) {
-          targetUrl = 'https://' + targetUrl;
-        }
-      }
-      if (!targetUrl) {
-        throw new Error('Missing destination URL. Please provide { "url": "https://..." }');
-      }
-      return { url: targetUrl, autoDismissConsent: args?.auto_dismiss_consent ?? true };
+      return { url: normalizeDestination(args), autoDismissConsent: args?.auto_dismiss_consent ?? true };
     },
     format: (data) => data.result || 'Navigation complete',
   },
@@ -60,16 +73,7 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
     },
     endpoint: '/navigate',
     payload: (args) => {
-      let targetUrl = args?.url || args?.destination || args?.target || args?.link || args?.href || args?.address || '';
-      if (typeof targetUrl === 'string' && targetUrl) {
-        if (!/^https?:\/\//i.test(targetUrl) && !/^about:/i.test(targetUrl) && !/^mark-eleven:/i.test(targetUrl)) {
-          targetUrl = 'https://' + targetUrl;
-        }
-      }
-      if (!targetUrl) {
-        throw new Error('Missing destination URL. Please provide { "url": "https://..." }');
-      }
-      return { url: targetUrl };
+      return { url: normalizeDestination(args) };
     },
     format: (data) => data.result || 'Navigation complete',
   },
@@ -881,7 +885,7 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
     endpoint: '/marks/screenshot',
     method: 'GET',
     payload: (args) => ({ queryParams: { include_offscreen: String(args?.include_offscreen === true) } }),
-    format: (data) => (Array.isArray(data.marks) ? data.marks.map((m: any) => formatMark(m)).join('\n') : JSON.stringify(data)),
+    format: formatMarks,
   },
   {
     name: 'take_economy_screenshot',
@@ -894,7 +898,7 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
     endpoint: '/marks/screenshot',
     method: 'GET',
     payload: (args) => ({ queryParams: { economy: '1', include_offscreen: String(args?.include_offscreen === true) } }),
-    format: (data) => (Array.isArray(data.marks) ? data.marks.map((m: any) => formatMark(m)).join('\n') : JSON.stringify(data)),
+    format: formatMarks,
   },
   {
     name: 'list_marks',
@@ -907,7 +911,7 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
     endpoint: '/marks/screenshot',
     method: 'GET',
     payload: (args) => ({ queryParams: { text_only: '1', include_offscreen: String(args?.include_offscreen === true) } }),
-    format: (data) => (Array.isArray(data.marks) ? data.marks.map((m: any) => formatMark(m)).join('\n') : JSON.stringify(data)),
+    format: formatMarks,
   },
   {
     name: 'click_mark',
@@ -1142,7 +1146,7 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
     parameters: {},
     endpoint: '/hil/active',
     method: 'GET',
-    format: (data) => JSON.stringify(data, null, 2),
+    format: jsonPretty,
   },
   {
     name: 'get_human_activity',
@@ -1150,7 +1154,7 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
     parameters: {},
     endpoint: '/human/status',
     method: 'GET',
-    format: (data) => JSON.stringify(data, null, 2),
+    format: jsonPretty,
   },
   {
     name: 'send_notification',

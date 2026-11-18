@@ -39788,6 +39788,22 @@ var BRAND = {
 };
 
 // src/mcp/tools-catalog.ts
+function normalizeDestination(args) {
+  let targetUrl = args?.url || args?.destination || args?.target || args?.link || args?.href || args?.address || "";
+  if (typeof targetUrl === "string" && targetUrl) {
+    if (!/^https?:\/\//i.test(targetUrl) && !/^about:/i.test(targetUrl) && !/^mark-eleven:/i.test(targetUrl)) {
+      targetUrl = "https://" + targetUrl;
+    }
+  }
+  if (!targetUrl) {
+    throw new Error('Missing destination URL. Please provide { "url": "https://..." }');
+  }
+  return targetUrl;
+}
+function formatMarks(data) {
+  return Array.isArray(data.marks) ? data.marks.map((m) => formatMark(m)).join("\n") : JSON.stringify(data);
+}
+var jsonPretty = (data) => JSON.stringify(data, null, 2);
 var TOOLS_CATALOG = [
   // 1. Navigation
   {
@@ -39799,16 +39815,7 @@ var TOOLS_CATALOG = [
     },
     endpoint: "/navigate",
     payload: (args) => {
-      let targetUrl = args?.url || args?.destination || args?.target || args?.link || args?.href || args?.address || "";
-      if (typeof targetUrl === "string" && targetUrl) {
-        if (!/^https?:\/\//i.test(targetUrl) && !/^about:/i.test(targetUrl) && !/^mark-eleven:/i.test(targetUrl)) {
-          targetUrl = "https://" + targetUrl;
-        }
-      }
-      if (!targetUrl) {
-        throw new Error('Missing destination URL. Please provide { "url": "https://..." }');
-      }
-      return { url: targetUrl, autoDismissConsent: args?.auto_dismiss_consent ?? true };
+      return { url: normalizeDestination(args), autoDismissConsent: args?.auto_dismiss_consent ?? true };
     },
     format: (data) => data.result || "Navigation complete"
   },
@@ -39822,16 +39829,7 @@ var TOOLS_CATALOG = [
     },
     endpoint: "/navigate",
     payload: (args) => {
-      let targetUrl = args?.url || args?.destination || args?.target || args?.link || args?.href || args?.address || "";
-      if (typeof targetUrl === "string" && targetUrl) {
-        if (!/^https?:\/\//i.test(targetUrl) && !/^about:/i.test(targetUrl) && !/^mark-eleven:/i.test(targetUrl)) {
-          targetUrl = "https://" + targetUrl;
-        }
-      }
-      if (!targetUrl) {
-        throw new Error('Missing destination URL. Please provide { "url": "https://..." }');
-      }
-      return { url: targetUrl };
+      return { url: normalizeDestination(args) };
     },
     format: (data) => data.result || "Navigation complete"
   },
@@ -40644,7 +40642,7 @@ ${lines.join("\n")}`;
     endpoint: "/marks/screenshot",
     method: "GET",
     payload: (args) => ({ queryParams: { include_offscreen: String(args?.include_offscreen === true) } }),
-    format: (data) => Array.isArray(data.marks) ? data.marks.map((m) => formatMark(m)).join("\n") : JSON.stringify(data)
+    format: formatMarks
   },
   {
     name: "take_economy_screenshot",
@@ -40657,7 +40655,7 @@ ${lines.join("\n")}`;
     endpoint: "/marks/screenshot",
     method: "GET",
     payload: (args) => ({ queryParams: { economy: "1", include_offscreen: String(args?.include_offscreen === true) } }),
-    format: (data) => Array.isArray(data.marks) ? data.marks.map((m) => formatMark(m)).join("\n") : JSON.stringify(data)
+    format: formatMarks
   },
   {
     name: "list_marks",
@@ -40670,7 +40668,7 @@ ${lines.join("\n")}`;
     endpoint: "/marks/screenshot",
     method: "GET",
     payload: (args) => ({ queryParams: { text_only: "1", include_offscreen: String(args?.include_offscreen === true) } }),
-    format: (data) => Array.isArray(data.marks) ? data.marks.map((m) => formatMark(m)).join("\n") : JSON.stringify(data)
+    format: formatMarks
   },
   {
     name: "click_mark",
@@ -40906,7 +40904,7 @@ ${lines.join("\n")}`;
     parameters: {},
     endpoint: "/hil/active",
     method: "GET",
-    format: (data) => JSON.stringify(data, null, 2)
+    format: jsonPretty
   },
   {
     name: "get_human_activity",
@@ -40914,7 +40912,7 @@ ${lines.join("\n")}`;
     parameters: {},
     endpoint: "/human/status",
     method: "GET",
-    format: (data) => JSON.stringify(data, null, 2)
+    format: jsonPretty
   },
   {
     name: "send_notification",
