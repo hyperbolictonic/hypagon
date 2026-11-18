@@ -114,9 +114,6 @@
       "main/tabs/tab-manager.ts": {
         "file": 1
       },
-      "main/telemetry/chaos-kinematics.ts": {
-        "file": 1
-      },
       "main/telemetry/input-simulator.ts": {
         "file": 1
       },
