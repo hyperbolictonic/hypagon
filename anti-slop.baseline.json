@@ -92,9 +92,6 @@
         "file": 1,
         "function": 1
       },
-      "main/primitives/dom-targeting.ts": {
-        "file": 1
-      },
       "main/primitives/primitives.ts": {
         "file": 1
       },
