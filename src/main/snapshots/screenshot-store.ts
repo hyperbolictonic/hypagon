@@ -22,6 +22,17 @@ export function screenshotsDir(): string {
 }
 
 /**
+ * When to use: writing a capture to disk and running the retention pass, then handing
+ * back the path for telemetry and the response.
+ */
+export function saveCapture(buffer: Buffer, filename: string): string {
+  const filePath = path.join(screenshotsDir(), filename);
+  fs.writeFileSync(filePath, buffer);
+  pruneScreenshots(50);
+  return filePath;
+}
+
+/**
  * When to use: trimming old captures — called after every write and by
  * `POST /screenshots/cleanup`. Deletes anything older than `maxAgeMs`, then the
  * oldest files until at most `maxFiles` remain.

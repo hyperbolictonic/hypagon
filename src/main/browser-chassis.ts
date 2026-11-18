@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { BrowserWindow, app, nativeImage, ipcMain, clipboard, powerMonitor, screen, session, WebContentsView, type Session, type WebContents } from 'electron';
 import type { AgentStatus, ChassisState, HarvestedConstruct, TelemetryEvent, TabSummary } from '../shared/types.js';
 import type { ViewportState } from '../shared/viewport.js';
-import { pruneScreenshots, screenshotsDir } from './snapshots/screenshot-store.js';
+import { pruneScreenshots, saveCapture, screenshotsDir } from './snapshots/screenshot-store.js';
 import { DeviceProfileStore } from './viewport/profiles.js';
 import { ViewportController } from './viewport/controller.js';
 import { ZoomRuntime } from './zoom/runtime.js';
@@ -2713,11 +2713,7 @@ export class BrowserChassis {
     const base64Image = `data:${mimeType};base64,${buffer.toString('base64')}`;
 
     // Save image to disk & run retention cleanup
-    const screenshotsDir = this.getScreenshotsDir();
-    const filename = `screenshot_${Date.now()}.${isJpeg ? 'jpg' : 'png'}`;
-    const filePath = path.join(screenshotsDir, filename);
-    fs.writeFileSync(filePath, buffer);
-    this.cleanupScreenshots(50);
+    const filePath = saveCapture(buffer, `screenshot_${Date.now()}.${isJpeg ? 'jpg' : 'png'}`);
 
     this.emitTelemetry({
       type: 'harvest',
@@ -3323,20 +3319,27 @@ export class BrowserChassis {
     return await this.llmSurface.probe(url);
   }
 
-  public async fetchLlmSurface(opts: { url?: string; as?: LlmSurfaceKind } = {}): Promise<LlmFetchResult> {
-    this.addLog('action', `MCP Directive: llm_fetch(${opts.url || 'active tab'}, as=${opts.as || 'auto'})`);
+  /**
+   * Run one research-visible call: broadcast the start line, run it, then the done line
+   * (ok or failed). The deck timeline and the research panel read these events.
+   */
+  private async withResearchActivity<T>(
+    tool: string,
+    summary: string,
+    run: () => Promise<T>,
+    describeDone?: (result: T) => string,
+  ): Promise<T> {
     const runId = randomUUID();
     const startedAt = Date.now();
-    const summary = opts.url || 'active tab';
-    this.broadcast('research:event', { type: 'activity', runId, tool: 'llm_fetch', status: 'start', summary, at: startedAt });
+    this.broadcast('research:event', { type: 'activity', runId, tool, status: 'start', summary, at: startedAt });
     try {
-      const result = await this.llmSurface.fetch(opts);
+      const result = await run();
       this.broadcast('research:event', {
         type: 'activity',
         runId,
-        tool: 'llm_fetch',
+        tool,
         status: 'done',
-        summary,
+        summary: describeDone ? describeDone(result) : summary,
         ok: true,
         ms: Date.now() - startedAt,
         at: Date.now(),
@@ -3346,7 +3349,7 @@ export class BrowserChassis {
       this.broadcast('research:event', {
         type: 'activity',
         runId,
-        tool: 'llm_fetch',
+        tool,
         status: 'done',
         summary,
         ok: false,
@@ -3355,6 +3358,11 @@ export class BrowserChassis {
       });
       throw error;
     }
+  }
+
+  public async fetchLlmSurface(opts: { url?: string; as?: LlmSurfaceKind } = {}): Promise<LlmFetchResult> {
+    this.addLog('action', `MCP Directive: llm_fetch(${opts.url || 'active tab'}, as=${opts.as || 'auto'})`);
+    return this.withResearchActivity('llm_fetch', opts.url || 'active tab', () => this.llmSurface.fetch(opts));
   }
 
   /**
@@ -3368,36 +3376,7 @@ export class BrowserChassis {
       'action',
       `MCP Directive: read_url(${opts.url || 'active tab'}${opts.maxChars ? `, max_chars=${opts.maxChars}` : ''}${opts.cursor ? `, cursor=${opts.cursor}` : ''})`,
     );
-    const runId = randomUUID();
-    const startedAt = Date.now();
-    const summary = opts.url || 'active tab';
-    this.broadcast('research:event', { type: 'activity', runId, tool: 'read_url', status: 'start', summary, at: startedAt });
-    try {
-      const result = await this.llmSurface.readUrl(opts);
-      this.broadcast('research:event', {
-        type: 'activity',
-        runId,
-        tool: 'read_url',
-        status: 'done',
-        summary,
-        ok: true,
-        ms: Date.now() - startedAt,
-        at: Date.now(),
-      });
-      return result;
-    } catch (error: any) {
-      this.broadcast('research:event', {
-        type: 'activity',
-        runId,
-        tool: 'read_url',
-        status: 'done',
-        summary,
-        ok: false,
-        ms: Date.now() - startedAt,
-        at: Date.now(),
-      });
-      throw error;
-    }
+    return this.withResearchActivity('read_url', opts.url || 'active tab', () => this.llmSurface.readUrl(opts));
   }
 
   /**
@@ -3595,40 +3574,21 @@ export class BrowserChassis {
       'action',
       `MCP Directive: search_web("${query}", engine=${effective.engine || (effective.engines ? effective.engines.join('>') : 'auto')}${this.researchSettings.enabled ? ', stealth' : ''})`,
     );
-    const runId = randomUUID();
-    const startedAt = Date.now();
-    this.broadcast('research:event', { type: 'activity', runId, tool: 'search_web', status: 'start', summary: query, at: startedAt });
-    try {
-      const outcome = await this.searchHub.search(query, effective);
-      if (this.researchSettings.enabled && outcome.blocked) {
-        for (const attempt of outcome.attempts) {
-          if (attempt.blocked) this.markResearchCooldown(this.engineHost(attempt.engine), 'bot-check/consent');
+    return this.withResearchActivity(
+      'search_web',
+      query,
+      async () => {
+        const outcome = await this.searchHub.search(query, effective);
+        if (this.researchSettings.enabled && outcome.blocked) {
+          for (const attempt of outcome.attempts) {
+            if (attempt.blocked) this.markResearchCooldown(this.engineHost(attempt.engine), 'bot-check/consent');
+          }
         }
-      }
-      this.broadcast('research:event', {
-        type: 'activity',
-        runId,
-        tool: 'search_web',
-        status: 'done',
-        summary: `${outcome.results?.length ?? 0} result(s)${outcome.engine ? ` via ${outcome.engine}` : ''}${outcome.blocked ? ' (provider blocked)' : ''}`,
-        ok: true,
-        ms: Date.now() - startedAt,
-        at: Date.now(),
-      });
-      return outcome;
-    } catch (error: any) {
-      this.broadcast('research:event', {
-        type: 'activity',
-        runId,
-        tool: 'search_web',
-        status: 'done',
-        summary: query,
-        ok: false,
-        ms: Date.now() - startedAt,
-        at: Date.now(),
-      });
-      throw error;
-    }
+        return outcome;
+      },
+      (outcome) =>
+        `${outcome.results?.length ?? 0} result(s)${outcome.engine ? ` via ${outcome.engine}` : ''}${outcome.blocked ? ' (provider blocked)' : ''}`,
+    );
   }
 
   /** Bounds of the browser viewport as actually laid out in the HUD (zoom-aware). */
@@ -4350,11 +4310,7 @@ export class BrowserChassis {
     const base64Image = `data:${mimeType};base64,${buffer.toString('base64')}`;
 
     // 4. Save to disk & run retention cleanup
-    const screenshotsDir = this.getScreenshotsDir();
-    const filename = `annotated_${economy ? 'eco_' : ''}${Date.now()}.${economy ? 'jpg' : 'png'}`;
-    const filePath = path.join(screenshotsDir, filename);
-    fs.writeFileSync(filePath, buffer);
-    this.cleanupScreenshots(50);
+    const filePath = saveCapture(buffer, `annotated_${economy ? 'eco_' : ''}${Date.now()}.${economy ? 'jpg' : 'png'}`);
 
     this.emitTelemetry({
       type: 'harvest',
