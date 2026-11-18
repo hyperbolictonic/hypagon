@@ -17,6 +17,7 @@ import {
 import { chunkMarkdown, extractDomain } from './chunker.js';
 import { dataPath } from '../data-paths.js';
 
+/** When to use: reading a raw history row from the store (visit time, title, domain). */
 export interface PageHistoryRow {
   id: string;
   url: string;
@@ -29,6 +30,7 @@ export interface PageHistoryRow {
   [key: string]: unknown;
 }
 
+/** When to use: reading a raw bookmark row from the store. */
 export interface BookmarkRow {
   id: string;
   url: string;
@@ -40,6 +42,7 @@ export interface BookmarkRow {
   [key: string]: unknown;
 }
 
+/** When to use: returning a ranked semantic recall hit (page chunk, score, source). */
 export interface RecallResult {
   url: string;
   title: string;
@@ -50,6 +53,7 @@ export interface RecallResult {
   score?: number;
 }
 
+/** When to use: shaping a history entry for `GET /cortex/history` and the deck. */
 export interface HistoryItem {
   url: string;
   title: string;
@@ -57,6 +61,7 @@ export interface HistoryItem {
   visitedAt: string;
 }
 
+/** When to use: shaping an address-bar suggestion for `GET /cortex/suggest`. */
 export interface UrlSuggestion {
   url: string;
   title: string;
@@ -67,6 +72,7 @@ export interface UrlSuggestion {
   snippet?: string;
 }
 
+/** When to use: shaping a bookmark for `GET /bookmarks` and the deck. */
 export interface BookmarkItem {
   id: string;
   url: string;
@@ -76,6 +82,7 @@ export interface BookmarkItem {
   createdAt: string;
 }
 
+/** When to use: reading a stored script row from the vault table. */
 export interface ScriptRow {
   id: string;
   name: string;
@@ -89,6 +96,7 @@ export interface ScriptRow {
   [key: string]: unknown;
 }
 
+/** When to use: shaping a script for `GET /scripts/list` and recall results. */
 export interface ScriptItem {
   id: string;
   name: string;
@@ -140,6 +148,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
   return dot;
 }
 
+/** When to use: opening the local LanceDB memory store, or building an isolated instance in tests. */
 export class CortexDB {
   private db: lancedb.Connection | null = null;
   private historyTable: lancedb.Table | null = null;
@@ -827,4 +836,5 @@ export class CortexDB {
 }
 
 // Global singleton instance for the main chassis process
+/** When to use: the process-wide Cortex store (history, bookmarks, semantic recall). */
 export const cortex = new CortexDB();

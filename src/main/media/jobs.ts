@@ -19,16 +19,21 @@ import { ytdlpRuntimeOptions } from './platform.ts';
 import { needsLogin } from './auth.ts';
 import type { MediaBinary, MediaBinaryError } from './binaries.ts';
 
+/** When to use: selecting the downloader mode (video or audio-only). */
 export type MediaKind = 'video' | 'audio';
+/** When to use: capping the selected format (best, 1080/720/480, worst). */
 export type MediaQuality = 'best' | '1080' | '720' | '480' | 'worst';
+/** When to use: reporting or observing a media job lifecycle state. */
 export type MediaJobState = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 
+/** When to use: describing one downloaded file (path, bytes, format note). */
 export interface MediaJobFile {
   readonly name: string;
   readonly path: string;
   readonly bytes: number;
 }
 
+/** When to use: reporting download progress (percent, speed, ETA) to the deck. */
 export interface MediaProgress {
   readonly percent: number | null;
   readonly downloadedBytes: number | null;
@@ -38,6 +43,7 @@ export interface MediaProgress {
   readonly stage: 'starting' | 'downloading' | 'merging' | 'postprocessing' | 'finalising';
 }
 
+/** When to use: queueing, cancelling or inspecting one media job. */
 export interface MediaJob {
   readonly id: string;
   readonly url: string;
@@ -53,6 +59,7 @@ export interface MediaJob {
   finishedAt: string | null;
 }
 
+/** When to use: starting a media job from a URL plus kind/quality options. */
 export interface MediaJobInput {
   readonly url: string;
   readonly kind?: MediaKind;
@@ -226,6 +233,7 @@ async function listFiles(dir: string): Promise<MediaJobFile[]> {
   return out.sort((a, b) => b.bytes - a.bytes);
 }
 
+/** When to use: constructing the job queue (binary paths, ffmpeg) in the app or tests. */
 export interface MediaJobsOptions {
   readonly rootDir: string;
   readonly resolveBinary: () => Promise<MediaBinary | MediaBinaryError>;
@@ -240,6 +248,7 @@ export interface MediaJobsOptions {
   readonly resolveFfmpeg?: () => Promise<{ available: boolean; path: string | null }>;
 }
 
+/** When to use: enqueueing, cancelling and listing media jobs from the bridge. */
 export class MediaJobs {
   private readonly jobs = new Map<string, MediaJob>();
   private readonly running = new Map<string, ChildProcess>();

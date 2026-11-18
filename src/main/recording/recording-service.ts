@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { app, dialog, type BrowserWindow } from 'electron';
 
+/** When to use: reading or patching the recording settings (enabled, tools switch, output directory). */
 export interface RecordingConfig {
   /** Whether the recorder is available at all (the REC button and the tools). */
   enabled: boolean;
@@ -34,6 +35,7 @@ export interface RecordingConfig {
   bitrate: number;
 }
 
+/** When to use: reporting a finished recording (path, bytes, frames) to the caller and HUD. */
 export interface RecordingResult {
   path: string;
   filename: string;
@@ -46,6 +48,7 @@ export interface RecordingResult {
   speedup: number;
 }
 
+/** When to use: rendering the deck recorder or answering `GET /recording/status`. */
 export interface RecordingStatus {
   recording: boolean;
   enabled: boolean;
@@ -84,6 +87,7 @@ let pendingStart: {
 } | null = null;
 let startBarrier: Promise<void> | null = null;
 
+/** When to use: the deck subscribes to recorder state changes (start/stop/failure). */
 export function onRecordingStatus(cb: (s: RecordingStatus) => void): void {
   statusListener = cb;
 }
@@ -97,10 +101,12 @@ function setStatus(next: Partial<RecordingStatus>): void {
   }
 }
 
+/** When to use: wiring the window the recorder captures; called once during app bootstrap. */
 export function setRecordingWindow(win: BrowserWindow): void {
   mainWindow = win;
 }
 
+/** When to use: restoring persisted recording settings at startup. */
 export function loadRecordingConfig(): RecordingConfig {
   try {
     const stored = JSON.parse(fs.readFileSync(configPath(), 'utf8'));
@@ -113,10 +119,12 @@ export function loadRecordingConfig(): RecordingConfig {
   return config;
 }
 
+/** When to use: reading the effective recording settings where a tool is about to run. */
 export function getRecordingConfig(): RecordingConfig {
   return { ...config };
 }
 
+/** When to use: applying a settings patch from IPC; returns the normalised config. */
 export function saveRecordingConfig(input: Partial<RecordingConfig>): RecordingConfig {
   const next: RecordingConfig = {
     ...config,
@@ -151,10 +159,12 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Math.round(value)));
 }
 
+/** When to use: answering health, the deck and the tool gate with the current recorder state. */
 export function getRecordingStatus(): RecordingStatus {
   return { ...status };
 }
 
+/** When to use: the human chooses a new capture folder from Settings → Recording. */
 export async function pickRecordingDir(): Promise<string | null> {
   const result = await dialog.showOpenDialog({
     title: 'Choose where timelapses are saved',
@@ -291,6 +301,7 @@ export function saveRecording(buffer: ArrayBuffer, frames: number): RecordingRes
   return result;
 }
 
+/** When to use: surfacing a capture failure to the deck and clearing the in-progress state. */
 export function failRecording(message: string): void {
   setStatus({ recording: false, error: message });
   const start = pendingStart;

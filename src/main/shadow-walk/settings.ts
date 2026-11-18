@@ -82,19 +82,23 @@ export const DEFAULT_SHADOW_WALK_SETTINGS: ShadowWalkSettings = {
   cloneLab: { enabled: false },
 };
 
+/** When to use: handing a save/normalize outcome back to the settings UI; errors are shown verbatim. */
 export interface ShadowWalkSettingsResult {
   ok: boolean;
   settings: ShadowWalkSettings;
   errors: string[];
 }
 
+/** When to use: asking `shadowWalkRefusal` whether one guarded surface may run. */
 export type ShadowWalkSurface = 'sealed' | 'tabWalk' | 'frames' | 'deepOpenRoots';
 
+/** When to use: a guarded call is disabled — carry the code/message to the caller instead of throwing. */
 export interface ShadowWalkRefusal {
   code: 'SHADOW_WALK_DISABLED' | 'SEALED_DISABLED' | 'TAB_WALK_DISABLED' | 'FRAMES_DISABLED' | 'DEEP_OPEN_ROOTS_DISABLED';
   message: string;
 }
 
+/** When to use: rendering Settings → Shadow Walk or the `/health` shadowWalk block. */
 export interface ShadowWalkStatus {
   enabled: boolean;
   axSealed: boolean;
@@ -136,6 +140,7 @@ function intInRange(value: unknown, fallback: number, min: number, max: number):
   return Math.round(Math.min(max, Math.max(min, n)));
 }
 
+/** When to use: validating settings from disk or IPC before they are saved or applied. */
 export function normalizeShadowWalkSettings(input: unknown): ShadowWalkSettingsResult {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     return { ok: false, settings: cloneDefaults(), errors: ['settings must be an object'] };
@@ -174,6 +179,7 @@ export function normalizeShadowWalkSettings(input: unknown): ShadowWalkSettingsR
   return { ok: true, settings, errors: [] };
 }
 
+/** When to use: constructing an isolated store in tests, or reading/saving the real profile file. */
 export class ShadowWalkSettingsStore {
   readonly file: string;
 
@@ -214,16 +220,20 @@ export class ShadowWalkSettingsStore {
   }
 }
 
+/** When to use: the process-wide store; prefer `loadShadowWalkSettings`/`saveShadowWalkSettings`. */
 export const shadowWalkSettings = new ShadowWalkSettingsStore();
 
+/** When to use: reading the effective settings (file plus env overrides) at the point of use. */
 export function loadShadowWalkSettings(): ShadowWalkSettings {
   return shadowWalkSettings.load();
 }
 
+/** When to use: persisting a settings patch from IPC; returns validation errors untouched. */
 export function saveShadowWalkSettings(input: unknown): ShadowWalkSettingsResult {
   return shadowWalkSettings.save(input);
 }
 
+/** When to use: building the flat status snapshot for the HUD and the bridge health payload. */
 export function shadowWalkStatus(settings: ShadowWalkSettings = loadShadowWalkSettings()): ShadowWalkStatus {
   return {
     enabled: settings.enabled,

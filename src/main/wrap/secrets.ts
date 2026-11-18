@@ -13,8 +13,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { assertSafeUrl } from './security.ts';
 
+/** When to use: declaring whether a wrapper credential is a static value or an OAuth2 client. */
 export type WrapSecretKind = 'static' | 'oauth2';
 
+/** When to use: describing the token endpoint and client of an OAuth2 wrapper credential. */
 export interface WrapOAuthMetadata {
   tokenUrl: string;
   clientId: string;
@@ -24,6 +26,7 @@ export interface WrapOAuthMetadata {
   tokenExpiresAt?: string;
 }
 
+/** When to use: listing stored credentials in Settings → Wrappers without exposing values. */
 export interface WrapSecretMetadata {
   name: string;
   allowedHosts: string[];
@@ -36,6 +39,7 @@ export interface WrapSecretMetadata {
   oauth2?: WrapOAuthMetadata;
 }
 
+/** When to use: creating or updating a stored credential from the settings UI. */
 export interface WrapSecretInput {
   name: string;
   value: string;
@@ -49,6 +53,7 @@ export interface WrapSecretInput {
   audience?: string;
 }
 
+/** When to use: injecting a different at-rest cipher in tests or a host with its own key store. */
 export interface SecretCipher {
   available(): boolean;
   warning?: string;
@@ -56,6 +61,7 @@ export interface SecretCipher {
   decrypt(payload: string): string;
 }
 
+/** When to use: reading a resolved credential just before a wrapped request is sent. */
 export interface SecretResolution {
   ok: boolean;
   header?: string;
@@ -66,6 +72,7 @@ export interface SecretResolution {
   refreshable?: boolean;
 }
 
+/** When to use: implementing a TokenMinter or minting an OAuth2 token for a wrapper. */
 export interface TokenRequest {
   tokenUrl: string;
   clientId: string;
@@ -74,6 +81,7 @@ export interface TokenRequest {
   audience?: string;
 }
 
+/** When to use: returning a minted token (or the failure) from a TokenMinter. */
 export interface TokenResult {
   accessToken: string;
   /** Lifetime in seconds. */
@@ -81,8 +89,10 @@ export interface TokenResult {
   tokenType?: string;
 }
 
+/** When to use: supplying the OAuth2 token exchange used by an oauth2 wrapper credential. */
 export type TokenMinter = (input: TokenRequest) => Promise<TokenResult>;
 
+/** When to use: constructing an isolated SecretStore (custom file, cipher) in tests. */
 export interface SecretStoreOptions {
   /** Injected for tests; defaults to a policy-checked POST to the token URL. */
   mintToken?: TokenMinter;
@@ -107,6 +117,7 @@ const HEADER_PATTERN = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
 const FORBIDDEN_HEADERS = new Set(['host', 'content-length', 'connection', 'transfer-encoding', 'upgrade', 'cookie', 'set-cookie']);
 const HOST_PATTERN = /^(\*\.)?[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/;
 
+/** When to use: storing or resolving wrapper credentials; values never leave the store unredacted. */
 export class SecretStore {
   readonly dir: string;
   private readonly cipher: SecretCipher;

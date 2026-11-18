@@ -13,6 +13,7 @@ import { renderRecipe } from '../../../packages/recipe/src/index.ts';
 import type { Recipe, RenderMeta, RenderedDocument } from '../../../packages/recipe/src/index.ts';
 import type { WrapPreview, WrapRunResult, WrapWrapper } from './types.ts';
 
+/** When to use: reading the result of `renderPayload` — body text or fence plus paging notes. */
 export interface Rendered {
   markdown: string;
   records: Record<string, unknown>[];
@@ -65,6 +66,7 @@ export function renderPayload(
   };
 }
 
+/** When to use: logging or showing a URL without leaking its query or credentials. */
 export function safeHost(url: string): string {
   try {
     return new URL(url).hostname;
@@ -87,6 +89,7 @@ export function previewUrl(url: string, query: Readonly<Record<string, string>> 
   return search === '' ? url : `${url}${url.includes('?') ? '&' : '?'}${search}`;
 }
 
+/** When to use: collecting every encoding of a stored secret before redacting output. */
 export function secretVariants(value: string): string[] {
   const variants = new Set<string>();
   if (value) variants.add(value);
@@ -95,6 +98,7 @@ export function secretVariants(value: string): string[] {
   return [...variants];
 }
 
+/** When to use: masking secret values in a string before it reaches a log or an agent. */
 export function redactText(text: string, values: string[]): string {
   if (!text || values.length === 0) return text;
   let out = text;
@@ -104,6 +108,7 @@ export function redactText(text: string, values: string[]): string {
   return out;
 }
 
+/** When to use: recursively redacting secret values in parsed JSON before returning it. */
 export function redactDeep(value: unknown, values: string[], depth = 0): unknown {
   if (values.length === 0) return value;
   if (depth > 100) return '<redacted-deep>';
@@ -119,6 +124,7 @@ export function redactDeep(value: unknown, values: string[], depth = 0): unknown
   return value;
 }
 
+/** When to use: decoding a response body as JSON only when the content type or text really is JSON. */
 export function parseJson(text: string, contentType: string): unknown {
   if (!text) return undefined;
   const looksJson = contentType.includes('json') || /^\s*[\[{]/.test(text);
@@ -130,6 +136,7 @@ export function parseJson(text: string, contentType: string): unknown {
   }
 }
 
+/** When to use: normalising a JSON payload into record objects for the records view. */
 export function toRecords(json: unknown): Record<string, unknown>[] {
   if (Array.isArray(json)) {
     return json.map((item) => (isPlainObject(item) ? item : { value: item }));
@@ -138,17 +145,20 @@ export function toRecords(json: unknown): Record<string, unknown>[] {
   return [];
 }
 
+/** When to use: rendering a body as a fenced code block, clipped to a character budget. */
 export function fence(text: string, language: string, maxChars: number): string {
   const clipped = clip(text.trim(), maxChars);
   return clipped ? `\`\`\`${language}\n${clipped}\n\`\`\`` : '_Empty response._';
 }
 
+/** When to use: truncating text with a visible marker for previews and logs. */
 export function clip(text: string, maxChars: number): string {
   if (!text) return '';
   if (text.length <= maxChars) return text;
   return `${text.slice(0, Math.max(0, maxChars - 1))}…`;
 }
 
+/** When to use: building the wrap surface failure envelope (code, message, status). */
 export function failure(
   wrapper: { id: string; name: string },
   code: string,
@@ -167,10 +177,12 @@ export function failure(
   };
 }
 
+/** When to use: checking a parsed value is a JSON object before reading keys off it. */
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** When to use: bounding a numeric option (limit, timeout) to a supported range. */
 export function clampInt(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, Math.floor(value)));

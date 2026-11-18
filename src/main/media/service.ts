@@ -32,11 +32,13 @@ const INFO_TIMEOUT_MS = 45_000;
 const INFO_MAX_STDOUT_BYTES = 16 * 1024 * 1024;
 const INFO_MAX_STDERR_BYTES = 256 * 1024;
 
+/** When to use: reporting only the media runtime fields on the health payload. */
 export interface MediaRuntimeStatus {
   readonly kind: 'electron-node' | 'none';
   readonly node: string | null;
 }
 
+/** When to use: rendering the deck media panel or `GET /media/status`. */
 export interface MediaStatus {
   readonly binary: {
     readonly available: boolean;
@@ -64,6 +66,7 @@ export interface MediaStatus {
   readonly updater: MediaUpdaterState;
 }
 
+/** When to use: answering `GET /media/info` with a resolved URL title/duration/formats. */
 export interface MediaInfo {
   readonly id: string | null;
   readonly title: string | null;
@@ -81,6 +84,7 @@ export interface MediaInfo {
   readonly automaticCaptionLanguages: readonly string[];
 }
 
+/** When to use: returning metadata (or the refusal) from `POST /media/info`. */
 export type MediaInfoResult =
   | {
       readonly ok: true;
@@ -90,8 +94,10 @@ export type MediaInfoResult =
     }
   | { readonly ok: false; readonly code: string; readonly error: string };
 
+/** When to use: carrying a binary/job failure with its code up to the route. */
 export type MediaServiceError = MediaBinaryError;
 
+/** When to use: returning a transcript or subtitle document from `POST /media/transcript`. */
 export type MediaTranscriptResult =
   | {
       readonly ok: true;
@@ -107,12 +113,14 @@ export type MediaTranscriptResult =
     }
   | { readonly ok: false; readonly code: string; readonly error: string };
 
+/** When to use: attaching a generated thumbnail to `POST /media/preview`. */
 export interface MediaPreviewImage {
   readonly name: string;
   readonly mimeType: string;
   readonly base64: string;
 }
 
+/** When to use: returning preview frames (or the refusal) from `POST /media/preview`. */
 export type MediaPreviewResult =
   | {
       readonly ok: true;
@@ -174,6 +182,7 @@ function buildInfo(payload: Record<string, any>): MediaInfo {
   };
 }
 
+/** When to use: returning a finished download (path, bytes, title) from `POST /media/download`. */
 export type MediaDownloadResult =
   | { readonly ok: true; readonly job: MediaJob }
   | { readonly ok: false; readonly code: string; readonly error: string };
@@ -181,6 +190,7 @@ export type MediaDownloadResult =
 const MEDIA_KINDS: readonly MediaKind[] = ['video', 'audio'];
 const MEDIA_QUALITIES: readonly MediaQuality[] = ['best', '1080', '720', '480', 'worst'];
 
+/** When to use: starting media jobs from the bridge, or wiring the media tools in the app. */
 export class MediaService {
   private binaryPromise: Promise<MediaBinary | MediaBinaryError> | null = null;
   private readonly rootDir: string;

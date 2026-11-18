@@ -9,8 +9,10 @@
 
 import type { Recipe, RenderedDocument, RenderMeta } from '../../../packages/recipe/src/index.ts';
 
+/** When to use: declaring the HTTP method of a saved wrapper. */
 export type WrapMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD';
 
+/** When to use: choosing whether a wrapper renders markdown, JSON, or both. */
 export type WrapFormat = 'markdown' | 'json' | 'both';
 
 /** The subset of JSON Schema used by wrapper inputs. */
@@ -34,6 +36,7 @@ export interface WrapInputSchema {
   default?: unknown;
 }
 
+/** When to use: describing the outbound request template of a wrapper (URL, headers, body). */
 export interface WrapRequest {
   /** Primary/default method. */
   method: WrapMethod;
@@ -52,6 +55,7 @@ export interface WrapRequest {
   timeoutMs?: number;
 }
 
+/** When to use: creating, storing or executing a saved REST wrapper. */
 export interface WrapWrapper {
   schemaVersion: 1;
   id: string;
@@ -68,6 +72,7 @@ export interface WrapWrapper {
   notes?: string;
 }
 
+/** When to use: listing a wrapper in `wrap_list` or the settings table. */
 export interface WrapManifestEntry {
   id: string;
   name: string;
@@ -84,6 +89,7 @@ export interface WrapManifestEntry {
   lastVerified?: string;
 }
 
+/** When to use: showing a dry run — resolved URL, redacted headers and the request body. */
 export interface WrapPreview {
   method: WrapMethod;
   url: string;
@@ -91,6 +97,7 @@ export interface WrapPreview {
   body?: string;
 }
 
+/** When to use: returning a structured wrapper failure (code, status, redacted detail). */
 export interface WrapErrorInfo {
   code: string;
   message: string;
@@ -99,6 +106,7 @@ export interface WrapErrorInfo {
   retryable?: boolean;
 }
 
+/** When to use: reporting status, bytes, content type and paging for a wrapper run. */
 export interface WrapResponseInfo {
   contentType?: string;
   bytes: number;
@@ -109,6 +117,7 @@ export interface WrapResponseInfo {
   truncated?: boolean;
 }
 
+/** When to use: reading the manifest index (ids, names, secrets) for generated tools. */
 export interface WrapIndexed {
   /** How many rendered documents were handed to Cortex. */
   documents: number;
@@ -118,6 +127,7 @@ export interface WrapIndexed {
   error?: string;
 }
 
+/** When to use: returning a wrapper execution result (rendered body, response info, paging). */
 export interface WrapRunResult {
   ok: boolean;
   dryRun?: boolean;

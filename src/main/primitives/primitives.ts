@@ -117,6 +117,7 @@ export interface PrimitivesHost {
   recordTransition?(record: TransitionRecord): void;
 }
 
+/** When to use: branching on a primitive failure; the codes map to bridge HTTP statuses. */
 export type PrimitiveErrorCode = 'STALE_REF' | 'TIMEOUT' | 'NO_TARGET' | 'BAD_REQUEST' | 'NOT_SUPPORTED' | 'AMBIGUOUS' | 'JEV_REQUIRED';
 
 /**
@@ -126,6 +127,7 @@ export type PrimitiveErrorCode = 'STALE_REF' | 'TIMEOUT' | 'NO_TARGET' | 'BAD_RE
  */
 export const DEFAULT_MARKDOWN_BUDGET = 25000;
 
+/** When to use: throwing a structured primitive failure that the bridge maps to a status. */
 export class PrimitiveError extends Error {
   public code: PrimitiveErrorCode;
   public detail?: any;
@@ -137,6 +139,7 @@ export class PrimitiveError extends Error {
   }
 }
 
+/** When to use: describing one wait_for/expect condition (selector, text, url, count, ...). */
 export interface WaitCondition {
   type:
     | 'selector'
@@ -169,12 +172,14 @@ export interface WaitCondition {
   version?: number;
 }
 
+/** When to use: reading the per-condition outcome of wait_for/expect. */
 export interface ConditionResult {
   type: string;
   ok: boolean;
   evidence?: string;
 }
 
+/** When to use: returning the aggregate wait verdict (ok, attempts, elapsed, results). */
 export interface WaitResult {
   ok: boolean;
   require: 'any' | 'all';
@@ -183,6 +188,7 @@ export interface WaitResult {
   results: ConditionResult[];
 }
 
+/** When to use: comparing revisions, URLs and text lengths for the diff primitive. */
 export interface PageState {
   revision: number;
   url: string;
@@ -197,6 +203,7 @@ export interface PageState {
   ts: number;
 }
 
+/** When to use: shaping observe output (format, region, budget, cursor, frames). */
 export interface ObserveOptions {
   as?: 'markdown' | 'text' | 'ax' | 'som' | 'components' | 'list' | 'table' | 'app_data';
   region?: number | string;
@@ -210,6 +217,7 @@ export interface ObserveOptions {
   full?: boolean;
 }
 
+/** When to use: shaping extract (list, table, tables, app_data, schema_org). */
 export interface ExtractOptions {
   kind: 'list' | 'table' | 'tables' | 'app_data' | 'schema_org';
   ref?: number;
@@ -223,6 +231,7 @@ export interface ExtractOptions {
   timeoutMs?: number;
 }
 
+/** When to use: shaping collect_all (container, scroll step, delay, max scrolls). */
 export interface CollectOptions {
   ref?: number;
   selector?: string;
@@ -233,6 +242,7 @@ export interface CollectOptions {
   max?: number;
 }
 
+/** When to use: shaping find (role/name/text/regex/selector, offscreen, frames). */
 export interface FindOptions {
   role?: string;
   name?: string;
@@ -639,6 +649,7 @@ function buildCollectScript(opts: CollectOptions): string {
   })()`;
 }
 
+/** When to use: driving observe/find/act/wait/extract/collect — the agent-facing primitive layer. */
 export class Primitives {
   private states: Map<number, PageState> = new Map();
   private stateOrder: number[] = [];
