@@ -4090,11 +4090,6 @@ export class BrowserChassis {
       onHuman?.({ phase: 'needed', url, reason: 'challenge' });
       this.addLog('warn', `Human hand-off requested for ${url}.`);
 
-      // Solving a challenge usually navigates; re-inject the banner so RESUME stays reachable.
-      const refresh = () => setTimeout(() => this.hilManager.refreshBanner(), 400);
-      wc.on('did-navigate', refresh);
-      wc.on('did-finish-load', refresh);
-
       try {
         const humanStarted = Date.now();
         const resolution = await this.hilManager.requestIntervention({
@@ -4103,14 +4098,11 @@ export class BrowserChassis {
           url,
           timeoutSeconds: this.researchSettings.hilTimeoutSec,
           bringToFront: true,
-          inPageBanner: false,
         });
         humanMs = Date.now() - humanStarted;
         if (resolution.status !== 'resolved') return null;
       } finally {
         wc.removeListener('before-input-event', onKey);
-        wc.removeListener('did-navigate', refresh);
-        wc.removeListener('did-finish-load', refresh);
       }
 
       const state = await wc

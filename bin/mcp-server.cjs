@@ -37707,11 +37707,11 @@ ${lines.join("\n")}`;
   // 14. Human-In-The-Loop (HIL) Intervention & Desktop Notifications
   {
     name: "request_human_intervention",
-    description: "PROACTIVELY call this whenever encountering CAPTCHAs, Cloudflare Turnstile, login/2FA prompts, payment checkouts, or unexpected roadblocks. Halts agent execution, triggers audible desktop alerts, unhides and brings window to front, flashes taskbar, and presents an interactive HUD banner for human assistance.",
+    description: "PROACTIVELY call this whenever encountering CAPTCHAs, Cloudflare Turnstile, login/2FA prompts, payment checkouts, or unexpected roadblocks. Halts agent execution, raises a critical toast and flashes the taskbar, and swaps the Command Deck into its hand-off panel. It does NOT steal focus: the window is unhidden but the person switches to it when ready. Clicking the toast itself does focus the window.",
     parameters: {
       reason: external_exports.string().describe('Clear explanation of what human action is needed (e.g. "Please solve the Cloudflare Turnstile challenge" or "Please enter 2FA code")'),
       timeout_seconds: external_exports.number().optional().describe("Max seconds to wait for human action (default: 180)"),
-      bring_to_front: external_exports.boolean().optional().default(true).describe("Whether to unhide/restore window from tray and bring to front (default: true)")
+      bring_to_front: external_exports.boolean().optional().default(true).describe("Whether to unhide/raise the deck from the tray (without taking keyboard focus) when the request starts (default: true)")
     },
     endpoint: "/hil/request",
     payload: (args) => {

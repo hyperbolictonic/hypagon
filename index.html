@@ -157,16 +157,6 @@
       </div>
     </div>
 
-    <!-- Human-in-the-loop toast: in the app chrome so the native page view cannot cover it. -->
-    <div id="hil-toast" class="hidden fixed left-1/2 -translate-x-1/2 top-[66px] z-[60] flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full border border-warning/60 bg-base-300/95 shadow-2xl font-mono text-[11px]">
-      <span class="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" aria-hidden="true"></span>
-      <span class="text-[10px] uppercase tracking-wider text-warning">Human hand-off</span>
-      <span id="hil-toast-reason" class="text-base-content/80 max-w-[420px] truncate">…</span>
-      <button id="hil-toast-reload" class="btn btn-xs btn-ghost h-6 min-h-0">RELOAD</button>
-      <button id="hil-toast-resume" class="btn btn-xs btn-success h-6 min-h-0">RESUME</button>
-      <button id="hil-toast-cancel" class="btn btn-xs btn-ghost h-6 min-h-0">CANCEL</button>
-    </div>
-
     <!-- Main Workspace Split -->
     <div id="main-workspace" class="flex-1 flex overflow-hidden relative">
 
@@ -272,6 +262,20 @@
             <button id="sidebar-collapse-btn" class="btn btn-xs btn-ghost font-mono text-[10px]" title="Collapse to the deck orb (Ctrl+Shift+B)">
               MINIMIZE ⟩
             </button>
+          </div>
+        </div>
+
+        <!-- Human hand-off: replaces the deck body while the agent waits for a person. -->
+        <div id="hil-panel" class="hidden flex-1 flex-col gap-3 p-4 border-b border-warning/30">
+          <div class="flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" aria-hidden="true"></span>
+            <span class="font-mono text-[10px] uppercase tracking-widest text-warning">Human hand-off</span>
+          </div>
+          <p id="hil-panel-reason" class="font-mono text-[11px] leading-snug text-base-content/80 break-words">…</p>
+          <div class="flex items-center gap-1.5">
+            <button id="hil-panel-resume" class="btn btn-xs btn-success font-mono text-[10px]">RESUME AGENT ✓</button>
+            <button id="hil-panel-reload" class="btn btn-xs btn-ghost font-mono text-[10px]">RELOAD</button>
+            <button id="hil-panel-cancel" class="btn btn-xs btn-ghost font-mono text-[10px]">CANCEL</button>
           </div>
         </div>
 

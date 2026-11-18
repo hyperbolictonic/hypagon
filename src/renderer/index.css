@@ -72,7 +72,6 @@ html.sidebar-mode #app-header,
 html.sidebar-mode #tab-bar-container,
 html.sidebar-mode #viewport-container,
 html.sidebar-mode #update-banner,
-html.sidebar-mode #hud-hil-banner,
 html.sidebar-mode dialog {
   display: none !important;
 }

@@ -313,32 +313,76 @@ async function refreshCollaborationCount(): Promise<void> {
 window.electronAPI?.onCollaborationUpdated(() => void refreshCollaborationCount());
 void refreshCollaborationCount();
 
-const hilToast = document.getElementById('hil-toast');
-const hilToastReason = document.getElementById('hil-toast-reason');
-const hilToastResume = document.getElementById('hil-toast-resume');
-const hilToastCancel = document.getElementById('hil-toast-cancel');
-const hilToastReload = document.getElementById('hil-toast-reload');
+const hilPanel = document.getElementById('hil-panel');
+const hilPanelReason = document.getElementById('hil-panel-reason');
+const hilPanelResume = document.getElementById('hil-panel-resume');
+const hilPanelCancel = document.getElementById('hil-panel-cancel');
+const hilPanelReload = document.getElementById('hil-panel-reload');
+
+/** The mode the deck had before a hand-off forced it docked; restored on clear. */
+let hilRestoreMode: SidebarMode | null = null;
+
+/**
+ * Swap the Command Deck into its hand-off variant.
+ *
+ * The deck is the one HIL surface: a slim docked panel replaces its body while the
+ * agent waits, and the previous content comes back untouched on clear. Nothing is
+ * injected into the page and nothing floats over it, so the page a human needs to
+ * look at stays fully readable. Only the sidebar document owns this state.
+ */
+function setDeckHilMode(active: boolean, reason?: string): void {
+  if (!SIDEBAR_MODE || !sidebarPanel || !hilPanel) return;
+  for (const child of Array.from(sidebarPanel.children)) {
+    const el = child as HTMLElement;
+    if (el.id === 'hil-panel') continue;
+    el.style.display = active ? 'none' : '';
+  }
+  hilPanel.classList.toggle('hidden', !active);
+  hilPanel.classList.toggle('flex', active);
+  if (active && reason && hilPanelReason) {
+    hilPanelReason.textContent = reason;
+  }
+  if (active) {
+    // A hand-off must be visible: bring the deck into its docked slot, remembering
+    // where it was so the user's layout comes back afterwards.
+    if (currentSidebarMode !== 'docked') {
+      hilRestoreMode = currentSidebarMode;
+      applySidebarMode('docked');
+      window.electronAPI?.setSidebarMode('docked');
+    }
+  } else if (hilRestoreMode) {
+    applySidebarMode(hilRestoreMode);
+    window.electronAPI?.setSidebarMode(hilRestoreMode);
+    hilRestoreMode = null;
+  }
+}
 
 window.electronAPI?.onHilRequested((request) => {
   sidebarRailToggle?.classList.add('is-hil');
-  if (hilToast && hilToastReason) {
-    hilToastReason.textContent = request?.reason || 'Human intervention required';
-    hilToast.classList.remove('hidden');
-  }
+  setDeckHilMode(true, request?.reason || 'Human intervention required');
 });
 window.electronAPI?.onHilCleared(() => {
   sidebarRailToggle?.classList.remove('is-hil');
-  hilToast?.classList.add('hidden');
+  setDeckHilMode(false);
 });
-hilToastResume?.addEventListener('click', () => {
+hilPanelResume?.addEventListener('click', () => {
   void window.electronAPI?.resolveHil();
 });
-hilToastCancel?.addEventListener('click', () => {
+hilPanelCancel?.addEventListener('click', () => {
   void window.electronAPI?.cancelHil();
 });
-hilToastReload?.addEventListener('click', () => {
+hilPanelReload?.addEventListener('click', () => {
   void window.electronAPI?.reloadHil();
 });
+// A hand-off raised before this document finished loading must still show.
+if (SIDEBAR_MODE) {
+  window.electronAPI?.getActiveHil().then((active) => {
+    if (active?.id) {
+      sidebarRailToggle?.classList.add('is-hil');
+      setDeckHilMode(true, active.reason || 'Human intervention required');
+    }
+  }).catch(() => undefined);
+}
 try {
   const savedEdge = localStorage.getItem('deck.orb-edge');
   if (savedEdge === 'left' || savedEdge === 'right') {
@@ -1088,59 +1132,6 @@ if (window.electronAPI) {
   window.electronAPI.onTelemetry(appendTelemetry);
   window.electronAPI.onConstructHarvested(renderConstruct);
   window.electronAPI.onLog(appendLog);
-  window.electronAPI.onHilRequested(showHilBanner);
-  window.electronAPI.onHilCleared(removeHilBanner);
-
-  // Check if HIL request is already active on load
-  window.electronAPI.getActiveHil().then((active) => {
-    if (active) showHilBanner(active);
-  });
-}
-
-function showHilBanner(req: { id: string; reason: string }) {
-  removeHilBanner();
-  const banner = document.createElement('div');
-  banner.id = 'hud-hil-banner';
-  // Anchored to the side panel (right), not across the middle: a human is being asked to act in
-  // the *browser*, so the notice must not cover the thing they need to look at.
-  banner.className =
-    'alert alert-warning shadow-2xl fixed bottom-10 right-3 z-50 w-[min(420px,calc(100vw-1.5rem))] flex items-center justify-between border-2 border-warning font-mono text-xs';
-
-  // Built with textContent, never innerHTML: `reason` can quote page copy (the sensitive-gate rule
-  // puts matched lines in it), and page copy is attacker-controlled.
-  const wrap = document.createElement('div');
-  wrap.className = 'flex items-center gap-2';
-  const icon = document.createElement('span');
-  icon.className = 'text-base';
-  icon.textContent = '⚠️';
-  const col = document.createElement('div');
-  const title = document.createElement('div');
-  title.className = 'font-bold text-[10px] uppercase tracking-wider text-warning-content';
-  title.textContent = 'Human Action Needed';
-  const reason = document.createElement('div');
-  reason.className = 'text-xs text-base-content';
-  reason.textContent = req.reason;
-  col.append(title, reason);
-  wrap.append(icon, col);
-
-  const btn = document.createElement('button');
-  btn.id = 'hud-hil-resolve-btn';
-  btn.className = 'btn btn-xs btn-success font-mono font-bold ml-4';
-  btn.textContent = 'DONE';
-
-  banner.append(wrap, btn);
-  document.body.appendChild(banner);
-
-  btn.addEventListener('click', async () => {
-    btn.textContent = 'RESUMING...';
-    await window.electronAPI.resolveHil(req.id, 'User clicked DONE in Command Deck HUD');
-    removeHilBanner();
-  });
-}
-
-function removeHilBanner() {
-  const b = document.getElementById('hud-hil-banner');
-  if (b) b.remove();
 }
 
 // Keyboard shortcuts (Ctrl+H to harvest). The sidebar overlay renderer is a
