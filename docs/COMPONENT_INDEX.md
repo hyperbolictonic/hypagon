@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 161 files, 650 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 162 files, 652 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (573)
+## Types (575)
 
 | File | Export | When to use |
 |---|---|---|
@@ -117,6 +117,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/input/human-activity.ts` | `HUMAN_CONSOLE_PREFIX` | Console prefix the page uses; anything else is ignored. |
 | `main/input/human-activity.ts` | `HumanActivityMonitor` | - |
 | `main/input/human-activity.ts` | `HumanActivity` *(type)* | Human takeover detection. |
+| `main/input/human-control.ts` | `HumanControl` | When to use: the bridge, the deck or the MCP server asks whether a person has the |
+| `main/input/human-control.ts` | `HumanControlHost` *(type)* | When to use: implement this when constructing a `HumanControl` — the chassis |
 | `main/jev/engine.ts` | `JevEngine` | - |
 | `main/jev/engine.ts` | `JevSection` *(type)* | Just-Enough-View (JEV) page compaction. |
 | `main/jev/engine.ts` | `JevSession` *(type)* | - |

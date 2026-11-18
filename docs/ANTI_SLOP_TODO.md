@@ -13,8 +13,8 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **53 violations** across **41 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **431 undocumented exports** across **123 files** | one-line `/** When to use ... */` required |
-| Duplicates | **1,857 duplicated lines / 46,832 (4.0%)** | threshold is 3%; 41 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 161 files |
+| Duplicates | **1,791 duplicated lines / 46,833 (3.8%)** | threshold is 3%; 41 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 162 files |
 | Component index | **161 files / 650 exports** | 431 still undocumented |
 
 ## Progress
@@ -31,6 +31,11 @@ is introduced.
   route stays covered.
 - **P0 #3 done** - `src/main/token-file.ts` owns the atomic token write and fail-closed read; the
   wrap and remote gateway modules are thin wrappers. The 37.8% / 27.1% clone pair is gone.
+- **P1 #4 started** - explicit human control moved out of `browser-chassis.ts` into
+  `src/main/input/human-control.ts` (`HumanControl` + `HumanControlHost`, 74 lines). The chassis
+  keeps thin delegates, so `/human/*`, the HUD and the mutation gate are unchanged; verified live
+  (takeover -> 409 on mutations -> resume -> 200). Next slices: sidebar/collab mode, viewport
+  wrappers, research settings, capture, consent.
 - Verified live on a dev instance (port 4125): 38 read routes across every family plus `act`,
   `navigate`, `markdown`, `tabs/new`, `tabs/close` and `tabs/switch` answer with unchanged shapes
   and status codes.
