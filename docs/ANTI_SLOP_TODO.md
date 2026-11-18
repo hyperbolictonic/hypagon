@@ -31,11 +31,16 @@ is introduced.
   route stays covered.
 - **P0 #3 done** - `src/main/token-file.ts` owns the atomic token write and fail-closed read; the
   wrap and remote gateway modules are thin wrappers. The 37.8% / 27.1% clone pair is gone.
-- **P1 #4 started** - explicit human control moved out of `browser-chassis.ts` into
-  `src/main/input/human-control.ts` (`HumanControl` + `HumanControlHost`, 74 lines). The chassis
-  keeps thin delegates, so `/human/*`, the HUD and the mutation gate are unchanged; verified live
-  (takeover -> 409 on mutations -> resume -> 200). Next slices: sidebar/collab mode, viewport
-  wrappers, research settings, capture, consent.
+- **P1 #4 in progress** - `browser-chassis.ts` is down from 4,816 to ~4,265 lines:
+  - `HumanControl` (`src/main/input/human-control.ts`) - explicit takeover state, hooks for
+    HUD/log/focus. Verified live: takeover -> 409 on mutations -> resume -> 200.
+  - `ZoomRuntime` (`src/main/zoom/runtime.ts`) - compensate/native policy, step and exact
+    factors, rendered CSS/physical proportions, emulation pinning. Verified live: step, 1.5x,
+    reset, and the emulated viewport pin.
+  - `screenshot-store.ts` (`src/main/snapshots/`) - capture folder + pruning. The extraction
+    surfaced a real bug: cleanup only matched `.png` while jpeg is the default format, so 394
+    orphaned jpegs had accumulated. Now both formats prune; the live pass removed 380 files.
+  - Next slices: sidebar/collab mode, research settings, capture, consent.
 - Verified live on a dev instance (port 4125): 38 read routes across every family plus `act`,
   `navigate`, `markdown`, `tabs/new`, `tabs/close` and `tabs/switch` answer with unchanged shapes
   and status codes.

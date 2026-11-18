@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 162 files, 652 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 164 files, 656 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (575)
+## Types (577)
 
 | File | Export | When to use |
 |---|---|---|
@@ -509,6 +509,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/validate-wrapper.ts` | `validateWrapper` | - |
 | `main/wrap/validate-wrapper.ts` | `isPlainObject` | - |
 | `main/wrap/validate-wrapper.ts` | `WrapperValidation` *(type)* | - |
+| `main/zoom/runtime.ts` | `ZoomRuntime` | When to use: the chassis, the deck or the MCP zoom tool needs the page-zoom policy, |
+| `main/zoom/runtime.ts` | `ZoomRuntimeHost` *(type)* | When to use: implement this when constructing a `ZoomRuntime` — the chassis |
 | `mcp/tool-groups.ts` | `groupAction` | - |
 | `mcp/tool-groups.ts` | `TOOL_GROUPS` | - |
 | `mcp/tool-groups.ts` | `META_TOOL_NAMES` | - |
@@ -594,7 +596,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (74)
+## Modules (76)
 
 | File | Export | When to use |
 |---|---|---|
@@ -641,6 +643,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/sealed-targets.ts` | `clearSealedTokens` | - |
 | `main/shadow-walk/sealed-targets.ts` | `issueSealedToken` | - |
 | `main/shadow-walk/sealed-targets.ts` | `resolveSealedToken` | Resolve a sealed token to a live top-level viewport centre, scrolling the real node into view. |
+| `main/snapshots/screenshot-store.ts` | `screenshotsDir` | When to use: writing a screenshot and needing the capture folder (created if absent). |
+| `main/snapshots/screenshot-store.ts` | `pruneScreenshots` | When to use: trimming old captures — called after every write and by |
 | `main/telemetry/bezier.ts` | `generateOrganicTrajectory` | Generates an organic, human-like trajectory between two coordinates. |
 | `main/token-file.ts` | `createTokenFile` | When to use: mint a fresh capability token at `target`, replacing any previous file atomically. |
 | `main/token-file.ts` | `readTokenFile` | When to use: validate a token file read by a companion process. A missing, unreadable, |
