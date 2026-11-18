@@ -4,6 +4,7 @@ import type { WebContents } from 'electron';
 import { cortex, type ScriptItem } from '../cortex/cortex-db.js';
 import { dataPath } from '../data-paths.js';
 
+/** When to use: listing saved scripts without loading their code. */
 export interface SavedScriptMeta {
   name: string;
   description: string;
@@ -14,6 +15,7 @@ export interface SavedScriptMeta {
   updatedAt: string;
 }
 
+/** When to use: saving, recalling or deleting scripts from the vault. */
 export class ScriptVault {
   private scriptsDir: string;
 

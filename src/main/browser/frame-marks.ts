@@ -17,10 +17,12 @@ import { listFrames } from './frames.js';
 
 const registry = new WeakMap<WebContents, Map<number, string>>();
 
+/** When to use: dropping the frame control id map after a navigation. */
 export function clearFrameMarks(wc: WebContents): void {
   registry.delete(wc);
 }
 
+/** When to use: mapping global mark ids back to their frame before act. */
 export function registerFrameMarks(wc: WebContents, entries: Array<{ id: number; frameId: string }>): void {
   if (!wc || !entries.length) return;
   let map = registry.get(wc);

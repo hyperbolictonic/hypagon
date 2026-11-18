@@ -12,6 +12,7 @@ import {
  */
 import { readJsonFile, writeJsonFileAtomic } from './json-file.js';
 
+/** When to use: reading or saving experimental flags (IPC only), or building one in tests. */
 export class ExperimentalSettingsStore {
   private settings: ExperimentalSettings = { ...DEFAULT_EXPERIMENTAL_SETTINGS };
 

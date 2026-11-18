@@ -8,6 +8,7 @@ import { LEGACY_USER_DATA_NAMES } from '../shared/brand.ts';
  */
 const MARKER = '.migrated-user-data';
 
+/** When to use: reading what a pre-rebrand profile migration moved. */
 export interface UserDataMigration {
   /** Directory the data was copied from, or null when nothing was migrated. */
   from: string | null;

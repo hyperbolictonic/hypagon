@@ -11,6 +11,7 @@ import type { Fingerprint } from 'hypagon-scrap';
 
 import type { CitationAnchor, CitationRelocation } from './anchors.js';
 
+/** When to use: reading a persisted citation anchor. */
 export interface StoredAnchor {
   url: string;
   text: string;
@@ -26,6 +27,7 @@ const MAX_RECORDS = 2000;
 
 import { readJsonFile, writeJsonFileAtomic } from '../settings/json-file.js';
 
+/** When to use: storing and loading anchors for citation relocation. */
 export class AnchorStore {
   readonly file: string;
   #records: StoredAnchor[];

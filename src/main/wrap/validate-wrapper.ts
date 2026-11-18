@@ -40,12 +40,14 @@ const FORBIDDEN_HEADERS = new Set([
   'x-access-token',
 ]);
 
+/** When to use: returning a validated wrapper document and its errors. */
 export interface WrapperValidation {
   ok: boolean;
   wrapper?: WrapWrapper;
   errors: string[];
 }
 
+/** When to use: validating a wrapper before saving or running it. */
 export function validateWrapper(input: unknown): WrapperValidation {
   const errors: string[] = [];
 
@@ -336,6 +338,7 @@ function validateUrlShape(url: string, errors: string[]): void {
   }
 }
 
+/** When to use: checking a parsed value is a JSON object before reading keys. */
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

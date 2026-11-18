@@ -65,6 +65,7 @@ export function humanListenerScript(): string {
   })()`;
 }
 
+/** When to use: classifying trusted page events as human vs synthetic for telemetry. */
 export class HumanActivityMonitor {
   private lastSyntheticAt = 0;
   private lastHuman: HumanActivity | null = null;

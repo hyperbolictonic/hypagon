@@ -9,6 +9,7 @@
 
 import type { WrapInputSchema } from './types.ts';
 
+/** When to use: returning validated wrapper arguments and their errors. */
 export interface ArgsValidation {
   ok: boolean;
   value: Record<string, unknown>;
@@ -16,6 +17,7 @@ export interface ArgsValidation {
   field?: string;
 }
 
+/** When to use: validating caller arguments against a wrapper input schema. */
 export function validateArgs(schema: WrapInputSchema | undefined, input: unknown): ArgsValidation {
   const errors: string[] = [];
 
@@ -180,6 +182,7 @@ function clone<T>(value: T): T {
   }
 }
 
+/** When to use: checking a parsed value is a JSON object before reading keys. */
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

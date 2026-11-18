@@ -2,6 +2,7 @@ import { BrowserWindow, clipboard, type WebContents } from 'electron';
 import { generateOrganicTrajectory, type Point, type PathStep, type ChaosKinematicsOptions } from './bezier.js';
 import { bump } from '../metrics.js';
 
+/** When to use: receiving pointer/keyboard telemetry from the simulator. */
 export interface InputTelemetryReporter {
   onMouseMove?: (point: Point, velocity: number) => void;
   onClick?: (point: Point) => void;
@@ -72,6 +73,7 @@ function keyDescriptor(ch: string): { key: string; code: string; vk: number } {
   return { key: ch, code: '', vk: 0 };
 }
 
+/** When to use: dispatching human-paced clicks and typing over CDP. */
 export class HumanizedInputSimulator {
   private currentCursor: Point = { x: 100, y: 100 };
 

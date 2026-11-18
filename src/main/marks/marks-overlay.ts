@@ -4,6 +4,7 @@ import { DEEP_DOM_HELPERS } from '../primitives/dom-targeting.js';
 import type { ComponentSurface } from '../shadow-walk/component-signature.js';
 import { COMPONENT_SIGNATURE_HELPERS } from '../shadow-walk/component-signature.js';
 
+/** When to use: describing one Set-of-Marks badge (id, tag, rect, text). */
 export interface MarkItem {
   id: number;
   tag: string;
@@ -29,6 +30,7 @@ export interface MarkItem {
   frameUrl?: string;
 }
 
+/** When to use: injecting and removing the numbered badge overlay. */
 export class MarksOverlay {
   private activeMarks: Map<number, MarkItem> = new Map();
   /** Session-sticky registry for structural anchors: fingerprint -> markId */

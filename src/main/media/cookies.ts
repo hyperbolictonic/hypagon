@@ -17,6 +17,7 @@ import { session as electronSession, type Cookie, type Session } from 'electron'
 
 import { toNetscape } from './cookie-format.ts';
 
+/** When to use: importing/exporting cookies for media downloads. */
 export interface CookieFile {
   readonly path: string;
   readonly count: number;

@@ -1,7 +1,9 @@
 import type { WebContents } from 'electron';
 import type { HumanizedInputSimulator } from '../telemetry/input-simulator.js';
 import { evaluateInFrames } from '../browser/frame-eval.js';
+import { ACCEPT_PATTERNS, MARK_ATTR, REJECT_PATTERNS, VENDOR_RULES } from './consent-rules.js';
 
+/** When to use: reporting whether a consent/overlay was dismissed and how. */
 export interface ShieldDismissResult {
   dismissed: boolean;
   /** A consent wall was detected but no usable control matched — do not force it. */
@@ -24,58 +26,6 @@ export interface ShieldDismissResult {
  * "Accept": 'essential' (default) tries the least-invasive real option first, then falls back.
  */
 export type ConsentPolicy = 'essential' | 'reject' | 'accept';
-
-/**
- * Vendor rules with both intents where the CMP exposes one. A real banner offers "Reject all" or
- * "Only necessary" far more often than the generic heuristics assume — clicking the human's least
- * invasive option is both more polite and more likely to actually stick (an "Accept all" that the
- * CMP re-renders is the classic on/off flicker).
- */
-const VENDOR_RULES: Array<{ framework: string; reject?: string; accept: string }> = [
-  {
-    framework: 'OneTrust',
-    reject: '#onetrust-reject-all-handler, button#onetrust-reject-all-handler',
-    accept: '#onetrust-accept-btn-handler, button#onetrust-accept-btn-handler',
-  },
-  {
-    framework: 'Cookiebot',
-    reject: '#CybotCookiebotDialogBodyButtonDecline, #CybotCookiebotDialogBodyLevelButtonLevelOptinDeclineAll',
-    accept: '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll, #CybotCookiebotDialogBodyButtonAccept',
-  },
-  {
-    framework: 'Google',
-    reject: '#W0wltc, button[aria-label*="Reject all" i]',
-    accept: '#L2AGLb, button[id*="L2AGLb"], form[action*="consent"] button',
-  },
-  { framework: 'TrustArc', reject: '.trustarc-decline-btn', accept: '.trustarc-agree-btn, #truste-consent-button' },
-  { framework: 'Civic', reject: '#ccc-reject-settings', accept: '#ccc-notify-accept, #ccc-recommended-settings' },
-  { framework: 'Didomi', reject: '#didomi-notice-disagree-button', accept: '#didomi-notice-agree-button' },
-  {
-    framework: 'Quantcast',
-    reject: '.qc-cmp2-summary-buttons button[mode="secondary"]',
-    accept: '.qc-cmp2-summary-buttons button[mode="primary"]',
-  },
-  {
-    framework: 'Generic',
-    reject:
-      'button[id*="reject-all" i], button[class*="reject-all" i], button[id*="decline" i], [aria-label*="reject all" i], [aria-label*="decline" i]',
-    accept:
-      'button[id*="cookie-accept" i], button[class*="cookie-accept" i], button[id*="accept-all" i], button[class*="accept-all" i], [aria-label*="accept all" i], [aria-label*="accept cookies" i]',
-  },
-];
-
-/** Text patterns for CMPs with no stable ids. Reject first, accept second. */
-const REJECT_PATTERNS = [
-  /^\s*(reject all|reject cookies|decline all|decline|refuse|deny|only necessary|only essential|essential only|necessary only|continue without accepting|continue without consent|disagree)\s*$/i,
-  /(reject all|decline all|only necessary|essential only|continue without accepting)/i,
-];
-const ACCEPT_PATTERNS = [
-  /^\s*(accept all|i accept|accept cookies|allow all|allow all cookies|agree and continue|agree & continue|i agree|agree|accept|got it|ok)\s*$/i,
-  /(accept all|allow all|accept cookies|agree & continue|agree and continue)/i,
-];
-
-/** Marker left on the chosen control so the in-frame fallback can find it again. */
-const MARK_ATTR = 'data-kuang-consent';
 
 /**
  * Self-contained scan. Runs unchanged in the top document and in every child frame (an isolated
@@ -148,6 +98,7 @@ function consentScanScript(order: Array<'reject' | 'accept'>): string {
   })()`;
 }
 
+/** When to use: detecting and dismissing consent overlays before reading a page. */
 export class ShieldBreaker {
   constructor(private simulator: HumanizedInputSimulator) {}
 

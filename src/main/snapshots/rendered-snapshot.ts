@@ -2,8 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { WebContents } from 'electron';
 import TurndownService from 'turndown';
+import { distillAxNodes } from './ax-outline.js';
 import { dataPath } from '../data-paths.js';
 
+/** When to use: shaping a rendered-page snapshot (format, idle wait, shadow piercing). */
 export interface RenderedSnapshotOptions {
   format?: 'ax_tree' | 'markdown' | 'html' | 'unrendered_html';
   waitUntilIdleMs?: number;
@@ -12,6 +14,7 @@ export interface RenderedSnapshotOptions {
   forceRerender?: boolean;
 }
 
+/** When to use: returning the rendered markup and its metadata. */
 export interface RenderedSnapshotResult {
   format: 'ax_tree' | 'markdown' | 'html' | 'unrendered_html';
   url: string;
@@ -35,6 +38,7 @@ const turndown = new TurndownService({
 // Clean up noisy tags from snapshot markdown
 turndown.remove(['script', 'style', 'noscript']);
 
+/** When to use: capturing the post-render DOM for frameworks that need JS. */
 export class RenderedSnapshotEngine {
   /**
    * Captures a rendered or unrendered point-in-time snapshot of the given WebContents.
@@ -150,7 +154,7 @@ export class RenderedSnapshotEngine {
         return this.captureJsAxFallback(wc);
       }
 
-      const distilled = this.distillAxNodes(nodes);
+      const distilled = distillAxNodes(nodes);
       return {
         outline: distilled,
         nodeCount: nodes.length,
@@ -165,52 +169,6 @@ export class RenderedSnapshotEngine {
         } catch {}
       }
     }
-  }
-
-  /**
-   * Converts raw CDP AXNode list into a clean, indented semantic hierarchy.
-   */
-  private static distillAxNodes(nodes: any[]): string {
-    const lines: string[] = [];
-    const significantRoles = new Set([
-      'button', 'link', 'combobox', 'searchbox', 'textbox', 'checkbox', 'radio',
-      'menuitem', 'option', 'tab', 'heading', 'navigation', 'main', 'article',
-      'dialog', 'alertdialog', 'alert', 'row', 'gridcell', 'cell', 'table', 'treeitem'
-    ]);
-
-    for (const node of nodes) {
-      if (node.ignored) continue;
-      const role = node.role?.value || '';
-      const name = node.name?.value || '';
-      const value = node.value?.value || '';
-      const description = node.description?.value || '';
-
-      // Skip non-significant structural containers with no text
-      if (!significantRoles.has(role) && !name && !value) {
-        continue;
-      }
-
-      const flags: string[] = [];
-      if (node.properties) {
-        for (const prop of node.properties) {
-          const pName = prop.name;
-          const pVal = prop.value?.value;
-          if (pVal === true) flags.push(pName);
-          else if (pVal && pVal !== false && typeof pVal !== 'object') flags.push(`${pName}="${pVal}"`);
-        }
-      }
-
-      const parts: string[] = [];
-      parts.push(`[${role.toUpperCase()}]`);
-      if (name) parts.push(`"${name.replace(/\n+/g, ' ').trim()}"`);
-      if (value) parts.push(`{value="${String(value).trim()}"}`);
-      if (flags.length > 0) parts.push(`(${flags.join(', ')})`);
-      if (description && description !== name) parts.push(`— ${description.slice(0, 80)}`);
-
-      lines.push(parts.join(' '));
-    }
-
-    return lines.slice(0, 250).join('\n');
   }
 
   /**

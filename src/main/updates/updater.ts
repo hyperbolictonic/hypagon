@@ -16,8 +16,10 @@
  */
 import { app } from 'electron';
 
+/** When to use: rendering the updater state badge. */
 export type UpdateStatus = 'disabled' | 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error';
 
+/** When to use: reading the updater snapshot (status, version, progress). */
 export interface UpdateState {
   status: UpdateStatus;
   /** Version offered by the feed (available / ready). */
@@ -49,6 +51,7 @@ export function updaterDisabledReason(): string | null {
   return null;
 }
 
+/** When to use: answering the deck/health with the current update state. */
 export function updaterState(): UpdateState {
   return state;
 }

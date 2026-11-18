@@ -95,6 +95,7 @@ function cleanThread(input: any): CollaborationThread | null {
   };
 }
 
+/** When to use: opening a thread anchored to a page target. */
 export interface CreateThreadInput {
   target: unknown;
   intent?: string;
@@ -105,6 +106,7 @@ export interface CreateThreadInput {
   choices?: string[];
 }
 
+/** When to use: persisting threads/notes; the service and deck share one store. */
 export class CollaborationStore {
   readonly file: string;
   private threads: CollaborationThread[] = [];

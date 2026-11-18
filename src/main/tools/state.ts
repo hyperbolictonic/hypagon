@@ -17,6 +17,7 @@ const GROUP_ACTIONS = new Map(
   TOOL_GROUPS.map((group) => [group.name, new Set(group.actions.map((action) => action.action))]),
 );
 
+/** When to use: clamping a tool settings payload before persisting it. */
 export function sanitizeToolSettings(input: unknown): ToolSettings {
   const source = input && typeof input === 'object' ? (input as Record<string, unknown>) : {};
   const names = (value: unknown): string[] =>
@@ -54,6 +55,7 @@ export function sanitizeToolSettings(input: unknown): ToolSettings {
   };
 }
 
+/** When to use: building the tools panel snapshot from settings. */
 export function buildToolManagerState(settings: ToolSettings): ToolManagerState {
   const defaultOrder = [
     ...DEFAULT_TOOL_ORDER,

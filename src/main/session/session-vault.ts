@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { Session, WebContents, CookiesSetDetails } from 'electron';
 import { dataPath } from '../data-paths.js';
 
+/** When to use: reading a saved session's cookies/storage for restore. */
 export interface SessionSnapshot {
   name: string;
   domain?: string;
@@ -13,6 +14,7 @@ export interface SessionSnapshot {
   storage?: Record<string, string>;
 }
 
+/** When to use: saving, listing or restoring named sessions. */
 export class SessionVault {
   private sessionsDir: string;
 

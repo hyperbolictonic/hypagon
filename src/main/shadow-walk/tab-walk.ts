@@ -16,6 +16,7 @@
 import type { WebContents } from 'electron';
 import { bump } from '../metrics.js';
 
+/** When to use: shaping a Tab walk (host, direction, steps, restore). */
 export interface TabWalkOptions {
   /** Light-DOM host to start from. */
   selector?: string;
@@ -28,6 +29,7 @@ export interface TabWalkOptions {
   restore?: boolean;
 }
 
+/** When to use: reading one focus landing during a Tab walk. */
 export interface TabWalkStep {
   index: number;
   role: string;
@@ -37,6 +39,7 @@ export interface TabWalkStep {
   gapMs: number;
 }
 
+/** When to use: returning the walk verdict (steps, landed, restored, reason). */
 export interface TabWalkResult {
   started: boolean;
   steps: TabWalkStep[];

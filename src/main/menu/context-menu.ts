@@ -13,6 +13,7 @@
  */
 import { BrowserWindow, Menu, clipboard, shell, type MenuItemConstructorOptions, type WebContents } from 'electron';
 
+/** When to use: wiring extra context-menu actions into a page view. */
 export interface ContextMenuOptions {
   window: BrowserWindow;
   /** Open a URL in a new browsing tab (the caller owns tab creation/activation). */
@@ -22,6 +23,7 @@ export interface ContextMenuOptions {
 
 const truncate = (value: string, max: number) => (value.length > max ? value.slice(0, max - 1) + '…' : value);
 
+/** When to use: binding the right-click menu to a tab's web contents. */
 export function attachContextMenu(wc: WebContents, options: ContextMenuOptions): void {
   wc.on('context-menu', (_event, params) => {
     const template: MenuItemConstructorOptions[] = [];

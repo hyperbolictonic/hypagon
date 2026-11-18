@@ -79,6 +79,7 @@ export function isPopupWindowRequest(request: WindowOpenRequest): boolean {
   return isAuthPopupUrl(request.url);
 }
 
+/** When to use: sizing and clamping a popup that a page requests. */
 export interface PopupSize {
   width: number;
   height: number;

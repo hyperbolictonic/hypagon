@@ -111,6 +111,7 @@ function preview(value: unknown, max = 2000): string {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
+/** When to use: writing a line to the MCP stderr log (never stdout). */
 export function logMcp(message: string, level: LogLevel = 'call'): void {
   const timestamp = new Date().toISOString();
   if (LOG_TO_FILE) {
@@ -461,6 +462,7 @@ function registerToolGroup(
   );
 }
 
+/** When to use: booting the stdio MCP server that fronts the bridge. */
 export async function createBridgeMcpServer() {
   const server = new McpServer({
     name: 'hb-browser',
@@ -922,6 +924,7 @@ Rules of thumb:
   return server;
 }
 
+/** When to use: normalising caller params before schema validation. */
 export function normalizeIncomingParams(params: any): Record<string, any> {
   if (!params || typeof params !== 'object') return {};
 

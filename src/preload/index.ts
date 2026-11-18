@@ -11,6 +11,7 @@ import type { ExperimentalSettings } from '../shared/experimental.js';
 import type { MediaSettings, MediaUpdaterState } from '../shared/media.js';
 import type { ResearchEvent } from '../shared/research-events.js';
 
+/** When to use: typing `window.electronAPI` in the renderer. */
 export interface ElectronAPI {
   getState: () => Promise<ChassisState>;
   getLatestConstruct: () => Promise<HarvestedConstruct | null>;

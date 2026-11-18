@@ -2,6 +2,7 @@
 
 export type FfmpegMode = 'auto' | 'path' | 'managed';
 
+/** When to use: persisting or validating media settings. */
 export interface MediaSettings {
   /** Check for a newer yt-dlp on launch and on the interval below. */
   autoUpdate: boolean;
@@ -21,6 +22,7 @@ export interface MediaSettings {
   ffmpegPath: string;
 }
 
+/** When to use: rendering the downloader-update block in Settings → Media. */
 export interface MediaUpdaterState {
   autoUpdate: boolean;
   intervalMinutes: number;
@@ -34,6 +36,7 @@ export interface MediaUpdaterState {
   updateAvailable: boolean;
 }
 
+/** When to use: returning media settings plus updater state to the deck. */
 export interface MediaSettingsSnapshot {
   settings: MediaSettings;
   updater: MediaUpdaterState;

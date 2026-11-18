@@ -7,6 +7,7 @@
  */
 export type ResearchTier = 'llm' | 'static' | 'render';
 
+/** When to use: reading a search escalation (engine, reason, attempt). */
 export interface ResearchEscalation {
   from: 'llm' | 'static';
   to: 'render';
@@ -14,12 +15,14 @@ export interface ResearchEscalation {
   reason: string;
 }
 
+/** When to use: reading a source anchor/highlight for the research timeline. */
 export interface ResearchAnchorDetail {
   text: string;
   path: string;
   fingerprint: Record<string, unknown>;
 }
 
+/** When to use: streaming one research pipeline event to the panel. */
 export type ResearchEvent =
   | { type: 'run-start'; runId: string; query: string; maxSources: number; at: number }
   | {

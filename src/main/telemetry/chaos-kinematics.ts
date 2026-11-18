@@ -18,6 +18,7 @@ export interface Point {
   y: number;
 }
 
+/** When to use: reading one step of a generated pointer path. */
 export interface PathStep extends Point {
   delayMs: number;
   velocity: number; // pixels per ms
@@ -26,6 +27,7 @@ export interface PathStep extends Point {
   isCorrective?: boolean; // true during saccadic post-overshoot recoil
 }
 
+/** When to use: tuning the Bezier pointer path (distance, chaos, device). */
 export interface ChaosKinematicsOptions {
   steps?: number;
   deviationMultiplier?: number;

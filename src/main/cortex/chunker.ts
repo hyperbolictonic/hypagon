@@ -10,6 +10,7 @@ export interface PageChunk {
   content: string;
 }
 
+/** When to use: splitting harvested markdown into embeddable, overlapping chunks. */
 export function chunkMarkdown(markdown: string, maxChunkSize = 750, overlap = 100): PageChunk[] {
   if (!markdown || markdown.trim().length === 0) {
     return [];
@@ -54,6 +55,7 @@ export function chunkMarkdown(markdown: string, maxChunkSize = 750, overlap = 10
   return chunks;
 }
 
+/** When to use: keying history/recall by the site domain. */
 export function extractDomain(url: string): string {
   try {
     const parsed = new URL(url);

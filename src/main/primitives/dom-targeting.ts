@@ -169,6 +169,7 @@ function kqDescribe(el) {
 }
 `;
 
+/** When to use: addressing a control by selector, mark id or point. */
 export interface TargetLocator {
   markId?: number;
   selector?: string;
@@ -185,6 +186,7 @@ export function elementExpr(locator: TargetLocator): string {
   return 'null';
 }
 
+/** When to use: reading the resolved control box and whether it is in view. */
 export interface TargetBox {
   x: number;
   y: number;

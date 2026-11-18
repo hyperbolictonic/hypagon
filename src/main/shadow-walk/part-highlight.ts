@@ -61,6 +61,7 @@ function insertScript(css: string): string {
   })()`;
 }
 
+/** When to use: turning on part outlines for a page (debug aid). */
 export async function injectPartHighlight(wc: WebContents): Promise<number> {
   if (!wc || wc.isDestroyed()) return 0;
   try {
@@ -75,6 +76,7 @@ export async function injectPartHighlight(wc: WebContents): Promise<number> {
   }
 }
 
+/** When to use: clearing part outlines after the debug pass. */
 export async function removePartHighlight(wc: WebContents): Promise<void> {
   if (!wc || wc.isDestroyed()) return;
   await wc

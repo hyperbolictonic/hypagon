@@ -13,6 +13,7 @@ export interface PopupMenuItem {
   };
 }
 
+/** When to use: reporting which context-menu item a human chose. */
 export interface PopupMenuSelection {
   id: string;
   action?: string;

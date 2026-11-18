@@ -20,6 +20,7 @@ interface ProfileFile {
   profiles: DeviceProfile[];
 }
 
+/** When to use: listing or saving custom device profiles. */
 export class DeviceProfileStore {
   readonly file: string;
   #profiles: DeviceProfile[];

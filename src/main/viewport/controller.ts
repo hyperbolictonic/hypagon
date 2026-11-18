@@ -23,6 +23,7 @@ import {
 import type { TabInstance } from '../tabs/tab-manager.js';
 import type { DeviceProfileStore } from './profiles.js';
 
+/** When to use: injecting bounds/emulation hooks when constructing a ViewportController. */
 export interface ViewportControllerDeps {
   store: DeviceProfileStore;
   /** Full browsing area, in DIP. */
@@ -38,6 +39,7 @@ export interface ViewportControllerDeps {
   log?: (level: 'info' | 'warn' | 'action', message: string) => void;
 }
 
+/** When to use: shaping a device-emulation change (preset, size, DPR, mobile). */
 export interface ViewportSetInput {
   action?: 'status' | 'set' | 'rotate' | 'reset';
   preset?: string;
@@ -48,6 +50,7 @@ export interface ViewportSetInput {
   touch?: boolean;
 }
 
+/** When to use: applying and reading responsive device emulation for the active tab. */
 export class ViewportController {
   private deps: ViewportControllerDeps;
   private specs = new Map<string, ViewportSpec>();

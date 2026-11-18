@@ -118,6 +118,7 @@ const TOOLBAR_BAR_WIDTH = 248;
 /** Sidebar transition duration, shared by the native bounds animation and the panel's CSS reveal. */
 const SIDEBAR_TRANSITION_MS = 240;
 
+/** When to use: the app's single browser orchestrator; bridge routes and the deck talk to this. */
 export class BrowserChassis {
   private mainWindow: BrowserWindow | null = null;
   /** Recent decision-model calls, mirrored to the HUD (newest last, capped at 50). */

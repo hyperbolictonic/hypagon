@@ -20,6 +20,7 @@ function resolveFile(): string {
   return logFile;
 }
 
+/** When to use: locating the main-process log file. */
 export function mainLogFile(): string {
   try {
     return resolveFile();
@@ -28,6 +29,7 @@ export function mainLogFile(): string {
   }
 }
 
+/** When to use: recording a lifecycle event in the main log. */
 export function logMainEvent(kind: string, details: Record<string, unknown> = {}): void {
   const line = `${JSON.stringify({ ts: new Date().toISOString(), kind, ...details })}\n`;
   try {

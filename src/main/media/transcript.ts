@@ -68,6 +68,7 @@ export function parseVtt(input: string): string {
   return out.join('\n');
 }
 
+/** When to use: describing downloaded subtitle artifacts and their formats. */
 export interface SubtitleArtifacts {
   readonly text: string;
   readonly language: string;
@@ -99,6 +100,7 @@ export function transcriptDocument(input: {
   ].join('\n');
 }
 
+/** When to use: returning a transcript artifact or the reason it is unavailable. */
 export type ArtifactResult =
   | { readonly ok: true; readonly artifacts: SubtitleArtifacts }
   | { readonly ok: false; readonly code: string; readonly error: string };

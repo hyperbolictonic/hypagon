@@ -2,6 +2,7 @@ import { app, BrowserWindow, Menu, Tray, nativeImage, Notification } from 'elect
 import path from 'node:path';
 import fs from 'node:fs';
 
+/** When to use: constructing the tray (window, callbacks, quit behaviour). */
 export interface TrayManagerOptions {
   mainWindow: BrowserWindow;
   onQuit?: () => void;
@@ -10,6 +11,7 @@ export interface TrayManagerOptions {
   closeToTrayDefault?: boolean;
 }
 
+/** When to use: showing/hiding the window and updating the tray status and menu. */
 export class TrayManager {
   private tray: Tray | null = null;
   private mainWindow: BrowserWindow;

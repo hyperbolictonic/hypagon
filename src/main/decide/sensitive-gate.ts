@@ -15,6 +15,7 @@
 
 export type SensitiveGate = 'age_verification' | 'captcha';
 
+/** When to use: reading a detected compliance gate (kind, evidence, confidence). */
 export interface GateDetection {
   kind: SensitiveGate;
   /** Lines/copy that triggered the rule, for the record and for the human. */

@@ -8,6 +8,7 @@ export interface PartHost {
   parts: string[];
 }
 
+/** When to use: generating the ::part outline stylesheet for a page. */
 export function buildPartHighlightCss(hosts: PartHost[]): string {
   const rules = new Set<string>();
   for (const host of hosts) {

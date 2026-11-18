@@ -10,6 +10,7 @@ import type { DeviceProfile, ViewportState } from '../shared/viewport.js';
 const api = (window as unknown as { electronAPI?: ElectronAPI }).electronAPI;
 const byId = <T extends HTMLElement>(id: string): T | null => document.getElementById(id) as T | null;
 
+/** When to use: wiring the deck's responsive controls. */
 export function initViewportControls(): void {
   const presetSelect = byId<HTMLSelectElement>('viewport-preset');
   const fitButton = byId<HTMLButtonElement>('viewport-fit');

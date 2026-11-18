@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { dataPath } from '../data-paths.js';
 
+/** When to use: persisting typing cadence and pointer pacing for the simulator. */
 export interface InputProfile {
   /** Pointer speed used to derive the glide budget for a given distance. */
   mouseSpeedPxPerSec: number;
@@ -23,6 +24,7 @@ export interface InputProfile {
   clickDwellMs: number;
 }
 
+/** When to use: a fresh profile or a reset to the shipped input pacing. */
 export const DEFAULT_INPUT_PROFILE: InputProfile = {
   mouseSpeedPxPerSec: 1400,
   typingWpm: 160,

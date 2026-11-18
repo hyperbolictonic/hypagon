@@ -9,6 +9,7 @@
  */
 import type { RecipeStep } from './recipe-store.js';
 
+/** When to use: describing the drive steps a compiled recipe is built from. */
 export interface DriveStepLike {
   operation: string;
   target?: number | string;
@@ -19,6 +20,7 @@ export interface DriveStepLike {
   note?: string;
 }
 
+/** When to use: passing the value bindings used when compiling drive steps. */
 export interface CompileOptions {
   /** Values the caller supplied to drive, keyed by field name or component id. */
   values?: Record<string, string>;

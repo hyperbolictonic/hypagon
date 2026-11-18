@@ -58,6 +58,7 @@ function line(className: string, text = ''): HTMLDivElement {
   return div;
 }
 
+/** When to use: wiring the research panel once the deck document loads. */
 export function initResearchPanel(): void {
   const view = byId<HTMLElement>('research-view');
   const launcher = byId<HTMLButtonElement>('research-tab-btn');

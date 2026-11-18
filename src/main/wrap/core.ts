@@ -8,12 +8,14 @@
 import type { WrapFormat, WrapRunResult } from './types.ts';
 import type { WrapStore } from './store.ts';
 
+/** When to use: shaping a wrapper run (args, dry run, paging). */
 export interface WrapRunOptions {
   format?: WrapFormat;
   includeRaw?: boolean;
   maxPages?: number;
 }
 
+/** When to use: describing a dry-run test (wrapper, args). */
 export interface WrapTestInput {
   id?: string;
   wrapper?: unknown;
@@ -25,6 +27,7 @@ export interface WrapTestInput {
   includeRaw?: boolean;
 }
 
+/** When to use: the wrapper execution core (build, gate, fetch, render). */
 export interface WrapCore {
   readonly store: WrapStore;
   status(): { wrappers: number; allowPrivateHosts: boolean };

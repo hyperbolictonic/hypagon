@@ -20,6 +20,7 @@
 import type { WebContents } from 'electron';
 import { discoverFrames } from './frame-tree.js';
 
+/** When to use: placing a frame in page coordinates. */
 export interface FrameRect {
   x: number;
   y: number;
@@ -27,6 +28,7 @@ export interface FrameRect {
   height: number;
 }
 
+/** When to use: reading a discovered frame (id, url, depth, rect, parent). */
 export interface FrameInfo {
   frameId: string;
   parentFrameId?: string;

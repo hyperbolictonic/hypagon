@@ -39,6 +39,7 @@ interface ReleaseResponse {
   readonly assets?: ReleaseAsset[];
 }
 
+/** When to use: constructing the media binary updater (paths, intervals). */
 export interface MediaUpdaterOptions {
   readonly binaryPath: () => string;
   readonly readVersion: (binary: string) => Promise<string | null>;
@@ -64,6 +65,7 @@ export function jitter(ms: number, random: () => number = Math.random): number {
   return Math.max(60_000, Math.round(ms - spread + random() * spread * 2));
 }
 
+/** When to use: checking and updating yt-dlp on the configured cadence. */
 export class MediaUpdater {
   private readonly options: MediaUpdaterOptions;
   private readonly fetchImpl: typeof fetch;

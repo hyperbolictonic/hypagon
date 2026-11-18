@@ -19,6 +19,7 @@ export interface ComponentSurface {
   signature: string;
 }
 
+/** When to use: fingerprinting a component surface to detect changes. */
 export function componentSignatureOf(surface: Omit<ComponentSurface, 'signature'>): string {
   const base = [
     surface.tag,
@@ -33,6 +34,7 @@ export function componentSignatureOf(surface: Omit<ComponentSurface, 'signature'
   return `${surface.tag}:${hash.toString(16).padStart(8, '0')}`;
 }
 
+/** When to use: turning a raw exported surface into the comparable shape. */
 export function normalizeSurface(input: {
   tag?: unknown;
   defined?: unknown;

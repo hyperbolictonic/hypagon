@@ -4,10 +4,12 @@ export interface ExperimentalSettings {
   collab: boolean;
 }
 
+/** When to use: a fresh profile or a reset to experimental defaults. */
 export const DEFAULT_EXPERIMENTAL_SETTINGS: ExperimentalSettings = {
   collab: false,
 };
 
+/** When to use: validating experimental flags from disk or IPC. */
 export function normalizeExperimentalSettings(input: unknown): ExperimentalSettings {
   const source = (input ?? {}) as Partial<ExperimentalSettings>;
   return {

@@ -4,6 +4,7 @@ import type { Session, DownloadItem, WebContents } from 'electron';
 import { cortex } from '../cortex/cortex-db.js';
 import { dataPath } from '../data-paths.js';
 
+/** When to use: reading one tracked download (url, path, state). */
 export interface DownloadRecord {
   id: string;
   filename: string;
@@ -17,6 +18,7 @@ export interface DownloadRecord {
   completedTime?: number;
 }
 
+/** When to use: tracking downloads for the deck and the downloads tools. */
 export class DownloadManager {
   private downloadsDir: string;
   private records: Map<string, DownloadRecord> = new Map();

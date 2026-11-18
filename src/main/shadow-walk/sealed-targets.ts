@@ -24,10 +24,12 @@ interface SealedTarget {
 const targets = new WeakMap<WebContents, Map<string, SealedTarget>>();
 const TTL_MS = 120000;
 
+/** When to use: dropping sealed tokens after navigation. */
 export function clearSealedTokens(wc: WebContents): void {
   targets.delete(wc);
 }
 
+/** When to use: minting the token act() uses for a closed-shadow control. */
 export function issueSealedToken(wc: WebContents, backendNodeId: number, frameId: string): string {
   if (!wc || !backendNodeId || !frameId) return '';
   let map = targets.get(wc);

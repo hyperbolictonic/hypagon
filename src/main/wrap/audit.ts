@@ -9,6 +9,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+/** When to use: reading one wrapper audit line (time, id, host, outcome). */
 export interface WrapAuditEntry {
   at: string;
   wrapper: string;
@@ -21,6 +22,7 @@ export interface WrapAuditEntry {
   code?: string;
 }
 
+/** When to use: appending wrapper runs to the audit log. */
 export class WrapAuditLog {
   readonly file: string;
 

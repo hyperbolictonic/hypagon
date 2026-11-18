@@ -33,6 +33,7 @@ import type { WrapFormat, WrapPreview, WrapRunResult, WrapWrapper } from '../typ
 import type { SecretStore } from '../secrets.ts';
 import type { WrapStore } from '../store.ts';
 
+/** When to use: reading a gate verdict (allowed, or the refusal reason). */
 export type CoreGate = { readonly ok: true } | { readonly ok: false; readonly reason: string };
 
 /** Features the core cannot reproduce yet, and therefore stay on the legacy executor. */
@@ -108,6 +109,7 @@ function optionalPathArguments(operation: Operation, wrapper: WrapWrapper): stri
   return names.filter((name) => !required.has(name));
 }
 
+/** When to use: constructing the anyapi executor (store, secrets, limits). */
 export interface AnyApiExecutorOptions extends ExecutorOptions {
   /** The core that every wrapper outside the gate is handed to. */
   legacy: WrapExecutor;
@@ -115,6 +117,7 @@ export interface AnyApiExecutorOptions extends ExecutorOptions {
   secretSource?: Pick<SecretStore, 'list' | 'resolve'>;
 }
 
+/** When to use: running wrappers through the gated anyapi core. */
 export class AnyApiWrapExecutor {
   readonly store: WrapStore;
   private readonly legacy: WrapExecutor;

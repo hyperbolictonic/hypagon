@@ -18,6 +18,7 @@ function hostOf(url: string): string {
   }
 }
 
+/** When to use: mapping a failed navigation onto a typed code and hint. */
 export function classifyNavigationFailure(url: string, error: any): NavigationFailure {
   const cause = String(error?.code || error?.message || error || 'unknown error');
   const host = hostOf(url);

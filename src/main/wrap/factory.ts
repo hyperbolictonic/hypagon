@@ -15,13 +15,16 @@ import type { WrapCore } from './core.ts';
 import type { WrapStore } from './store.ts';
 import type { SecretStore } from './secrets.ts';
 
+/** When to use: knowing which wrapper execution core is active. */
 export type WrapCoreMode = 'legacy' | 'anyapi';
 
+/** When to use: resolving the core from env (legacy vs anyapi). */
 export function wrapCoreMode(env: NodeJS.ProcessEnv = process.env): WrapCoreMode {
   const raw = (env.HB_WRAP_CORE ?? env.KUANG_WRAP_CORE ?? '').trim().toLowerCase();
   return raw === 'legacy' ? 'legacy' : 'anyapi';
 }
 
+/** When to use: building the executor the app and wrap server share. */
 export function createWrapExecutor(
   store: WrapStore,
   options: ExecutorOptions,

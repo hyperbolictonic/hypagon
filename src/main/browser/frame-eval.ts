@@ -15,6 +15,7 @@
 import type { WebContents } from 'electron';
 import { discoverFrames } from './frame-tree.js';
 
+/** When to use: running an expression in each frame (timeout, cap, blank frames). */
 export interface FrameEvalOptions {
   /** Frames to visit, breadth-first including the main frame (default 8). */
   maxFrames?: number;
@@ -26,6 +27,7 @@ export interface FrameEvalOptions {
   expressionForFrame?: (frame: { frameId: string; url?: string; name?: string; depth: number; oopif: boolean }, index: number) => string;
 }
 
+/** When to use: reading one frame evaluation (frame id, value, error). */
 export interface FrameEvalResult {
   frameId: string;
   url?: string;

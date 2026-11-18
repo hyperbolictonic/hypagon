@@ -8,6 +8,7 @@
  */
 import type { PopupMenuItem } from '../shared/menu.js';
 
+/** When to use: booting the context-menu popup renderer. */
 export function bootMenuPopup(): void {
   const host = document.getElementById('menu-popup-host');
   const api = (window as unknown as {

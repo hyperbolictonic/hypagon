@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { formatMark } from './format-mark.js';
 import { BRAND } from '../shared/brand.js';
 
+/** When to use: defining one tool (name, description, params, endpoint, formatter). */
 export interface ToolCatalogItem {
   name: string;
   description: string;
@@ -24,6 +25,7 @@ export interface ToolCatalogItem {
   deprecatedInFavorOf?: string;
 }
 
+/** When to use: iterating or looking up the agent tool surface. */
 export const TOOLS_CATALOG: ToolCatalogItem[] = [
   // 1. Navigation
   {
@@ -2055,6 +2057,7 @@ export const TIER_LABELS: Record<1 | 2 | 3, string> = {
   3: 'TIER 3 · use deliberately',
 };
 
+/** When to use: knowing which tools are leads vs fallbacks for tools/list. */
 export const TOOL_TIERS: Record<string, 1 | 2 | 3> = {
   navigate_to: 1,
   // TIER 1 — first choice for the job.

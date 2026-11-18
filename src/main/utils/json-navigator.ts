@@ -12,6 +12,7 @@ export interface JsonQueryOptions {
   filterPredicate?: string;
 }
 
+/** When to use: reading a JSON query result (value, path, truncated). */
 export interface JsonQueryResult {
   path: string;
   view: string;
@@ -19,6 +20,7 @@ export interface JsonQueryResult {
   data: any;
 }
 
+/** When to use: querying and filtering captured JSON payloads. */
 export class JsonNavigator {
   /**
    * Evaluates a query against a JSON structure.

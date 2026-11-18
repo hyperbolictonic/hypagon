@@ -366,6 +366,7 @@ function resetTool(): void {
   renderDetail();
 }
 
+/** When to use: wiring the tools panel once the deck document loads. */
 export function initToolsPanel(): void {
   if (initialized) return;
   initialized = true;
@@ -402,6 +403,7 @@ export function initToolsPanel(): void {
   });
 }
 
+/** When to use: re-rendering the tools panel after a settings change. */
 export function refreshToolsPanel(): void {
   initToolsPanel();
   void refresh();

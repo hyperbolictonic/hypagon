@@ -12,12 +12,14 @@ import path from 'node:path';
 import type { WrapManifestEntry, WrapWrapper } from './types.ts';
 import { validateWrapper } from './validate-wrapper.ts';
 
+/** When to use: returning a wrapper store read/write outcome and errors. */
 export interface StoreResult {
   ok: boolean;
   wrapper?: WrapWrapper;
   errors: string[];
 }
 
+/** When to use: loading and saving the wrapper vault and secrets index. */
 export class WrapStore {
   readonly dir: string;
 

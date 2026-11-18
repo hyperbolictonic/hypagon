@@ -17,6 +17,7 @@ import { isPopupWindowRequest, popupWindowSize } from './window-open-policy.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/** When to use: addressing one tab and its view/webContents. */
 export interface TabInstance {
   id: string;
   title: string;
@@ -26,6 +27,7 @@ export interface TabInstance {
   createdAt: number;
 }
 
+/** When to use: constructing the tab manager (window, callbacks, zoom). */
 export interface TabManagerOptions {
   mainWindow: BrowserWindow;
   hostProfile: HostBrowserProfile;
@@ -50,6 +52,7 @@ export interface TabManagerOptions {
   onRendererGone?: (tab: TabInstance, details: RenderProcessGoneDetails) => void;
 }
 
+/** When to use: creating, switching and closing tabs. */
 export class TabManager {
   private tabs: Map<string, TabInstance> = new Map();
   private activeTabId: string = '';

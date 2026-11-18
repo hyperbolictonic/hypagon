@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+/** When to use: reporting the detected host browser/UA profile. */
 export interface HostBrowserProfile {
   name: string;
   version: string;

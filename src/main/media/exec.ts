@@ -7,6 +7,7 @@
 
 import { spawn } from 'node:child_process';
 
+/** When to use: reading a spawned command's exit, stdout and stderr. */
 export interface CommandResult {
   readonly code: number | null;
   readonly signal: NodeJS.Signals | null;
@@ -16,6 +17,7 @@ export interface CommandResult {
   readonly overflowed: boolean;
 }
 
+/** When to use: running the downloader with progress parsing and cancellation. */
 export async function runYtDlpProcess(
   binary: string,
   args: readonly string[],

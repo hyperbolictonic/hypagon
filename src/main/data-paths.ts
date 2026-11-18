@@ -58,6 +58,7 @@ function ensureWritable(candidate: string): string | null {
 
 let cachedRoot: string | null = null;
 
+/** When to use: locating the runtime data directory (logs, db, settings). */
 export function dataRoot(): string {
   if (cachedRoot) return cachedRoot;
 
@@ -95,6 +96,7 @@ export function dataRoot(): string {
   throw new Error('No writable runtime data directory is available.');
 }
 
+/** When to use: resolving a file inside the data directory. */
 export function dataPath(...segments: string[]): string {
   return path.join(dataRoot(), ...segments);
 }

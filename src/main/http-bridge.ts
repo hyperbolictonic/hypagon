@@ -68,6 +68,7 @@ function redactLogValue(value: any, depth = 0): any {
   return out;
 }
 
+/** When to use: starting the local REST bridge in the app bootstrap (one per process). */
 export function startHttpBridge(
   chassis: BrowserChassis,
   port: number = 4111,

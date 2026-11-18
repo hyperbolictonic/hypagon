@@ -3,6 +3,7 @@ import { Readability } from '@mozilla/readability';
 import TurndownService from 'turndown';
 import type { HarvestedConstruct } from '../../shared/types.js';
 
+/** When to use: reporting harvest counts (links, words, tokens). */
 export interface HarvestStats {
   /** Open shadow roots inlined by the composed-DOM serialiser (0 = none). */
   shadowRoots?: number;
@@ -17,6 +18,7 @@ export interface HarvestStats {
  */
 const MAX_CONSTRUCT_CHARS = 200_000;
 
+/** When to use: turning a rendered page into markdown plus marks. */
 export class ConstructHarvester {
   private turndown: TurndownService;
   private baseUrl = '';

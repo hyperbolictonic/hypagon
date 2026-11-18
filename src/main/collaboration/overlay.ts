@@ -1,5 +1,6 @@
 import type { CollaborationThread } from '../../shared/collaboration.js';
 
+/** When to use: parsing page notes the collaboration overlay reports over the console. */
 export const COLLABORATION_NOTE_PREFIX = '__KUANG_COLLAB_NOTE__:';
 /** Human class-list edits on a selected element (the LLM reads these). */
 export const COLLABORATION_CLASS_PREFIX = '__KUANG_COLLAB_CLASS__:';
@@ -1045,6 +1046,7 @@ export interface CollaborationPickerOptions {
   rightInset?: number;
 }
 
+/** When to use: injecting the human element picker into a page. */
 export function collaborationPickerScript(options: CollaborationPickerOptions = {}): string {
   const rightInset = typeof options.rightInset === 'number' && Number.isFinite(options.rightInset)
     ? Math.max(0, options.rightInset)

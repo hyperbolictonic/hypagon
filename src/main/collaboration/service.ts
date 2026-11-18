@@ -8,6 +8,7 @@ import type {
 import { CollaborationStore, type CreateThreadInput } from './store.js';
 import { collaborationOverlayScript } from './overlay.js';
 
+/** When to use: creating, answering or resolving collaboration threads from the bridge. */
 export class CollaborationService {
   readonly store: CollaborationStore;
   private readonly chassis: BrowserChassis;

@@ -13,6 +13,7 @@ import { CloudflaredTunnel } from '../../../packages/cloudflared-tunnel/src/inde
 import { loadRemoteSettings, saveRemoteSettings } from './settings.ts';
 import type { RemoteInfo, RemoteStatus, RemoteTunnelStatus, RemoteCloudflaredStatus } from '../../shared/remote.js';
 
+/** When to use: constructing the remote gateway service (ports, tunnel, tokens). */
 export interface RemoteServiceOptions {
   serverPath: string;
   bridgeUrl: string;

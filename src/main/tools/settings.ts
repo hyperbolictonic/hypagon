@@ -1,12 +1,14 @@
 import type { ToolSettings } from '../../shared/tool-settings.js';
 import { persistNormalizedSettings, readJsonFile } from '../settings/json-file.js';
 
+/** When to use: returning a normalized tool settings patch and its errors. */
 export interface ToolSettingsValidation {
   ok: boolean;
   settings?: ToolSettings;
   errors: string[];
 }
 
+/** When to use: a fresh profile or a reset to the shipped tool settings. */
 export const DEFAULT_TOOL_SETTINGS: ToolSettings = {
   schemaVersion: 1,
   order: [],
@@ -60,6 +62,7 @@ function normalizeActionInstructions(value: unknown): Record<string, Record<stri
   return out;
 }
 
+/** When to use: validating tool settings from disk or IPC before applying them. */
 export function normalizeToolSettings(input: unknown): ToolSettingsValidation {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     return { ok: false, errors: ['tool settings must be an object'] };

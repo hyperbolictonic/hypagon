@@ -22,6 +22,7 @@ export interface EmbeddingProvider {
   embed(text: string): Promise<number[]>;
 }
 
+/** When to use: the embedding provider used when none is configured. */
 export const DEFAULT_PROVIDER_ID = 'hash-128';
 
 /** Legacy dimension constant for the default provider (kept for compatibility). */
@@ -149,6 +150,7 @@ export function embedText(text: string): Promise<number[]> {
  * @deprecated Synchronous embedding via the default hash provider only. Use
  * `embedText` (active provider) for anything that must match stored vectors.
  */
+/** When to use: computing a recall vector for a chunk or query. */
 export function generateEmbedding(text: string): number[] {
   return hashEmbed(text);
 }

@@ -13,6 +13,7 @@ import {
  */
 import { readJsonFile, writeJsonFileAtomic } from '../settings/json-file.js';
 
+/** When to use: reading the persisted zoom policy, or building one in tests. */
 export class ZoomSettingsStore {
   private settings: ZoomSettings = { ...DEFAULT_ZOOM_SETTINGS };
 

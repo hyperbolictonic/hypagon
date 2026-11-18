@@ -381,6 +381,7 @@ function bridgeFailure(err: any) {
   return toolError(`[Hypagon REST] ${err?.message || err}`);
 }
 
+/** When to use: booting the Hypagon REST MCP server (meta-tools plus generated wrappers). */
 export async function createWrapMcpServer() {
   const server = new McpServer({
     name: 'hb-rest',
