@@ -133,7 +133,7 @@
       "main/cortex/cortex-db.ts": 22,
       "main/decide/decision-client.ts": 7,
       "main/decide/decision-guard.ts": 7,
-      "main/hil/hil-manager.ts": 68,
+      "main/hil/hil-manager.ts": 8,
       "main/index.ts": 83,
       "main/media/ffmpeg.ts": 24,
       "main/media/service.ts": 34,
@@ -154,7 +154,7 @@
       "main/telemetry/input-simulator.ts": 34,
       "main/tools/settings.ts": 8,
       "main/tools/state.ts": 11,
-      "main/tray/tray-manager.ts": 14,
+      "main/tray/tray-manager.ts": 8,
       "main/wrap/anyapi/executor.ts": 71,
       "main/wrap/executor.ts": 70,
       "main/wrap/interpolate.ts": 30,
@@ -171,7 +171,7 @@
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 1857
+    "totalDuplicatedLines": 1791
   },
   "imports": {
     "cycles": []
