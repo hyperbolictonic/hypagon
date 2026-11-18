@@ -16,6 +16,7 @@
  */
 import type { Primitives } from '../primitives/primitives.js';
 import { decideGuarded } from '../decide/decision-guard.js';
+import { buildDriveQuestions, buildDriveState, criteriaFor, lookupValue } from './prompt.js';
 
 /** When to use: branching on the drive outcome (done, needs_agent, human_required, ...). */
 export type DriveStatus =
@@ -74,41 +75,7 @@ export interface DriveOptions {
   includePageText?: boolean;
 }
 
-const OPERATIONS = {
-  click: 'Actuate a control: submit, dismiss, choose an option, follow a link, sort — INCLUDING clicking a suggestion from an open autocomplete list after typing.',
-  type_text: 'Type a value into a text field or editable control. If a suggestion list is already open, prefer clicking the matching suggestion instead.',
-  done: 'The goal is already satisfied by what is visible.',
-  blocked: 'A wall (CAPTCHA, consent, login, payment) prevents progress.',
-};
-
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function criteriaFor(components: any[]): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const c of components.slice(0, 40)) {
-    out[String(c.id)] = `${c.role}${c.name ? `: ${c.name}` : ''}`.slice(0, 100);
-  }
-  return out;
-}
-
-function lookupValue(values: Record<string, string> | undefined, component: any): string | undefined {
-  if (!values) return undefined;
-  const id = String(component.id);
-  if (values[id] !== undefined) return values[id];
-  const name = (component.name || '').trim();
-  if (name && values[name] !== undefined) return values[name];
-  // Case-insensitive name match, then a contains match, so callers needn't be exact.
-  const lower = name.toLowerCase();
-  for (const [key, value] of Object.entries(values)) {
-    const k = key.trim().toLowerCase();
-    if (k === lower) return value;
-  }
-  for (const [key, value] of Object.entries(values)) {
-    const k = key.trim().toLowerCase();
-    if (k.length > 2 && (lower.includes(k) || k.includes(lower))) return value;
-  }
-  return undefined;
-}
 
 /**
  * Run the loop until a stop condition. Never throws: every failure is a typed status.
@@ -139,30 +106,15 @@ export async function driveTask(primitives: Primitives, opts: DriveOptions): Pro
       pageText = typeof text?.text === 'string' ? text.text : '';
     }
 
-    const lastStep = steps[steps.length - 1];
-    const lastActionLine = lastStep
-      ? `Last action: ${lastStep.operation === 'type_text' ? `typed ${lastStep.typedChars || 0} characters into` : 'clicked'} "${lastStep.targetName || `#${lastStep.target}`}". If that opened a suggestion list or a menu, choose the matching item with click; otherwise continue toward the goal.`
-      : '';
+    const state = buildDriveState({
+      goal: opts.goal,
+      title,
+      lastStep: steps[steps.length - 1],
+      components,
+      pageText,
+    });
 
-    const state = [
-      `Goal: ${opts.goal}`,
-      title ? `Page: ${title}` : '',
-      lastActionLine,
-      'Visible components:',
-      ...components.slice(0, 40).map((c) => `[${c.id}] ${c.role} "${c.name || ''}"${c.value ? ` value "${c.value}"` : ''} {${(c.actions || []).join(',')}}`),
-      pageText ? `\nVisible page text:\n${pageText.slice(0, 2500)}` : '',
-    ].filter(Boolean).join('\n');
-
-    const questions: Record<string, any> = {
-      operation: { type: 'choice', instructions: 'What is the next operation to reach the goal?', criteria: OPERATIONS },
-      done: { type: 'noul', instructions: 'Is the goal already satisfied by the visible state?' },
-    };
-    if (clickable.length) {
-      questions.click_target = { type: 'choice', instructions: 'Which component should be clicked?', criteria: criteriaFor(clickable) };
-    }
-    if (typeable.length) {
-      questions.type_text_target = { type: 'choice', instructions: 'Which component should be typed into?', criteria: criteriaFor(typeable) };
-    }
+    const questions = buildDriveQuestions(clickable, typeable);
 
     const decision = await decideGuarded({
       state,
