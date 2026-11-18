@@ -14,6 +14,7 @@
  * host of a closed root, while AX reports the inner button/textbox as `focused:true`.
  */
 import type { WebContents } from 'electron';
+import { INTERACTIVE_ROLES, axProp, collectBackendIds, focusedNode, median, roleOf } from './ax-tree.js';
 import { bump } from '../metrics.js';
 
 /** When to use: shaping a Tab walk (host, direction, steps, restore). */
@@ -50,56 +51,8 @@ export interface TabWalkResult {
   medianStepGapMs?: number;
 }
 
-const INTERACTIVE = new Set([
-  'button',
-  'link',
-  'textbox',
-  'searchbox',
-  'combobox',
-  'checkbox',
-  'radio',
-  'switch',
-  'tab',
-  'menuitem',
-  'slider',
-  'spinbutton',
-]);
-
 const MAX_STEPS = 12;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function prop(node: any, name: string): any {
-  const found = (node?.properties || []).find((p: any) => p?.name === name);
-  return found?.value?.value;
-}
-
-function roleOf(node: any): string {
-  return String(node?.role?.value || '').toLowerCase();
-}
-
-/** RootWebArea also claims `focused:true`; it is never the control the user is on. */
-function focusedNode(ax: any): any | null {
-  const candidates = (ax?.nodes || []).filter(
-    (n: any) => !n.ignored && prop(n, 'focused') === true && roleOf(n) !== 'rootwebarea'
-  );
-  if (!candidates.length) return null;
-  return candidates.find((n: any) => INTERACTIVE.has(roleOf(n))) || candidates[0];
-}
-
-function collectBackendIds(node: any, out = new Set<number>()): Set<number> {
-  if (!node) return out;
-  if (node.backendNodeId) out.add(Number(node.backendNodeId));
-  for (const child of node.children || []) collectBackendIds(child, out);
-  for (const shadow of node.shadowRoots || []) collectBackendIds(shadow, out);
-  return out;
-}
-
-function median(values: number[]): number | undefined {
-  if (!values.length) return undefined;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
-}
 
 /**
  * Walk sequential focus from a host.
@@ -216,7 +169,7 @@ export async function runTabWalk(
       initialBackend &&
       initialBackend !== hostBackend &&
       inside.has(initialBackend) &&
-      INTERACTIVE.has(roleOf(initial))
+      INTERACTIVE_ROLES.has(roleOf(initial))
     ) {
       let rect = { x: 0, y: 0, width: 0, height: 0 };
       try {

@@ -19,6 +19,7 @@
  *     top-level rect is added. Nested OOPIFs compose the same way.
  */
 import type { WebContents } from 'electron';
+import { INTERACTIVE_ROLES, axProp } from './ax-tree.js';
 import { bump } from '../metrics.js';
 import { listFrames, type FrameInfo } from '../browser/frames.js';
 import { normalizeSurface, type ComponentSurface } from './component-signature.js';
@@ -93,21 +94,6 @@ export class SealedRateLimitError extends Error {
   }
 }
 
-const INTERACTIVE_ROLES = new Set([
-  'button',
-  'link',
-  'textbox',
-  'searchbox',
-  'combobox',
-  'checkbox',
-  'radio',
-  'switch',
-  'tab',
-  'menuitem',
-  'slider',
-  'spinbutton',
-]);
-
 const TYPE_ROLES = new Set(['textbox', 'searchbox', 'combobox', 'spinbutton', 'slider']);
 
 const CACHE_TTL_MS = 5000;
@@ -147,11 +133,6 @@ interface TargetSession {
 
 const caches = new WeakMap<WebContents, CacheEntry>();
 const rates = new WeakMap<WebContents, number[]>();
-
-function property(node: any, name: string): any {
-  const found = (node?.properties || []).find((p: any) => p?.name === name);
-  return found?.value?.value;
-}
 
 function actionsFor(role: string, focusable: boolean): string[] {
   if (TYPE_ROLES.has(role)) return ['click', 'type'];
@@ -441,7 +422,7 @@ export async function findSealedControls(
             if (!INTERACTIVE_ROLES.has(role)) continue;
 
             const dom = closed.info.get(backend);
-            const focusable = property(node, 'focusable') === true;
+            const focusable = axProp(node, 'focusable') === true;
             const component = componentsEnabled && dom?.host ? await surfaceFor(dom.host, session) : undefined;
             identities.push({
               backendNodeId: backend,
@@ -450,9 +431,9 @@ export async function findSealedControls(
               name: String(node.name?.value || ''),
               nodeName: dom?.nodeName || '',
               actions: actionsFor(role, focusable),
-              disabled: property(node, 'disabled') === true,
+              disabled: axProp(node, 'disabled') === true,
               focusable,
-              focused: property(node, 'focused') === true,
+              focused: axProp(node, 'focused') === true,
               order: order++,
               component,
             });
