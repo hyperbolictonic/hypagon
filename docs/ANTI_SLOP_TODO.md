@@ -12,12 +12,27 @@ is introduced.
 | Gate | Baseline | Notes |
 | --- | --- | --- |
 | Modularity | **53 violations** across **41 files** | file/function/class size budgets (300 / 80 / 10) |
-| Docs | **431 undocumented exports** across **123 files** | one-line `/** When to use ... */` required |
-| Duplicates | **1,791 duplicated lines / 46,833 (3.8%)** | threshold is 3%; 41 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 162 files |
-| Component index | **161 files / 650 exports** | 431 still undocumented |
+| Docs | **337 undocumented exports** across **116 files** | one-line `/** When to use ... */` required |
+| Duplicates | **1,727 duplicated lines / 47,107 (3.7%)** | threshold is 3%; 41 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 165 files |
+| Component index | **165 files / 658 exports** | 337 still undocumented |
 
 ## Progress
+
+- **Docs pass in progress** - 431 -> 337 undocumented exports (123 -> 116 files). Done so far:
+  `shared/viewport`, `shadow-walk/settings`, `wrap/render`, `wrap/secrets`, `wrap/types`,
+  `primitives/primitives`, `recording/recording-service`, `cortex/cortex-db`, `media/service`,
+  `media/jobs`.
+- **Settings stores share one file helper** - `src/main/settings/json-file.ts` owns the fail-open
+  read and atomic replace; eight stores (shadow-walk, zoom, tools, media, research, experimental,
+  jev, anchor-store) use it instead of copy-pasting the sequence. Duplicates 1,791 -> 1,727 (3.7%).
+- **Issue #8 fixed** - `tsx` is a devDependency and 25 test scripts that import TS sources run
+  under `node --import tsx`; `test:shadow:unit` went from a module-resolution crash to 7/7.
+- **Issue #9 fixed** - `/decide` forwards the guard verdict (`NO_DECISION`, accepted/fallback/
+  exhausted/reasons) instead of raising a banner; the sensitive-gate branch keeps its automatic
+  hand-off. `test:decide` is 23/23.
+- **Issue #7 fixed** - `fill_form` no longer injects TypeScript casts; regression test
+  `npm run test:forms`.
 
 - **P0 #1 done** - every export in `src/shared/viewport.ts` has a usage doc; the docs baseline
   dropped from 451 to 431 and the file left the baseline entirely.

@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 164 files, 656 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 165 files, 658 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -46,16 +46,16 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/cortex/chunker.ts` | `chunkMarkdown` | - |
 | `main/cortex/chunker.ts` | `extractDomain` | - |
 | `main/cortex/chunker.ts` | `PageChunk` *(type)* | Kuang Grade Mark Eleven - Cortex Markdown Chunker |
-| `main/cortex/cortex-db.ts` | `cortex` | - |
-| `main/cortex/cortex-db.ts` | `CortexDB` | - |
-| `main/cortex/cortex-db.ts` | `PageHistoryRow` *(type)* | - |
-| `main/cortex/cortex-db.ts` | `BookmarkRow` *(type)* | - |
-| `main/cortex/cortex-db.ts` | `RecallResult` *(type)* | - |
-| `main/cortex/cortex-db.ts` | `HistoryItem` *(type)* | - |
-| `main/cortex/cortex-db.ts` | `UrlSuggestion` *(type)* | - |
-| `main/cortex/cortex-db.ts` | `BookmarkItem` *(type)* | - |
-| `main/cortex/cortex-db.ts` | `ScriptRow` *(type)* | - |
-| `main/cortex/cortex-db.ts` | `ScriptItem` *(type)* | - |
+| `main/cortex/cortex-db.ts` | `cortex` | When to use: the process-wide Cortex store (history, bookmarks, semantic recall). |
+| `main/cortex/cortex-db.ts` | `CortexDB` | When to use: opening the local LanceDB memory store, or building an isolated instance in tests. |
+| `main/cortex/cortex-db.ts` | `PageHistoryRow` *(type)* | When to use: reading a raw history row from the store (visit time, title, domain). |
+| `main/cortex/cortex-db.ts` | `BookmarkRow` *(type)* | When to use: reading a raw bookmark row from the store. |
+| `main/cortex/cortex-db.ts` | `RecallResult` *(type)* | When to use: returning a ranked semantic recall hit (page chunk, score, source). |
+| `main/cortex/cortex-db.ts` | `HistoryItem` *(type)* | When to use: shaping a history entry for `GET /cortex/history` and the deck. |
+| `main/cortex/cortex-db.ts` | `UrlSuggestion` *(type)* | When to use: shaping an address-bar suggestion for `GET /cortex/suggest`. |
+| `main/cortex/cortex-db.ts` | `BookmarkItem` *(type)* | When to use: shaping a bookmark for `GET /bookmarks` and the deck. |
+| `main/cortex/cortex-db.ts` | `ScriptRow` *(type)* | When to use: reading a stored script row from the vault table. |
+| `main/cortex/cortex-db.ts` | `ScriptItem` *(type)* | When to use: shaping a script for `GET /scripts/list` and recall results. |
 | `main/cortex/embedder.ts` | `registerEmbeddingProvider` | Register (or replace) a provider so it can be selected by id. |
 | `main/cortex/embedder.ts` | `listEmbeddingProviders` | Ids of every registered provider. |
 | `main/cortex/embedder.ts` | `setEmbeddingProvider` | Select the active provider by id. Throws when the id is unknown. |
@@ -166,15 +166,15 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/media/jobs.ts` | `buildFormatSelector` | Format selector for one job. |
 | `main/media/jobs.ts` | `buildDownloadArgs` | yt-dlp arguments for a job. Every value is built here, never passed through. |
 | `main/media/jobs.ts` | `parseProgressLine` | Parse one `--newline` progress line. Returns null for lines that are not progress. |
-| `main/media/jobs.ts` | `MediaJobs` | - |
-| `main/media/jobs.ts` | `MediaKind` *(type)* | - |
-| `main/media/jobs.ts` | `MediaQuality` *(type)* | - |
-| `main/media/jobs.ts` | `MediaJobState` *(type)* | - |
-| `main/media/jobs.ts` | `MediaJobFile` *(type)* | - |
-| `main/media/jobs.ts` | `MediaProgress` *(type)* | - |
-| `main/media/jobs.ts` | `MediaJob` *(type)* | - |
-| `main/media/jobs.ts` | `MediaJobInput` *(type)* | - |
-| `main/media/jobs.ts` | `MediaJobsOptions` *(type)* | - |
+| `main/media/jobs.ts` | `MediaJobs` | When to use: enqueueing, cancelling and listing media jobs from the bridge. |
+| `main/media/jobs.ts` | `MediaKind` *(type)* | When to use: selecting the downloader mode (video or audio-only). |
+| `main/media/jobs.ts` | `MediaQuality` *(type)* | When to use: capping the selected format (best, 1080/720/480, worst). |
+| `main/media/jobs.ts` | `MediaJobState` *(type)* | When to use: reporting or observing a media job lifecycle state. |
+| `main/media/jobs.ts` | `MediaJobFile` *(type)* | When to use: describing one downloaded file (path, bytes, format note). |
+| `main/media/jobs.ts` | `MediaProgress` *(type)* | When to use: reporting download progress (percent, speed, ETA) to the deck. |
+| `main/media/jobs.ts` | `MediaJob` *(type)* | When to use: queueing, cancelling or inspecting one media job. |
+| `main/media/jobs.ts` | `MediaJobInput` *(type)* | When to use: starting a media job from a URL plus kind/quality options. |
+| `main/media/jobs.ts` | `MediaJobsOptions` *(type)* | When to use: constructing the job queue (binary paths, ffmpeg) in the app or tests. |
 | `main/media/platform.ts` | `mediaPlatformKey` | `win32-x64`, `darwin-arm64`, `linux-x64` — matches `bin/media/<key>`. |
 | `main/media/platform.ts` | `ytDlpFileName` | - |
 | `main/media/platform.ts` | `ytdlpRuntimeOptions` | Point yt-dlp at Electron's own binary as a Node runtime. |
@@ -183,16 +183,16 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/media/platform.ts` | `parseChecksum` | Find one asset hash in a `SHA2-256SUMS` file. |
 | `main/media/platform.ts` | `YtDlpRuntimeKind` *(type)* | Pure helpers for the media tooling: platform naming and the yt-dlp runtime. |
 | `main/media/platform.ts` | `YtDlpRuntime` *(type)* | - |
-| `main/media/service.ts` | `MediaService` | - |
-| `main/media/service.ts` | `MediaRuntimeStatus` *(type)* | - |
-| `main/media/service.ts` | `MediaStatus` *(type)* | - |
-| `main/media/service.ts` | `MediaInfo` *(type)* | - |
-| `main/media/service.ts` | `MediaInfoResult` *(type)* | - |
-| `main/media/service.ts` | `MediaServiceError` *(type)* | - |
-| `main/media/service.ts` | `MediaTranscriptResult` *(type)* | - |
-| `main/media/service.ts` | `MediaPreviewImage` *(type)* | - |
-| `main/media/service.ts` | `MediaPreviewResult` *(type)* | - |
-| `main/media/service.ts` | `MediaDownloadResult` *(type)* | - |
+| `main/media/service.ts` | `MediaService` | When to use: starting media jobs from the bridge, or wiring the media tools in the app. |
+| `main/media/service.ts` | `MediaRuntimeStatus` *(type)* | When to use: reporting only the media runtime fields on the health payload. |
+| `main/media/service.ts` | `MediaStatus` *(type)* | When to use: rendering the deck media panel or `GET /media/status`. |
+| `main/media/service.ts` | `MediaInfo` *(type)* | When to use: answering `GET /media/info` with a resolved URL title/duration/formats. |
+| `main/media/service.ts` | `MediaInfoResult` *(type)* | When to use: returning metadata (or the refusal) from `POST /media/info`. |
+| `main/media/service.ts` | `MediaServiceError` *(type)* | When to use: carrying a binary/job failure with its code up to the route. |
+| `main/media/service.ts` | `MediaTranscriptResult` *(type)* | When to use: returning a transcript or subtitle document from `POST /media/transcript`. |
+| `main/media/service.ts` | `MediaPreviewImage` *(type)* | When to use: attaching a generated thumbnail to `POST /media/preview`. |
+| `main/media/service.ts` | `MediaPreviewResult` *(type)* | When to use: returning preview frames (or the refusal) from `POST /media/preview`. |
+| `main/media/service.ts` | `MediaDownloadResult` *(type)* | When to use: returning a finished download (path, bytes, title) from `POST /media/download`. |
 | `main/media/transcript.ts` | `parseVtt` | VTT → plain text. |
 | `main/media/transcript.ts` | `transcriptDocument` | The document stored in Cortex for one transcript. |
 | `main/media/transcript.ts` | `fetchArtifacts` | Fetch captions (and optionally the thumbnail) into `dir`. |
@@ -238,18 +238,18 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/primitives/dom-targeting.ts` | `TargetLocator` *(type)* | - |
 | `main/primitives/dom-targeting.ts` | `TargetBox` *(type)* | - |
 | `main/primitives/primitives.ts` | `DEFAULT_MARKDOWN_BUDGET` | Default view size for `observe(as:"markdown")` when the caller gives no budget. |
-| `main/primitives/primitives.ts` | `PrimitiveError` | - |
-| `main/primitives/primitives.ts` | `Primitives` | - |
+| `main/primitives/primitives.ts` | `PrimitiveError` | When to use: throwing a structured primitive failure that the bridge maps to a status. |
+| `main/primitives/primitives.ts` | `Primitives` | When to use: driving observe/find/act/wait/extract/collect — the agent-facing primitive layer. |
 | `main/primitives/primitives.ts` | `PrimitivesHost` *(type)* | Primitives — the orthogonal observe / act / wait layer. |
-| `main/primitives/primitives.ts` | `PrimitiveErrorCode` *(type)* | - |
-| `main/primitives/primitives.ts` | `WaitCondition` *(type)* | - |
-| `main/primitives/primitives.ts` | `ConditionResult` *(type)* | - |
-| `main/primitives/primitives.ts` | `WaitResult` *(type)* | - |
-| `main/primitives/primitives.ts` | `PageState` *(type)* | - |
-| `main/primitives/primitives.ts` | `ObserveOptions` *(type)* | - |
-| `main/primitives/primitives.ts` | `ExtractOptions` *(type)* | - |
-| `main/primitives/primitives.ts` | `CollectOptions` *(type)* | - |
-| `main/primitives/primitives.ts` | `FindOptions` *(type)* | - |
+| `main/primitives/primitives.ts` | `PrimitiveErrorCode` *(type)* | When to use: branching on a primitive failure; the codes map to bridge HTTP statuses. |
+| `main/primitives/primitives.ts` | `WaitCondition` *(type)* | When to use: describing one wait_for/expect condition (selector, text, url, count, ...). |
+| `main/primitives/primitives.ts` | `ConditionResult` *(type)* | When to use: reading the per-condition outcome of wait_for/expect. |
+| `main/primitives/primitives.ts` | `WaitResult` *(type)* | When to use: returning the aggregate wait verdict (ok, attempts, elapsed, results). |
+| `main/primitives/primitives.ts` | `PageState` *(type)* | When to use: comparing revisions, URLs and text lengths for the diff primitive. |
+| `main/primitives/primitives.ts` | `ObserveOptions` *(type)* | When to use: shaping observe output (format, region, budget, cursor, frames). |
+| `main/primitives/primitives.ts` | `ExtractOptions` *(type)* | When to use: shaping extract (list, table, tables, app_data, schema_org). |
+| `main/primitives/primitives.ts` | `CollectOptions` *(type)* | When to use: shaping collect_all (container, scroll step, delay, max scrolls). |
+| `main/primitives/primitives.ts` | `FindOptions` *(type)* | When to use: shaping find (role/name/text/regex/selector, offscreen, frames). |
 | `main/primitives/primitives.ts` | `ActOptions` *(type)* | A target can be addressed three ways, in order of preference: |
 | `main/primitives/text-target.ts` | `textTargetExpression` | Deepest visible element whose trimmed text matches. "Deepest" matters: a card <div> and its |
 | `main/primitives/text-target.ts` | `parseTextTargets` | - |
@@ -275,22 +275,22 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/recipes/replay.ts` | `RecipeRunner` *(type)* | - |
 | `main/recipes/replay.ts` | `ReplayStepResult` *(type)* | - |
 | `main/recipes/replay.ts` | `ReplayResult` *(type)* | - |
-| `main/recording/recording-service.ts` | `onRecordingStatus` | - |
-| `main/recording/recording-service.ts` | `setRecordingWindow` | - |
-| `main/recording/recording-service.ts` | `loadRecordingConfig` | - |
-| `main/recording/recording-service.ts` | `getRecordingConfig` | - |
-| `main/recording/recording-service.ts` | `saveRecordingConfig` | - |
-| `main/recording/recording-service.ts` | `getRecordingStatus` | - |
-| `main/recording/recording-service.ts` | `pickRecordingDir` | - |
+| `main/recording/recording-service.ts` | `onRecordingStatus` | When to use: the deck subscribes to recorder state changes (start/stop/failure). |
+| `main/recording/recording-service.ts` | `setRecordingWindow` | When to use: wiring the window the recorder captures; called once during app bootstrap. |
+| `main/recording/recording-service.ts` | `loadRecordingConfig` | When to use: restoring persisted recording settings at startup. |
+| `main/recording/recording-service.ts` | `getRecordingConfig` | When to use: reading the effective recording settings where a tool is about to run. |
+| `main/recording/recording-service.ts` | `saveRecordingConfig` | When to use: applying a settings patch from IPC; returns the normalised config. |
+| `main/recording/recording-service.ts` | `getRecordingStatus` | When to use: answering health, the deck and the tool gate with the current recorder state. |
+| `main/recording/recording-service.ts` | `pickRecordingDir` | When to use: the human chooses a new capture folder from Settings → Recording. |
 | `main/recording/recording-service.ts` | `startRecording` | Start recording the Cyberdeck window. Resolves when the renderer has the stream running. |
 | `main/recording/recording-service.ts` | `readyRecording` | Called by the renderer once the stream and encoder are actually running. |
 | `main/recording/recording-service.ts` | `stopRecording` | Ask the renderer to finalise; the file is written when it calls `saveRecording`. |
 | `main/recording/recording-service.ts` | `saveRecording` | Called from the renderer with the finished WebM bytes. |
-| `main/recording/recording-service.ts` | `failRecording` | - |
+| `main/recording/recording-service.ts` | `failRecording` | When to use: surfacing a capture failure to the deck and clearing the in-progress state. |
 | `main/recording/recording-service.ts` | `listRecordings` | Finished recordings, newest first. Paths are absolute and ready for a file-upload field. |
-| `main/recording/recording-service.ts` | `RecordingConfig` *(type)* | - |
-| `main/recording/recording-service.ts` | `RecordingResult` *(type)* | - |
-| `main/recording/recording-service.ts` | `RecordingStatus` *(type)* | - |
+| `main/recording/recording-service.ts` | `RecordingConfig` *(type)* | When to use: reading or patching the recording settings (enabled, tools switch, output directory). |
+| `main/recording/recording-service.ts` | `RecordingResult` *(type)* | When to use: reporting a finished recording (path, bytes, frames) to the caller and HUD. |
+| `main/recording/recording-service.ts` | `RecordingStatus` *(type)* | When to use: rendering the deck recorder or answering `GET /recording/status`. |
 | `main/remote/oauth-client.ts` | `oauthClientFile` | - |
 | `main/remote/oauth-client.ts` | `readOAuthClient` | - |
 | `main/remote/oauth-client.ts` | `createOAuthClient` | - |
@@ -334,7 +334,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/session/session-vault.ts` | `SessionVault` | - |
 | `main/session/session-vault.ts` | `SessionSnapshot` *(type)* | - |
 | `main/settings/jev.ts` | `DEFAULT_JEV_SETTINGS` | - |
-| `main/settings/jev.ts` | `JevSettingsStore` | JEV is an optional feature (not an experimental one): it is offered only when |
+| `main/settings/jev.ts` | `JevSettingsStore` | - |
 | `main/settings/jev.ts` | `JevMode` *(type)* | - |
 | `main/settings/jev.ts` | `JevSettings` *(type)* | - |
 | `main/shadow-walk/ax-controls.ts` | `findSealedControls` | Find interactive controls inside closed shadow roots. |
@@ -354,20 +354,20 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/force-open.ts` | `ForceOpenDetection` *(type)* | - |
 | `main/shadow-walk/part-highlight-css.ts` | `buildPartHighlightCss` | - |
 | `main/shadow-walk/part-highlight-css.ts` | `PartHost` *(type)* | Pure part-highlight rule builder. |
-| `main/shadow-walk/settings.ts` | `normalizeShadowWalkSettings` | - |
-| `main/shadow-walk/settings.ts` | `loadShadowWalkSettings` | - |
-| `main/shadow-walk/settings.ts` | `saveShadowWalkSettings` | - |
-| `main/shadow-walk/settings.ts` | `shadowWalkStatus` | - |
+| `main/shadow-walk/settings.ts` | `normalizeShadowWalkSettings` | When to use: validating settings from disk or IPC before they are saved or applied. |
+| `main/shadow-walk/settings.ts` | `loadShadowWalkSettings` | When to use: reading the effective settings (file plus env overrides) at the point of use. |
+| `main/shadow-walk/settings.ts` | `saveShadowWalkSettings` | When to use: persisting a settings patch from IPC; returns validation errors untouched. |
+| `main/shadow-walk/settings.ts` | `shadowWalkStatus` | When to use: building the flat status snapshot for the HUD and the bridge health payload. |
 | `main/shadow-walk/settings.ts` | `shadowWalkRefusal` | Structured refusal for a guarded surface, or null when the call may proceed. |
-| `main/shadow-walk/settings.ts` | `SHADOW_WALK_SETTINGS_FILE` | - |
-| `main/shadow-walk/settings.ts` | `DEFAULT_SHADOW_WALK_SETTINGS` | - |
-| `main/shadow-walk/settings.ts` | `shadowWalkSettings` | - |
-| `main/shadow-walk/settings.ts` | `ShadowWalkSettingsStore` | - |
-| `main/shadow-walk/settings.ts` | `ShadowWalkSettings` *(type)* | - |
-| `main/shadow-walk/settings.ts` | `ShadowWalkSettingsResult` *(type)* | - |
-| `main/shadow-walk/settings.ts` | `ShadowWalkSurface` *(type)* | - |
-| `main/shadow-walk/settings.ts` | `ShadowWalkRefusal` *(type)* | - |
-| `main/shadow-walk/settings.ts` | `ShadowWalkStatus` *(type)* | - |
+| `main/shadow-walk/settings.ts` | `SHADOW_WALK_SETTINGS_FILE` | When to use: locating the persisted Shadow Walk settings file (tests, diagnostics). |
+| `main/shadow-walk/settings.ts` | `DEFAULT_SHADOW_WALK_SETTINGS` | When to use: a fresh profile, a corrupt settings file, or resetting to the shipped defaults. |
+| `main/shadow-walk/settings.ts` | `shadowWalkSettings` | When to use: the process-wide store; prefer `loadShadowWalkSettings`/`saveShadowWalkSettings`. |
+| `main/shadow-walk/settings.ts` | `ShadowWalkSettingsStore` | When to use: constructing an isolated store in tests, or reading/saving the real profile file. |
+| `main/shadow-walk/settings.ts` | `ShadowWalkSettings` *(type)* | When to use: reading or patching the Shadow Walk levers (master switch plus per-surface toggles). |
+| `main/shadow-walk/settings.ts` | `ShadowWalkSettingsResult` *(type)* | When to use: handing a save/normalize outcome back to the settings UI; errors are shown verbatim. |
+| `main/shadow-walk/settings.ts` | `ShadowWalkSurface` *(type)* | When to use: asking `shadowWalkRefusal` whether one guarded surface may run. |
+| `main/shadow-walk/settings.ts` | `ShadowWalkRefusal` *(type)* | When to use: a guarded call is disabled — carry the code/message to the caller instead of throwing. |
+| `main/shadow-walk/settings.ts` | `ShadowWalkStatus` *(type)* | When to use: rendering Settings → Shadow Walk or the `/health` shadowWalk block. |
 | `main/shadow-walk/tab-walk.ts` | `runTabWalk` | Walk sequential focus from a host. |
 | `main/shadow-walk/tab-walk.ts` | `TabWalkOptions` *(type)* | - |
 | `main/shadow-walk/tab-walk.ts` | `TabWalkStep` *(type)* | - |
@@ -463,30 +463,30 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/interpolate.ts` | `BuildRequestError` | - |
 | `main/wrap/interpolate.ts` | `BuiltRequest` *(type)* | - |
 | `main/wrap/render.ts` | `renderPayload` | Recipe rendering for one payload, with the legacy fallbacks. |
-| `main/wrap/render.ts` | `safeHost` | - |
+| `main/wrap/render.ts` | `safeHost` | When to use: logging or showing a URL without leaking its query or credentials. |
 | `main/wrap/render.ts` | `previewUrl` | The preview URL for a plan. |
-| `main/wrap/render.ts` | `secretVariants` | - |
-| `main/wrap/render.ts` | `redactText` | - |
-| `main/wrap/render.ts` | `redactDeep` | - |
-| `main/wrap/render.ts` | `parseJson` | - |
-| `main/wrap/render.ts` | `toRecords` | - |
-| `main/wrap/render.ts` | `fence` | - |
-| `main/wrap/render.ts` | `clip` | - |
-| `main/wrap/render.ts` | `failure` | - |
-| `main/wrap/render.ts` | `isPlainObject` | - |
-| `main/wrap/render.ts` | `clampInt` | - |
-| `main/wrap/render.ts` | `Rendered` *(type)* | - |
-| `main/wrap/secrets.ts` | `SecretStore` | - |
-| `main/wrap/secrets.ts` | `WrapSecretKind` *(type)* | - |
-| `main/wrap/secrets.ts` | `WrapOAuthMetadata` *(type)* | - |
-| `main/wrap/secrets.ts` | `WrapSecretMetadata` *(type)* | - |
-| `main/wrap/secrets.ts` | `WrapSecretInput` *(type)* | - |
-| `main/wrap/secrets.ts` | `SecretCipher` *(type)* | - |
-| `main/wrap/secrets.ts` | `SecretResolution` *(type)* | - |
-| `main/wrap/secrets.ts` | `TokenRequest` *(type)* | - |
-| `main/wrap/secrets.ts` | `TokenResult` *(type)* | - |
-| `main/wrap/secrets.ts` | `TokenMinter` *(type)* | - |
-| `main/wrap/secrets.ts` | `SecretStoreOptions` *(type)* | - |
+| `main/wrap/render.ts` | `secretVariants` | When to use: collecting every encoding of a stored secret before redacting output. |
+| `main/wrap/render.ts` | `redactText` | When to use: masking secret values in a string before it reaches a log or an agent. |
+| `main/wrap/render.ts` | `redactDeep` | When to use: recursively redacting secret values in parsed JSON before returning it. |
+| `main/wrap/render.ts` | `parseJson` | When to use: decoding a response body as JSON only when the content type or text really is JSON. |
+| `main/wrap/render.ts` | `toRecords` | When to use: normalising a JSON payload into record objects for the records view. |
+| `main/wrap/render.ts` | `fence` | When to use: rendering a body as a fenced code block, clipped to a character budget. |
+| `main/wrap/render.ts` | `clip` | When to use: truncating text with a visible marker for previews and logs. |
+| `main/wrap/render.ts` | `failure` | When to use: building the wrap surface failure envelope (code, message, status). |
+| `main/wrap/render.ts` | `isPlainObject` | When to use: checking a parsed value is a JSON object before reading keys off it. |
+| `main/wrap/render.ts` | `clampInt` | When to use: bounding a numeric option (limit, timeout) to a supported range. |
+| `main/wrap/render.ts` | `Rendered` *(type)* | When to use: reading the result of `renderPayload` — body text or fence plus paging notes. |
+| `main/wrap/secrets.ts` | `SecretStore` | When to use: storing or resolving wrapper credentials; values never leave the store unredacted. |
+| `main/wrap/secrets.ts` | `WrapSecretKind` *(type)* | When to use: declaring whether a wrapper credential is a static value or an OAuth2 client. |
+| `main/wrap/secrets.ts` | `WrapOAuthMetadata` *(type)* | When to use: describing the token endpoint and client of an OAuth2 wrapper credential. |
+| `main/wrap/secrets.ts` | `WrapSecretMetadata` *(type)* | When to use: listing stored credentials in Settings → Wrappers without exposing values. |
+| `main/wrap/secrets.ts` | `WrapSecretInput` *(type)* | When to use: creating or updating a stored credential from the settings UI. |
+| `main/wrap/secrets.ts` | `SecretCipher` *(type)* | When to use: injecting a different at-rest cipher in tests or a host with its own key store. |
+| `main/wrap/secrets.ts` | `SecretResolution` *(type)* | When to use: reading a resolved credential just before a wrapped request is sent. |
+| `main/wrap/secrets.ts` | `TokenRequest` *(type)* | When to use: implementing a TokenMinter or minting an OAuth2 token for a wrapper. |
+| `main/wrap/secrets.ts` | `TokenResult` *(type)* | When to use: returning a minted token (or the failure) from a TokenMinter. |
+| `main/wrap/secrets.ts` | `TokenMinter` *(type)* | When to use: supplying the OAuth2 token exchange used by an oauth2 wrapper credential. |
+| `main/wrap/secrets.ts` | `SecretStoreOptions` *(type)* | When to use: constructing an isolated SecretStore (custom file, cipher) in tests. |
 | `main/wrap/security.ts` | `assertSafeUrl` | - |
 | `main/wrap/security.ts` | `isPrivateHostname` | A hostname that is private by name alone, before any lookup. |
 | `main/wrap/security.ts` | `isPrivateAddress` | - |
@@ -495,17 +495,17 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/security.ts` | `UrlPolicy` *(type)* | - |
 | `main/wrap/store.ts` | `WrapStore` | - |
 | `main/wrap/store.ts` | `StoreResult` *(type)* | - |
-| `main/wrap/types.ts` | `WrapMethod` *(type)* | - |
-| `main/wrap/types.ts` | `WrapFormat` *(type)* | - |
+| `main/wrap/types.ts` | `WrapMethod` *(type)* | When to use: declaring the HTTP method of a saved wrapper. |
+| `main/wrap/types.ts` | `WrapFormat` *(type)* | When to use: choosing whether a wrapper renders markdown, JSON, or both. |
 | `main/wrap/types.ts` | `WrapInputSchema` *(type)* | The subset of JSON Schema used by wrapper inputs. |
-| `main/wrap/types.ts` | `WrapRequest` *(type)* | - |
-| `main/wrap/types.ts` | `WrapWrapper` *(type)* | - |
-| `main/wrap/types.ts` | `WrapManifestEntry` *(type)* | - |
-| `main/wrap/types.ts` | `WrapPreview` *(type)* | - |
-| `main/wrap/types.ts` | `WrapErrorInfo` *(type)* | - |
-| `main/wrap/types.ts` | `WrapResponseInfo` *(type)* | - |
-| `main/wrap/types.ts` | `WrapIndexed` *(type)* | - |
-| `main/wrap/types.ts` | `WrapRunResult` *(type)* | - |
+| `main/wrap/types.ts` | `WrapRequest` *(type)* | When to use: describing the outbound request template of a wrapper (URL, headers, body). |
+| `main/wrap/types.ts` | `WrapWrapper` *(type)* | When to use: creating, storing or executing a saved REST wrapper. |
+| `main/wrap/types.ts` | `WrapManifestEntry` *(type)* | When to use: listing a wrapper in `wrap_list` or the settings table. |
+| `main/wrap/types.ts` | `WrapPreview` *(type)* | When to use: showing a dry run — resolved URL, redacted headers and the request body. |
+| `main/wrap/types.ts` | `WrapErrorInfo` *(type)* | When to use: returning a structured wrapper failure (code, status, redacted detail). |
+| `main/wrap/types.ts` | `WrapResponseInfo` *(type)* | When to use: reporting status, bytes, content type and paging for a wrapper run. |
+| `main/wrap/types.ts` | `WrapIndexed` *(type)* | When to use: reading the manifest index (ids, names, secrets) for generated tools. |
+| `main/wrap/types.ts` | `WrapRunResult` *(type)* | When to use: returning a wrapper execution result (rendered body, response info, paging). |
 | `main/wrap/validate-wrapper.ts` | `validateWrapper` | - |
 | `main/wrap/validate-wrapper.ts` | `isPlainObject` | - |
 | `main/wrap/validate-wrapper.ts` | `WrapperValidation` *(type)* | - |
@@ -596,7 +596,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (76)
+## Modules (78)
 
 | File | Export | When to use |
 |---|---|---|
@@ -636,7 +636,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/remote/token.ts` | `remoteTokenFile` | When to use: resolve the remote gateway's capability-token path under its data directory. |
 | `main/remote/token.ts` | `createRemoteToken` | When to use: rotate the remote-gateway token on app start. The caller owns the directory. |
 | `main/remote/token.ts` | `readRemoteToken` | When to use: authenticate a remote request against the token file on disk. |
-| `main/settings/experimental.ts` | `ExperimentalSettingsStore` | Experimental feature flags persisted next to the other user settings. |
+| `main/settings/experimental.ts` | `ExperimentalSettingsStore` | - |
+| `main/settings/json-file.ts` | `readJsonFile` | When to use: decoding a settings file; returns null when it is missing, unreadable |
+| `main/settings/json-file.ts` | `writeJsonFileAtomic` | When to use: replacing a settings file atomically; returns the underlying error |
 | `main/shadow-walk/part-highlight.ts` | `injectPartHighlight` | - |
 | `main/shadow-walk/part-highlight.ts` | `removePartHighlight` | - |
 | `main/shadow-walk/part-highlight.ts` | `withPartHighlight` | Run a screenshot capture with exported parts outlined when the lever is on. |
@@ -658,7 +660,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/token.ts` | `tokenFile` | When to use: resolve the wrap bridge's capability-token path under its data directory. |
 | `main/wrap/token.ts` | `createWrapToken` | When to use: rotate the wrap-bridge token on app start so old processes lose access. |
 | `main/wrap/token.ts` | `readWrapToken` | When to use: authenticate a wrap request against the token file on disk. |
-| `main/zoom/settings.ts` | `ZoomSettingsStore` | The browser zoom policy lives next to the other human settings. The HTTP |
+| `main/zoom/settings.ts` | `ZoomSettingsStore` | - |
 | `mcp/browser-mcp.ts` | `flushLogSync` | Synchronous drain used only on shutdown paths, where async I/O cannot run. |
 | `mcp/browser-mcp.ts` | `logMcp` | - |
 | `mcp/browser-mcp.ts` | `createBridgeMcpServer` | - |
