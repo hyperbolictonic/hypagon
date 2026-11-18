@@ -22,6 +22,7 @@ import {
 } from '../../shared/viewport.js';
 import type { TabInstance } from '../tabs/tab-manager.js';
 import type { DeviceProfileStore } from './profiles.js';
+import { applyEmulation, clearEmulation } from './emulation.js';
 
 /** When to use: injecting bounds/emulation hooks when constructing a ViewportController. */
 export interface ViewportControllerDeps {
@@ -235,53 +236,7 @@ export class ViewportController {
     const wc = tab.view.webContents;
     const { scale } = fitViewport(spec, this.deps.available());
     try {
-      // Device mode is the page's world; the app's display-scale zoom would change CSS widths
-      // inside it. Pin page zoom to 100% and restore the policy on reset.
-      try {
-        wc.setZoomFactor(1);
-      } catch {
-        /* a tab can vanish mid-change */
-      }
-
-      let cdp = false;
-      try {
-        if (!wc.debugger.isAttached()) wc.debugger.attach('1.3');
-        await wc.debugger.sendCommand('Emulation.setDeviceMetricsOverride', {
-          width: spec.width,
-          height: spec.height,
-          deviceScaleFactor: spec.deviceScaleFactor,
-          mobile: spec.mobile,
-          screenWidth: spec.width,
-          screenHeight: spec.height,
-          screenOrientation: {
-            angle: 0,
-            type: spec.mobile ? 'portraitPrimary' : 'landscapePrimary',
-          },
-          scale,
-        });
-        await wc.debugger.sendCommand('Emulation.setTouchEmulationEnabled', {
-          enabled: spec.touch,
-          maxTouchPoints: spec.touch ? 5 : 0,
-        });
-        cdp = true;
-      } catch (error: any) {
-        // DevTools or another client can own the debugger. The WebContents API still emulates.
-        this.deps.log?.(
-          'info',
-          `Device emulation via CDP unavailable (${error?.message || error}); using the WebContents path.`,
-        );
-      }
-
-      if (!cdp) {
-        wc.enableDeviceEmulation({
-          screenPosition: spec.mobile ? 'mobile' : 'desktop',
-          screenSize: { width: spec.width, height: spec.height },
-          viewPosition: { x: 0, y: 0 },
-          deviceScaleFactor: spec.deviceScaleFactor,
-          viewSize: { width: spec.width, height: spec.height },
-          scale,
-        });
-      }
+      await applyEmulation(wc, spec, scale, this.deps.log);
       this.emulated.add(wc);
       this.deps.setInputScale(wc, scale);
     } finally {
@@ -294,19 +249,7 @@ export class ViewportController {
     const wc = tab?.view.webContents;
     if (!wc || wc.isDestroyed()) return;
 
-    try {
-      if (wc.debugger.isAttached()) {
-        await wc.debugger.sendCommand('Emulation.clearDeviceMetricsOverride').catch(() => undefined);
-        await wc.debugger.sendCommand('Emulation.setTouchEmulationEnabled', { enabled: false }).catch(() => undefined);
-      }
-    } catch {
-      /* debugger detached while resetting */
-    }
-    try {
-      wc.disableDeviceEmulation();
-    } catch {
-      /* not emulated */
-    }
+    await clearEmulation(wc);
     this.emulated.delete(wc);
     this.deps.setInputScale(wc, 1);
     this.deps.applyZoom(wc);
