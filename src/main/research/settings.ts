@@ -9,7 +9,7 @@
  */
 
 
-import { readJsonFile, writeJsonFileAtomic } from '../settings/json-file.js';
+import { persistNormalizedSettings, readJsonFile, writeJsonFileAtomic } from '../settings/json-file.js';
 
 /** When to use: validating or displaying the engine preference chain. */
 export const RESEARCH_ENGINES = ['google', 'duckduckgo', 'bing', 'brave', 'startpage', 'custom'] as const;
@@ -86,11 +86,7 @@ export class ResearchSettingsStore {
   save(input: unknown): ResearchSettingsResult {
     const normalized = normalizeResearchSettings(input);
     if (!normalized.ok) return normalized;
-    const written = writeJsonFileAtomic(this.file, normalized.settings);
-    if (!written.ok) {
-      return { ...normalized, ok: false, errors: [`Could not save research settings: ${written.error}`] };
-    }
-    return normalized;
+    return persistNormalizedSettings(this.file, normalized, normalized.settings, 'research');
   }
 }
 

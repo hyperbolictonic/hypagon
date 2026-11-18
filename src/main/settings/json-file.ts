@@ -41,3 +41,18 @@ export function writeJsonFileAtomic(file: string, value: unknown): { ok: true } 
     return { ok: false, error: String(err?.message || err) };
   }
 }
+
+/**
+ * When to use: a store has just normalised its input and needs to persist the value —
+ * keeps the "Could not save <label> settings" wording in one place.
+ */
+export function persistNormalizedSettings<R extends { ok: boolean; errors: string[] }>(
+  file: string,
+  normalized: R,
+  value: unknown,
+  label: string,
+): R {
+  const written = writeJsonFileAtomic(file, value);
+  if (written.ok) return normalized;
+  return { ...normalized, ok: false, errors: [`Could not save ${label} settings: ${written.error}`] };
+}

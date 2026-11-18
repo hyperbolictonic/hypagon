@@ -1,5 +1,5 @@
 import type { ToolSettings } from '../../shared/tool-settings.js';
-import { readJsonFile, writeJsonFileAtomic } from '../settings/json-file.js';
+import { persistNormalizedSettings, readJsonFile } from '../settings/json-file.js';
 
 export interface ToolSettingsValidation {
   ok: boolean;
@@ -96,11 +96,7 @@ export class ToolSettingsStore {
   save(input: unknown): ToolSettingsValidation {
     const normalized = normalizeToolSettings(input);
     if (!normalized.ok || !normalized.settings) return normalized;
-    const written = writeJsonFileAtomic(this.file, normalized.settings);
-    if (!written.ok) {
-      return { ok: false, errors: [`Could not save tool settings: ${written.error}`] };
-    }
-    return normalized;
+    return persistNormalizedSettings(this.file, normalized, normalized.settings, 'tool');
   }
 
   reset(): ToolSettingsValidation {

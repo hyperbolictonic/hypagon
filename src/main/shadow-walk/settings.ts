@@ -16,7 +16,7 @@
  *   KUANG_FORCE_OPEN_SHADOW=1    arm the (not yet built) force-open patch
  */
 import { dataPath } from '../data-paths.js';
-import { readJsonFile, writeJsonFileAtomic } from '../settings/json-file.js';
+import { persistNormalizedSettings, readJsonFile, writeJsonFileAtomic } from '../settings/json-file.js';
 
 /** When to use: locating the persisted Shadow Walk settings file (tests, diagnostics). */
 export const SHADOW_WALK_SETTINGS_FILE = dataPath('shadow-walk.json');
@@ -206,11 +206,7 @@ export class ShadowWalkSettingsStore {
   save(input: unknown): ShadowWalkSettingsResult {
     const normalized = normalizeShadowWalkSettings(input);
     if (!normalized.ok) return normalized;
-    const written = writeJsonFileAtomic(this.file, normalized.settings);
-    if (!written.ok) {
-      return { ...normalized, ok: false, errors: [`Could not save Shadow Walk settings: ${written.error}`] };
-    }
-    return normalized;
+    return persistNormalizedSettings(this.file, normalized, normalized.settings, 'Shadow Walk');
   }
 }
 
