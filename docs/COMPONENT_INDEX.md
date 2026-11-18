@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 152 files, 641 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 161 files, 650 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -592,13 +592,22 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (65)
+## Modules (74)
 
 | File | Export | When to use |
 |---|---|---|
 | `main/bridge/routes/collaboration.ts` | `handleCollaborationRoutes` | When to use: the request targets `/collaboration/*`; returns false for other paths. |
+| `main/bridge/routes/decision.ts` | `handleDecisionRoutes` | When to use: the request is a decision-model call, its transcript or the drive loop. |
+| `main/bridge/routes/inspection.ts` | `handleInspectionRoutes` | When to use: the request reads the page, frames, screenshots or downloaded documents. |
+| `main/bridge/routes/interaction.ts` | `handleInteractionRoutes` | When to use: the request is a navigation, action, recipe, mark or script call. |
 | `main/bridge/routes/media.ts` | `handleMediaRoutes` | When to use: the request targets `/media/*`; returns false for other paths. |
+| `main/bridge/routes/memory.ts` | `handleMemoryRoutes` | When to use: the request targets Cortex memory or bookmarks; false leaves it to other families. |
+| `main/bridge/routes/network.ts` | `handleNetworkRoutes` | When to use: the request reads or clears network traffic, streams or capture buffers. |
+| `main/bridge/routes/primitives.ts` | `handlePrimitiveRoutes` | When to use: the request is a primitives call (observe, find, act, wait, extract, collect). |
 | `main/bridge/routes/research.ts` | `handleResearchRoutes` | When to use: the request is a research/extraction call; returns false for other paths. |
+| `main/bridge/routes/session.ts` | `handleSessionRoutes` | When to use: the request is a recording, session/context, HIL or window call. |
+| `main/bridge/routes/system.ts` | `handleSystemRoutes` | When to use: the request is a health/config/metrics/human-control call. These are |
+| `main/bridge/routes/view.ts` | `handleViewRoutes` | When to use: the request targets tabs, zoom or viewport; false leaves it to other families. |
 | `main/bridge/routes/wrap.ts` | `handleWrapRoutes` | When to use: the request targets `/wrap/*`; handles auth and returns false for other paths. |
 | `main/browser/frame-marks.ts` | `clearFrameMarks` | - |
 | `main/browser/frame-marks.ts` | `registerFrameMarks` | - |

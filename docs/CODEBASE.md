@@ -122,7 +122,10 @@ src/
   main/            Electron main process
     index.ts       entry point, window, IPC, service wiring
     browser-chassis.ts   central orchestrator (1 865 lines)
-    http-bridge.ts       HTTP routes (1 162 lines)
+    http-bridge.ts       HTTP server shell: CORS, human gate, error map, dispatch (230 lines)
+    bridge/routes/       one ROUTES table per family: system, view, memory, inspection,
+                         network, interaction, session, primitives, decision, research,
+                         wrap, media, collaboration
     primitives/          observe, act, wait_for, extract, ...
     marks/               Set-of-Marks overlay and targeting
     telemetry/           Bézier pointer, typing, fingerprints
@@ -353,10 +356,10 @@ patch tag publishes itself; a minor or major tag stays a draft for a human. See
 ### Add a tool
 
 1. Add the entry to `src/mcp/tools-catalog.ts`. Give it an `endpoint`, a Zod schema and a formatter.
-2. Add the route to `src/main/http-bridge.ts`, or to the matching family in
-   `src/main/bridge/routes/` (research, wrap, media, collaboration). A family route is one
-   `'METHOD /path'` entry in its `ROUTES` table; the shared context supplies the body and response
-   envelope.
+2. Add one `'METHOD /path'` key to the matching `ROUTES` table in `src/main/bridge/routes/`
+   (system, view, memory, inspection, network, interaction, session, primitives, decision,
+   research, wrap, media, collaboration). The shared context supplies the body and response
+   envelope; `http-bridge.ts` itself stays a server shell.
 3. Run `npm run test:mcp:contract`.
 4. Run `npm run test:mcp:surface` with the app open.
 5. Add a row to the README tool table. Run `npm run manual:tools`.

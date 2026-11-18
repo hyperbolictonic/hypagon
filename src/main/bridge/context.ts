@@ -47,6 +47,8 @@ export interface BridgeContext extends BridgeDeps {
   pathname: string;
   /** Epoch milliseconds when the request arrived; `json()` reports the duration. */
   startedAt: number;
+  /** Epoch milliseconds of the last mutating action, for `since: "last_action"`. */
+  lastActionAt: number;
   /** Parsed JSON body, or `{}` for an empty, raw or non-JSON body. */
   body: <T = any>() => Promise<T>;
   /** Write a JSON response and log it. */

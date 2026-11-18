@@ -11,26 +11,30 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **54 violations** across **41 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **53 violations** across **41 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **431 undocumented exports** across **123 files** | one-line `/** When to use ... */` required |
-| Duplicates | **2,021 duplicated lines / 46,663 (4.3%)** | threshold is 3%; 147 clone regions |
-| Import cycles | **0** | 5 layer rules pass |
-| Component index | **152 files / 641 exports** | 431 still undocumented |
+| Duplicates | **1,857 duplicated lines / 46,832 (4.0%)** | threshold is 3%; 41 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 161 files |
+| Component index | **161 files / 650 exports** | 431 still undocumented |
 
 ## Progress
 
 - **P0 #1 done** - every export in `src/shared/viewport.ts` has a usage doc; the docs baseline
   dropped from 451 to 431 and the file left the baseline entirely.
-- **P0 #2 started** - `http-bridge.ts` fell from 2,039 to 1,573 lines. Research/extraction,
-  Hypagon REST, media and collaboration routes now live in `src/main/bridge/routes/*` with a shared
-  `BridgeContext` (`fail()`, memoised body, one response envelope) and a shared route-table
-  dispatcher. The duplicate baseline dropped from 2,250 to 2,021 lines. Remaining work on this item:
-  health/metrics, tabs, navigation, cortex/bookmarks, HIL/window, recording/session, network,
-  capture/marks/scripts and the decision/drive routes.
+- **P0 #2 done** - `http-bridge.ts` fell from 2,039 to 230 lines and is now only the server shell
+  (CORS, human-control gate, logging, error mapping, dispatch chain). Every route family lives in
+  `src/main/bridge/routes/*` behind a shared `BridgeContext` (`fail()`, memoised body, one response
+  envelope) and one `ROUTES` table per family: `system`, `view`, `memory`, `inspection`, `network`,
+  `interaction`, `session`, `primitives`, `decision`, `research`, `wrap`, `media`, `collaboration`.
+  The duplicate baseline dropped from 2,250 to 1,857 lines (4.3% -> 4.0%) and modularity from 54 to
+  53 violations. The contract test statically reads the `'METHOD /path'` keys, so every extracted
+  route stays covered.
 - **P0 #3 done** - `src/main/token-file.ts` owns the atomic token write and fail-closed read; the
   wrap and remote gateway modules are thin wrappers. The 37.8% / 27.1% clone pair is gone.
-- Verified live on a dev instance: research, wrap auth/derive, media, collaboration, zoom, tabs and
-  viewport routes all answer with unchanged shapes.
+- Verified live on a dev instance (port 4125): 38 read routes across every family plus `act`,
+  `navigate`, `markdown`, `tabs/new`, `tabs/close` and `tabs/switch` answer with unchanged shapes
+  and status codes.
+
 
 
 ## Top findings
@@ -42,7 +46,6 @@ is introduced.
 | P0 | `src/main/browser-chassis.ts` | 4,816 lines | file, 3 functions, class | `ResearchRuntime`, `ViewportRuntime`, `HumanControl`, `Consent`, `Capture` |
 | P1 | `src/renderer/main.ts` | 3,969 lines | file, 1 function | tabs, logs, settings, cortex, zoom already partly separate |
 | P1 | `src/mcp/tools-catalog.ts` | 2,172 lines | file | one module per tool family; registry composes |
-| P1 | `src/main/http-bridge.ts` | 2,039 lines | file, 2 giant functions | route modules + shared request/response helpers |
 | P1 | `src/main/primitives/primitives.ts` | 1,825 lines | file | observe / act / extract / wait / collect |
 | P2 | `src/main/collaboration/overlay.ts` | 1,418 lines | file | in-page script builder vs. service |
 | P2 | `src/mcp/browser-mcp.ts` | 1,050 lines | file, 2 functions | tool registration, dispatch, formatting |
@@ -64,7 +67,6 @@ is introduced.
 
 | Priority | File | Duplicated lines | Likely cause |
 | --- | --- | ---: | --- |
-| P0 | `src/main/http-bridge.ts` | 366 | repeated route read/validate/respond blocks |
 | P1 | `src/main/browser-chassis.ts` | 265 | repeated tab/clipboard/state helper patterns |
 | P1 | `src/mcp/tools-catalog.ts` | 255 | repeated parameter/format scaffolding |
 | P1 | `src/mcp/wrap-server.ts` | 153 | repeated tool registration |
@@ -87,7 +89,6 @@ lives in `src/main/token-file.ts`. `mcp/tool-groups.ts` stays 51.9% duplicated b
 
 | Priority | File | Missing docs | Notes |
 | --- | --- | ---: | --- |
-| P0 | `src/shared/viewport.ts` | 15 | newest shared contract; add `When to use` to types/helpers |
 | P1 | `src/main/shadow-walk/settings.ts` | 13 | policy/settings types |
 | P1 | `src/main/wrap/render.ts` | 12 | exported helpers used by executor |
 | P1 | `src/main/primitives/primitives.ts` | 11 | shared primitive surface |
@@ -105,7 +106,7 @@ lives in `src/main/token-file.ts`. `mcp/tool-groups.ts` stays 51.9% duplicated b
 
 ### 4. Import boundaries
 
-- **0 cycles** across 145 files.
+- **0 cycles** across 161 files.
 - All 5 configured layer rules pass:
   - `src/shared/**` must not import `src/main/**` or `src/renderer/**`
   - `src/renderer/**` and `src/preload/**` must not import `src/main/**`
@@ -120,8 +121,8 @@ lives in `src/main/token-file.ts`. `mcp/tool-groups.ts` stays 51.9% duplicated b
    gives the reuse skill a usable entry. **Done.**
 2. **HTTP bridge route helper** — extract `readJsonAndRespond`, validation and error envelopes;
    target the 366 duplicated lines and the two oversized functions. This is the largest structural
-   win with the least product risk. **Started:** context, dispatcher and four families are out;
-   the remaining families still sit in `http-bridge.ts`.
+   win with the least product risk. **Done:** the bridge is a 230-line server shell and every family
+   is a `ROUTES` table in `src/main/bridge/routes/`.
 3. **Token loader extraction** — one `readTokenFile`/`writeTokenFile` helper for
    `remote/token.ts` and `wrap/token.ts`. **Done** (`src/main/token-file.ts`).
 
@@ -130,9 +131,8 @@ lives in `src/main/token-file.ts`. `mcp/tool-groups.ts` stays 51.9% duplicated b
 4. **`browser-chassis` decomposition** — extract `ViewportRuntime` (already a controller), then
    `HumanControl`, `Consent`, `ResearchRuntime`, `CaptureRuntime`. Keep the chassis as composition
    root; update the extraction map.
-5. **Finish `http-bridge` route modules** — health/metrics, tabs, navigation/act, cortex/bookmarks,
-   HIL/window, recording/session, network, capture/marks/scripts, decision/drive; keep the
-   `ROUTES`-table pattern and the contract test. No behavior change.
+5. **Finish `http-bridge` route modules** — all families are extracted; keep the `ROUTES`-table
+   pattern and the contract test. No behavior change. **Done.**
 6. **`tools-catalog` split** — one module per family with a registry; keep the contract test.
 7. **`renderer/main` split** — tabs, logs, settings, cortex, web-state panels; reuse the existing
    research/viewport modules as the pattern.
@@ -145,7 +145,7 @@ lives in `src/main/token-file.ts`. `mcp/tool-groups.ts` stays 51.9% duplicated b
 10. **Wrap/media/cortex splits** and the repeated transport/result mapping.
 11. **Remove clone regions** listed above; re-run `check-duplicates --update-baseline` only when
     the count actually shrinks.
-12. **Component index quality** — the generator classifies most exports as `types` (569/630);
+12. **Component index quality** — the generator classifies most exports as `types` (573/650);
     improve the heuristic or add manual notes for the major services.
 13. **Tighten the ratchet** — after each split, re-run:
     ```bash
