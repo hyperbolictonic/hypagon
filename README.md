@@ -2,6 +2,12 @@
 
 ## The local browser for AI agents.
 
+Hypagon Gateway is an open-source desktop app that gives an AI agent its own browser. Not a headless robot in someone else's data centre — a real, visible browser window on your computer that the agent can read, click, type into, and use to download files.
+
+Point your agent at it — Claude, Cursor, a local model, or any MCP client — and ask for something: look this up, fill in this form, check this dashboard, research this topic. It reads pages as structured text instead of guessing at pixels, acts like a person when it needs to click, and remembers sessions and findings between runs.
+
+No account, no cloud subscription, no browser farm, and no telemetry leaving the machine.
+
 <p align="center">
   <img src="public/assets/brand/hypagon-lockup.png" width="520" alt="Hypagon — browser automation, local intelligence" />
 </p>
