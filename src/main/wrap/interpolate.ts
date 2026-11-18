@@ -11,19 +11,10 @@
  * omitted, never sent as the string "undefined".
  */
 
-import { resolvePath } from '../../../packages/recipe/src/index.ts';
 import type { WrapMethod, WrapRequest, WrapWrapper } from './types.ts';
+import { BuildRequestError, encodeRawPath, interpolateText, interpolateValue, parsePlaceholder, stringifyForTemplate } from './placeholder.js';
 
-/** When to use: reporting a wrapper template that cannot be resolved into a request. */
-export class BuildRequestError extends Error {
-  readonly code: string;
-
-  constructor(code: string, message: string) {
-    super(message);
-    this.name = 'BuildRequestError';
-    this.code = code;
-  }
-}
+export { BuildRequestError, interpolateValue } from './placeholder.js';
 
 /** When to use: inspecting the resolved URL, headers and body before a wrapper sends it. */
 export interface BuiltRequest {
@@ -34,22 +25,7 @@ export interface BuiltRequest {
   bodyFormat?: 'json' | 'form' | 'text';
 }
 
-const WHOLE_PLACEHOLDER = /^\{\{\s*([^{}]+?)\s*\}\}$/;
-const PLACEHOLDER = /\{\{\s*([^{}]+?)\s*\}\}/g;
-const RAW_PATH_SUFFIX = /^(.*?)\s*\|\s*raw$/i;
 const METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD']);
-
-interface Placeholder {
-  name: string;
-  rawPath: boolean;
-}
-
-function parsePlaceholder(expression: string): Placeholder {
-  const trimmed = expression.trim();
-  const raw = trimmed.match(RAW_PATH_SUFFIX);
-  if (raw && raw[1].trim()) return { name: raw[1].trim(), rawPath: true };
-  return { name: trimmed, rawPath: false };
-}
 
 const FORBIDDEN_HEADERS = new Set([
   'host',
@@ -223,131 +199,3 @@ function appendForm(params: URLSearchParams, key: string, value: unknown): void 
   params.append(key, stringifyForTemplate(value));
 }
 
-function interpolateText(
-  template: string,
-  args: Record<string, unknown>,
-  encode: boolean,
-  allowRawPath = false,
-): string {
-  if (typeof template !== 'string') return '';
-
-  const whole = template.match(WHOLE_PLACEHOLDER);
-  if (whole) {
-    const placeholder = parsePlaceholder(whole[1]);
-    if (placeholder.rawPath && !allowRawPath) {
-      throw new BuildRequestError(
-        'INVALID_TEMPLATE',
-        'The "|raw" path modifier is only allowed in request.url.',
-      );
-    }
-    const value = getArg(args, placeholder.name);
-    if (value === undefined || value === null) return '';
-    return placeholder.rawPath
-      ? encodeRawPath(value)
-      : encode
-        ? encodeURIComponent(stringifyForTemplate(value))
-        : stringifyForTemplate(value);
-  }
-
-  return template.replace(PLACEHOLDER, (_match, expression: string) => {
-    const placeholder = parsePlaceholder(expression);
-    if (placeholder.rawPath && !allowRawPath) {
-      throw new BuildRequestError(
-        'INVALID_TEMPLATE',
-        'The "|raw" path modifier is only allowed in request.url.',
-      );
-    }
-    const value = getArg(args, placeholder.name);
-    if (value === undefined || value === null) return '';
-    return placeholder.rawPath
-      ? encodeRawPath(value)
-      : encode
-        ? encodeURIComponent(stringifyForTemplate(value))
-        : stringifyForTemplate(value);
-  });
-}
-
-/**
- * Preserve slash-separated path segments while encoding each segment. Raw paths are relative:
- * leading/trailing slashes are ignored, `.`/`..` segments are rejected, and backslashes/control
- * characters are refused before URL construction.
- */
-function encodeRawPath(value: unknown): string {
-  const raw = stringifyForTemplate(value);
-  if (!raw) throw new BuildRequestError('INVALID_PATH', 'The raw path is empty.');
-  if (raw.includes('\\') || /[\u0000-\u001f\u007f]/.test(raw)) {
-    throw new BuildRequestError('INVALID_PATH', 'The raw path contains a forbidden character.');
-  }
-
-  const normalized = raw.replace(/^\/+|\/+$/g, '');
-  const segments = normalized.split('/');
-  if (!normalized || segments.some((segment) => !segment || segment === '.' || segment === '..')) {
-    throw new BuildRequestError(
-      'INVALID_PATH',
-      'The raw path must not contain empty, "." or ".." segments.',
-    );
-  }
-  return segments.map((segment) => encodeURIComponent(segment)).join('/');
-}
-
-/** When to use: resolving `{{placeholders}}` inside a wrapper template value. */
-export function interpolateValue(value: unknown, args: Record<string, unknown>): unknown {
-  if (typeof value === 'string') {
-    const whole = value.match(WHOLE_PLACEHOLDER);
-    if (whole) {
-      const placeholder = parsePlaceholder(whole[1]);
-      if (placeholder.rawPath) {
-        throw new BuildRequestError(
-          'INVALID_TEMPLATE',
-          'The "|raw" path modifier is only allowed in request.url.',
-        );
-      }
-      return getArg(args, placeholder.name);
-    }
-    return value.replace(PLACEHOLDER, (_match, expression: string) => {
-      const placeholder = parsePlaceholder(expression);
-      if (placeholder.rawPath) {
-        throw new BuildRequestError(
-          'INVALID_TEMPLATE',
-          'The "|raw" path modifier is only allowed in request.url.',
-        );
-      }
-      const resolved = getArg(args, placeholder.name);
-      return resolved === undefined || resolved === null ? '' : stringifyForTemplate(resolved);
-    });
-  }
-
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => interpolateValue(item, args))
-      .filter((item) => item !== undefined);
-  }
-
-  if (value && typeof value === 'object') {
-    const out: Record<string, unknown> = {};
-    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
-      const resolved = interpolateValue(entry, args);
-      if (resolved !== undefined) out[key] = resolved;
-    }
-    return out;
-  }
-
-  return value;
-}
-
-function getArg(args: Record<string, unknown>, path: string): unknown {
-  const trimmed = path.trim();
-  if (!trimmed || trimmed === '.' || trimmed === '$') return args;
-  return resolvePath(args, trimmed);
-}
-
-function stringifyForTemplate(value: unknown): string {
-  if (typeof value === 'string') return value;
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value);
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
-}
