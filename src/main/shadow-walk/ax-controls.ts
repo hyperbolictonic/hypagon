@@ -25,6 +25,7 @@ import { normalizeSurface, type ComponentSurface } from './component-signature.j
 import { loadShadowWalkSettings } from './settings.js';
 import { clearSealedTokens, issueSealedToken } from './sealed-targets.js';
 
+/** When to use: placing a sealed control in page coordinates (x, y, width, height). */
 export interface SealedRect {
   x: number;
   y: number;
@@ -32,6 +33,7 @@ export interface SealedRect {
   height: number;
 }
 
+/** When to use: reading a control discovered inside a closed shadow root (role, name, box). */
 export interface SealedControl {
   role: string;
   name: string;
@@ -52,6 +54,7 @@ export interface SealedControl {
   token?: string;
 }
 
+/** When to use: bounding a sealed scan (max controls, timeout, hit test). */
 export interface SealedFindOptions {
   role?: string;
   name?: string;
@@ -68,6 +71,7 @@ export interface SealedFindOptions {
   revision?: number;
 }
 
+/** When to use: returning sealed controls plus scan notes to the primitives layer. */
 export interface SealedFindResult {
   controls: SealedControl[];
   /** Matches before the limit / offscreen filter. */
@@ -78,6 +82,7 @@ export interface SealedFindResult {
   notes: string[];
 }
 
+/** When to use: catching the sealed-scan rate limit and returning retry_after, not a generic error. */
 export class SealedRateLimitError extends Error {
   public code = 'SEALED_RATE_LIMITED';
   public retryAfterMs: number;

@@ -19,6 +19,7 @@ export interface JevSection {
   children: string[];
 }
 
+/** When to use: reading the current JEV index (sections, token stats, URL, revision). */
 export interface JevSession {
   url: string;
   title: string;
@@ -28,6 +29,7 @@ export interface JevSession {
   totalTokens: number;
 }
 
+/** When to use: reporting JEV availability/enforcement on health and the deck. */
 export interface JevStatus {
   enabled: boolean;
   ready: boolean;
@@ -42,6 +44,7 @@ export interface JevStatus {
   enforced?: boolean;
 }
 
+/** When to use: reading a JEV search hit (section id, title, score, excerpt). */
 export interface JevSearchHit {
   section_id: string;
   heading: string;
@@ -75,6 +78,7 @@ function digestFor(lines: string[]): string {
   return sentence.length > 160 ? `${sentence.slice(0, 157)}…` : sentence;
 }
 
+/** When to use: indexing a page into sections and serving jev_index/read_section/search. */
 export class JevEngine {
   private session: JevSession | null = null;
   private expanded = new Map<string, number>();

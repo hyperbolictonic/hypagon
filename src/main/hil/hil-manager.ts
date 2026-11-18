@@ -4,6 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { BRAND } from '../../shared/brand.js';
 
+/** When to use: reading the active hand-off (id, reason, timeout, status) in the deck or bridge. */
 export interface HilRequest {
   id: string;
   reason: string;
@@ -15,12 +16,14 @@ export interface HilRequest {
   notes?: string;
 }
 
+/** When to use: returning how a hand-off ended (resolved, timeout, cancelled) and elapsed time. */
 export interface HilResolution {
   status: 'resolved' | 'timeout' | 'cancelled';
   elapsedSeconds: number;
   notes?: string;
 }
 
+/** When to use: sending a desktop toast (title, message, urgency, sound). */
 export interface NotificationOptions {
   title: string;
   message: string;
@@ -31,6 +34,7 @@ export interface NotificationOptions {
 /** How often a still-pending hand-off re-toasts the human. */
 const REMINDER_INTERVAL_MS = 60_000;
 
+/** When to use: raising, resolving or inspecting human hand-offs; the deck and bridge share one instance. */
 export class HilManager {
   private mainWindow: BrowserWindow | null = null;
   private activeRequest: HilRequest | null = null;

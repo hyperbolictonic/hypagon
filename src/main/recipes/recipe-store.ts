@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { dataPath } from '../data-paths.js';
 
+/** When to use: describing one recorded browser step (action, address, value). */
 export interface RecipeStep {
   action: 'click' | 'type';
   /** Visible text anchor (or a form field's label / placeholder / name). */
@@ -25,6 +26,7 @@ export interface RecipeStep {
   signature?: string;
 }
 
+/** When to use: reading a saved recipe (steps, origin, counters) for replay or the deck. */
 export interface Recipe {
   id: string;
   name: string;
@@ -39,6 +41,7 @@ export interface Recipe {
   createdAt: number;
 }
 
+/** When to use: reading the recipe vault document (schema plus recipes) directly. */
 export interface RecipeStore {
   version: 1;
   recipes: Recipe[];
@@ -52,6 +55,7 @@ function emptyStore(): RecipeStore {
   return { version: 1, recipes: [] };
 }
 
+/** When to use: listing or matching recipes on disk; returns the vault with defaults. */
 export function loadRecipes(): RecipeStore {
   try {
     if (!fs.existsSync(FILE)) return emptyStore();
@@ -81,6 +85,7 @@ function normalisePath(input: string): string {
   }
 }
 
+/** When to use: grouping recipes by the site they were recorded on. */
 export function originOf(url: string): string {
   try {
     return new URL(url).origin;
@@ -104,6 +109,7 @@ export function recipesFor(url: string): Recipe[] {
     .sort((a, b) => (b.lastVerified || 0) - (a.lastVerified || 0));
 }
 
+/** When to use: saving a recipe from a verified drive run or the deck. */
 export interface SaveRecipeInput {
   name?: string;
   url: string;
@@ -111,6 +117,7 @@ export interface SaveRecipeInput {
   steps: RecipeStep[];
 }
 
+/** When to use: persisting a recipe, replacing the same id; returns validation errors. */
 export function saveRecipe(input: SaveRecipeInput): { ok: boolean; recipe?: Recipe; errors: string[] } {
   const errors: string[] = [];
   const origin = originOf(input.url);
@@ -171,6 +178,7 @@ export function saveRecipe(input: SaveRecipeInput): { ok: boolean; recipe?: Reci
   return { ok: true, recipe, errors: [] };
 }
 
+/** When to use: removing a recipe by id or URL from the vault. */
 export function deleteRecipe(idOrUrl: string): boolean {
   const store = loadRecipes();
   const before = store.recipes.length;

@@ -1,3 +1,4 @@
+/** When to use: labelling what a human pointed at (element, region, text, point). */
 export type CollaborationTargetKind =
   | 'element'
   | 'text'
@@ -8,6 +9,7 @@ export type CollaborationTargetKind =
   | 'style'
   | 'page';
 
+/** When to use: addressing the element or region a thread is about (marks and selectors). */
 export interface CollaborationTarget {
   kind: CollaborationTargetKind;
   url: string;
@@ -23,8 +25,10 @@ export interface CollaborationTarget {
   reference?: string;
 }
 
+/** When to use: distinguishing comments, questions, choices, answers and status notes. */
 export type CollaborationMessageKind = 'comment' | 'question' | 'choice' | 'answer' | 'status';
 
+/** When to use: reading or appending one message in a thread. */
 export interface CollaborationMessage {
   id: string;
   author: 'human' | 'agent';
@@ -35,8 +39,10 @@ export interface CollaborationMessage {
   createdAt: number;
 }
 
+/** When to use: filtering or rendering threads by their lifecycle state. */
 export type CollaborationThreadStatus = 'open' | 'answered' | 'resolved' | 'stale';
 
+/** When to use: listing a thread with its target, messages and status. */
 export interface CollaborationThread {
   id: string;
   createdAt: number;
@@ -49,6 +55,7 @@ export interface CollaborationThread {
   resolution?: string;
 }
 
+/** When to use: loading threads for a page, target or status in the deck. */
 export interface CollaborationFilter {
   url?: string;
   status?: CollaborationThreadStatus;
@@ -56,6 +63,7 @@ export interface CollaborationFilter {
   limit?: number;
 }
 
+/** When to use: returning a thread mutation (ok, thread, errors) over the bridge. */
 export interface CollaborationResult {
   ok: boolean;
   thread?: CollaborationThread;

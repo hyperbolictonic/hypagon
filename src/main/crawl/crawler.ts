@@ -11,12 +11,14 @@
  */
 import type { CitationAnchor } from '../research/anchors.js';
 
+/** When to use: reporting a challenge/login wall the crawl hit, with hand-off details. */
 export interface HumanAssistInfo {
   phase: 'needed' | 'done';
   url: string;
   reason?: string;
 }
 
+/** When to use: shaping a crawl (depth, same-origin, patterns, page cap). */
 export interface CrawlOptions {
   startUrl: string;
   /** Link depth from the seed (default 2, max 5). Depth 0 = the seed only. */
@@ -49,6 +51,7 @@ export interface CrawlOptions {
   onPage?: (page: CrawlPage) => void;
 }
 
+/** When to use: returning one fetched page URL, status and content in the crawl summary. */
 export interface CrawlPage {
   url: string;
   title: string;
@@ -72,6 +75,7 @@ export interface CrawlPage {
   excerpt?: string;
 }
 
+/** When to use: reading the crawl result (pages, links, stops, assist requests). */
 export interface CrawlOutcome {
   startUrl: string;
   pages: CrawlPage[];
@@ -83,6 +87,7 @@ export interface CrawlOutcome {
   notes: string[];
 }
 
+/** When to use: injecting fetch/harvest/log dependencies when constructing a Crawler. */
 export interface CrawlerDeps {
   /** Content-negotiated Markdown/Text, or null when the page advertises none. */
   tryLlm?: (url: string) => Promise<{ content: string; via: string } | null>;
@@ -190,6 +195,7 @@ export function linksFromMarkdown(markdown: string, baseUrl: string): string[] {
   return Array.from(out);
 }
 
+/** When to use: running `deep_crawl` or a focused page crawl from the research surface. */
 export class Crawler {
   private deps: CrawlerDeps;
 

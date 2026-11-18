@@ -32,6 +32,7 @@ export interface FieldFacts {
   disabled?: boolean;
 }
 
+/** When to use: describing what an action addressed (mark id, selector, coordinates). */
 export interface TransitionTarget {
   id?: number;
   tag?: string;
@@ -41,8 +42,10 @@ export interface TransitionTarget {
   field?: FieldFacts;
 }
 
+/** When to use: recording how an action was addressed for replay diagnostics. */
 export type AddressMode = 'mark_id' | 'selector' | 'coords' | 'none';
 
+/** When to use: reading one ledger line (action, target, delta, typing verdict). */
 export interface TransitionRecord {
   ts: number;
   action: string;
@@ -95,8 +98,10 @@ export interface TypingOutcome {
   unobservable?: boolean;
 }
 
+/** When to use: knowing which input channel delivered typed text (keys, insertText, paste). */
 export type TypingChannel = 'keys' | 'insertText' | 'paste';
 
+/** When to use: constructing a ledger with a custom file or clock in tests. */
 export interface ActionLedgerOptions {
   /** Directory to write into (default: `<cwd>/data`). */
   dir?: string;
@@ -105,6 +110,7 @@ export interface ActionLedgerOptions {
   log?: (level: 'info' | 'warn' | 'action', message: string) => void;
 }
 
+/** When to use: appending executed actions to the local transitions dataset (lengths only). */
 export class ActionLedger {
   private readonly file: string;
   private queue: Promise<void> = Promise.resolve();

@@ -39,8 +39,10 @@ import path from 'node:path';
 import { detectSensitiveGate } from './sensitive-gate.js';
 import { dataPath } from '../data-paths.js';
 
+/** When to use: branching on how the configured backend speaks (typesafe or local ONNX). */
 export type DecisionProtocol = 'typesafe' | 'local-onnx';
 
+/** When to use: reading or writing the stored decision backend configuration. */
 export interface DecisionConfig {
   protocol: DecisionProtocol;
   url?: string;
@@ -51,6 +53,7 @@ export interface DecisionConfig {
   timeoutMs: number;
 }
 
+/** When to use: sending one decide call (state, typed questions, model, assets). */
 export interface DecisionCall {
   state: unknown;
   questions: Record<string, unknown>;
@@ -62,8 +65,10 @@ export interface DecisionCall {
   assets?: Record<string, unknown>;
 }
 
+/** When to use: mapping a decision failure onto a bridge status or hint. */
 export type DecisionFailureCode = 'NOT_CONFIGURED' | 'BAD_REQUEST' | 'UPSTREAM_ERROR' | 'TIMEOUT' | 'NO_DECISION' | 'HUMAN_REQUIRED';
 
+/** When to use: reading a decision answer, its protocol/latency, or the failure. */
 export interface DecisionResult {
   ok: boolean;
   protocol?: DecisionProtocol;
@@ -331,6 +336,7 @@ export function onDecision(listener: (event: DecisionEvent) => void): () => void
   return () => listeners.delete(listener);
 }
 
+/** When to use: publishing a decision outcome to the HUD timeline. */
 export function emitDecisionEvent(event: DecisionEvent): void {
   for (const listener of listeners) {
     try {

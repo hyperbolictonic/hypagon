@@ -33,6 +33,7 @@
 import { net, type Session, type WebContents } from 'electron';
 
 /** A *fetchable* LLM-friendly representation. Deliberately excludes "rendered". */
+/** When to use: labelling which machine-readable surface a site advertises. */
 export type LlmSurfaceKind = 'llms_txt' | 'llms_full' | 'markdown' | 'text';
 
 /** Whether a representation covers the whole site (`origin`) or just the page (`page`). */
@@ -44,10 +45,12 @@ export type LlmSurfaceScope = 'origin' | 'page';
  * that plans only from the report can never mistake a strategy for a
  * representation and then be rejected by `fetch()`.
  */
+/** When to use: following the paging chain (next index/document) a surface declares. */
 export type LlmSurfaceNext =
   | { tool: 'llm_fetch'; as: LlmSurfaceKind }
   | { tool: 'observe'; as: 'markdown' };
 
+/** When to use: describing one advertised surface endpoint (URL, type, scope). */
 export interface LlmSurfaceEndpoint {
   found: boolean;
   url: string;
@@ -57,6 +60,7 @@ export interface LlmSurfaceEndpoint {
   entries?: number;
 }
 
+/** When to use: listing a discovered surface link on a page or index. */
 export interface LlmSurfaceLink {
   href: string;
   type: string;
@@ -71,6 +75,7 @@ export interface LlmSurfaceLink {
   page_level: boolean;
 }
 
+/** When to use: returning the probe result (endpoints, links, chosen surface, notes). */
 export interface LlmSurfaceReport {
   url: string;
   origin: string;
@@ -88,6 +93,7 @@ export interface LlmSurfaceReport {
   notes: string[];
 }
 
+/** When to use: returning a page fetched through its LLM surface (content, cursor, via). */
 export interface LlmFetchResult {
   as: LlmSurfaceKind;
   url: string;
@@ -122,6 +128,7 @@ export interface ReadUrlResult {
   reason?: string;
 }
 
+/** When to use: injecting fetch/timeout dependencies when constructing LlmSurface. */
 export interface LlmSurfaceDeps {
   getSession: () => Session;
   getActiveWebContents?: () => WebContents | null;
@@ -161,6 +168,7 @@ function coded(code: string, message: string): Error {
   return e;
 }
 
+/** When to use: probing for llms.txt/llms-full/markdown surfaces before rendering a page. */
 export class LlmSurface {
   private originCache = new Map<string, { at: number; data: OriginProbe }>();
   private pageCache = new Map<string, { at: number; data: PageProbe }>();

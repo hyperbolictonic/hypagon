@@ -45,8 +45,10 @@ const MANAGED: Record<string, { ffmpeg: string; ffprobe: string; license: string
   },
 };
 
+/** When to use: reporting whether ffmpeg came from settings, the managed copy, or PATH. */
 export type FfmpegSource = 'configured' | 'managed' | 'system';
 
+/** When to use: returning the resolved ffmpeg binary, version and source. */
 export interface FfmpegInfo {
   readonly available: boolean;
   readonly version: string | null;
@@ -57,18 +59,22 @@ export interface FfmpegInfo {
   readonly error: string | null;
 }
 
+/** When to use: naming the platform-specific managed ffmpeg artifact (win32-x64, ...). */
 export function platformKey(platform: string = process.platform, arch: string = process.arch): string {
   return `${platform}-${arch}`;
 }
 
+/** When to use: locating the directory for the managed ffmpeg download. */
 export function managedFfmpegDir(rootDir: string): string {
   return path.join(rootDir, 'bin', 'ffmpeg');
 }
 
+/** When to use: building the executable name for the current platform. */
 export function ffmpegFileName(platform: string = process.platform): string {
   return platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
 }
 
+/** When to use: resolving the expected path of the managed ffmpeg binary. */
 export function managedFfmpegPath(rootDir: string, platform: string = process.platform): string {
   return path.join(managedFfmpegDir(rootDir), ffmpegFileName(platform));
 }

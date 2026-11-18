@@ -16,6 +16,7 @@ export interface SearchResult {
   snippet: string;
 }
 
+/** When to use: reading one engine attempt (engine, status, blocked reason, count). */
 export interface SearchAttempt {
   engine: string;
   ok: boolean;
@@ -24,6 +25,7 @@ export interface SearchAttempt {
   error?: string;
 }
 
+/** When to use: returning merged search results plus per-engine attempts. */
 export interface SearchOutcome {
   query: string;
   engine: string | null;
@@ -33,6 +35,7 @@ export interface SearchOutcome {
   notes: string;
 }
 
+/** When to use: injecting fetch/engine adapters when constructing a SearchHub. */
 export interface SearchHubDeps {
   load: (
     url: string,
@@ -48,6 +51,7 @@ interface EngineSpec {
   build: (query: string) => string;
 }
 
+/** When to use: validating a configured engine chain or rendering engine choices. */
 export const KNOWN_ENGINES = ['google', 'duckduckgo', 'bing', 'brave', 'startpage', 'custom'] as const;
 /** Default fallback chain: JS-free, consent-resistant providers first; Google last (it challenges often). */
 export const DEFAULT_ENGINE_CHAIN = ['duckduckgo', 'brave', 'google'];
@@ -138,6 +142,7 @@ const ENGINES: Record<string, EngineSpec> = {
   },
 };
 
+/** When to use: running `search_web` across the configured engine chain. */
 export class SearchHub {
   /** Engines that recently returned a bot-check are tried last for a while. */
   private blockedUntil = new Map<string, number>();

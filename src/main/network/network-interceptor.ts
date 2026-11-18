@@ -1,5 +1,6 @@
 import type { WebContents } from 'electron';
 
+/** When to use: reading one captured request/response (headers, timing, body preview). */
 export interface CapturedNetworkRequest {
   requestId: string;
   url: string;
@@ -16,6 +17,7 @@ export interface CapturedNetworkRequest {
   bodyPreview?: string;
 }
 
+/** When to use: listing a detected websocket/SSE stream and its message counts. */
 export interface RealtimeStream {
   streamId: string;
   type: 'websocket' | 'sse';
@@ -28,6 +30,7 @@ export interface RealtimeStream {
   lastActivity: number;
 }
 
+/** When to use: reading one captured stream message (direction, payload, time). */
 export interface StreamMessage {
   id: string;
   streamId: string;
@@ -42,6 +45,7 @@ export interface StreamMessage {
   jsonData?: any;
 }
 
+/** When to use: filtering the traffic buffer by URL, method, type or since-time. */
 export interface NetworkFilter {
   urlPattern?: string;
   method?: string;
@@ -50,6 +54,7 @@ export interface NetworkFilter {
   limit?: number;
 }
 
+/** When to use: attaching CDP network/stream capture to a tab (listeners, buffers, clear). */
 export class NetworkInterceptor {
   private attachedWebContents: Set<WebContents> = new Set();
   private requests: Map<string, CapturedNetworkRequest> = new Map();

@@ -8,6 +8,7 @@
 
 export type ToolArgs = Record<string, any>;
 
+/** When to use: defining one action inside a consolidated tool group (name, tool, params). */
 export interface ToolGroupAction {
   action: string;
   tool?: string;
@@ -17,6 +18,7 @@ export interface ToolGroupAction {
   map?: (args: ToolArgs) => ToolArgs;
 }
 
+/** When to use: defining a consolidated tool (name, description, actions) in the catalog. */
 export interface ToolGroupDefinition {
   name: string;
   description: string;
@@ -26,6 +28,7 @@ export interface ToolGroupDefinition {
 
 const same = (args: ToolArgs): ToolArgs => args;
 
+/** When to use: registering the consolidated tools and their action tables. */
 export const TOOL_GROUPS: ToolGroupDefinition[] = [
   {
     name: 'navigate',
@@ -240,7 +243,9 @@ export const TOOL_GROUPS: ToolGroupDefinition[] = [
   },
 ];
 
+/** When to use: checking whether a tool name is a consolidated group entry. */
 export const META_TOOL_NAMES = new Set(TOOL_GROUPS.map((group) => group.name));
+/** When to use: knowing which legacy tool names are exposed through a group. */
 export const CONSOLIDATED_GROUPED_TOOLS = new Set(
   TOOL_GROUPS.flatMap((group) => group.actions.map((action) => action.tool)),
 );
@@ -254,6 +259,7 @@ export const CONSOLIDATED_HIDDEN_TOOLS = new Set([
   'recipe',
 ]);
 
+/** When to use: resolving a `group(action:...)` call to its underlying tool call. */
 export function groupAction(group: ToolGroupDefinition, action: string): ToolGroupAction | undefined {
   return group.actions.find((entry) => entry.action === action);
 }

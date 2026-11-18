@@ -14,6 +14,7 @@
 import { resolvePath } from '../../../packages/recipe/src/index.ts';
 import type { WrapMethod, WrapRequest, WrapWrapper } from './types.ts';
 
+/** When to use: reporting a wrapper template that cannot be resolved into a request. */
 export class BuildRequestError extends Error {
   readonly code: string;
 
@@ -24,6 +25,7 @@ export class BuildRequestError extends Error {
   }
 }
 
+/** When to use: inspecting the resolved URL, headers and body before a wrapper sends it. */
 export interface BuiltRequest {
   method: WrapMethod;
   url: string;
@@ -66,6 +68,7 @@ const FORBIDDEN_HEADERS = new Set([
   'x-access-token',
 ]);
 
+/** When to use: turning a saved wrapper plus arguments into the outbound HTTP request. */
 export function buildRequest(wrapper: WrapWrapper, args: Record<string, unknown>): BuiltRequest {
   const request = wrapper.request;
   const allowedMethods = request.methods?.length ? request.methods : [request.method];
@@ -118,6 +121,7 @@ export function buildRequest(wrapper: WrapWrapper, args: Record<string, unknown>
   };
 }
 
+/** When to use: logging or previewing request headers without credential values. */
 export function redactHeaders(headers: Record<string, string>, extraSensitive: string[] = []): Record<string, string> {
   const sensitive = new Set([
     'authorization',
@@ -286,6 +290,7 @@ function encodeRawPath(value: unknown): string {
   return segments.map((segment) => encodeURIComponent(segment)).join('/');
 }
 
+/** When to use: resolving `{{placeholders}}` inside a wrapper template value. */
 export function interpolateValue(value: unknown, args: Record<string, unknown>): unknown {
   if (typeof value === 'string') {
     const whole = value.match(WHOLE_PLACEHOLDER);

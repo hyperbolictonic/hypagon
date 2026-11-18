@@ -8,6 +8,7 @@
 import { Page, ratio, similarityScore } from 'hypagon-scrap';
 import type { Fingerprint } from 'hypagon-scrap';
 
+/** When to use: reading a stored anchor (URL, fingerprint, quoted text) for relocation. */
 export interface CitationAnchor {
   /** Human-readable excerpt, capped for result size. */
   text: string;
@@ -19,6 +20,7 @@ export interface CitationAnchor {
   fingerprint: Fingerprint;
 }
 
+/** When to use: describing a candidate block on a re-fetched page during relocation. */
 export interface CitationCandidate {
   score: number;
   /** Similarity of the candidate's own text to the anchored text (0-1). */
@@ -27,6 +29,7 @@ export interface CitationCandidate {
   text: string;
 }
 
+/** When to use: returning a relocated quote (found, block, confidence, method). */
 export interface CitationRelocation {
   found: boolean;
   score: number | null;
@@ -117,6 +120,7 @@ export async function relocateCitation(
 }
 
 
+/** When to use: relocating a batch of stored citations against one page in a single pass. */
 export async function relocateCitations(
   html: string,
   fingerprints: Fingerprint[],
@@ -138,6 +142,7 @@ const MAX_HTML_BYTES = 2_000_000;
 const MIN_TEXT = 60;
 const MAX_TEXT = 2000;
 
+/** When to use: attaching anchors/highlights to research sources before rendering them. */
 export async function anchorHighlights(
   html: string,
   query: string,

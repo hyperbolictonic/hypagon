@@ -11,8 +11,10 @@
 
 import { readJsonFile, writeJsonFileAtomic } from '../settings/json-file.js';
 
+/** When to use: validating or displaying the engine preference chain. */
 export const RESEARCH_ENGINES = ['google', 'duckduckgo', 'bing', 'brave', 'startpage', 'custom'] as const;
 
+/** When to use: reading or patching research controls (engines, session, cooldowns). */
 export interface ResearchSettings {
   schemaVersion: 1;
   enabled: boolean;
@@ -37,6 +39,7 @@ export interface ResearchSettings {
   searchMaxResults: number;
 }
 
+/** When to use: a fresh profile, a corrupt file, or resetting research defaults. */
 export const DEFAULT_RESEARCH_SETTINGS: ResearchSettings = {
   schemaVersion: 1,
   enabled: false,
@@ -56,12 +59,14 @@ export const DEFAULT_RESEARCH_SETTINGS: ResearchSettings = {
   searchMaxResults: 8,
 };
 
+/** When to use: handing a normalize/save outcome back to the settings UI. */
 export interface ResearchSettingsResult {
   ok: boolean;
   settings: ResearchSettings;
   errors: string[];
 }
 
+/** When to use: constructing an isolated research settings store in tests. */
 export class ResearchSettingsStore {
   readonly file: string;
 
@@ -89,6 +94,7 @@ export class ResearchSettingsStore {
   }
 }
 
+/** When to use: validating research settings from disk or IPC before applying them. */
 export function normalizeResearchSettings(input: unknown): ResearchSettingsResult {
   const errors: string[] = [];
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
@@ -256,6 +262,7 @@ const CHALLENGE_PATTERNS = [
   /before you continue/i,
 ];
 
+/** When to use: deciding whether a response is a WAF/consent wall before harvesting it. */
 export function looksLikeChallenge(status: number, text: string): boolean {
   if (status === 403 || status === 429) return true;
   const sample = (text || '').slice(0, 4000);

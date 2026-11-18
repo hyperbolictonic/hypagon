@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
+/** When to use: reading the remote gateway's OAuth client id/secret. */
 export interface OAuthClientCredentials {
   clientId: string;
   clientSecret: string;
@@ -11,10 +12,12 @@ export interface OAuthClientCredentials {
 const CLIENT_ID_PATTERN = /^hg_[a-f0-9]{32}$/i;
 const SECRET_PATTERN = /^[a-f0-9]{64}$/i;
 
+/** When to use: locating the OAuth client file under the remote gateway data directory. */
 export function oauthClientFile(remoteDir: string): string {
   return path.join(remoteDir, 'oauth-client.json');
 }
 
+/** When to use: reading a previously generated OAuth client without creating one. */
 export function readOAuthClient(file: string): OAuthClientCredentials | undefined {
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as Partial<OAuthClientCredentials>;
@@ -36,6 +39,7 @@ export function readOAuthClient(file: string): OAuthClientCredentials | undefine
   }
 }
 
+/** When to use: generating a new client id/secret pair and persisting it. */
 export function createOAuthClient(file: string): OAuthClientCredentials {
   const client: OAuthClientCredentials = {
     clientId: `hg_${crypto.randomBytes(16).toString('hex')}`,
@@ -54,6 +58,7 @@ export function createOAuthClient(file: string): OAuthClientCredentials {
   return client;
 }
 
+/** When to use: obtaining a client for the remote gateway, creating it on first use. */
 export function ensureOAuthClient(file: string): OAuthClientCredentials {
   const existing = readOAuthClient(file);
   if (existing) return existing;
