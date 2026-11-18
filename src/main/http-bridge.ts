@@ -20,24 +20,17 @@ import {
   startRecording,
   stopRecording,
 } from './recording/recording-service.js';
-import type { WrapCore } from './wrap/core.js';
-import type { WrapStore } from './wrap/store.js';
-import type { SecretStore } from './wrap/secrets.js';
-import type { WrapAuditLog } from './wrap/audit.js';
-import { isWrapAuthorized, tokenFromHeaders } from './wrap/auth.js';
+import type { WrapBridge } from './bridge/context.js';
+import type { BridgeContext } from './bridge/context.js';
+import { handleResearchRoutes } from './bridge/routes/research.js';
+import { handleWrapRoutes } from './bridge/routes/wrap.js';
+import { handleMediaRoutes } from './bridge/routes/media.js';
+import { handleCollaborationRoutes } from './bridge/routes/collaboration.js';
 import { DEFAULT_TOOL_SETTINGS, type ToolSettingsStore } from './tools/settings.js';
 import type { CollaborationService } from './collaboration/service.js';
 import type { MediaService } from './media/service.js';
-import { deriveRecipe } from '../../packages/recipe/src/index.ts';
 
-export interface WrapBridge {
-  store: WrapStore;
-  executor: WrapCore;
-  secrets: SecretStore;
-  audit: WrapAuditLog;
-  /** Rotated on each app start; the MCP side reads it from `HB_WRAP_TOKEN_FILE` (legacy `KUANG_WRAP_TOKEN_FILE`). */
-  token: string;
-}
+export type { WrapBridge } from './bridge/context.js';
 
 function logBridge(message: string, isError = false) {
   const timestamp = new Date().toISOString();
@@ -153,6 +146,28 @@ export function startHttpBridge(
       res.end(JSON.stringify(data, null, 2));
     };
 
+    // Shared request context for route families. Cross-cutting policy (CORS, human
+    // control, error mapping) stays in this function.
+    let parsedBody: Promise<any> | null = null;
+    const ctx: BridgeContext = {
+      chassis,
+      wrap,
+      toolSettings,
+      collaboration,
+      media,
+      req,
+      res,
+      url,
+      method: req.method || 'GET',
+      pathname,
+      startedAt: startTime,
+      // The stream can only be consumed once; memoise so a handler (and its helpers)
+      // may ask for the body more than once.
+      body: () => (parsedBody ??= readBody()),
+      json: sendJson,
+      fail: (message, status = 400, code = 'BAD_REQUEST') => sendJson({ success: false, error: message, code }, status),
+    };
+
     try {
       // Explicit human control pauses the agent, not just its synthetic clicks. Reads (GET) stay
       // available for health/state/observations; mutations are refused until RESUME.
@@ -214,213 +229,9 @@ export function startHttpBridge(
         return;
       }
 
-      if (req.method === 'GET' && pathname === '/media/status') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        try {
-          sendJson({ success: true, ...(await media.status()) });
-        } catch (error) {
-          sendJson(
-            {
-              success: false,
-              code: 'MEDIA_UNAVAILABLE',
-              error: error instanceof Error ? error.message : String(error),
-            },
-            500,
-          );
-        }
-        return;
-      }
+      if (await handleMediaRoutes(ctx)) return;
 
-      if (req.method === 'POST' && pathname === '/media/info') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        const body = await readBody();
-        const result = await media.info(typeof body?.url === 'string' ? body.url : '');
-        sendJson(result.ok ? { success: true, ...result } : { success: false, ...result }, result.ok ? 200 : 400);
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/media/download') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        const body = await readBody();
-        const result = await media.download({
-          url: typeof body?.url === 'string' ? body.url : '',
-          kind: body?.kind === 'audio' ? 'audio' : body?.kind === 'video' ? 'video' : undefined,
-          quality: typeof body?.quality === 'string' ? body.quality : undefined,
-        });
-        sendJson(result.ok ? { success: true, ...result } : { success: false, ...result }, result.ok ? 200 : 400);
-        return;
-      }
-
-      if (req.method === 'GET' && pathname === '/media/jobs') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        sendJson({ success: true, jobs: media.jobs.list(), counts: media.jobs.counts() });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/media/cancel') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        const body = await readBody();
-        const id = typeof body?.id === 'string' ? body.id : '';
-        const result = media.cancel(id);
-        sendJson({ success: result.ok, ...result });
-        return;
-      }
-
-      if (req.method === 'GET' && pathname === '/media/library') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        const jobs = media.library();
-        sendJson({
-          success: true,
-          count: jobs.length,
-          bytes: jobs.reduce((total, job) => total + job.files.reduce((sum, file) => sum + file.bytes, 0), 0),
-          jobs,
-        });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/media/transcript') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        const body = await readBody();
-        const result = await media.transcript(typeof body?.url === 'string' ? body.url : '', {
-          lang: typeof body?.lang === 'string' ? body.lang : undefined,
-          maxChars: typeof body?.maxChars === 'number' ? body.maxChars : undefined,
-          cursor: typeof body?.cursor === 'number' ? body.cursor : undefined,
-          index: body?.index !== false,
-        });
-        sendJson(result.ok ? { success: true, ...result } : { success: false, ...result }, result.ok ? 200 : 400);
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/media/preview') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        const body = await readBody();
-        const result = await media.preview(typeof body?.url === 'string' ? body.url : '', {
-          lang: typeof body?.lang === 'string' ? body.lang : undefined,
-          maxChars: typeof body?.maxChars === 'number' ? body.maxChars : undefined,
-          thumbnail: body?.thumbnail !== false,
-        });
-        sendJson(result.ok ? { success: true, ...result } : { success: false, ...result }, result.ok ? 200 : 400);
-        return;
-      }
-
-      if (pathname.startsWith('/collaboration')) {
-        if (!collaboration) {
-          sendJson({ success: false, error: 'Collaboration is not initialised.', code: 'COLLAB_UNAVAILABLE' }, 503);
-          return;
-        }
-        const info = chassis.getPageInfo();
-        const activeTab = chassis.getTabsSummary().find((tab) => tab.isActive);
-        if (req.method === 'GET' && pathname === '/collaboration/threads') {
-          const id = url.searchParams.get('id');
-          if (id) {
-            const thread = collaboration.get(id);
-            if (!thread) {
-              sendJson({ success: false, error: `Collaboration thread "${id}" not found.`, code: 'COLLAB_NOT_FOUND' }, 404);
-              return;
-            }
-            sendJson({ success: true, thread });
-            return;
-          }
-          const status = url.searchParams.get('status');
-          const threads = collaboration.list({
-            url: url.searchParams.get('url') || undefined,
-            status: status && ['open', 'answered', 'resolved', 'stale'].includes(status) ? status as any : undefined,
-            tabId: url.searchParams.get('tabId') || undefined,
-            limit: Number(url.searchParams.get('limit')) || undefined,
-          });
-          sendJson({ success: true, threads });
-          return;
-        }
-
-        const body = await readBody();
-        const target = body?.target && typeof body.target === 'object'
-          ? { ...body.target, url: body.target.url || info.url, tabId: body.target.tabId || activeTab?.id }
-          : undefined;
-
-        if (req.method === 'POST' && (pathname === '/collaboration/highlight' || pathname === '/collaboration/ask')) {
-          if (!target) {
-            sendJson({ success: false, error: 'A target is required.', code: 'BAD_REQUEST' }, 400);
-            return;
-          }
-          const text = String(body?.text || body?.comment || body?.question || '').trim();
-          if (!text) {
-            sendJson({ success: false, error: 'A comment or question is required.', code: 'BAD_REQUEST' }, 400);
-            return;
-          }
-          const thread = collaboration.create({
-            target,
-            intent: body?.intent,
-            tags: body?.tags,
-            kind: pathname === '/collaboration/ask' ? 'question' : 'comment',
-            text,
-            choices: body?.choices,
-          });
-          sendJson({ success: true, thread });
-          return;
-        }
-
-        if (req.method === 'POST' && pathname === '/collaboration/reply') {
-          const id = String(body?.id || '');
-          const text = String(body?.text || '').trim();
-          if (!id || !text) {
-            sendJson({ success: false, error: 'Thread id and text are required.', code: 'BAD_REQUEST' }, 400);
-            return;
-          }
-          try {
-            const thread = collaboration.reply(id, {
-              author: body?.author === 'human' ? 'human' : 'agent',
-              kind: body?.kind === 'answer' ? 'answer' : 'comment',
-              text,
-              answer: body?.answer,
-            });
-            sendJson({ success: true, thread });
-          } catch (error: any) {
-            sendJson({ success: false, error: error?.message || String(error), code: 'COLLAB_NOT_FOUND' }, 404);
-          }
-          return;
-        }
-
-        if (req.method === 'POST' && pathname === '/collaboration/resolve') {
-          const id = String(body?.id || '');
-          if (!id) {
-            sendJson({ success: false, error: 'Thread id is required.', code: 'BAD_REQUEST' }, 400);
-            return;
-          }
-          try {
-            sendJson({ success: true, thread: collaboration.resolve(id, body?.notes) });
-          } catch (error: any) {
-            sendJson({ success: false, error: error?.message || String(error), code: 'COLLAB_NOT_FOUND' }, 404);
-          }
-          return;
-        }
-
-        sendJson({ success: false, error: 'Collaboration endpoint not found.', code: 'NOT_FOUND' }, 404);
-        return;
-      }
+      if (await handleCollaborationRoutes(ctx)) return;
 
       if (req.method === 'GET' && pathname === '/metrics') {
         sendJson({ success: true, version: APP_VERSION, counters: snapshot() });
@@ -1583,99 +1394,7 @@ export function startHttpBridge(
         return;
       }
 
-      if (req.method === 'POST' && pathname === '/llm/surface') {
-        const body = await readBody();
-        const report = await chassis.probeLlmSurface(body?.url);
-        sendJson({ success: true, ...report });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/llm/fetch') {
-        const body = await readBody();
-        const result = await chassis.fetchLlmSurface({ url: body?.url, as: body?.as });
-        sendJson({ success: true, ...result });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/read/url') {
-        const body = await readBody();
-        const result = await chassis.readUrl({
-          url: body?.url,
-          maxChars: body?.max_chars ?? body?.maxChars,
-          cursor: body?.cursor,
-          as: body?.as,
-        });
-        sendJson({ success: true, ...result });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/search/web') {
-        const body = await readBody();
-        const outcome = await chassis.searchWeb(body?.query, {
-          engine: body?.engine,
-          engines: Array.isArray(body?.engines) ? body.engines : undefined,
-          urlTemplate: body?.url_template ?? body?.urlTemplate,
-          max: body?.max_results ?? body?.max,
-        });
-        sendJson({ success: true, ...outcome });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/crawl/deep') {
-        const body = await readBody();
-        const outcome = await chassis.deepCrawl({
-          startUrl: body?.url || body?.start_url || body?.startUrl,
-          maxDepth: body?.max_depth ?? body?.maxDepth,
-          maxPages: body?.max_pages ?? body?.maxPages,
-          matchPatterns: body?.match_patterns ?? body?.matchPatterns,
-          sameOrigin: body?.same_origin ?? body?.sameOrigin,
-          preferLlm: body?.prefer_llm ?? body?.preferLlm,
-          harvestToCortex: body?.harvest_to_cortex ?? body?.harvestToCortex,
-          selector: body?.selector,
-          delayMs: body?.delay_ms ?? body?.delayMs,
-          concurrency: body?.concurrency,
-          anchorsFor: body?.anchors_for ?? body?.anchorsFor,
-        });
-        sendJson({ success: true, ...outcome });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/research/topic') {
-        const body = await readBody();
-        const outcome = await chassis.researchTopic({
-          query: body?.query,
-          maxSources: body?.max_sources ?? body?.maxSources,
-          engine: body?.engine,
-          engines: Array.isArray(body?.engines) ? body.engines : undefined,
-          urlTemplate: body?.url_template ?? body?.urlTemplate,
-          excerptChars: body?.excerpt_chars ?? body?.excerptChars,
-          harvestToCortex: body?.harvest_to_cortex ?? body?.harvestToCortex,
-          preferLlm: body?.prefer_llm ?? body?.preferLlm,
-        });
-        sendJson({ success: true, ...outcome });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/citation/relocate') {
-        const body = await readBody();
-        const result = await chassis.relocateCitation({
-          url: body?.url,
-          fingerprint: body?.fingerprint,
-          threshold: body?.threshold,
-        });
-        sendJson({ success: true, ...result });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/citation/revalidate') {
-        const body = await readBody();
-        const result = await chassis.revalidateStored({
-          url: body?.url,
-          maxUrls: body?.max_urls ?? body?.maxUrls,
-        });
-        sendJson({ success: true, ...result });
-        return;
-      }
+      if (await handleResearchRoutes(ctx)) return;
 
       if (req.method === 'POST' && pathname === '/collect') {
         const body = await readBody();
@@ -1804,192 +1523,7 @@ export function startHttpBridge(
         return;
       }
 
-      // ---- Hypagon REST ------------------------------------------------------------------
-      if (pathname.startsWith('/wrap/')) {
-        if (!wrap) {
-          sendJson({ success: false, error: 'Hypagon REST is not initialised.', code: 'WRAP_UNAVAILABLE' }, 503);
-          return;
-        }
-
-        if (!isWrapAuthorized(tokenFromHeaders(req.headers), wrap.token)) {
-          sendJson(
-            {
-              success: false,
-              error: 'Unauthorized. Set HB_WRAP_TOKEN_FILE (or KUANG_WRAP_TOKEN_FILE) to the app-generated token file.',
-              code: 'UNAUTHORIZED',
-            },
-            401
-          );
-          return;
-        }
-
-        if (req.method === 'GET' && pathname === '/wrap/status') {
-          sendJson({ success: true, ...wrap.executor.status() });
-          return;
-        }
-
-        if (req.method === 'GET' && pathname === '/wrap/manifest') {
-          sendJson({ success: true, wrappers: wrap.store.manifest() });
-          return;
-        }
-
-        if (req.method === 'GET' && pathname === '/wrap/wrapper') {
-          const id = url.searchParams.get('id') || '';
-          const wrapper = wrap.store.get(id);
-          if (!wrapper) {
-            sendJson({ success: false, error: `No wrapper named "${id}".`, code: 'WRAPPER_NOT_FOUND' }, 404);
-            return;
-          }
-          sendJson({ success: true, wrapper });
-          return;
-        }
-
-        if (req.method === 'GET' && pathname === '/wrap/secrets') {
-          // Names, hosts, and header names only. Values are never serialised here.
-          sendJson({
-            success: true,
-            available: wrap.secrets.available(),
-            warning: wrap.secrets.warning(),
-            secrets: wrap.secrets.list(),
-          });
-          return;
-        }
-
-        if (req.method === 'GET' && pathname === '/wrap/audit') {
-          const limit = Number(url.searchParams.get('limit')) || 50;
-          sendJson({ success: true, entries: wrap.audit.list(limit) });
-          return;
-        }
-
-        if (req.method === 'POST' && pathname === '/wrap/run') {
-          const body = await readBody();
-          if (typeof body?.id !== 'string' || !body.id) {
-            sendJson({ success: false, error: 'id is required', code: 'BAD_REQUEST' }, 400);
-            return;
-          }
-          const result = await wrap.executor.run(body.id, body.args ?? {}, {
-            format: body.format,
-            includeRaw: Boolean(body.includeRaw),
-            maxPages: body.maxPages !== undefined ? Number(body.maxPages) : undefined,
-          });
-          // A wrapper error is still a successful bridge round-trip; the MCP
-          // layer turns result.ok into the isError flag.
-          sendJson(result);
-          return;
-        }
-
-        if (req.method === 'POST' && pathname === '/wrap/test') {
-          const body = await readBody();
-          const result = await wrap.executor.test({
-            id: typeof body?.id === 'string' ? body.id : undefined,
-            wrapper: body?.wrapper,
-            args: body?.args,
-            sample: body?.sample,
-            dryRun: body?.dryRun,
-            format: body?.format,
-            maxPages: body?.maxPages !== undefined ? Number(body.maxPages) : undefined,
-          });
-          sendJson(result);
-          return;
-        }
-
-        if (req.method === 'POST' && pathname === '/wrap/derive') {
-          const body = await readBody();
-          let sample: unknown = body?.sample;
-          let source: 'sample' | 'url' = 'sample';
-
-          // A URL is fetched through the executor, so the same outbound policy applies.
-          if ((sample === undefined || sample === null) && typeof body?.url === 'string' && body.url) {
-            const fetched = await wrap.executor.test({
-              wrapper: {
-                schemaVersion: 1,
-                id: 'derive.sample',
-                name: 'derive sample',
-                request: { method: 'GET', url: body.url },
-              },
-              args: {},
-              dryRun: false,
-              includeRaw: true,
-              maxPages: 1,
-            });
-            if (fetched.ok !== true) {
-              sendJson(
-                {
-                  success: false,
-                  error: fetched.error?.message || `Could not fetch ${body.url}`,
-                  code: fetched.error?.code || 'FETCH_FAILED',
-                },
-                400,
-              );
-              return;
-            }
-            sample = fetched.response?.json;
-            source = 'url';
-          }
-
-          if (typeof sample === 'string') {
-            try {
-              sample = JSON.parse(sample);
-            } catch {
-              sendJson({ success: false, error: 'sample is not valid JSON', code: 'BAD_REQUEST' }, 400);
-              return;
-            }
-          }
-
-          if (sample === undefined || sample === null) {
-            sendJson({ success: false, error: 'Provide a JSON sample or a url to fetch.', code: 'BAD_REQUEST' }, 400);
-            return;
-          }
-
-          const maxFields = body?.max_fields ?? body?.maxFields;
-          const recipe = deriveRecipe(sample, undefined, {
-            id: typeof body?.id === 'string' ? body.id : undefined,
-            name: typeof body?.name === 'string' ? body.name : undefined,
-            description: typeof body?.description === 'string' ? body.description : undefined,
-            maxFields: maxFields !== undefined ? Number(maxFields) : undefined,
-          });
-          sendJson({ success: true, source, recipe });
-          return;
-        }
-
-        if (req.method === 'POST' && pathname === '/wrap/wrappers') {
-          const body = await readBody();
-          const action = String(body?.action || '').toLowerCase();
-
-          if (action === 'create' || action === 'update') {
-            const result = action === 'create' ? wrap.store.create(body?.wrapper) : wrap.store.update(body?.wrapper);
-            sendJson({ success: result.ok, wrapper: result.wrapper, errors: result.errors }, result.ok ? 200 : 400);
-            return;
-          }
-
-          if (action === 'delete') {
-            const deleted = wrap.store.delete(String(body?.id || ''));
-            sendJson(
-              deleted
-                ? { success: true, deleted }
-                : { success: false, deleted, error: `No wrapper named "${body?.id || ''}".`, code: 'WRAPPER_NOT_FOUND' },
-              deleted ? 200 : 404
-            );
-            return;
-          }
-
-          if (action === 'get') {
-            const wrapper = wrap.store.get(String(body?.id || ''));
-            if (!wrapper) {
-              sendJson({ success: false, error: `No wrapper named "${body?.id || ''}".`, code: 'WRAPPER_NOT_FOUND' }, 404);
-              return;
-            }
-            sendJson({ success: true, wrapper });
-            return;
-          }
-
-          sendJson({ success: false, error: 'action must be create, update, delete, or get', code: 'BAD_REQUEST' }, 400);
-          return;
-        }
-
-        sendJson({ success: false, error: 'Wrap endpoint not found', code: 'NOT_FOUND' }, 404);
-        return;
-      }
+      if (await handleWrapRoutes(ctx)) return;
 
       sendJson({ error: 'Endpoint not found' }, 404);
     } catch (err: any) {

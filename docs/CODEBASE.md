@@ -353,7 +353,10 @@ patch tag publishes itself; a minor or major tag stays a draft for a human. See
 ### Add a tool
 
 1. Add the entry to `src/mcp/tools-catalog.ts`. Give it an `endpoint`, a Zod schema and a formatter.
-2. Add the route to `src/main/http-bridge.ts`.
+2. Add the route to `src/main/http-bridge.ts`, or to the matching family in
+   `src/main/bridge/routes/` (research, wrap, media, collaboration). A family route is one
+   `'METHOD /path'` entry in its `ROUTES` table; the shared context supplies the body and response
+   envelope.
 3. Run `npm run test:mcp:contract`.
 4. Run `npm run test:mcp:surface` with the app open.
 5. Add a row to the README tool table. Run `npm run manual:tools`.

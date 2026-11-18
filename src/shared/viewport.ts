@@ -7,8 +7,10 @@
  * area by `fitViewport`.
  */
 
+/** When to use: label the current device orientation in the HUD and tool results. */
 export type Orientation = 'portrait' | 'landscape';
 
+/** When to use: describe one emulated device, built-in or human-added, in the profile picker. */
 export interface DeviceProfile {
   id: string;
   name: string;
@@ -24,6 +26,7 @@ export interface DeviceProfile {
   builtin?: boolean;
 }
 
+/** When to use: carry the active emulation settings between the HUD, IPC and `browser_viewport`. */
 export interface ViewportSpec {
   /** Profile id, or `custom` after the human edits width/height/DPR by hand. */
   profileId: string;
@@ -35,6 +38,7 @@ export interface ViewportSpec {
   userAgent?: string;
 }
 
+/** When to use: place the native browsing view inside the letterboxed emulation area. */
 export interface ViewportRect {
   x: number;
   y: number;
@@ -42,6 +46,7 @@ export interface ViewportRect {
   height: number;
 }
 
+/** When to use: read emulation as one snapshot - active spec, frame, scale and profile list. */
 export interface ViewportState {
   active: boolean;
   spec: ViewportSpec | null;
@@ -55,6 +60,7 @@ export interface ViewportState {
   profiles: DeviceProfile[];
 }
 
+/** When to use: seed the profile picker; these ship with the app and cannot be deleted. */
 export const BUILTIN_PROFILES: DeviceProfile[] = [
   {
     id: 'iphone-15',
@@ -138,10 +144,15 @@ export const BUILTIN_PROFILES: DeviceProfile[] = [
   },
 ];
 
+/** When to use: clamp width/height so an emulated page stays renderable. */
 export const MIN_VIEWPORT_DIMENSION = 200;
+/** When to use: clamp width/height to the largest sane emulated device. */
 export const MAX_VIEWPORT_DIMENSION = 5000;
+/** When to use: clamp an emulated DPR below the smallest useful value. */
 export const MIN_DEVICE_SCALE = 0.5;
+/** When to use: clamp an emulated DPR above the largest useful value. */
 export const MAX_DEVICE_SCALE = 5;
+/** When to use: cap how many human-added profiles are stored in settings. */
 export const MAX_CUSTOM_PROFILES = 50;
 
 /** Empty space kept around the emulated device inside the browsing area. */
@@ -161,6 +172,7 @@ function clampDeviceScale(value: unknown, fallback: number): number {
   return Math.round(clampNumber(value, fallback, MIN_DEVICE_SCALE, MAX_DEVICE_SCALE) * 100) / 100;
 }
 
+/** When to use: turn a stored device profile into the active emulation spec. */
 export function specFromProfile(profile: DeviceProfile): ViewportSpec {
   return {
     profileId: profile.id,
@@ -173,6 +185,7 @@ export function specFromProfile(profile: DeviceProfile): ViewportSpec {
   };
 }
 
+/** When to use: validate untrusted input (IPC, bridge, settings file) before applying emulation. */
 export function normalizeViewportSpec(input: unknown, fallback?: ViewportSpec): ViewportSpec {
   const source = input && typeof input === 'object' && !Array.isArray(input) ? (input as Record<string, unknown>) : {};
   const base = fallback ?? specFromProfile(BUILTIN_PROFILES[0]!);
@@ -189,6 +202,7 @@ export function normalizeViewportSpec(input: unknown, fallback?: ViewportSpec): 
   };
 }
 
+/** When to use: validate a custom profile before saving it to settings. */
 export function normalizeDeviceProfile(input: unknown): DeviceProfile | null {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
   const source = input as Record<string, unknown>;
@@ -211,6 +225,7 @@ export function normalizeDeviceProfile(input: unknown): DeviceProfile | null {
   };
 }
 
+/** When to use: label the current spec portrait or landscape for the HUD. */
 export function orientationOf(spec: ViewportSpec): Orientation {
   return spec.width > spec.height ? 'landscape' : 'portrait';
 }
@@ -252,6 +267,7 @@ export function fitViewport(
   };
 }
 
+/** When to use: resolve a profile id against the merged built-in and custom list. */
 export function findProfile(profiles: DeviceProfile[], id: string): DeviceProfile | undefined {
   return profiles.find((profile) => profile.id === id);
 }

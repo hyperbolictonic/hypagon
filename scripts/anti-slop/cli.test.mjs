@@ -13,6 +13,7 @@ import path from 'node:path';
 
 import {
   bootstrapGate, globToRegex, matchesAnyGlob, parseFlags, gateArgs, applyIgnorePaths,
+  collectPathFiles,
 } from './cli.mjs';
 import {
   compareCounts, compareKindCounts, compareSets, loadBaseline, saveBaseline,
@@ -141,6 +142,16 @@ test('applyIgnorePaths: repo-relative globs match scan-root-relative rels', () =
 test('applyIgnorePaths: no globs keeps everything silently', () => {
   const files = [{ full: 'a.ts', rel: 'a.ts' }];
   assert.equal(applyIgnorePaths(files, []).length, 1);
+});
+
+test('collectPathFiles: staged paths use baseline (scan-root-relative) rels', () => {
+  const [file] = collectPathFiles(['src/main/http-bridge.ts'], false, 'src');
+  assert.equal(file.rel, 'main/http-bridge.ts');
+});
+
+test('collectPathFiles: files outside the source root keep repo-relative rels', () => {
+  const [file] = collectPathFiles(['scripts/anti-slop/lib.mjs'], false, 'src');
+  assert.equal(file.rel, 'scripts/anti-slop/lib.mjs');
 });
 
 // --- baseline ratchet ------------------------------------------------------------

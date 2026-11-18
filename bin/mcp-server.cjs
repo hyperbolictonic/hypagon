@@ -38944,7 +38944,7 @@ var CONSOLIDATED_HIDDEN_TOOLS = /* @__PURE__ */ new Set([
 ]);
 
 // src/shared/version.ts
-var APP_VERSION = "2.3.2";
+var APP_VERSION = "2.3.3";
 
 // src/main/decide/decision-client.ts
 var import_node_fs2 = __toESM(require("node:fs"), 1);

@@ -75,7 +75,8 @@ rewrite:
 - `browser-chassis.ts` (state, wiring, research, viewport, HIL, policy in one object)
 - Command Deck / sidebar / orb / settings UI (`index.html`, `src/renderer/*`, `ui/menu-popup`)
 - Tray, auto-update, recording, native menus, session partitions, HIL toast/modal
-- `http-bridge.ts` routes (thin, but hand-wired to Chassis)
+- `http-bridge.ts` routes (thin, but hand-wired to Chassis). Research, wrap, media and collaboration
+  families are extracted to `src/main/bridge/routes/*`; the rest are still inline.
 - `src/main/index.ts` lifecycle
 
 ### 2.4 Import coupling at a glance

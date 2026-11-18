@@ -29,6 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **HTTP bridge routes are split by family.** `http-bridge.ts` keeps the server, CORS, human-control
+  gate, logging and error mapping; research/extraction, Hypagon REST, media and collaboration routes
+  live in `src/main/bridge/routes/*` behind one shared request context. No endpoint or response shape
+  changed. The MCP contract test now reads the route tables in those modules.
+- **Capability-token files share one implementation.** The wrap bridge and the remote gateway both
+  use `src/main/token-file.ts` for the atomic, owner-only write and the fail-closed read.
 - **The radial deck menu is gone.** Its actions already existed in the main toolbar (COLLAB,
   HARVEST, REC), and clicking the collapsed orb now simply restores the Command Deck. The old
   toolbar `FIT`/`WIN` zoom-policy toggle is also removed; page zoom keeps the fitted policy and

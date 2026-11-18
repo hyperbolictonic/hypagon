@@ -11,7 +11,9 @@
  *
  * A catalog entry is considered served when its `{method, endpoint}` pair is
  * declared by the bridge. Line-oriented parsing is intentional: every route in
- * `http-bridge.ts` is a single-line `if (req.method === '…' && pathname === '…')`.
+ * `http-bridge.ts` is a single-line `if (req.method === '…' && pathname === '…')`,
+ * and every extracted family under `src/main/bridge/routes/` declares its served
+ * paths in a `ROUTES` table (exported as `*_ROUTES` for this test).
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -20,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CATALOG_PATH = path.join(ROOT, 'src', 'mcp', 'tools-catalog.ts');
 const BRIDGE_PATH = path.join(ROOT, 'src', 'main', 'http-bridge.ts');
+const ROUTES_DIR = path.join(ROOT, 'src', 'main', 'bridge', 'routes');
 
 /** Parse the MCP catalog into [{ name, method, endpoint }]. */
 function parseCatalog(src) {
@@ -68,10 +71,26 @@ function parseBridge(src) {
   return { routes, byPath };
 }
 
+/** Parse the extracted route families: each `ROUTES` key is `"METHOD /path"`. */
+function parseRouteModules(dir, routes, byPath) {
+  if (!fs.existsSync(dir)) return;
+  for (const name of fs.readdirSync(dir)) {
+    if (!name.endsWith('.ts')) continue;
+    const src = fs.readFileSync(path.join(dir, name), 'utf8');
+    for (const m of src.matchAll(/'(GET|POST) (\/[^']+)':/g)) {
+      const [, method, p] = m;
+      routes.add(`${method} ${p}`);
+      if (!byPath.has(p)) byPath.set(p, new Set());
+      byPath.get(p).add(method);
+    }
+  }
+}
+
 function main() {
   const catalogSrc = fs.readFileSync(CATALOG_PATH, 'utf8');
   const catalog = parseCatalog(catalogSrc);
   const { routes, byPath } = parseBridge(fs.readFileSync(BRIDGE_PATH, 'utf8'));
+  parseRouteModules(ROUTES_DIR, routes, byPath);
 
   // Renamed tools are cloned at runtime from their canonical entry, so the static
   // parser cannot see them — instead assert each clone's canonical name exists, so

@@ -23,7 +23,7 @@
       "main/drive/driver.ts": 4,
       "main/harvester/markdown.ts": 2,
       "main/hil/hil-manager.ts": 4,
-      "main/http-bridge.ts": 2,
+      "main/http-bridge.ts": 1,
       "main/input/human-activity.ts": 1,
       "main/jev/engine.ts": 4,
       "main/jev/policy.ts": 4,
@@ -57,7 +57,6 @@
       "main/remote/oauth-client.ts": 5,
       "main/remote/service.ts": 1,
       "main/remote/settings.ts": 3,
-      "main/remote/token.ts": 1,
       "main/research/anchor-store.ts": 2,
       "main/research/anchors.ts": 5,
       "main/research/researcher.ts": 5,
@@ -105,7 +104,6 @@
       "main/wrap/secrets.ts": 11,
       "main/wrap/security.ts": 4,
       "main/wrap/store.ts": 2,
-      "main/wrap/token.ts": 3,
       "main/wrap/types.ts": 10,
       "main/wrap/validate-wrapper.ts": 3,
       "mcp/browser-mcp.ts": 3,
@@ -126,7 +124,6 @@
       "shared/research-events.ts": 3,
       "shared/tool-settings.ts": 4,
       "shared/types.ts": 6,
-      "shared/viewport.ts": 15,
       "shared/zoom.ts": 6
     }
   },
@@ -137,7 +134,7 @@
       "main/decide/decision-client.ts": 7,
       "main/decide/decision-guard.ts": 7,
       "main/hil/hil-manager.ts": 68,
-      "main/http-bridge.ts": 366,
+      "main/http-bridge.ts": 164,
       "main/index.ts": 83,
       "main/media/ffmpeg.ts": 24,
       "main/media/service.ts": 34,
@@ -145,7 +142,6 @@
       "main/media/transcript.ts": 5,
       "main/primitives/primitives.ts": 66,
       "main/recipes/recipe-store.ts": 10,
-      "main/remote/token.ts": 14,
       "main/research/anchor-store.ts": 9,
       "main/research/settings.ts": 20,
       "main/scripts/script-vault.ts": 9,
@@ -164,7 +160,6 @@
       "main/wrap/executor.ts": 70,
       "main/wrap/interpolate.ts": 30,
       "main/wrap/store.ts": 12,
-      "main/wrap/token.ts": 13,
       "main/zoom/settings.ts": 11,
       "mcp/bridge-server.ts": 39,
       "mcp/browser-mcp.ts": 36,
@@ -177,7 +172,7 @@
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 2250
+    "totalDuplicatedLines": 2021
   },
   "imports": {
     "cycles": []

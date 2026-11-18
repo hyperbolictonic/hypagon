@@ -86,7 +86,15 @@ export function bootstrapGate(argv, { usage, spec, defaults }) {
  * path. Used by gate scripts in git-hook staged-file mode.
  * `includeTests` opts in to test/spec files (duplicates.includeTests).
  */
-export function collectPathFiles(paths, includeTests = false) {
+export function collectPathFiles(paths, includeTests = false, src = null) {
+  const srcDir = src ? path.resolve(src) : null;
+  // Baseline keys are scan-root-relative. A staged-file path is repo-relative, so
+  // normalise files under `src` back to the baseline convention.
+  const baseFor = (abs) => {
+    if (!srcDir) return process.cwd();
+    const fromSrc = path.relative(srcDir, abs);
+    return fromSrc.startsWith('..') || path.isAbsolute(fromSrc) ? process.cwd() : srcDir;
+  };
   const files = [];
   for (const p of paths) {
     const abs = path.resolve(p);
@@ -95,13 +103,13 @@ export function collectPathFiles(paths, includeTests = false) {
       process.exit(1);
     }
     if (statSync(abs).isDirectory()) {
-      files.push(...walk(abs, abs, includeTests));
+      files.push(...walk(abs, baseFor(abs), includeTests));
     } else if (
       SOURCE_EXT.has(path.extname(abs)) &&
       !isGenerated(abs.split(path.sep).join('/')) &&
       (includeTests || !IGNORE_FILE.test(abs))
     ) {
-      files.push({ full: abs, rel: path.relative(process.cwd(), abs).split(path.sep).join('/') });
+      files.push({ full: abs, rel: path.relative(baseFor(abs), abs).split(path.sep).join('/') });
     }
   }
   return files;

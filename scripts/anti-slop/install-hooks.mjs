@@ -14,6 +14,7 @@
 
 import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
+import { loadConfig } from './cli.mjs';
 
 const force = process.argv.includes('--force');
 const preCommitOnly = process.argv.includes('--pre-commit-only');
@@ -36,9 +37,14 @@ if (!gitDir) {
 const hooksDir = path.join(gitDir, 'hooks');
 mkdirSync(hooksDir, { recursive: true });
 
+// Only the configured source tree is gated. Tracked build bundles (this repo keeps
+// `bin/*.cjs` and `scripts/mcp-server.js` in git) are generated and exempt.
+const cfg = loadConfig();
+const srcRoot = (cfg.modularity?.src ?? cfg.docs?.src ?? 'src').replace(/\\/g, '/').replace(/\/+$/, '');
+
 const PRE_COMMIT = `#!/bin/sh
 # anti-slop pre-commit gate (installed by scripts/anti-slop/install-hooks.mjs)
-staged=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\\.(ts|tsx|js|jsx|mjs|mts)$')
+staged=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^${srcRoot}/.*\\.(ts|tsx|js|jsx|mjs|mts)$')
 [ -z "$staged" ] && exit 0
 
 echo "[anti-slop] modularity check on staged files..."

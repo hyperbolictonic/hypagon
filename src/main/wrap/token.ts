@@ -11,37 +11,22 @@
  * secret store that arrives with S2.
  */
 
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createTokenFile, readTokenFile } from '../token-file.ts';
 
-const TOKEN_BYTES = 32;
-const TOKEN_PATTERN = /^[a-f0-9]{64}$/i;
-
+/** When to use: resolve the wrap bridge's capability-token path under its data directory. */
 export function tokenFile(wrapDir: string): string {
   return path.join(wrapDir, 'token');
 }
 
+/** When to use: rotate the wrap-bridge token on app start so old processes lose access. */
 export function createWrapToken(wrapDir: string): string {
   fs.mkdirSync(wrapDir, { recursive: true });
-  const token = crypto.randomBytes(TOKEN_BYTES).toString('hex');
-  const target = tokenFile(wrapDir);
-  const temp = `${target}.${process.pid}.${Date.now()}.tmp`;
-  fs.writeFileSync(temp, `${token}\n`, { encoding: 'utf8', mode: 0o600 });
-  fs.renameSync(temp, target);
-  try {
-    fs.chmodSync(target, 0o600);
-  } catch {
-    // Windows uses ACLs; the userData directory is already user-private.
-  }
-  return token;
+  return createTokenFile(tokenFile(wrapDir));
 }
 
+/** When to use: authenticate a wrap request against the token file on disk. */
 export function readWrapToken(wrapDir: string): string | undefined {
-  try {
-    const value = fs.readFileSync(tokenFile(wrapDir), 'utf8').trim();
-    return TOKEN_PATTERN.test(value) ? value : undefined;
-  } catch {
-    return undefined;
-  }
+  return readTokenFile(tokenFile(wrapDir));
 }

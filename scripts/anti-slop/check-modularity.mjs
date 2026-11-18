@@ -156,7 +156,7 @@ function analyze(source, limits) {
 // budgets, matching the drift principle (shape, not logic).
 const modIgnore = Array.isArray(cfgMod.ignorePaths) ? cfgMod.ignorePaths : [];
 const files = applyIgnorePaths(
-  positionals.length > 0 ? collectPathFiles(positionals) : resolveScanTarget(args.src),
+  positionals.length > 0 ? collectPathFiles(positionals, false, args.src) : resolveScanTarget(args.src),
   modIgnore,
   { label: 'modularity.ignorePaths', src: args.src },
 );

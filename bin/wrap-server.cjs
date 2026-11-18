@@ -36600,7 +36600,7 @@ var StdioServerTransport = class {
 };
 
 // src/shared/version.ts
-var APP_VERSION = "2.3.2";
+var APP_VERSION = "2.3.3";
 
 // src/mcp/wrap-tool-schema.ts
 function wrapInputToZodShape(schema) {

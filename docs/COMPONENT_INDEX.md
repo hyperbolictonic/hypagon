@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 145 files, 630 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 152 files, 641 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,10 +14,16 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (569)
+## Types (573)
 
 | File | Export | When to use |
 |---|---|---|
+| `main/bridge/context.ts` | `WrapBridge` *(type)* | When to use: wire the optional REST/wrap, media, collaboration and settings services into the bridge. |
+| `main/bridge/context.ts` | `BridgeDeps` *(type)* | When to use: pass the long-lived services a route family may need. |
+| `main/bridge/context.ts` | `BridgeHandler` *(type)* | When to use: handle one parsed request; return true when the route family answered it. |
+| `main/bridge/context.ts` | `BridgeContext` *(type)* | When to use: read request fields and answer without touching `req`/`res` directly. |
+| `main/bridge/dispatch.ts` | `dispatchRouteTable` | When to use: dispatch a request against a family route table; false means "not my prefix". |
+| `main/bridge/dispatch.ts` | `TableHandler` *(type)* | When to use: a route family hands control back to the bridge when the path is outside its prefix. |
 | `main/browser/frame-eval.ts` | `evaluateInFrames` | Evaluate `expression` in the main frame and up to `maxFrames` child frames. |
 | `main/browser/frame-eval.ts` | `FrameEvalOptions` *(type)* | - |
 | `main/browser/frame-eval.ts` | `FrameEvalResult` *(type)* | - |
@@ -105,8 +111,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/hil/hil-manager.ts` | `HilRequest` *(type)* | - |
 | `main/hil/hil-manager.ts` | `HilResolution` *(type)* | - |
 | `main/hil/hil-manager.ts` | `NotificationOptions` *(type)* | - |
-| `main/http-bridge.ts` | `startHttpBridge` | - |
-| `main/http-bridge.ts` | `WrapBridge` *(type)* | - |
 | `main/input/human-activity.ts` | `shouldCountAsHuman` | Pure decision used by the monitor and by tests. |
 | `main/input/human-activity.ts` | `humanListenerScript` | Self-contained listener. Idempotent: a second injection is a no-op. |
 | `main/input/human-activity.ts` | `SYNTHETIC_GRACE_MS` | How long after our own dispatch a trusted event is still considered synthetic. |
@@ -559,25 +563,25 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/types.ts` | `HarvestedConstruct` *(type)* | - |
 | `shared/types.ts` | `TabSummary` *(type)* | - |
 | `shared/types.ts` | `ChassisState` *(type)* | - |
-| `shared/viewport.ts` | `specFromProfile` | - |
-| `shared/viewport.ts` | `normalizeViewportSpec` | - |
-| `shared/viewport.ts` | `normalizeDeviceProfile` | - |
-| `shared/viewport.ts` | `orientationOf` | - |
+| `shared/viewport.ts` | `specFromProfile` | When to use: turn a stored device profile into the active emulation spec. |
+| `shared/viewport.ts` | `normalizeViewportSpec` | When to use: validate untrusted input (IPC, bridge, settings file) before applying emulation. |
+| `shared/viewport.ts` | `normalizeDeviceProfile` | When to use: validate a custom profile before saving it to settings. |
+| `shared/viewport.ts` | `orientationOf` | When to use: label the current spec portrait or landscape for the HUD. |
 | `shared/viewport.ts` | `rotateSpec` | Swap width/height, keeping the physical device size. |
 | `shared/viewport.ts` | `fitViewport` | Fit an emulated device inside the browsing area. |
-| `shared/viewport.ts` | `findProfile` | - |
-| `shared/viewport.ts` | `BUILTIN_PROFILES` | - |
-| `shared/viewport.ts` | `MIN_VIEWPORT_DIMENSION` | - |
-| `shared/viewport.ts` | `MAX_VIEWPORT_DIMENSION` | - |
-| `shared/viewport.ts` | `MIN_DEVICE_SCALE` | - |
-| `shared/viewport.ts` | `MAX_DEVICE_SCALE` | - |
-| `shared/viewport.ts` | `MAX_CUSTOM_PROFILES` | - |
+| `shared/viewport.ts` | `findProfile` | When to use: resolve a profile id against the merged built-in and custom list. |
+| `shared/viewport.ts` | `BUILTIN_PROFILES` | When to use: seed the profile picker; these ship with the app and cannot be deleted. |
+| `shared/viewport.ts` | `MIN_VIEWPORT_DIMENSION` | When to use: clamp width/height so an emulated page stays renderable. |
+| `shared/viewport.ts` | `MAX_VIEWPORT_DIMENSION` | When to use: clamp width/height to the largest sane emulated device. |
+| `shared/viewport.ts` | `MIN_DEVICE_SCALE` | When to use: clamp an emulated DPR below the smallest useful value. |
+| `shared/viewport.ts` | `MAX_DEVICE_SCALE` | When to use: clamp an emulated DPR above the largest useful value. |
+| `shared/viewport.ts` | `MAX_CUSTOM_PROFILES` | When to use: cap how many human-added profiles are stored in settings. |
 | `shared/viewport.ts` | `VIEWPORT_MARGIN` | Empty space kept around the emulated device inside the browsing area. |
-| `shared/viewport.ts` | `Orientation` *(type)* | Responsive / device emulation contract. |
-| `shared/viewport.ts` | `DeviceProfile` *(type)* | - |
-| `shared/viewport.ts` | `ViewportSpec` *(type)* | - |
-| `shared/viewport.ts` | `ViewportRect` *(type)* | - |
-| `shared/viewport.ts` | `ViewportState` *(type)* | - |
+| `shared/viewport.ts` | `Orientation` *(type)* | When to use: label the current device orientation in the HUD and tool results. |
+| `shared/viewport.ts` | `DeviceProfile` *(type)* | When to use: describe one emulated device, built-in or human-added, in the profile picker. |
+| `shared/viewport.ts` | `ViewportSpec` *(type)* | When to use: carry the active emulation settings between the HUD, IPC and `browser_viewport`. |
+| `shared/viewport.ts` | `ViewportRect` *(type)* | When to use: place the native browsing view inside the letterboxed emulation area. |
+| `shared/viewport.ts` | `ViewportState` *(type)* | When to use: read emulation as one snapshot - active spec, frame, scale and profile list. |
 | `shared/web-state.ts` | `WebPageState` *(type)* | Page-level signals collected for the WEB STATE tab on the Command Deck. |
 | `shared/zoom.ts` | `normalizeZoomSettings` | - |
 | `shared/zoom.ts` | `nextZoomStep` | - |
@@ -588,10 +592,14 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (58)
+## Modules (65)
 
 | File | Export | When to use |
 |---|---|---|
+| `main/bridge/routes/collaboration.ts` | `handleCollaborationRoutes` | When to use: the request targets `/collaboration/*`; returns false for other paths. |
+| `main/bridge/routes/media.ts` | `handleMediaRoutes` | When to use: the request targets `/media/*`; returns false for other paths. |
+| `main/bridge/routes/research.ts` | `handleResearchRoutes` | When to use: the request is a research/extraction call; returns false for other paths. |
+| `main/bridge/routes/wrap.ts` | `handleWrapRoutes` | When to use: the request targets `/wrap/*`; handles auth and returns false for other paths. |
 | `main/browser/frame-marks.ts` | `clearFrameMarks` | - |
 | `main/browser/frame-marks.ts` | `registerFrameMarks` | - |
 | `main/browser/frame-marks.ts` | `resolveFrameMark` | Resolve a frame mark to a live page-space target. Returns null when the frame navigated, the |
@@ -601,6 +609,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/data-paths.ts` | `dataPath` | - |
 | `main/diagnostics/main-log.ts` | `mainLogFile` | - |
 | `main/diagnostics/main-log.ts` | `logMainEvent` | - |
+| `main/http-bridge.ts` | `startHttpBridge` | - |
 | `main/media/auth.ts` | `needsLogin` | Does yt-dlp's output say the site wants a signed-in session? |
 | `main/media/cookie-format.ts` | `toNetscape` | Netscape cookie-file text for yt-dlp's `--cookies`. |
 | `main/media/settings.ts` | `normalizeMediaSettings` | - |
@@ -611,9 +620,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/metrics.ts` | `summary` | Grouped summary for `bridge_health` — three numbers instead of a wall of keys. |
 | `main/metrics.ts` | `resetMetrics` | - |
 | `main/remote/cloudflared.ts` | `findCloudflared` | Find cloudflared without installing or downloading it. |
-| `main/remote/token.ts` | `remoteTokenFile` | - |
-| `main/remote/token.ts` | `createRemoteToken` | Create a remote-gateway capability token. The caller owns the directory. |
-| `main/remote/token.ts` | `readRemoteToken` | Read and validate a token file. A missing, malformed or empty file returns undefined. |
+| `main/remote/token.ts` | `remoteTokenFile` | When to use: resolve the remote gateway's capability-token path under its data directory. |
+| `main/remote/token.ts` | `createRemoteToken` | When to use: rotate the remote-gateway token on app start. The caller owns the directory. |
+| `main/remote/token.ts` | `readRemoteToken` | When to use: authenticate a remote request against the token file on disk. |
 | `main/settings/experimental.ts` | `ExperimentalSettingsStore` | Experimental feature flags persisted next to the other user settings. |
 | `main/shadow-walk/part-highlight.ts` | `injectPartHighlight` | - |
 | `main/shadow-walk/part-highlight.ts` | `removePartHighlight` | - |
@@ -622,6 +631,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/sealed-targets.ts` | `issueSealedToken` | - |
 | `main/shadow-walk/sealed-targets.ts` | `resolveSealedToken` | Resolve a sealed token to a live top-level viewport centre, scrolling the real node into view. |
 | `main/telemetry/bezier.ts` | `generateOrganicTrajectory` | Generates an organic, human-like trajectory between two coordinates. |
+| `main/token-file.ts` | `createTokenFile` | When to use: mint a fresh capability token at `target`, replacing any previous file atomically. |
+| `main/token-file.ts` | `readTokenFile` | When to use: validate a token file read by a companion process. A missing, unreadable, |
 | `main/tools/ipc.ts` | `registerToolSettingsIpc` | Human-only writes over IPC. The bridge exposes a read-only config route to MCP processes. |
 | `main/tools/state.ts` | `sanitizeToolSettings` | - |
 | `main/tools/state.ts` | `buildToolManagerState` | - |
@@ -629,9 +640,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/viewport/profiles.ts` | `DeviceProfileStore` | - |
 | `main/wrap/auth.ts` | `tokenFromHeaders` | - |
 | `main/wrap/auth.ts` | `isWrapAuthorized` | - |
-| `main/wrap/token.ts` | `tokenFile` | - |
-| `main/wrap/token.ts` | `createWrapToken` | - |
-| `main/wrap/token.ts` | `readWrapToken` | - |
+| `main/wrap/token.ts` | `tokenFile` | When to use: resolve the wrap bridge's capability-token path under its data directory. |
+| `main/wrap/token.ts` | `createWrapToken` | When to use: rotate the wrap-bridge token on app start so old processes lose access. |
+| `main/wrap/token.ts` | `readWrapToken` | When to use: authenticate a wrap request against the token file on disk. |
 | `main/zoom/settings.ts` | `ZoomSettingsStore` | The browser zoom policy lives next to the other human settings. The HTTP |
 | `mcp/browser-mcp.ts` | `flushLogSync` | Synchronous drain used only on shutdown paths, where async I/O cannot run. |
 | `mcp/browser-mcp.ts` | `logMcp` | - |

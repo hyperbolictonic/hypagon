@@ -12,10 +12,26 @@ is introduced.
 | Gate | Baseline | Notes |
 | --- | --- | --- |
 | Modularity | **54 violations** across **41 files** | file/function/class size budgets (300 / 80 / 10) |
-| Docs | **451 undocumented exports** across **126 files** | one-line `/** When to use ... */` required |
-| Duplicates | **2,250 duplicated lines / 46,477 (4.8%)** | threshold is 3%; 184 clone regions |
+| Docs | **431 undocumented exports** across **123 files** | one-line `/** When to use ... */` required |
+| Duplicates | **2,021 duplicated lines / 46,663 (4.3%)** | threshold is 3%; 147 clone regions |
 | Import cycles | **0** | 5 layer rules pass |
-| Component index | **145 files / 630 exports** | 451 still undocumented |
+| Component index | **152 files / 641 exports** | 431 still undocumented |
+
+## Progress
+
+- **P0 #1 done** - every export in `src/shared/viewport.ts` has a usage doc; the docs baseline
+  dropped from 451 to 431 and the file left the baseline entirely.
+- **P0 #2 started** - `http-bridge.ts` fell from 2,039 to 1,573 lines. Research/extraction,
+  Hypagon REST, media and collaboration routes now live in `src/main/bridge/routes/*` with a shared
+  `BridgeContext` (`fail()`, memoised body, one response envelope) and a shared route-table
+  dispatcher. The duplicate baseline dropped from 2,250 to 2,021 lines. Remaining work on this item:
+  health/metrics, tabs, navigation, cortex/bookmarks, HIL/window, recording/session, network,
+  capture/marks/scripts and the decision/drive routes.
+- **P0 #3 done** - `src/main/token-file.ts` owns the atomic token write and fail-closed read; the
+  wrap and remote gateway modules are thin wrappers. The 37.8% / 27.1% clone pair is gone.
+- Verified live on a dev instance: research, wrap auth/derive, media, collaboration, zoom, tabs and
+  viewport routes all answer with unchanged shapes.
+
 
 ## Top findings
 
@@ -64,8 +80,8 @@ is introduced.
 | P3 | `src/mcp/bridge-server.ts` | 39 | stdio lifecycle |
 | P3 | `src/mcp/browser-mcp.ts` | 36 | dispatch/format |
 
-Also visible in the gate output: `remote/token.ts` (37.8%) and `wrap/token.ts` (27.1%) duplicate
-the token-file load/save pattern; `mcp/tool-groups.ts` is 51.9% duplicated by design (mapping table).
+The token-file pattern that used to clone (`remote/token.ts` 37.8%, `wrap/token.ts` 27.1%) now
+lives in `src/main/token-file.ts`. `mcp/tool-groups.ts` stays 51.9% duplicated by design (mapping table).
 
 ### 3. Documentation debt
 
@@ -101,20 +117,22 @@ the token-file load/save pattern; `mcp/tool-groups.ts` is 51.9% duplicated by de
 ### P0 — make the gates meaningful
 
 1. **Document `src/shared/viewport.ts`** — 15 exports; clears the newest shared-contract debt and
-   gives the reuse skill a usable entry.
+   gives the reuse skill a usable entry. **Done.**
 2. **HTTP bridge route helper** — extract `readJsonAndRespond`, validation and error envelopes;
    target the 366 duplicated lines and the two oversized functions. This is the largest structural
-   win with the least product risk.
+   win with the least product risk. **Started:** context, dispatcher and four families are out;
+   the remaining families still sit in `http-bridge.ts`.
 3. **Token loader extraction** — one `readTokenFile`/`writeTokenFile` helper for
-   `remote/token.ts` and `wrap/token.ts`.
+   `remote/token.ts` and `wrap/token.ts`. **Done** (`src/main/token-file.ts`).
 
 ### P1 — split by responsibility
 
 4. **`browser-chassis` decomposition** — extract `ViewportRuntime` (already a controller), then
    `HumanControl`, `Consent`, `ResearchRuntime`, `CaptureRuntime`. Keep the chassis as composition
    root; update the extraction map.
-5. **`http-bridge` route modules** — health, tabs, navigation, research, wrap, media, remote;
-   shared helpers. No behavior change.
+5. **Finish `http-bridge` route modules** — health/metrics, tabs, navigation/act, cortex/bookmarks,
+   HIL/window, recording/session, network, capture/marks/scripts, decision/drive; keep the
+   `ROUTES`-table pattern and the contract test. No behavior change.
 6. **`tools-catalog` split** — one module per family with a registry; keep the contract test.
 7. **`renderer/main` split** — tabs, logs, settings, cortex, web-state panels; reuse the existing
    research/viewport modules as the pattern.

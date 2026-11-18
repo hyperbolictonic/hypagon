@@ -42111,7 +42111,7 @@ var CONSOLIDATED_HIDDEN_TOOLS = /* @__PURE__ */ new Set([
 ]);
 
 // src/shared/version.ts
-var APP_VERSION = "2.3.2";
+var APP_VERSION = "2.3.3";
 
 // src/main/decide/decision-client.ts
 var import_node_fs2 = __toESM(require("node:fs"), 1);
@@ -43129,16 +43129,21 @@ function normalizeIncomingParams(params) {
   return normalized;
 }
 
-// src/main/remote/token.ts
+// src/main/token-file.ts
 var import_node_fs4 = __toESM(require("node:fs"), 1);
 var TOKEN_PATTERN = /^[a-f0-9]{64}$/i;
-function readRemoteToken(file2) {
+function readTokenFile(target) {
   try {
-    const value = import_node_fs4.default.readFileSync(file2, "utf8").trim();
+    const value = import_node_fs4.default.readFileSync(target, "utf8").trim();
     return TOKEN_PATTERN.test(value) ? value : void 0;
   } catch {
     return void 0;
   }
+}
+
+// src/main/remote/token.ts
+function readRemoteToken(file2) {
+  return readTokenFile(file2);
 }
 
 // src/main/remote/oauth-client.ts
