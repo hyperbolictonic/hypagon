@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { BrowserWindow, app, nativeImage, ipcMain, clipboard, powerMonitor, screen, session, WebContentsView, type Session, type WebContents } from 'electron';
 import type { AgentStatus, ChassisState, HarvestedConstruct, TelemetryEvent, TabSummary } from '../shared/types.js';
 import type { ViewportState } from '../shared/viewport.js';
+import { pruneScreenshots, screenshotsDir } from './snapshots/screenshot-store.js';
 import { DeviceProfileStore } from './viewport/profiles.js';
 import { ViewportController } from './viewport/controller.js';
 import { ZoomRuntime } from './zoom/runtime.js';
@@ -2631,63 +2632,15 @@ export class BrowserChassis {
   }
 
   public getScreenshotsDir(): string {
-    const dir = dataPath('screenshots');
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    return dir;
+    return screenshotsDir();
   }
 
   public cleanupScreenshots(maxFiles: number = 50, maxAgeMs: number = 7 * 24 * 60 * 60 * 1000): { prunedCount: number; remainingCount: number } {
-    try {
-      const dir = this.getScreenshotsDir();
-      const files = fs.readdirSync(dir);
-      const now = Date.now();
-      const screenshotFiles: { file: string; fullPath: string; mtimeMs: number; size: number }[] = [];
-
-      for (const file of files) {
-        if (!file.toLowerCase().endsWith('.png')) continue;
-        const fullPath = path.join(dir, file);
-        try {
-          const stat = fs.statSync(fullPath);
-          screenshotFiles.push({ file, fullPath, mtimeMs: stat.mtimeMs, size: stat.size });
-        } catch {
-          // ignore stat errors
-        }
-      }
-
-      // Sort oldest first
-      screenshotFiles.sort((a, b) => a.mtimeMs - b.mtimeMs);
-
-      let prunedCount = 0;
-      const keepFiles: typeof screenshotFiles = [];
-
-      for (const item of screenshotFiles) {
-        const isExpired = now - item.mtimeMs > maxAgeMs;
-        const wouldExceedLimit = (screenshotFiles.length - prunedCount) > maxFiles;
-
-        if (isExpired || wouldExceedLimit) {
-          try {
-            fs.unlinkSync(item.fullPath);
-            prunedCount++;
-          } catch (err: any) {
-            console.error(`[BrowserChassis] Failed to prune screenshot ${item.file}:`, err);
-            keepFiles.push(item);
-          }
-        } else {
-          keepFiles.push(item);
-        }
-      }
-
-      if (prunedCount > 0) {
-        this.addLog('info', `Disk Maintenance: Pruned ${prunedCount} old screenshots from data/screenshots/ (kept ${keepFiles.length})`);
-      }
-
-      return { prunedCount, remainingCount: keepFiles.length };
-    } catch (err: any) {
-      console.error('[BrowserChassis] Error in cleanupScreenshots:', err);
-      return { prunedCount: 0, remainingCount: 0 };
+    const result = pruneScreenshots(maxFiles, maxAgeMs);
+    if (result.prunedCount > 0) {
+      this.addLog('info', `Disk Maintenance: Pruned ${result.prunedCount} old screenshots from data/screenshots/ (kept ${result.remainingCount})`);
     }
+    return result;
   }
 
   private async capturePageWithRetry(
