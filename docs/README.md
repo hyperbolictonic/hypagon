@@ -16,6 +16,7 @@ handoffs are intentionally not published here; links to them go back to the repo
 
 - [Developer guide](../developer/index.html) — the standard OKF v0.2 bundle for API and integration work.
 - [Component index](./COMPONENT_INDEX.html) — the generated reuse inventory for layouts, components, hooks, services and utilities.
+- [Anti-slop findings and TODO](./ANTI_SLOP_TODO.html) — baseline, hotspots and the housekeeping order.
 - [Agent skills](../developer/getting-started/skills.html) — install the `hb-browser` and `hb-wrap` skills from GitHub.
 - [Browser MCP API](../developer/api/browser-mcp.html) — tool groups, resources and call shape.
 - [REST MCP API](../developer/api/rest-mcp.html) — meta-tools, generated tools and result shapes.
