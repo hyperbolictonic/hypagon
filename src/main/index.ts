@@ -91,6 +91,18 @@ if (app.isPackaged) {
   }
 }
 
+/**
+ * Windows routes a toast's click back to the process that owns its AppUserModelID.
+ * electron-builder stamps the installed shortcuts with the `appId` from
+ * `electron-builder.json`; the running app must claim the same ID or the OS cannot
+ * match the activation and clicking a HIL notification does nothing (the handler in
+ * `hil-manager.ts` never fires). In an unpackaged dev run there is no shortcut, so
+ * Electron's guidance applies: attribute toasts to the executable.
+ */
+if (process.platform === 'win32') {
+  app.setAppUserModelId(app.isPackaged ? 'com.hyperbolictonic.kuang-grade-mark-eleven' : process.execPath);
+}
+
 // Ensure single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {

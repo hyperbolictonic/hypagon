@@ -99,7 +99,7 @@ await bridge('/wrap/wrappers', 'POST', { action: 'delete', id: WRAPPER_ID }).cat
 const transport = new StdioClientTransport({
   command: 'node',
   args: ['./bin/wrap-server.cjs'],
-  env: { ...process.env, KUANG_WRAP_TOKEN_FILE: tokenFile(), KUANG_MCP_LOG: '0' },
+  env: { ...process.env, HB_WRAP_TOKEN_FILE: tokenFile(), KUANG_MCP_LOG: '0' },
 });
 const client = new Client(
   { name: 'wrap-mcp-test', version: '0.0.0' },
@@ -166,7 +166,7 @@ for (const id of CAPPED) await bridge('/wrap/wrappers', 'POST', { action: 'delet
 const cappedTransport = new StdioClientTransport({
   command: 'node',
   args: ['./bin/wrap-server.cjs'],
-  env: { ...process.env, KUANG_WRAP_TOKEN_FILE: tokenFile(), KUANG_MCP_LOG: '0', KUANG_WRAP_MAX_TOOLS: '1' },
+  env: { ...process.env, HB_WRAP_TOKEN_FILE: tokenFile(), KUANG_MCP_LOG: '0', HB_WRAP_MAX_TOOLS: '1' },
 });
 const capped = new Client(
   { name: 'wrap-mcp-cap-test', version: '0.0.0' },
@@ -190,7 +190,7 @@ try {
   const secondText = second.content?.[0]?.text || '';
   check(
     'the wrapper beyond the cap is warned about',
-    !second.isError && /cap is full/.test(secondText) && /KUANG_WRAP_MAX_TOOLS/.test(secondText),
+    !second.isError && /cap is full/.test(secondText) && /HB_WRAP_MAX_TOOLS/.test(secondText),
     secondText.split('\n').filter(Boolean).slice(-1)[0].slice(0, 100),
   );
 

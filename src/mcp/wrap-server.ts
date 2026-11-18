@@ -32,7 +32,7 @@ const BRIDGE_TIMEOUT_MS = (() => {
   const raw = Number(process.env.HB_WRAP_TIMEOUT_MS ?? process.env.KUANG_WRAP_TIMEOUT_MS);
   return Number.isFinite(raw) && raw > 0 ? raw : 90_000;
 })();
-const TOKEN_FILE = process.env.HB_WRAP_TOKEN_FILE || process.env.HB_WRAP_TOKEN_FILE || '';
+const TOKEN_FILE = process.env.HB_WRAP_TOKEN_FILE || process.env.KUANG_WRAP_TOKEN_FILE || '';
 const STATIC_TOKEN =
   process.env.HB_WRAP_TOKEN ||
   process.env.KUANG_WRAP_TOKEN ||
@@ -46,7 +46,7 @@ const STATIC_TOKEN =
  * generated tools entirely; the ten meta-tools keep working.
  */
 const GENERATED_TOOL_CAP = (() => {
-  const raw = Number(process.env.HB_WRAP_MAX_TOOLS ?? process.env.HB_WRAP_MAX_TOOLS);
+  const raw = Number(process.env.HB_WRAP_MAX_TOOLS ?? process.env.KUANG_WRAP_MAX_TOOLS);
   if (!Number.isFinite(raw) || raw < 0) return 40;
   return Math.min(Math.floor(raw), 200);
 })();
