@@ -15,6 +15,7 @@
 
 import { runDecision, emitDecisionEvent, type DecisionResult } from './decision-client.js';
 
+/** When to use: configuring a guarded decide call (threshold, operations, components). */
 export interface DecisionGuard {
   /** Minimum confidence for a choice to be accepted (0–1). Omit to accept any confidence. */
   threshold?: number;
@@ -24,12 +25,14 @@ export interface DecisionGuard {
   components?: Array<{ id: string | number; actions?: string[]; name?: string }>;
 }
 
+/** When to use: reading why one answer was rejected (question, option, reason). */
 export interface GuardRejection {
   question: string;
   option: string;
   reason: string;
 }
 
+/** When to use: reading the guard loop result (accepted, fallback, attempts, reasons). */
 export interface GuardedDecision {
   ok: boolean;
   accepted: boolean;

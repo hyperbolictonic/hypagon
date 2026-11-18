@@ -13,6 +13,7 @@
 import dns from 'node:dns/promises';
 import net from 'node:net';
 
+/** When to use: rejecting an unsafe wrapper target (private address, blocked host) with a code. */
 export class WrapSecurityError extends Error {
   readonly code: string;
 
@@ -23,12 +24,14 @@ export class WrapSecurityError extends Error {
   }
 }
 
+/** When to use: allowing extra hosts or schemes for a wrapper security check. */
 export interface UrlPolicy {
   allowPrivateHosts?: boolean;
   allowHttp?: boolean;
   resolveHost?: (hostname: string) => Promise<string[]>;
 }
 
+/** When to use: validating a wrapper URL before any request leaves the machine. */
 export async function assertSafeUrl(rawUrl: string, policy: UrlPolicy = {}): Promise<URL> {
   let url: URL;
   try {
@@ -120,6 +123,7 @@ export function isPrivateHostname(hostname: string): boolean {
  */
 export const resolveHosts = defaultResolveHost;
 
+/** When to use: checking a resolved IP against loopback/link-local/private ranges. */
 export function isPrivateAddress(address: string): boolean {
   const value = address.toLowerCase().replace(/^\[|\]$/g, '');
 

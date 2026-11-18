@@ -36,10 +36,12 @@ interface ArmedEntry {
 
 const armed = new WeakMap<WebContents, ArmedEntry>();
 
+/** When to use: deciding whether to run the (risky) force-open patch for a tab. */
 export function isForceOpenArmed(wc: WebContents | null | undefined): boolean {
   return !!wc && armed.has(wc);
 }
 
+/** When to use: reporting whether force-open was applied to a tab and why. */
 export interface ForceOpenSyncResult {
   armed: boolean;
   changed: boolean;
@@ -86,6 +88,7 @@ export async function syncForceOpen(wc: WebContents, shouldArm: boolean): Promis
   }
 }
 
+/** When to use: detecting whether a page was opened with the force-open patch. */
 export interface ForceOpenDetection {
   armed: boolean;
   applied: boolean;

@@ -17,6 +17,7 @@
 import type { WebContents } from 'electron';
 import { bump } from '../metrics.js';
 
+/** When to use: addressing one frame (id, parent, URL) discovered over CDP. */
 export interface FrameHandle {
   frameId: string;
   parentFrameId?: string;
@@ -33,6 +34,7 @@ export interface FrameHandle {
   sessionId?: string;
 }
 
+/** When to use: carrying a frame geometry and hierarchy into control collection. */
 export interface FrameContext {
   frames: FrameHandle[];
   /** Send a CDP command in the session that can see `frameId`. */
@@ -116,6 +118,7 @@ function addOopifTree(
   return local.length > 0;
 }
 
+/** When to use: enumerating the frame tree of a tab before frame-aware scans. */
 export async function discoverFrames(
   wc: WebContents,
   options: { maxFrames?: number } = {}

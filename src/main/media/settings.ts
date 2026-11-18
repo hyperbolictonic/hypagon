@@ -10,6 +10,7 @@ import path from 'node:path';
 import type { MediaSettings } from '../../shared/media.ts';
 import { readJsonFile, writeJsonFileAtomic } from '../settings/json-file.js';
 
+/** When to use: a fresh profile or a reset to the shipped media defaults. */
 export const DEFAULT_MEDIA_SETTINGS: MediaSettings = {
   autoUpdate: true,
   updateIntervalMinutes: 60,
@@ -22,6 +23,7 @@ export const DEFAULT_MEDIA_SETTINGS: MediaSettings = {
 const MIN_INTERVAL_MINUTES = 15;
 const MAX_INTERVAL_MINUTES = 24 * 60;
 
+/** When to use: validating media settings from disk or IPC before applying them. */
 export function normalizeMediaSettings(input: unknown): MediaSettings {
   const raw = input !== null && typeof input === 'object' ? (input as Record<string, unknown>) : {};
   const autoUpdate = typeof raw.autoUpdate === 'boolean' ? raw.autoUpdate : DEFAULT_MEDIA_SETTINGS.autoUpdate;
@@ -41,6 +43,7 @@ export function normalizeMediaSettings(input: unknown): MediaSettings {
   return { autoUpdate, updateIntervalMinutes: interval, useSessionCookies, outputDir, ffmpegMode, ffmpegPath };
 }
 
+/** When to use: reading or saving media settings (IPC only), or building one in tests. */
 export class MediaSettingsStore {
   private readonly file: string;
 

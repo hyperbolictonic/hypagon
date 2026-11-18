@@ -11,6 +11,7 @@ export interface ToolSettings {
   actionInstructions: Record<string, Record<string, string>>;
 }
 
+/** When to use: describing one action the tools panel can display. */
 export interface ToolManagerAction {
   name: string;
   description: string;
@@ -18,6 +19,7 @@ export interface ToolManagerAction {
   instruction: string;
 }
 
+/** When to use: rendering one tool row (name, description, state, instructions). */
 export interface ToolManagerEntry {
   name: string;
   description: string;
@@ -28,11 +30,13 @@ export interface ToolManagerEntry {
   actions?: ToolManagerAction[];
 }
 
+/** When to use: reading the tools panel snapshot (order, disabled sets, instructions). */
 export interface ToolManagerState {
   tools: ToolManagerEntry[];
   settings: ToolSettings;
 }
 
+/** When to use: returning a tools-panel mutation result over IPC. */
 export interface ToolManagerResult {
   ok: boolean;
   state?: ToolManagerState;

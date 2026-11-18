@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { CloudflaredUpdateMode } from '../../../packages/cloudflared/src/index.ts';
 
+/** When to use: persisting or validating remote gateway settings (enabled, port, tunnel). */
 export interface RemoteSettings {
   schemaVersion: 1;
   cloudflaredUpdateMode: CloudflaredUpdateMode;
@@ -16,6 +17,7 @@ const DEFAULT_SETTINGS: RemoteSettings = {
   tunnelHostname: '',
 };
 
+/** When to use: reading the remote gateway settings file at startup. */
 export function loadRemoteSettings(file: string): RemoteSettings {
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as Partial<RemoteSettings>;
@@ -30,6 +32,7 @@ export function loadRemoteSettings(file: string): RemoteSettings {
   }
 }
 
+/** When to use: persisting a remote settings patch from IPC. */
 export function saveRemoteSettings(file: string, settings: RemoteSettings): void {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const temp = `${file}.${process.pid}.${Date.now()}.tmp`;

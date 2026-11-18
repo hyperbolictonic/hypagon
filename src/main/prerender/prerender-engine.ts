@@ -3,6 +3,7 @@ import { type HostBrowserProfile } from '../telemetry/host-fingerprint.js';
 import { RenderedSnapshotEngine } from '../snapshots/rendered-snapshot.js';
 import { CortexDB } from '../cortex/cortex-db.js';
 
+/** When to use: reading one prerendered page (URL, state, content, error). */
 export interface PrerenderItem {
   url: string;
   view: WebContentsView;
@@ -12,6 +13,7 @@ export interface PrerenderItem {
   harvested: boolean;
 }
 
+/** When to use: shaping a prerender batch (urls, selector, cap, harvest, idle wait). */
 export interface PrerenderOptions {
   urls?: string[];
   selector?: string;
@@ -20,6 +22,7 @@ export interface PrerenderOptions {
   waitUntilIdleMs?: number;
 }
 
+/** When to use: running `POST /prerender/links` against a tab with isolated views. */
 export class PrerenderEngine {
   private pool: Map<string, PrerenderItem> = new Map();
   private maxPoolSize = 3;

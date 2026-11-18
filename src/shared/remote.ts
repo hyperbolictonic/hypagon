@@ -1,3 +1,4 @@
+/** When to use: rendering or reading the bundled cloudflared state. */
 export interface RemoteCloudflaredStatus {
   available: boolean;
   managed: boolean;
@@ -10,6 +11,7 @@ export interface RemoteCloudflaredStatus {
   error?: string;
 }
 
+/** When to use: reporting the tunnel URL/state on the remote panel and health. */
 export interface RemoteTunnelStatus {
   enabled: boolean;
   running: boolean;
@@ -22,6 +24,7 @@ export interface RemoteTunnelStatus {
   error?: string;
 }
 
+/** When to use: showing the remote gateway aggregate status (enabled, tunnel, clients). */
 export interface RemoteStatus {
   enabled: boolean;
   running: boolean;
@@ -35,6 +38,7 @@ export interface RemoteStatus {
   error?: string;
 }
 
+/** When to use: returning remote connection details (URL, token, tunnel) to the deck. */
 export interface RemoteInfo {
   status: RemoteStatus;
   token: string;

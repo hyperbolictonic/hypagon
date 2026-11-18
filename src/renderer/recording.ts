@@ -11,6 +11,7 @@
  */
 import { ArrayBufferTarget, Muxer } from 'webm-muxer';
 
+/** When to use: passing the capture name/config from the deck to the recorder. */
 export interface BeginPayload {
   sourceId: string;
   filename: string;
@@ -36,10 +37,12 @@ let session: Session | null = null;
 
 const CODEC = 'vp09.00.10.08';
 
+/** When to use: enabling or disabling the deck recorder button. */
 export function isRecording(): boolean {
   return session !== null;
 }
 
+/** When to use: the human presses RECORD in the deck. */
 export async function beginRecording(payload: BeginPayload): Promise<void> {
   if (session) return;
 
@@ -134,6 +137,7 @@ export async function beginRecording(payload: BeginPayload): Promise<void> {
   window.electronAPI?.recordingReady?.();
 }
 
+/** When to use: the human presses STOP, or the window is closing. */
 export async function finishRecording(): Promise<void> {
   const active = session;
   if (!active) {
