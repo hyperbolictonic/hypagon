@@ -19,8 +19,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { dataPath } from '../data-paths.js';
 
+/** When to use: locating the persisted Shadow Walk settings file (tests, diagnostics). */
 export const SHADOW_WALK_SETTINGS_FILE = dataPath('shadow-walk.json');
 
+/** When to use: reading or patching the Shadow Walk levers (master switch plus per-surface toggles). */
 export interface ShadowWalkSettings {
   schemaVersion: 1;
   enabled: boolean;
@@ -54,6 +56,7 @@ export interface ShadowWalkSettings {
   cloneLab: { enabled: boolean };
 }
 
+/** When to use: a fresh profile, a corrupt settings file, or resetting to the shipped defaults. */
 export const DEFAULT_SHADOW_WALK_SETTINGS: ShadowWalkSettings = {
   schemaVersion: 1,
   enabled: true,

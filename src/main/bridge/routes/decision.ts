@@ -93,39 +93,25 @@ async function decide(ctx: BridgeContext): Promise<void> {
   if (screenshotNote || (result as any).imageNote) {
     (result as any).screenshot = (result as any).imageNote || screenshotNote;
   }
-  // A guarded call that did not accept any answer (`accepted:false` — confidence gate or every
-  // option eliminated) is exactly the case a person should answer. Note it arrives with
-  // ok:true, so this must be checked BEFORE the success branch.
-  if ((result as any).accepted === false) {
-    const optionNames: string[] = [];
-    for (const q of Object.values(body?.questions || {}) as any[]) {
-      const criteria = q?.criteria;
-      if (criteria && typeof criteria === 'object') optionNames.push(...Object.keys(criteria));
-    }
-    const options = [...new Set(optionNames)];
-    const hilId = chassis.requestHumanForDecision(
-      {
-        question: typeof body?.state === 'string' ? body.state.split('\n')[0].slice(0, 140) : undefined,
-        options,
-        reasons: (result as any).reasons,
-      },
-      chassis.getPageInfo().url,
-    );
-    ctx.json(
-      {
-        success: false,
-        error: 'human decision required — the guarded choice did not clear its threshold',
-        code: 'HUMAN_DECISION_REQUIRED',
-        human_required: true,
-        hil_id: hilId,
-        options,
-        reasons: (result as any).reasons,
-        hint: 'Do NOT guess or act. A human has been asked (the HIL banner is up). Wait for them to resolve it, then re-observe the page and continue.',
-        protocol: result.protocol,
-        latencyMs: result.latencyMs,
-      },
-      409,
-    );
+  // No answer cleared the guard. That is a verdict, not a transport failure: forward the
+  // guard's own classification (fallback "agent" for exhaustion/low confidence) and let the
+  // caller decide — ask a human itself when it wants one. Raising a deck banner for every
+  // low-confidence model answer is noisy, and a compliance gate is handled separately below
+  // (ok:false -> HUMAN_REQUIRED), where the automatic hand-off belongs.
+  if (result.ok && (result as any).accepted === false) {
+    ctx.json({
+      success: false,
+      code: 'NO_DECISION',
+      accepted: false,
+      fallback: (result as any).fallback ?? 'agent',
+      exhausted: (result as any).exhausted === true,
+      attempts: (result as any).attempts,
+      reasons: (result as any).reasons,
+      rejections: (result as any).rejections,
+      hint: 'No answer cleared the guard. If a person must answer this (compliance, credentials, payment), call request_human_intervention; otherwise re-observe and choose the next step yourself.',
+      protocol: result.protocol,
+      latencyMs: result.latencyMs,
+    });
     return;
   }
   if (result.ok) {
