@@ -414,6 +414,16 @@ export function initResearchPanel(): void {
         break;
       }
 
+      case 'activity': {
+        if (!startedAt) startedAt = event.at;
+        if (!isOpen) setDot(event.status === 'start' ? 'bg-accent animate-pulse' : 'bg-success');
+        log(
+          `${event.tool} ${event.status}${event.status === 'done' ? ` - ${event.ms ?? 0}ms` : ''} - ${event.summary}`,
+          event.ok === false ? 'text-error' : 'text-base-content/60',
+        );
+        break;
+      }
+
       case 'run-done':
         stopTicker();
         if (statusEl) statusEl.textContent = 'done';

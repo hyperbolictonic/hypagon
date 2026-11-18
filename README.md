@@ -10,7 +10,7 @@
 > — **Dade Murphy (AKA Crash Override)**, Circa 1995
 
 <p align="center">
-  <img alt="version" src="https://img.shields.io/badge/version-2.3.2-22d3ee" />
+  <img alt="version" src="https://img.shields.io/badge/version-2.3.3-22d3ee" />
   <img alt="tools" src="https://img.shields.io/badge/MCP%20tools-16%20%2B2%20optional-a3e635" />
   <img alt="resources" src="https://img.shields.io/badge/MCP%20resources-7-f472b6" />
   <img alt="license" src="https://img.shields.io/badge/license-MIT-blue" />
@@ -863,11 +863,10 @@ Type-check and bundles: `npx tsc --noEmit`, `npm run build`, `npm run build:mcp`
 ## 📦 Release notes
 
 > [!NOTE]
-> **What's new in 2.3.2** - **Explicit human takeover; synthetic input stays with the agent.**
-> Page clicks, keys and scrolling no longer pause the agent by timing inference — a late CDP event
-> on a heavy page used to make the gateway pause itself. Control is now explicit: click **TAKE OVER**
-> (or press `Ctrl+Shift+H`) to pause the agent and take the wheel; **RESUME** hands it back.
-> HIL remains a separate request-to-human flow.
+> **What's new in 2.3.3** - **Every bot research run is visible.**
+> The RESEARCH tab now mirrors `deep_crawl` page by page and appends `search_web`, `llm_fetch`
+> and `read_url` activity to its terminal. Previously only `research_topic` opened the workspace,
+> so an agent using the other research tools looked idle.
 > Earlier releases are in [CHANGELOG.md](./CHANGELOG.md).
 
 ---

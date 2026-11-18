@@ -45,6 +45,8 @@ export interface CrawlOptions {
   onHuman?: (info: HumanAssistInfo) => void;
   /** When set, anchor matching text blocks to fingerprints for this query. */
   anchorsFor?: string;
+  /** Called as each page finishes, so a caller can stream progress to the UI. */
+  onPage?: (page: CrawlPage) => void;
 }
 
 export interface CrawlPage {
@@ -234,6 +236,11 @@ export class Crawler {
         depthReached = Math.max(depthReached, result.page.depth);
         if (result.indexed) cortexIndexed++;
         notes.push(...result.notes);
+        try {
+          opts.onPage?.(result.page);
+        } catch {
+          // UI progress must never fail the crawl.
+        }
 
         if (result.page.depth >= maxDepth) continue;
         for (const link of result.links) {

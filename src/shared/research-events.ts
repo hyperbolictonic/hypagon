@@ -80,4 +80,14 @@ export type ResearchEvent =
       notes: string[];
       at: number;
     }
+  | {
+      type: 'activity';
+      runId: string;
+      tool: 'search_web' | 'llm_fetch' | 'read_url';
+      status: 'start' | 'done';
+      summary: string;
+      ok?: boolean;
+      ms?: number;
+      at: number;
+    }
   | { type: 'run-error'; runId: string; message: string; at: number };

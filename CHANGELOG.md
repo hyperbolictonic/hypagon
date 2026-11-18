@@ -35,6 +35,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the deck's `FIT` is now only the device reset. The Viewport row also has an explicit
   **Off — full browser area** option and the reset button reads `OFF` while a device is active.
 
+## [2.3.3] - 2026-11-18
+
+### Fixed
+
+- **Agent-initiated research is visible in the RESEARCH tab.** `research_topic` already streamed
+  events, but `deep_crawl` did not, and `search_web` / `llm_fetch` / `read_url` left no trace.
+  `deep_crawl` now opens the workspace and fills the source table page by page; the other research
+  calls append `activity` lines to the terminal (and pulse the launcher dot) without stealing the
+  page.
+
 ## [2.3.2] - 2026-11-17
 
 ### Fixed

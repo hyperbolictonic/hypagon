@@ -11,7 +11,7 @@ bypass.
 | **Enable stealth** | Applies the research defaults below; when off, the existing tool arguments are left alone. |
 | **Engine chain** | Default provider order. The shipped stealth order is DuckDuckGo → Brave → Google. A custom template is tried first when configured. |
 | **Custom template** | A SearXNG/self-hosted URL containing `{query}`. |
-| **Research proxy** | Applied only to the isolated `persist:kuang-research` session; normal browsing tabs keep the default session and direct route. |
+| **Research proxy** | Applied only to the isolated `persist:hypagon-research` session; normal browsing tabs keep the default session and direct route. |
 | **Domain cooldown** | After a WAF/challenge page or HTTP 403/429, the host is skipped for this many seconds. |
 | **Politeness delay** | Minimum gap between crawled pages and research sources. |
 | **Crawl concurrency** | Parallel page fetches inside `deep_crawl` (1–4). `1` is sequential and safest; higher values raise WAF risk. |
@@ -21,7 +21,7 @@ bypass.
 
 ## Isolation
 
-Research renderers use `persist:kuang-research`, not the normal tab session.
+Research renderers use `persist:hypagon-research`, not the normal tab session.
 That means research cookies, cache, and `aws-waf-token` values do not mix with
 the visible browser tabs. The session is persistent so consent/challenge state
 can survive between calls; **Reset research cookies** clears it.
@@ -40,6 +40,20 @@ isolation.
   host as cooling and skips the page.
 - The crawler calls the cooldown gate before the cheap Markdown path too, so a
   cooled host is never contacted by `prefer_llm`.
+
+## Live workspace
+
+The **RESEARCH** tab in the tab bar is a live mirror of the acquisition pipeline, not only a
+launcher for UI-started runs:
+
+- `research_topic` streams the run lifecycle, per-source tiers, bytes/timing, anchors and the
+  terminal as each source completes.
+- `deep_crawl` now emits the same run/source events, so its source table fills page by page.
+- `search_web`, `llm_fetch` and `read_url` append `activity` lines to the terminal (and pulse the
+  launcher dot) without hijacking the page. Open the tab to inspect a bot's research trail.
+
+Events are broadcast to both the HUD and the deck renderer, so an agent-initiated run opens the
+workspace exactly as a UI-started run does.
 
 ## Limits
 

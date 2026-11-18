@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { BrowserWindow, app, nativeImage, ipcMain, clipboard, powerMonitor, screen, session, WebContentsView, type Session, type WebContents } from 'electron';
 import type { AgentStatus, ChassisState, HarvestedConstruct, TelemetryEvent, TabSummary } from '../shared/types.js';
@@ -3451,7 +3452,36 @@ export class BrowserChassis {
 
   public async fetchLlmSurface(opts: { url?: string; as?: LlmSurfaceKind } = {}): Promise<LlmFetchResult> {
     this.addLog('action', `MCP Directive: llm_fetch(${opts.url || 'active tab'}, as=${opts.as || 'auto'})`);
-    return await this.llmSurface.fetch(opts);
+    const runId = randomUUID();
+    const startedAt = Date.now();
+    const summary = opts.url || 'active tab';
+    this.broadcast('research:event', { type: 'activity', runId, tool: 'llm_fetch', status: 'start', summary, at: startedAt });
+    try {
+      const result = await this.llmSurface.fetch(opts);
+      this.broadcast('research:event', {
+        type: 'activity',
+        runId,
+        tool: 'llm_fetch',
+        status: 'done',
+        summary,
+        ok: true,
+        ms: Date.now() - startedAt,
+        at: Date.now(),
+      });
+      return result;
+    } catch (error: any) {
+      this.broadcast('research:event', {
+        type: 'activity',
+        runId,
+        tool: 'llm_fetch',
+        status: 'done',
+        summary,
+        ok: false,
+        ms: Date.now() - startedAt,
+        at: Date.now(),
+      });
+      throw error;
+    }
   }
 
   /**
@@ -3465,7 +3495,36 @@ export class BrowserChassis {
       'action',
       `MCP Directive: read_url(${opts.url || 'active tab'}${opts.maxChars ? `, max_chars=${opts.maxChars}` : ''}${opts.cursor ? `, cursor=${opts.cursor}` : ''})`,
     );
-    return await this.llmSurface.readUrl(opts);
+    const runId = randomUUID();
+    const startedAt = Date.now();
+    const summary = opts.url || 'active tab';
+    this.broadcast('research:event', { type: 'activity', runId, tool: 'read_url', status: 'start', summary, at: startedAt });
+    try {
+      const result = await this.llmSurface.readUrl(opts);
+      this.broadcast('research:event', {
+        type: 'activity',
+        runId,
+        tool: 'read_url',
+        status: 'done',
+        summary,
+        ok: true,
+        ms: Date.now() - startedAt,
+        at: Date.now(),
+      });
+      return result;
+    } catch (error: any) {
+      this.broadcast('research:event', {
+        type: 'activity',
+        runId,
+        tool: 'read_url',
+        status: 'done',
+        summary,
+        ok: false,
+        ms: Date.now() - startedAt,
+        at: Date.now(),
+      });
+      throw error;
+    }
   }
 
   /**
@@ -3663,13 +3722,40 @@ export class BrowserChassis {
       'action',
       `MCP Directive: search_web("${query}", engine=${effective.engine || (effective.engines ? effective.engines.join('>') : 'auto')}${this.researchSettings.enabled ? ', stealth' : ''})`,
     );
-    const outcome = await this.searchHub.search(query, effective);
-    if (this.researchSettings.enabled && outcome.blocked) {
-      for (const attempt of outcome.attempts) {
-        if (attempt.blocked) this.markResearchCooldown(this.engineHost(attempt.engine), 'bot-check/consent');
+    const runId = randomUUID();
+    const startedAt = Date.now();
+    this.broadcast('research:event', { type: 'activity', runId, tool: 'search_web', status: 'start', summary: query, at: startedAt });
+    try {
+      const outcome = await this.searchHub.search(query, effective);
+      if (this.researchSettings.enabled && outcome.blocked) {
+        for (const attempt of outcome.attempts) {
+          if (attempt.blocked) this.markResearchCooldown(this.engineHost(attempt.engine), 'bot-check/consent');
+        }
       }
+      this.broadcast('research:event', {
+        type: 'activity',
+        runId,
+        tool: 'search_web',
+        status: 'done',
+        summary: `${outcome.results?.length ?? 0} result(s)${outcome.engine ? ` via ${outcome.engine}` : ''}${outcome.blocked ? ' (provider blocked)' : ''}`,
+        ok: true,
+        ms: Date.now() - startedAt,
+        at: Date.now(),
+      });
+      return outcome;
+    } catch (error: any) {
+      this.broadcast('research:event', {
+        type: 'activity',
+        runId,
+        tool: 'search_web',
+        status: 'done',
+        summary: query,
+        ok: false,
+        ms: Date.now() - startedAt,
+        at: Date.now(),
+      });
+      throw error;
     }
-    return outcome;
   }
 
   /** Bounds of the browser viewport as actually laid out in the HUD (zoom-aware). */
@@ -4206,7 +4292,101 @@ export class BrowserChassis {
       'action',
       `MCP Directive: deep_crawl(${effective.startUrl}, depth=${effective.maxDepth ?? 2}, pages=${effective.maxPages ?? 5}, concurrency=${effective.concurrency ?? 1}${this.researchSettings.enabled ? ', stealth' : ''})`,
     );
-    return await this.crawler.crawl(effective);
+
+    // Mirror the crawl into the research workspace, which otherwise only sees `research_topic`.
+    // The panel opens on run-start and fills its source table as each page finishes.
+    const runId = randomUUID();
+    const startedAt = Date.now();
+    const maxPages = effective.maxPages ?? 5;
+    const tiers: Record<'llm' | 'static' | 'render', number> = { llm: 0, static: 0, render: 0 };
+    let sources = 0;
+    let indexed = 0;
+    let bytes = 0;
+    let humans = 0;
+    let anchors = 0;
+    let escalations = 0;
+    let rank = 0;
+
+    this.broadcast('research:event', {
+      type: 'run-start',
+      runId,
+      query: `Crawl ${effective.startUrl}`,
+      maxSources: maxPages,
+      at: startedAt,
+    });
+
+    try {
+      const outcome = await this.crawler.crawl({
+        ...effective,
+        onPage: (page) => {
+          rank += 1;
+          sources += 1;
+          bytes += page.bytes;
+          tiers[page.via] += 1;
+          if (page.indexed) indexed += 1;
+          if (page.humanAssisted) humans += 1;
+          if (page.anchors?.length) anchors += page.anchors.length;
+          if (page.escalation) escalations += 1;
+
+          const title = page.title || page.url;
+          this.broadcast('research:event', {
+            type: 'source-start',
+            runId,
+            rank,
+            url: page.url,
+            title,
+            at: Date.now(),
+          });
+          this.broadcast('research:event', {
+            type: 'source-done',
+            runId,
+            rank,
+            url: page.url,
+            title,
+            via: page.via,
+            bytes: page.bytes,
+            ms: page.ms ?? 0,
+            highlights: 0,
+            indexed: page.indexed,
+            humanAssisted: page.humanAssisted,
+            humanMs: page.humanMs,
+            anchors: page.anchors?.length ?? 0,
+            anchorDetails: (page.anchors ?? []).map((anchor) => ({
+              text: anchor.text,
+              path: anchor.path,
+              fingerprint: anchor.fingerprint as unknown as Record<string, unknown>,
+            })),
+            escalation: page.escalation,
+            error: page.error,
+            at: Date.now(),
+          });
+        },
+      });
+
+      this.broadcast('research:event', {
+        type: 'run-done',
+        runId,
+        sources,
+        indexed,
+        bytes,
+        tiers,
+        humans,
+        anchors,
+        elapsedMs: Date.now() - startedAt,
+        escalations,
+        notes: [...outcome.notes],
+        at: Date.now(),
+      });
+      return outcome;
+    } catch (error: any) {
+      this.broadcast('research:event', {
+        type: 'run-error',
+        runId,
+        message: error?.message || String(error),
+        at: Date.now(),
+      });
+      throw error;
+    }
   }
 
   /** search → gather top sources → distill → index; returns cited extractive evidence (Feature 3). */
