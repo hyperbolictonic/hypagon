@@ -34,140 +34,16 @@
  *
  * Env names: KUANG_DECISION_PROTOCOL | _URL | _MODEL | _KEY | _DEVICE | _TIMEOUT_MS.
  */
-import fs from 'node:fs';
-import path from 'node:path';
 import { detectSensitiveGate } from './sensitive-gate.js';
-import { dataPath } from '../data-paths.js';
+import { decisionStatus, resolveDecisionConfig } from './decision-config.js';
+import { emitDecisionEvent } from './decision-events.js';
+import type { DecisionCall, DecisionConfig, DecisionFailureCode, DecisionEvent, DecisionResult } from './decision-types.js';
 
-/** When to use: branching on how the configured backend speaks (typesafe or local ONNX). */
-export type DecisionProtocol = 'typesafe' | 'local-onnx';
-
-/** When to use: reading or writing the stored decision backend configuration. */
-export interface DecisionConfig {
-  protocol: DecisionProtocol;
-  url?: string;
-  model: string;
-  key?: string;
-  revision?: string;
-  device?: string;
-  timeoutMs: number;
-}
-
-/** When to use: sending one decide call (state, typed questions, model, assets). */
-export interface DecisionCall {
-  state: unknown;
-  questions: Record<string, unknown>;
-  /** Optional per-call overrides (e.g. a different model), never credentials. */
-  model?: string;
-  /** URL of the page the state came from — lets the gate rule ignore app-internal pages. */
-  pageUrl?: string;
-  /** Image assets referenced from the state (TypeSafe format: {ref: {type, format, data_base64}}). */
-  assets?: Record<string, unknown>;
-}
-
-/** When to use: mapping a decision failure onto a bridge status or hint. */
-export type DecisionFailureCode = 'NOT_CONFIGURED' | 'BAD_REQUEST' | 'UPSTREAM_ERROR' | 'TIMEOUT' | 'NO_DECISION' | 'HUMAN_REQUIRED';
-
-/** When to use: reading a decision answer, its protocol/latency, or the failure. */
-export interface DecisionResult {
-  ok: boolean;
-  protocol?: DecisionProtocol;
-  model?: string;
-  answers?: Record<string, unknown>;
-  latencyMs?: number;
-  usage?: unknown;
-  /** Set when a sensitive gate (age verification, CAPTCHA) stopped the call before the model. */
-  gate?: 'age_verification' | 'captcha';
-  /** Note about an image that could not be sent (endpoint rejected / not multimodal). */
-  imageNote?: string;
-  error?: { code: DecisionFailureCode; message: string; hint?: string; status?: number };
-}
-
-const CONFIG_FILE = dataPath('decision.json');
-
-function readConfigFile(): Partial<DecisionConfig> | null {
-  try {
-    if (!fs.existsSync(CONFIG_FILE)) return null;
-    const parsed = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-    return parsed && typeof parsed === 'object' ? parsed : null;
-  } catch {
-    // A malformed config is treated as absent (and reported through NOT_CONFIGURED).
-    return null;
-  }
-}
-
-/** Resolve configuration (env overrides file). Returns null when nothing is configured. */
-export function resolveDecisionConfig(): DecisionConfig | null {
-  const file = readConfigFile() || {};
-  const rawProtocol = (process.env.KUANG_DECISION_PROTOCOL || file.protocol || '').toLowerCase();
-  // `d1-onnx` was the first name for the local path; d1-3B cannot be loaded by open-jev, so the
-  // local family is honestly named for what it runs (kev / open-jev ONNX) and the old name is
-  // accepted as an alias so existing config files keep working.
-  const protocol = (rawProtocol === 'd1-onnx' ? 'local-onnx' : rawProtocol) as DecisionProtocol | '';
-  if (protocol !== 'typesafe' && protocol !== 'local-onnx') return null;
-
-  const url = process.env.KUANG_DECISION_URL || file.url || undefined;
-  // typesafe needs an endpoint; the local model runs in-process and needs none.
-  if (protocol === 'typesafe' && !url) return null;
-
-  return {
-    protocol,
-    url,
-    model: process.env.KUANG_DECISION_MODEL || file.model || (protocol === 'typesafe' ? 'jev-1.13' : 'kev-0.6b'),
-    key: process.env.KUANG_DECISION_KEY || file.key || undefined,
-    revision: process.env.KUANG_DECISION_REVISION || file.revision || undefined,
-    device: process.env.KUANG_DECISION_DEVICE || file.device || undefined,
-    timeoutMs: Number(process.env.KUANG_DECISION_TIMEOUT_MS || file.timeoutMs || 30000),
-  };
-}
-
-/** Raw configuration as stored on disk (file values only — env is read at resolve time). */
-export function readStoredDecisionConfig(): Partial<DecisionConfig> {
-  return readConfigFile() || {};
-}
-
-/**
- * Persist (or clear) `data/decision.json`. Returns the resolved status so the caller can show
- * exactly what the app will use, including the effect of environment overrides.
- */
-export function saveDecisionConfig(input: Partial<DecisionConfig> | null): { ok: boolean; status: ReturnType<typeof decisionStatus> } {
-  try {
-    fs.mkdirSync(path.dirname(CONFIG_FILE), { recursive: true });
-    if (!input || !input.protocol) {
-      fs.rmSync(CONFIG_FILE, { force: true });
-      return { ok: true, status: decisionStatus() };
-    }
-    const clean: Record<string, unknown> = { protocol: input.protocol };
-    for (const key of ['url', 'model', 'key', 'revision', 'device'] as const) {
-      const value = input[key];
-      if (typeof value === 'string' && value.trim()) clean[key] = value.trim();
-    }
-    if (typeof input.timeoutMs === 'number' && input.timeoutMs > 0) clean.timeoutMs = input.timeoutMs;
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(clean, null, 2) + '\n', 'utf8');
-    return { ok: true, status: decisionStatus() };
-  } catch (err: any) {
-    return { ok: false, status: decisionStatus() };
-  }
-}
-
-/** Shape reported by `/health` and `help`, so an agent can tell whether `decide` will work. */
-export function decisionStatus(): {
-  configured: boolean;
-  protocol?: DecisionProtocol;
-  model?: string;
-  endpoint?: string;
-  local?: boolean;
-} {
-  const cfg = resolveDecisionConfig();
-  if (!cfg) return { configured: false };
-  return {
-    configured: true,
-    protocol: cfg.protocol,
-    model: cfg.model,
-    endpoint: cfg.protocol === 'typesafe' ? cfg.url : 'in-process',
-    local: cfg.protocol === 'local-onnx',
-  };
-}
+// Existing callers import configuration and the event bus from this module; keep that
+// surface stable while the implementations live in their own files.
+export { decisionStatus, readStoredDecisionConfig, resolveDecisionConfig, saveDecisionConfig } from './decision-config.js';
+export { emitDecisionEvent, onDecision } from './decision-events.js';
+export type { DecisionCall, DecisionConfig, DecisionEvent, DecisionFailureCode, DecisionProtocol, DecisionResult } from './decision-types.js';
 
 function systemOneUrl(base: string): string {
   const trimmed = base.replace(/\/+$/, '');
@@ -312,38 +188,6 @@ async function runLocalOnnx(cfg: DecisionConfig, call: DecisionCall): Promise<De
       latencyMs: Date.now() - started,
       error: { code: 'UPSTREAM_ERROR', message: `Local decision model failed: ${err?.message || err}` },
     };
-  }
-}
-
-/** One completed decision call, for the HUD's DECISIONS tab. Never contains the API key. */
-export interface DecisionEvent {
-  ts: number;
-  protocol?: DecisionProtocol;
-  model?: string;
-  latencyMs?: number;
-  ok: boolean;
-  error?: { code?: DecisionFailureCode; message?: string };
-  statePreview: string;
-  questions: Array<{ id: string; type?: string; instruction?: string }>;
-  answers?: Record<string, unknown>;
-}
-
-const listeners = new Set<(event: DecisionEvent) => void>();
-
-/** Subscribe to completed decision calls (the HUD mirrors this; it never gates the call). */
-export function onDecision(listener: (event: DecisionEvent) => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-/** When to use: publishing a decision outcome to the HUD timeline. */
-export function emitDecisionEvent(event: DecisionEvent): void {
-  for (const listener of listeners) {
-    try {
-      listener(event);
-    } catch {
-      // A UI listener must never break a decision.
-    }
   }
 }
 

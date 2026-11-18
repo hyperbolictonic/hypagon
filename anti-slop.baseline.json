@@ -61,9 +61,6 @@
       "main/crawl/crawler.ts": {
         "file": 1
       },
-      "main/decide/decision-client.ts": {
-        "file": 1
-      },
       "main/drive/driver.ts": {
         "file": 1
       },
@@ -174,9 +171,6 @@
       "renderer/research-panel.ts": {
         "file": 1,
         "function": 1
-      },
-      "renderer/tools-panel.ts": {
-        "file": 1
       }
     }
   }
