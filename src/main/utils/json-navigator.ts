@@ -20,6 +20,8 @@ export interface JsonQueryResult {
   data: any;
 }
 
+import { evaluateJsonFilter, resolveJsonPath } from './json-navigator-path.js';
+
 /** When to use: querying and filtering captured JSON payloads. */
 export class JsonNavigator {
   /**
@@ -39,7 +41,7 @@ export class JsonNavigator {
 
     // 1b. Apply filter predicate parameter if provided
     if (options.filterPredicate && Array.isArray(current)) {
-      current = this.evaluateFilter(current, options.filterPredicate);
+      current = evaluateJsonFilter(current, options.filterPredicate);
     }
 
     // 2. Apply requested view
@@ -152,169 +154,7 @@ export class JsonNavigator {
    * Resolves dot-notation, array indexing, slicing, wildcards, and simple predicates.
    */
   public static resolvePath(root: any, pathStr: string): any {
-    if (root === undefined || root === null) return undefined;
-
-    // Normalize path by stripping leading $. or $
-    const normalized = pathStr.replace(/^\$\.?/, '');
-    if (!normalized) return root;
-
-    // Tokenize into path segments
-    // Matches: property names, [0], [0..4], [*], [?key=val], [?key>val], [?key<val]
-    const tokens = this.tokenizePath(normalized);
-    let curr = root;
-
-    for (let i = 0; i < tokens.length; i++) {
-      if (curr === undefined || curr === null) return undefined;
-      const token = tokens[i];
-
-      // Array index / slice / filter
-      if (token.startsWith('[') && token.endsWith(']')) {
-        const inner = token.slice(1, -1).trim();
-
-        // 1. Wildcard: [*]
-        if (inner === '*') {
-          if (!Array.isArray(curr)) return undefined;
-          const remainingTokens = tokens.slice(i + 1);
-          if (remainingTokens.length === 0) return curr;
-          const subPath = remainingTokens.join('.');
-          return curr.map(item => this.resolvePath(item, subPath)).filter(x => x !== undefined);
-        }
-
-        // 2. Slice range: [start..end]
-        if (inner.includes('..')) {
-          if (!Array.isArray(curr)) return undefined;
-          const [startStr, endStr] = inner.split('..');
-          const start = startStr ? parseInt(startStr, 10) : 0;
-          const end = endStr ? parseInt(endStr, 10) : curr.length;
-          const sliced = curr.slice(start, end);
-          const remainingTokens = tokens.slice(i + 1);
-          if (remainingTokens.length > 0) {
-            const subPath = remainingTokens.join('.');
-            return sliced.map(item => this.resolvePath(item, subPath)).filter(x => x !== undefined);
-          }
-          curr = sliced;
-          continue;
-        }
-
-        // 3. Simple filter: [?key == val], [?key = val], [?key < val], [?key > val], [?key]
-        if (inner.startsWith('?')) {
-          if (!Array.isArray(curr)) return undefined;
-          const expr = inner.slice(1).trim();
-          const filtered = this.evaluateFilter(curr, expr);
-          const remainingTokens = tokens.slice(i + 1);
-          if (remainingTokens.length > 0) {
-            const subPath = remainingTokens.join('.');
-            return filtered.map(item => this.resolvePath(item, subPath)).filter(x => x !== undefined);
-          }
-          curr = filtered;
-          continue;
-        }
-
-        // 4. Numeric index: [3]
-        const num = parseInt(inner, 10);
-        if (!isNaN(num)) {
-          curr = Array.isArray(curr) ? curr[num] : undefined;
-          continue;
-        }
-
-        // 5. Quoted key: ['foo'] or ["foo"]
-        const unquoted = inner.replace(/^['"]|['"]$/g, '');
-        curr = curr[unquoted];
-        continue;
-      }
-
-      // Wildcard object key: *
-      if (token === '*') {
-        if (typeof curr !== 'object' || Array.isArray(curr)) return undefined;
-        const remainingTokens = tokens.slice(i + 1);
-        if (remainingTokens.length === 0) return Object.values(curr);
-        const subPath = remainingTokens.join('.');
-        return Object.values(curr).map(val => this.resolvePath(val, subPath)).filter(x => x !== undefined);
-      }
-
-      // Normal property lookup
-      curr = curr[token];
-    }
-
-    return curr;
-  }
-
-  /**
-   * Tokenizes a path string into dot and bracket tokens.
-   */
-  private static tokenizePath(pathStr: string): string[] {
-    const tokens: string[] = [];
-    let current = '';
-    let inBracket = false;
-
-    for (let i = 0; i < pathStr.length; i++) {
-      const char = pathStr[i];
-
-      if (char === '[' && !inBracket) {
-        if (current.trim()) {
-          tokens.push(current.trim());
-          current = '';
-        }
-        inBracket = true;
-        current += char;
-      } else if (char === ']' && inBracket) {
-        current += char;
-        tokens.push(current.trim());
-        current = '';
-        inBracket = false;
-      } else if (char === '.' && !inBracket) {
-        if (current.trim()) {
-          tokens.push(current.trim());
-          current = '';
-        }
-      } else {
-        current += char;
-      }
-    }
-
-    if (current.trim()) {
-      tokens.push(current.trim());
-    }
-
-    return tokens;
-  }
-
-  /**
-   * Simple predicate evaluator for array filtering.
-   */
-  private static evaluateFilter(arr: any[], expr: string): any[] {
-    // Matches: key < 300, key > 100, key == 'London', key = true, key != false, or truthy key
-    const match = expr.match(/^([a-zA-Z0-9_.$]+)\s*(===|==|=|!=|<=|>=|<|>)\s*(.+)$/);
-    if (!match) {
-      // Truthy check: [?isAvailable]
-      const key = expr.trim();
-      return arr.filter(item => Boolean(this.resolvePath(item, key)));
-    }
-
-    const [, key, op, rawVal] = match;
-    let targetVal: any = rawVal.trim();
-
-    // Parse primitive values
-    if (targetVal === 'true') targetVal = true;
-    else if (targetVal === 'false') targetVal = false;
-    else if (targetVal === 'null') targetVal = null;
-    else if (/^-?\d+(\.\d+)?$/.test(targetVal)) targetVal = parseFloat(targetVal);
-    else targetVal = targetVal.replace(/^['"]|['"]$/g, '');
-
-    return arr.filter(item => {
-      const actual = this.resolvePath(item, key);
-      switch (op) {
-        case '=':
-        case '==':
-        case '===': return actual == targetVal;
-        case '!=': return actual != targetVal;
-        case '<': return actual < targetVal;
-        case '<=': return actual <= targetVal;
-        case '>': return actual > targetVal;
-        case '>=': return actual >= targetVal;
-        default: return false;
-      }
-    });
+    return resolveJsonPath(root, pathStr);
   }
 
   /**

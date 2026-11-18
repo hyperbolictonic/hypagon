@@ -110,9 +110,6 @@
       "main/telemetry/input-simulator.ts": {
         "file": 1
       },
-      "main/utils/json-navigator.ts": {
-        "file": 1
-      },
       "main/wrap/anyapi/executor.ts": {
         "file": 1
       },
