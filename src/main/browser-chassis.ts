@@ -17,6 +17,7 @@ import {
 import { HumanizedInputSimulator } from './telemetry/input-simulator.js';
 import { loadInputProfile, saveInputProfile, type InputProfile } from './telemetry/input-profile.js';
 import { HumanActivityMonitor, humanListenerScript, type HumanActivity } from './input/human-activity.js';
+import { HumanControl } from './input/human-control.js';
 import { classifyNavigationFailure } from './navigation-error.js';
 import {
   COLLABORATION_CLASS_PREFIX,
@@ -187,8 +188,11 @@ export class BrowserChassis {
   /** Human takeover is explicit: page input alone never pauses the agent. */
   private humanMonitor = new HumanActivityMonitor();
   /** True while a person has explicitly taken control from the HUD. */
-  private humanControl = false;
-  private humanControlSince = 0;
+  private humanControl = new HumanControl({
+    lastHuman: () => this.humanMonitor.getLastHuman(),
+    onTakeOver: () => this.onHumanTakeOver(),
+    onResume: (wasActive) => this.onHumanResume(wasActive),
+  });
   /** Throttle for the "human input detected while the bot has control" log line. */
   private lastHumanNoticeAt = 0;
   private hudShortcutBound = false;
@@ -2127,21 +2131,25 @@ export class BrowserChassis {
    * asks for control from the HUD (or `POST /human/takeover`); until then the bot owns input.
    */
   public isHumanActive(): boolean {
-    return this.humanControl;
+    return this.humanControl.isActive();
   }
 
   public getHumanStatus(): { active: boolean; activeForMs: number; last: HumanActivity | null } {
-    return {
-      active: this.humanControl,
-      activeForMs: this.humanControl ? Date.now() - this.humanControlSince : 0,
-      last: this.humanMonitor.getLastHuman(),
-    };
+    return this.humanControl.getStatus();
   }
 
   /** Give a person the wheel until they explicitly resume the agent. */
   public takeOverHuman(): { control: 'human' } {
-    this.humanControl = true;
-    this.humanControlSince = Date.now();
+    return this.humanControl.takeOver();
+  }
+
+  /** Ctrl+Shift+Space: take control, or hand it back if already human. */
+  public toggleHumanControl(): { control: 'bot' | 'human' } {
+    return this.humanControl.toggle();
+  }
+
+  /** Reflect a takeover in state, logs, the HUD and window focus. */
+  private onHumanTakeOver(): void {
     this.state.agentStatus = 'HUMAN_INPUT';
     this.state.activeAction = 'Human control — agent paused';
     this.broadcastState();
@@ -2153,17 +2161,6 @@ export class BrowserChassis {
     } catch {
       /* window/tab closing */
     }
-    return { control: 'human' };
-  }
-
-  /** Ctrl+Shift+Space: take control, or hand it back if already human. */
-  public toggleHumanControl(): { control: 'bot' | 'human' } {
-    if (this.humanControl) {
-      this.resumeHuman();
-      return { control: 'bot' };
-    }
-    this.takeOverHuman();
-    return { control: 'human' };
   }
 
   public setOnCollaborationNote(
@@ -2199,16 +2196,17 @@ export class BrowserChassis {
 
   /** Hand control back to the agent. */
   public resumeHuman(): { resumed: boolean } {
-    const wasHuman = this.humanControl;
-    this.humanControl = false;
-    this.humanControlSince = 0;
+    return this.humanControl.resume();
+  }
+
+  /** Clear the paused state and log the hand-back when a person resumes the agent. */
+  private onHumanResume(wasHuman: boolean): void {
     if (this.state.agentStatus === 'HUMAN_INPUT') {
       this.state.agentStatus = 'IDLE';
       this.state.activeAction = 'Human handed back control';
       this.broadcastState();
     }
     if (wasHuman) this.addLog('info', 'Human handed control back — agent may act again.');
-    return { resumed: true };
   }
 
   /**
