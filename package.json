@@ -56,6 +56,7 @@
     "drive": "node scripts/drive-example.mjs",
     "bench:decision": "node scripts/bench-decision-model.mjs",
     "test:primitives": "node scripts/test-primitives.mjs",
+    "test:forms": "node scripts/test-forms.mjs",
     "test:mcp:primitives": "node scripts/test-mcp-primitives.mjs",
     "test:mcp:contract": "node scripts/test-mcp-contract.mjs",
     "test:mcp:surface": "node scripts/test-mcp-surface.mjs",

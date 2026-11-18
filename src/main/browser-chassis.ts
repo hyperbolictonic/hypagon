@@ -2574,7 +2574,7 @@ export class BrowserChassis {
             return {
               tagName: el.tagName.toUpperCase(),
               type: (el.getAttribute('type') || '').toLowerCase(),
-              currentVal: (el as any).value,
+              currentVal: el.value,
               x: Math.round(rect.left + rect.width / 2),
               y: Math.round(rect.top + rect.height / 2),
             };
@@ -2592,10 +2592,10 @@ export class BrowserChassis {
           await wc.executeJavaScript(`
             (() => {
               const el = document.querySelector(${JSON.stringify(selector)});
-              if (el && typeof (el as any).checked === 'boolean') {
+              if (el && typeof el.checked === 'boolean') {
                 const target = ${JSON.stringify(Boolean(value))};
-                if ((el as any).checked !== target) {
-                  (el as any).click();
+                if (el.checked !== target) {
+                  el.click();
                   el.dispatchEvent(new Event('change', { bubbles: true }));
                 }
               }
@@ -2607,7 +2607,7 @@ export class BrowserChassis {
             (() => {
               const el = document.querySelector(${JSON.stringify(selector)});
               if (el) {
-                (el as any).value = ${JSON.stringify(String(value))};
+                el.value = ${JSON.stringify(String(value))};
                 el.dispatchEvent(new Event('input', { bubbles: true }));
                 el.dispatchEvent(new Event('change', { bubbles: true }));
               }
@@ -2619,8 +2619,8 @@ export class BrowserChassis {
             (() => {
               const el = document.querySelector(${JSON.stringify(selector)});
               if (el) {
-                if (typeof (el as any).focus === 'function') (el as any).focus();
-                (el as any).value = '';
+                if (typeof el.focus === 'function') el.focus();
+                el.value = '';
                 el.dispatchEvent(new Event('input', { bubbles: true }));
               }
             })()

@@ -337,6 +337,7 @@ Rules for this workflow:
 | `npm run test:mcp:contract` | Static check: every catalog tool maps to a bridge route |
 | `npm run test:mcp:surface` | Live check: advertised tools, hidden aliases, deprecations |
 | `npm run test:primitives` | Offline primitives (needs a running app) |
+| `npm run test:forms` | `fill_form` regression (needs a running app) |
 | `npm run test:act` / `test:harvest` / `test:markdown` | Live browser behaviour |
 | `npm run test:decide` | Decision client, guard and gate tests |
 | `npm run test:focus` | Focus independence (foreground another app) |
