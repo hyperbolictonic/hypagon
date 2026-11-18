@@ -50,3 +50,5 @@ push and pull request. Do not weaken the patterns to make a file pass; replace t
 - After moving shared logic or extracting components: load `abstraction-review`.
 - Before marking any coding task complete: run the `verify-clean-code` checklist and
   `npm run anti-slop:check`.
+- The git hooks live in `.git/hooks` (not versioned); after a fresh clone run
+  `node scripts/anti-slop/install-hooks.mjs`.
