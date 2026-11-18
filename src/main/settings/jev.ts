@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+/** When to use: choosing whether unscoped reads are merely discouraged or refused. */
 export type JevMode = 'prefer' | 'enforce';
 
+/** When to use: persisting or validating the JEV power/mode settings. */
 export interface JevSettings {
   /** Hard on/off. Off gates the JEV tools off and never touches observe. */
   power: boolean;
@@ -10,6 +12,7 @@ export interface JevSettings {
   mode: JevMode;
 }
 
+/** When to use: a fresh profile or a reset to JEV defaults (off, prefer). */
 export const DEFAULT_JEV_SETTINGS: JevSettings = { power: false, mode: 'prefer' };
 
 const isMode = (value: unknown): value is JevMode => value === 'prefer' || value === 'enforce';
@@ -24,6 +27,7 @@ const isMode = (value: unknown): value is JevMode => value === 'prefer' || value
  */
 import { readJsonFile, writeJsonFileAtomic } from './json-file.js';
 
+/** When to use: reading or saving the JEV settings file (IPC only), or building one in tests. */
 export class JevSettingsStore {
   private settings: JevSettings = { ...DEFAULT_JEV_SETTINGS };
   private readonly file: string;

@@ -20,6 +20,7 @@ export type FunnelReason =
   | 'small-page'
   | 'unscoped';
 
+/** When to use: describing the page/request shape the funnel decision needs (tokens, surface, mode). */
 export interface FunnelInput {
   enforce: boolean;
   as: string;
@@ -32,17 +33,20 @@ export interface FunnelInput {
   minTokens?: number;
 }
 
+/** When to use: reading the funnel verdict (use the index, fetch the surface, or refuse). */
 export interface FunnelDecision {
   allowed: boolean;
   reason: FunnelReason;
 }
 
+/** When to use: the shipped threshold below which a full-page read is allowed. */
 export const DEFAULT_FUNNEL_MIN_TOKENS = 1500;
 
 const hasValue = (value: unknown): boolean => value !== undefined && value !== null && value !== '';
 const isPositiveNumber = (value: unknown): boolean =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
 
+/** When to use: deciding whether a page read must go through jev_index + read_section. */
 export function decideFunnel(input: FunnelInput): FunnelDecision {
   if (!input.enforce) return { allowed: true, reason: 'not-enforced' };
   if (input.as !== 'markdown' && input.as !== 'text') return { allowed: true, reason: 'not-content' };

@@ -13,6 +13,7 @@
 import type { WebContents } from 'electron';
 import { COMPONENT_SIGNATURE_HELPERS, type ComponentSurface } from '../shadow-walk/component-signature.js';
 
+/** When to use: bounding a fuzzy text search (limit, offscreen, visibility, tag filter). */
 export interface TextTargetOptions {
   /** Exact (trimmed) match instead of substring. Default false. */
   exact?: boolean;
@@ -24,6 +25,7 @@ export interface TextTargetOptions {
   componentSurface?: boolean;
 }
 
+/** When to use: reading one fuzzy text match (mark ref, tag, box, text). */
 export interface TextTargetMatch {
   text: string;
   tag: string;
@@ -37,6 +39,7 @@ export interface TextTargetMatch {
   component?: ComponentSurface;
 }
 
+/** When to use: returning fuzzy text matches plus the query used. */
 export interface TextTargetResult {
   query: string;
   matches: TextTargetMatch[];
@@ -117,6 +120,7 @@ export function textTargetExpression(query: string, options: TextTargetOptions =
   })()`;
 }
 
+/** When to use: normalising a raw find/target payload into typed matches and hints. */
 export function parseTextTargets(raw: unknown): TextTargetResult {
   let value: any = raw;
   if (typeof value === 'string') {

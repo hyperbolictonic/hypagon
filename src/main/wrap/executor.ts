@@ -35,6 +35,7 @@ export interface WrapIndexDocument {
   markdown: string;
 }
 
+/** When to use: passing wrapper index metadata into a run (ids, host allowlist). */
 export interface WrapIndexContext {
   wrapperId: string;
   wrapperName: string;
@@ -42,6 +43,7 @@ export interface WrapIndexContext {
   url: string;
 }
 
+/** When to use: constructing a WrapExecutor (store, secrets, fetch, limits). */
 export interface ExecutorOptions {
   fetchImpl?: typeof fetch;
   resolveHost?: (hostname: string) => Promise<string[]>;
@@ -109,6 +111,7 @@ interface PagePlan {
   nextUrlPath?: string;
 }
 
+/** When to use: turning a transport failure into a structured wrapper error with a code. */
 export class WrapTransportError extends Error {
   readonly code: string;
 
@@ -119,6 +122,7 @@ export class WrapTransportError extends Error {
   }
 }
 
+/** When to use: running saved wrappers: build the request, gate the host, fetch, render. */
 export class WrapExecutor {
   readonly store: WrapStore;
   private readonly fetchImpl: typeof fetch;

@@ -19,6 +19,7 @@ import { isPrivateHostname } from '../security.ts';
 import { previewUrl } from '../render.ts';
 import type { WrapErrorInfo, WrapIndexed, WrapMethod, WrapPreview, WrapRunResult } from '../types.ts';
 
+/** When to use: carrying the wrapper id/name into a result or failure. */
 export type WrapIdentity = { readonly id: string; readonly name: string };
 
 /**
@@ -86,6 +87,7 @@ export function wrapErrorCode(
   return CORE_TO_WRAP[error.code as RuntimeError['code']] ?? UNKNOWN_CODE;
 }
 
+/** When to use: building a wrapper failure with a code, status and redacted detail. */
 export type WrapFailureOptions = {
   readonly request?: WrapPreview;
   readonly field?: string;
@@ -95,6 +97,7 @@ export type WrapFailureOptions = {
   readonly host?: string;
 };
 
+/** When to use: returning a structured wrapper failure instead of throwing. */
 export function wrapFailure(
   wrapper: WrapIdentity,
   error: Pick<RuntimeError, 'code' | 'message' | 'hint' | 'status'>,
@@ -130,6 +133,7 @@ export type WrapRendered = {
   readonly meta?: RenderMeta;
 };
 
+/** When to use: assembling a successful wrapper run from rendered content and response info. */
 export type WrapSuccessInput = {
   readonly wrapper: WrapIdentity;
   /** The core's status is all this adapter needs from its result. */

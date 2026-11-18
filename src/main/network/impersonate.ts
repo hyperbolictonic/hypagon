@@ -64,6 +64,7 @@ export function resolveCurlBinaryPath(): string {
   return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0] ?? '';
 }
 
+/** When to use: returning a static fetch (status, headers, body, challenge flag) to the crawler. */
 export interface StaticFetchResult {
   status: number;
   headers: Record<string, string>;
@@ -72,6 +73,7 @@ export interface StaticFetchResult {
   elapsedMs: number;
 }
 
+/** When to use: distinguishing a fetched page from a challenge or transport failure. */
 export type StaticFetchOutcome =
   | { kind: 'ok'; result: StaticFetchResult }
   | { kind: 'blocked'; status: number; reason: string }
@@ -114,6 +116,7 @@ function resolveProfile(): { profile: string; chromeMajor: string } {
   return { profile, chromeMajor: match?.[1] ?? '152' };
 }
 
+/** When to use: choosing between curl-impersonate and the plain fetch path at startup. */
 export function impersonateAvailable(): boolean {
   if (unavailableReason) return false;
   const binary = resolveCurlBinaryPath();
@@ -156,6 +159,7 @@ export function isChallenge(
   );
 }
 
+/** When to use: fetching a page without rendering, with browser-like headers and cancellation. */
 export async function fetchStatic(
   url: string,
   opts: { timeoutMs?: number; cookieHeader?: string } = {},

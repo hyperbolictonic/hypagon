@@ -16,22 +16,26 @@ import type { BindingTable, SecretBinding, SecretProvider } from 'anyapi-to-mcp/
 
 import type { WrapSecretMetadata } from '../secrets.ts';
 
+/** When to use: abstracting secret lookups for the anyapi executor (store or test double). */
 export interface WrapSecretSource {
   list(): WrapSecretMetadata[];
   resolve(name: string, host: string): Promise<{ ok: boolean; value?: string }>;
 }
 
+/** When to use: returning why a credential cannot be used (unknown, wrong host, OAuth). */
 export type WrapSecretRefusal = {
   readonly name: string;
   readonly reason: string;
 };
 
+/** When to use: resolving and redacting credentials through the shared adapter. */
 export type WrapSecretAdapter = {
   readonly bindings: BindingTable;
   readonly provider: SecretProvider;
   readonly refused: readonly WrapSecretRefusal[];
 };
 
+/** When to use: wiring the anyapi executor to the real SecretStore. */
 export function createSecretAdapter(store: WrapSecretSource): WrapSecretAdapter {
   const bindings: Record<string, SecretBinding> = {};
   const refused: WrapSecretRefusal[] = [];

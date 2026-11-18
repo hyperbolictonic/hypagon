@@ -11,6 +11,7 @@
  */
 import type { Recipe, RecipeStep } from './recipe-store.js';
 
+/** When to use: supplying the act/observe surface a recipe replay calls into. */
 export interface RecipeRunner {
   act(options: {
     targetText?: string;
@@ -23,6 +24,7 @@ export interface RecipeRunner {
   componentSignature?(targetText: string): Promise<{ signature?: string; tag?: string; error?: string }>;
 }
 
+/** When to use: reading one replayed step (status, evidence, error code). */
 export interface ReplayStepResult {
   index: number;
   step: RecipeStep;
@@ -32,6 +34,7 @@ export interface ReplayStepResult {
   error?: string;
 }
 
+/** When to use: returning the full replay verdict (status, steps, mismatch signature). */
 export interface ReplayResult {
   status: 'ok' | 'failed';
   recipeId: string;
@@ -42,6 +45,7 @@ export interface ReplayResult {
   ms: number;
 }
 
+/** When to use: replaying a stored recipe against the live page without a model call. */
 export async function replayRecipe(
   runner: RecipeRunner,
   recipe: Recipe,
