@@ -40,3 +40,13 @@ push and pull request. Do not weaken the patterns to make a file pass; replace t
 - If a review or implementation finds a real problem unrelated to the current task, file it in the GitHub issue queue instead of fixing it on a tangent. Search for an existing issue first; link the issue from the final summary. Related findings — ones the change introduces, worsens, or needs to complete safely — stay in the current task. Only fix an unrelated finding immediately when it is a security or lifecycle problem that the current change would worsen or that blocks safe verification.
 - Run `npx tsc --noEmit` and `npm run test:mcp:contract` before you commit.
 - Do not commit build output, runtime data or installer binaries. See `.gitignore`.
+
+## Anti-slop skills
+
+- Before creating any new component, hook, utility, service or module: load the
+  `reuse-before-create` skill and check `docs/COMPONENT_INDEX.md`.
+- When working on Node/backend services, shared libraries or splitting a large file: load
+  `modular-architecture`.
+- After moving shared logic or extracting components: load `abstraction-review`.
+- Before marking any coding task complete: run the `verify-clean-code` checklist and
+  `npm run anti-slop:check`.

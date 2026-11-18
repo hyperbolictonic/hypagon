@@ -1,0 +1,29 @@
+{
+  "duplicates": {
+    "src": "src",
+    "minTokens": 50,
+    "threshold": 3,
+    "ignore": []
+  },
+  "modularity": {
+    "src": "src",
+    "maxFileLines": 300,
+    "maxFunctionLines": 80,
+    "maxClassMethods": 10
+  },
+  "docs": {
+    "src": "src",
+    "ignorePaths": [],
+    "ignoreExports": []
+  },
+  "imports": {
+    "src": "src",
+    "deny": [
+      { "from": "src/shared/**", "forbid": "src/main/**" },
+      { "from": "src/shared/**", "forbid": "src/renderer/**" },
+      { "from": "src/renderer/**", "forbid": "src/main/**" },
+      { "from": "src/preload/**", "forbid": "src/main/**" },
+      { "from": "src/main/**", "forbid": "src/renderer/**" }
+    ]
+  }
+}

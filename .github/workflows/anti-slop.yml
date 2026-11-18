@@ -1,0 +1,22 @@
+# Anti-slop gates for this repository (installed by opencode-anti-slop).
+# Runs the deterministic checks on every push and pull request. Tune the
+# checks via anti-slop.config.json at the repo root.
+name: anti-slop
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/anti-slop/check-modularity.mjs
+      - run: node scripts/anti-slop/check-imports.mjs
+      - run: node scripts/anti-slop/check-docs.mjs
+      - run: node scripts/anti-slop/check-duplicates.mjs
+      - run: node scripts/anti-slop/generate-component-index.mjs --check

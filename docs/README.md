@@ -15,7 +15,7 @@ handoffs are intentionally not published here; links to them go back to the repo
 ## Developer documentation
 
 - [Developer guide](../developer/index.html) — the standard OKF v0.2 bundle for API and integration work.
-- [Connect an MCP client](../developer/getting-started/mcp-clients.html) — `hb-browser`, `hb-rest`, bundled runtime and environment variables.
+- [Component index](./COMPONENT_INDEX.html) — the generated reuse inventory for layouts, components, hooks, services and utilities.
 - [Agent skills](../developer/getting-started/skills.html) — install the `hb-browser` and `hb-wrap` skills from GitHub.
 - [Browser MCP API](../developer/api/browser-mcp.html) — tool groups, resources and call shape.
 - [REST MCP API](../developer/api/rest-mcp.html) — meta-tools, generated tools and result shapes.
