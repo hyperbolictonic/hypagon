@@ -8,6 +8,9 @@
  */
 
 import type { WrapInputSchema } from './types.ts';
+import { isPlainObject } from './plain-object.js';
+
+export { isPlainObject } from './plain-object.js';
 
 /** When to use: returning validated wrapper arguments and their errors. */
 export interface ArgsValidation {
@@ -182,7 +185,3 @@ function clone<T>(value: T): T {
   }
 }
 
-/** When to use: checking a parsed value is a JSON object before reading keys. */
-export function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}

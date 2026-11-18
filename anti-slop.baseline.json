@@ -132,9 +132,6 @@
       "main/wrap/secrets.ts": {
         "file": 1
       },
-      "main/wrap/validate-wrapper.ts": {
-        "file": 1
-      },
       "mcp/browser-mcp.ts": {
         "file": 1,
         "function": 2
