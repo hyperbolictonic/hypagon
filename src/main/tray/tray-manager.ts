@@ -180,12 +180,25 @@ export class TrayManager {
     this.tray.setContextMenu(contextMenu);
   }
 
-  public showWindow(): void {
+  /**
+   * Show the window, optionally without taking the foreground.
+   *
+   * `focus` defaults to true because the human callers (tray menu, HIL) want the
+   * window front and centre. Automation passes `false`: it only needs the window
+   * laid out (a hidden window never renders a new tab), never the user's keyboard.
+   * `showInactive()` is the no-activation show; a plain `show()` would steal focus
+   * even when the caller asked not to.
+   */
+  public showWindow(focus = true): void {
     if (this.mainWindow.isMinimized()) {
       this.mainWindow.restore();
     }
-    this.mainWindow.show();
-    this.mainWindow.focus();
+    if (focus) {
+      this.mainWindow.show();
+      this.mainWindow.focus();
+    } else {
+      this.mainWindow.showInactive();
+    }
     this.updateMenu();
     this.onShow?.();
   }

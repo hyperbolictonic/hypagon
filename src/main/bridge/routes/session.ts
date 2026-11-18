@@ -157,8 +157,11 @@ const ROUTES: Record<string, Handler> = {
 
   'POST /window/visibility': async (ctx) => {
     const body = await ctx.body();
-    ctx.chassis.setWindowVisibility(!!body.visible);
-    if (body.visible && body.focus !== false) ctx.chassis.focusWindow();
+    // focus defaults to true for the human surface (tray menu, HIL, deck); agents
+    // pass focus:false to lay the window out without stealing the foreground.
+    const focus = body?.focus === undefined ? true : body.focus !== false;
+    ctx.chassis.setWindowVisibility(!!body.visible, focus);
+    if (body.visible && focus) ctx.chassis.focusWindow();
     ctx.json({ success: true, visible: ctx.chassis.isWindowVisible(), focused: ctx.chassis.isWindowFocused() });
   },
 

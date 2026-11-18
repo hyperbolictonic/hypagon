@@ -4661,9 +4661,9 @@ export class BrowserChassis {
   }
 
   // System Tray & Window Visibility
-  public setWindowVisibility(visible: boolean): void {
+  public setWindowVisibility(visible: boolean, focus = true): void {
     if (visible) {
-      this.trayManager?.showWindow();
+      this.trayManager?.showWindow(focus);
     } else {
       this.trayManager?.hideWindow();
     }
