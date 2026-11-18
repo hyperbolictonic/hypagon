@@ -1,6 +1,7 @@
 import { WebContentsView, WebContents } from 'electron';
 import { type HostBrowserProfile } from '../telemetry/host-fingerprint.js';
 import { RenderedSnapshotEngine } from '../snapshots/rendered-snapshot.js';
+import { extractCandidateLinks, normalizePrerenderUrl } from './links.js';
 import { CortexDB } from '../cortex/cortex-db.js';
 
 /** When to use: reading one prerendered page (URL, state, content, error). */
@@ -52,7 +53,7 @@ export class PrerenderEngine {
     if (Array.isArray(options.urls) && options.urls.length > 0) {
       candidateUrls = options.urls;
     } else {
-      candidateUrls = await this.extractCandidateLinks(activeWc, options.selector, maxPages);
+      candidateUrls = await extractCandidateLinks(activeWc, options.selector, maxPages);
     }
 
     // Clean & normalize URLs
@@ -107,17 +108,17 @@ export class PrerenderEngine {
    * Checks if an exact or normalized URL has an active pre-rendered view.
    */
   public has(url: string): boolean {
-    const normalized = this.normalizeUrl(url);
-    return Array.from(this.pool.keys()).some((k) => this.normalizeUrl(k) === normalized);
+    const normalized = normalizePrerenderUrl(url);
+    return Array.from(this.pool.keys()).some((k) => normalizePrerenderUrl(k) === normalized);
   }
 
   /**
    * Consumes and returns a pre-rendered view for instant (0ms) tab elevation.
    */
   public consume(url: string): WebContentsView | undefined {
-    const normalized = this.normalizeUrl(url);
+    const normalized = normalizePrerenderUrl(url);
     for (const [k, item] of this.pool.entries()) {
-      if (this.normalizeUrl(k) === normalized) {
+      if (normalizePrerenderUrl(k) === normalized) {
         this.pool.delete(k);
         this.onLog?.('info', `Instant 0ms swap: Elevated prerendered view for "${url}"`);
         return item.view;
@@ -193,53 +194,6 @@ export class PrerenderEngine {
   }
 
   /**
-   * Extracts top outgoing links from the active page using semantic link heuristics.
-   */
-  private async extractCandidateLinks(
-    wc: WebContents,
-    selector?: string,
-    limit: number = 3
-  ): Promise<string[]> {
-    const script = `
-      (() => {
-        const sel = ${selector ? JSON.stringify(selector) : 'null'};
-        let elements = [];
-        if (sel) {
-          elements = Array.from(document.querySelectorAll(sel));
-        } else {
-          // Heuristic: search result links, navigation anchors, main content links
-          const candidates = document.querySelectorAll('main a[href], article a[href], .search a[href], [role="main"] a[href], a[href]');
-          elements = Array.from(candidates);
-        }
-
-        const currentOrigin = window.location.origin;
-        const seen = new Set();
-        const urls = [];
-
-        for (const el of elements) {
-          const href = el.href;
-          if (!href || href.startsWith('javascript:') || href.includes('#')) continue;
-          if (!/^https?:\\/\\//i.test(href)) continue;
-          if (href === window.location.href) continue;
-
-          if (!seen.has(href)) {
-            seen.add(href);
-            urls.push(href);
-            if (urls.length >= ${limit}) break;
-          }
-        }
-        return urls;
-      })()
-    `;
-    try {
-      const res = await wc.executeJavaScript(script);
-      return Array.isArray(res) ? res : [];
-    } catch {
-      return [];
-    }
-  }
-
-  /**
    * Distills rendered markdown and indexes into LanceDB Cortex.
    */
   private async harvestToCortex(item: PrerenderItem): Promise<void> {
@@ -296,19 +250,9 @@ export class PrerenderEngine {
     }
   }
 
+  /** Canonical pool key for a URL (sorted query, lower-cased, no trailing slash). */
   public normalizeUrl(url: string): string {
-    try {
-      const u = new URL(url);
-      // Canonicalize query parameters so search order doesn't cause cache misses,
-      // while preserving distinct filter/query states so filtered pages never collide with base pages.
-      const params = new URLSearchParams(u.search);
-      params.sort();
-      const queryString = params.toString();
-      const basePath = `${u.origin}${u.pathname}`.replace(/\/+$/, '').toLowerCase();
-      return queryString ? `${basePath}?${queryString}` : basePath;
-    } catch {
-      return url.trim().toLowerCase();
-    }
+    return normalizePrerenderUrl(url);
   }
 
   public destroy(): void {

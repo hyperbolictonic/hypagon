@@ -96,9 +96,6 @@
         "file": 1,
         "function": 1
       },
-      "main/prerender/prerender-engine.ts": {
-        "file": 1
-      },
       "main/primitives/dom-targeting.ts": {
         "file": 1
       },
