@@ -22,6 +22,8 @@ const isMode = (value: unknown): value is JevMode => value === 'prefer' || value
  * `power` is the master switch; `mode` only matters while it is on. A legacy
  * `{ enabled: true }` file migrates to prefer — never silently to enforce.
  */
+import { readJsonFile, writeJsonFileAtomic } from './json-file.js';
+
 export class JevSettingsStore {
   private settings: JevSettings = { ...DEFAULT_JEV_SETTINGS };
   private readonly file: string;
@@ -32,28 +34,18 @@ export class JevSettingsStore {
   }
 
   private load(): void {
-    try {
-      // Windows editors (and some PowerShell defaults) write a UTF-8 BOM; JSON.parse rejects it.
-      const raw = fs.readFileSync(this.file, 'utf8').replace(/^\uFEFF/, '');
-      const parsed = JSON.parse(raw);
-      this.settings = {
-        power: parsed?.power === true || parsed?.enabled === true,
-        mode: isMode(parsed?.mode) ? parsed.mode : 'prefer',
-      };
-    } catch {
-      this.settings = { ...DEFAULT_JEV_SETTINGS };
-    }
+    const parsed = readJsonFile(this.file) as Record<string, any> | null;
+    this.settings = parsed
+      ? {
+          power: parsed?.power === true || parsed?.enabled === true,
+          mode: isMode(parsed?.mode) ? parsed.mode : 'prefer',
+        }
+      : { ...DEFAULT_JEV_SETTINGS };
   }
 
   private save(): void {
-    try {
-      fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      const temp = `${this.file}.${process.pid}.${Date.now()}.tmp`;
-      fs.writeFileSync(temp, `${JSON.stringify(this.settings, null, 2)}\n`, 'utf8');
-      fs.renameSync(temp, this.file);
-    } catch {
-      // Keep the in-memory value; the next save retries.
-    }
+    // Keep the in-memory value on failure; the next save retries.
+    writeJsonFileAtomic(this.file, this.settings);
   }
 
   get(): JevSettings {

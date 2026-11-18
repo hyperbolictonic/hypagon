@@ -11,6 +11,8 @@ import {
  * bridge may read it through `browser_zoom`, but only the Settings/toolbar IPC
  * path writes the persisted mode.
  */
+import { readJsonFile, writeJsonFileAtomic } from '../settings/json-file.js';
+
 export class ZoomSettingsStore {
   private settings: ZoomSettings = { ...DEFAULT_ZOOM_SETTINGS };
 
@@ -19,22 +21,13 @@ export class ZoomSettingsStore {
   }
 
   private load(): void {
-    try {
-      this.settings = normalizeZoomSettings(JSON.parse(fs.readFileSync(this.file, 'utf8')));
-    } catch {
-      this.settings = { ...DEFAULT_ZOOM_SETTINGS };
-    }
+    const parsed = readJsonFile(this.file);
+    this.settings = parsed === null ? { ...DEFAULT_ZOOM_SETTINGS } : normalizeZoomSettings(parsed);
   }
 
   private save(): void {
-    try {
-      fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      const temp = `${this.file}.${process.pid}.${Date.now()}.tmp`;
-      fs.writeFileSync(temp, `${JSON.stringify(this.settings, null, 2)}\n`, 'utf8');
-      fs.renameSync(temp, this.file);
-    } catch {
-      // Keep the in-memory value; the next save retries.
-    }
+    // Keep the in-memory value on failure; the next save retries.
+    writeJsonFileAtomic(this.file, this.settings);
   }
 
   get(): ZoomSettings {

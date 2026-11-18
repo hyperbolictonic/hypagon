@@ -5,10 +5,10 @@
  * resulting auto-update state, but it never changes a setting.
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
 
+import path from 'node:path';
 import type { MediaSettings } from '../../shared/media.ts';
+import { readJsonFile, writeJsonFileAtomic } from '../settings/json-file.js';
 
 export const DEFAULT_MEDIA_SETTINGS: MediaSettings = {
   autoUpdate: true,
@@ -49,25 +49,15 @@ export class MediaSettingsStore {
   }
 
   load(): MediaSettings {
-    try {
-      // Windows editors like to prefix JSON with a UTF-8 BOM; JSON.parse rejects it.
-      const text = fs.readFileSync(this.file, 'utf8').replace(/^\uFEFF/u, '');
-      return normalizeMediaSettings(JSON.parse(text));
-    } catch {
-      return { ...DEFAULT_MEDIA_SETTINGS };
-    }
+    const parsed = readJsonFile(this.file);
+    return parsed === null ? { ...DEFAULT_MEDIA_SETTINGS } : normalizeMediaSettings(parsed);
   }
 
   save(patch: unknown): MediaSettings {
     const next = normalizeMediaSettings({ ...this.load(), ...(patch as Record<string, unknown>) });
-    try {
-      fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      const temp = `${this.file}.tmp`;
-      fs.writeFileSync(temp, `${JSON.stringify(next, null, 2)}\n`, 'utf8');
-      fs.renameSync(temp, this.file);
-    } catch {
-      // The caller still gets the normalised value; the next save can retry.
-    }
+    // The caller still gets the normalised value; a failed write leaves the old file
+    // in place and the next save retries.
+    writeJsonFileAtomic(this.file, next);
     return next;
   }
 }

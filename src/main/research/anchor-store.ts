@@ -24,6 +24,8 @@ export interface StoredAnchor {
 
 const MAX_RECORDS = 2000;
 
+import { readJsonFile, writeJsonFileAtomic } from '../settings/json-file.js';
+
 export class AnchorStore {
   readonly file: string;
   #records: StoredAnchor[];
@@ -34,29 +36,20 @@ export class AnchorStore {
   }
 
   #load(): StoredAnchor[] {
-    try {
-      const parsed = JSON.parse(fs.readFileSync(this.file, 'utf8'));
-      if (Array.isArray(parsed)) {
-        return parsed.filter(
-          (record: any) =>
-            record && typeof record.url === 'string' && record.fingerprint && typeof record.text === 'string',
-        );
-      }
-    } catch {
-      /* no store yet */
+    const parsed = readJsonFile(this.file);
+    if (Array.isArray(parsed)) {
+      return parsed.filter(
+        (record: any) =>
+          record && typeof record.url === 'string' && record.fingerprint && typeof record.text === 'string',
+      );
     }
+    /* no store yet */
     return [];
   }
 
   #persist(): void {
-    try {
-      fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      const temp = `${this.file}.${process.pid}.tmp`;
-      fs.writeFileSync(temp, `${JSON.stringify(this.#records, null, 2)}\n`, 'utf8');
-      fs.renameSync(temp, this.file);
-    } catch {
-      /* best effort: a failed write must not break research */
-    }
+    // Best effort: a failed write must not break research.
+    writeJsonFileAtomic(this.file, this.#records);
   }
 
   #key(record: { url: string; text: string }): string {

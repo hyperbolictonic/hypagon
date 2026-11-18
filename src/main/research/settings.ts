@@ -8,8 +8,8 @@
  * They are deliberately stored in `<userData>`, not beside the repo.
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
+
+import { readJsonFile, writeJsonFileAtomic } from '../settings/json-file.js';
 
 export const RESEARCH_ENGINES = ['google', 'duckduckgo', 'bing', 'brave', 'startpage', 'custom'] as const;
 
@@ -70,27 +70,22 @@ export class ResearchSettingsStore {
   }
 
   load(): ResearchSettings {
-    try {
-      const parsed = JSON.parse(fs.readFileSync(this.file, 'utf8'));
-      const normalized = normalizeResearchSettings(parsed);
-      return normalized.ok ? normalized.settings : { ...DEFAULT_RESEARCH_SETTINGS, engineChain: [...DEFAULT_RESEARCH_SETTINGS.engineChain] };
-    } catch {
+    const parsed = readJsonFile(this.file);
+    if (parsed === null) {
       return { ...DEFAULT_RESEARCH_SETTINGS, engineChain: [...DEFAULT_RESEARCH_SETTINGS.engineChain] };
     }
+    const normalized = normalizeResearchSettings(parsed);
+    return normalized.ok ? normalized.settings : { ...DEFAULT_RESEARCH_SETTINGS, engineChain: [...DEFAULT_RESEARCH_SETTINGS.engineChain] };
   }
 
   save(input: unknown): ResearchSettingsResult {
     const normalized = normalizeResearchSettings(input);
     if (!normalized.ok) return normalized;
-    try {
-      fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      const temp = `${this.file}.${process.pid}.${Date.now()}.tmp`;
-      fs.writeFileSync(temp, `${JSON.stringify(normalized.settings, null, 2)}\n`, 'utf8');
-      fs.renameSync(temp, this.file);
-      return normalized;
-    } catch (err: any) {
-      return { ...normalized, ok: false, errors: [`Could not save research settings: ${err?.message || err}`] };
+    const written = writeJsonFileAtomic(this.file, normalized.settings);
+    if (!written.ok) {
+      return { ...normalized, ok: false, errors: [`Could not save research settings: ${written.error}`] };
     }
+    return normalized;
   }
 }
 

@@ -19,7 +19,8 @@ import path from 'node:path';
  */
 export function readJsonFile(file: string): unknown | null {
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
+    // Windows editors like to prefix JSON with a UTF-8 BOM; JSON.parse rejects it.
+    return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/u, ''));
   } catch {
     return null;
   }

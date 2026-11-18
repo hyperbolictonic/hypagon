@@ -1,6 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import type { ToolSettings } from '../../shared/tool-settings.js';
+import { readJsonFile, writeJsonFileAtomic } from '../settings/json-file.js';
 
 export interface ToolSettingsValidation {
   ok: boolean;
@@ -88,27 +87,20 @@ export class ToolSettingsStore {
   }
 
   load(): ToolSettings {
-    try {
-      const parsed = JSON.parse(fs.readFileSync(this.file, 'utf8'));
-      const normalized = normalizeToolSettings(parsed);
-      return normalized.ok && normalized.settings ? normalized.settings : cloneDefaults();
-    } catch {
-      return cloneDefaults();
-    }
+    const parsed = readJsonFile(this.file);
+    if (parsed === null) return cloneDefaults();
+    const normalized = normalizeToolSettings(parsed);
+    return normalized.ok && normalized.settings ? normalized.settings : cloneDefaults();
   }
 
   save(input: unknown): ToolSettingsValidation {
     const normalized = normalizeToolSettings(input);
     if (!normalized.ok || !normalized.settings) return normalized;
-    try {
-      fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      const temp = `${this.file}.${process.pid}.${Date.now()}.tmp`;
-      fs.writeFileSync(temp, `${JSON.stringify(normalized.settings, null, 2)}\n`, 'utf8');
-      fs.renameSync(temp, this.file);
-      return normalized;
-    } catch (error: any) {
-      return { ok: false, errors: [`Could not save tool settings: ${error?.message || error}`] };
+    const written = writeJsonFileAtomic(this.file, normalized.settings);
+    if (!written.ok) {
+      return { ok: false, errors: [`Could not save tool settings: ${written.error}`] };
     }
+    return normalized;
   }
 
   reset(): ToolSettingsValidation {
