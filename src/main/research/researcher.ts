@@ -8,93 +8,19 @@
  * evidence (per-source highlights are paragraphs from the sources that mention the query terms)
  * and leaves the prose synthesis to the calling agent. Sources are indexed into Cortex so the
  * agent can follow up with `recall_memory`.
+ *
+ * Per-source fetching and the public types live beside this module: gather-source.ts and
+ * types.ts.
  */
 import { randomUUID } from 'node:crypto';
 
-import type { CitationAnchor } from './anchors.js';
+import type { ResearchEvent, ResearchTier } from '../../shared/research-events.js';
+import { gatherSource } from './gather-source.js';
+import { summarizeRun } from './summary.js';
+import type { ResearchOptions, ResearchOutcome, ResearchSource, ResearcherDeps } from './types.js';
 
-import type { ResearchEvent, ResearchEscalation, ResearchTier } from '../../shared/research-events.js';
-import type { SearchOutcome, SearchAttempt } from '../search/search-engine.js';
-import type { CrawlOptions, CrawlOutcome, HumanAssistInfo } from '../crawl/crawler.js';
-
-/** When to use: shaping `research_topic` (query, depth, source cap, harvest). */
-export interface ResearchOptions {
-  query: string;
-  /** Distinct sources to gather (default 5, max 8). */
-  maxSources?: number;
-  engine?: string;
-  engines?: string[];
-  urlTemplate?: string;
-  /** Chars of each source kept for highlighting (default 1200, max 4000). */
-  excerptChars?: number;
-  /** Index each source into LanceDB Cortex (default true). */
-  harvestToCortex?: boolean;
-  /** Try content-negotiated Markdown/Text before rendering (default true). */
-  preferLlm?: boolean;
-  /** Try the impersonating static fetch before rendering (default true). */
-  preferStatic?: boolean;
-  /** Anchor matching blocks to fingerprints for later relocation (default true). */
-  anchors?: boolean;
-  /** Politeness delay between gathered sources (default 0; stealth mode raises it). */
-  delayMs?: number;
-}
-
-/** When to use: reading one gathered source (URL, title, text, highlights). */
-export interface ResearchSource {
-  rank: number;
-  title: string;
-  url: string;
-  snippet: string;
-  via: 'llm' | 'static' | 'render';
-  bytes: number;
-  indexed: boolean;
-  /** True when a human cleared a challenge for this source. */
-  humanAssisted?: boolean;
-  /** Time spent waiting for the human (included in `ms`). */
-  humanMs?: number;
-  /** Fingerprints for the DOM blocks behind the highlights. */
-  anchors?: CitationAnchor[];
-  /** Wall-clock time spent fetching/distilling this source. */
-  ms?: number;
-  highlights: string[];
-  error?: string;
-  /** Set when a cheaper tier failed and the page had to be rendered instead. */
-  escalation?: ResearchEscalation;
-}
-
-/** When to use: returning the research result (sources, notes, blocked/assist info). */
-export interface ResearchOutcome {
-  runId: string;
-  query: string;
-  engine: string | null;
-  sources: ResearchSource[];
-  sourceCount: number;
-  cortexIndexed: number;
-  /** Total distilled bytes across sources. */
-  bytes: number;
-  /** How many sources used each acquisition tier. */
-  tiers: Record<ResearchTier, number>;
-  /** Sources a human had to unblock. */
-  humans: number;
-  /** Total citation anchors captured across sources. */
-  anchors: number;
-  /** Sources that needed a render after a cheaper tier failed. Surfaced for the calling agent. */
-  escalations: number;
-  searchAttempts: SearchAttempt[];
-  notes: string[];
-}
-
-/** When to use: injecting search/fetch/cortex dependencies when constructing a Researcher. */
-export interface ResearcherDeps {
-  search: (
-    query: string,
-    opts: { engine?: string; engines?: string[]; urlTemplate?: string; max?: number },
-  ) => Promise<SearchOutcome>;
-  crawl: (opts: CrawlOptions) => Promise<CrawlOutcome>;
-  log?: (level: 'info' | 'warn' | 'action', message: string) => void;
-  /** Live run events (timeline/UI). Escalations are also carried on the outcome. */
-  events?: (event: ResearchEvent) => void;
-}
+export type { ResearchOptions, ResearchOutcome, ResearchSource, ResearcherDeps } from './types.js';
+export { extractHighlights } from './gather-source.js';
 
 function coded(code: string, message: string): Error {
   const e = new Error(message) as Error & { code: string };
@@ -117,33 +43,6 @@ function isChallengeUrl(raw: string): boolean {
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.min(Math.max(n, lo), hi);
-}
-
-/**
- * Extractive highlights: paragraphs of the source that mention the most query terms, best first.
- * (Not a summary — it is a citation aid so the caller can quote real evidence.)
- */
-export function extractHighlights(markdown: string, query: string, max = 3): string[] {
-  const terms = query
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((t) => t.length > 2);
-  const paragraphs = (markdown || '')
-    .split(/\n{2,}/)
-    .map((p) => p.replace(/[#*>`_\-[\]()]/g, ' ').replace(/\s+/g, ' ').trim())
-    .filter((p) => p.length > 60);
-  if (!paragraphs.length) return [];
-
-  const scored = paragraphs.map((p) => {
-    const low = p.toLowerCase();
-    let score = 0;
-    for (const t of terms) if (low.includes(t)) score += 1;
-    return { p, score };
-  });
-
-  const hits = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
-  const pool = hits.length ? hits : scored;
-  return pool.slice(0, max).map((s) => s.p.slice(0, 320));
 }
 
 /** When to use: running the multi-source research pipeline behind `research_topic`. */
@@ -203,163 +102,46 @@ export class Researcher {
     let anchorTotal = 0;
     let cortexIndexed = 0;
 
-    for (const r of picked) {
-      emit({ type: 'source-start', runId, rank: r.rank, url: r.url, title: r.title, at: Date.now() });
-      try {
-        const crawled = await this.deps.crawl({
-          startUrl: r.url,
-          maxDepth: 0,
-          maxPages: 1,
-          delayMs: opts.delayMs ?? 0,
-          preferLlm: opts.preferLlm !== false,
-          preferStatic: opts.preferStatic !== false,
-          anchorsFor: opts.anchors !== false ? query : undefined,
-          harvestToCortex: opts.harvestToCortex !== false,
-          includeContent: excerptChars,
-          onHuman: (info: HumanAssistInfo) => {
-            if (info.phase === 'needed') {
-              emit({
-                type: 'human-needed',
-                runId,
-                url: info.url,
-                reason: 'challenge',
-                at: Date.now(),
-              });
-            } else {
-              emit({ type: 'human-done', runId, url: info.url, via: 'human', at: Date.now() });
-            }
-          },
-        });
-        const page = crawled.pages[0];
-        cortexIndexed += crawled.cortexIndexed;
-        const excerpt = page?.excerpt || '';
-        const via = page?.via || 'render';
-        const bytes = page?.bytes || 0;
-        const indexed = !!page?.indexed;
-        const escalation = page?.escalation;
-        const highlights = extractHighlights(excerpt, query, 3);
-        const ms = page?.ms ?? 0;
-        const title = page?.title || r.title;
-        const humanAssisted = !!page?.humanAssisted;
-        const humanMs = page?.humanMs ?? 0;
-        const anchors = page?.anchors;
-        const anchorDetails = (anchors ?? []).map((anchor) => ({
-          text: anchor.text,
-          path: anchor.path,
-          fingerprint: anchor.fingerprint as unknown as Record<string, unknown>,
-        }));
-        anchorTotal += anchors?.length ?? 0;
-        totalBytes += bytes;
-        tiers[via] += 1;
-        sources.push({
-          rank: r.rank,
-          title,
-          url: r.url,
-          snippet: r.snippet,
-          via,
-          bytes,
-          ms,
-          indexed,
-          humanAssisted,
-          humanMs,
-          anchors,
-          highlights,
-          error: page?.error,
-          escalation,
-        });
-        emit({
-          type: 'source-done',
-          runId,
-          rank: r.rank,
-          url: r.url,
-          title,
-          via,
-          bytes,
-          ms,
-          humanAssisted,
-          humanMs,
-          anchors: anchors?.length ?? 0,
-          anchorDetails,
-          highlights: highlights.length,
-          indexed,
-          escalation,
-          error: page?.error,
-          at: Date.now(),
-        });
-      } catch (err: any) {
-        const message = err?.message || String(err);
-        sources.push({
-          rank: r.rank,
-          title: r.title,
-          url: r.url,
-          snippet: r.snippet,
-          via: 'render',
-          bytes: 0,
-          indexed: false,
-          highlights: [],
-          error: message,
-        });
-        emit({
-          type: 'source-done',
-          runId,
-          rank: r.rank,
-          url: r.url,
-          title: r.title,
-          via: 'render',
-          bytes: 0,
-          ms: 0,
-          highlights: 0,
-          anchors: 0,
-          indexed: false,
-          error: message,
-          at: Date.now(),
-        });
-      }
+    for (const candidate of picked) {
+      emit({ type: 'source-start', runId, rank: candidate.rank, url: candidate.url, title: candidate.title, at: Date.now() });
+      const gathered = await gatherSource(candidate, {
+        runId,
+        query,
+        excerptChars,
+        opts,
+        crawl: this.deps.crawl,
+        emit,
+      });
+      cortexIndexed += gathered.cortexIndexed;
+      anchorTotal += gathered.anchorCount;
+      totalBytes += gathered.source.bytes;
+      tiers[gathered.source.via] += 1;
+      sources.push(gathered.source);
     }
 
-    const escalations = sources.filter((source) => source.escalation).length;
-    const humans = sources.filter((source) => source.humanAssisted).length;
-    if (escalations > 0) {
-      notes.push(
-        `${escalations} source(s) were rendered after a cheaper tier failed — see each source's "escalation".`,
-      );
-    }
-    if (humans > 0) {
-      notes.push(`${humans} source(s) required human intervention to clear a challenge.`);
-    }
-
-    if (sources.length && !sources.some((s) => s.highlights.length)) {
-      notes.push('No query-term highlights found in the gathered sources — try broader terms or more sources.');
-    }
-    notes.push('Extractive only: sources are distilled and cited, but no prose is synthesized — the caller writes the answer.');
-
-    const outcome: ResearchOutcome = {
+    const outcome = summarizeRun({
       runId,
       query,
       engine: search.engine,
       sources,
-      sourceCount: sources.length,
       cortexIndexed,
       bytes: totalBytes,
       tiers,
-      humans,
       anchors: anchorTotal,
-      escalations,
       searchAttempts: search.attempts || [],
-      notes,
-    };
+    });
     emit({
       type: 'run-done',
       runId,
-      sources: sources.length,
-      indexed: cortexIndexed,
-      bytes: totalBytes,
-      tiers,
-      humans,
-      anchors: anchorTotal,
+      sources: outcome.sourceCount,
+      indexed: outcome.cortexIndexed,
+      bytes: outcome.bytes,
+      tiers: outcome.tiers,
+      humans: outcome.humans,
+      anchors: outcome.anchors,
       elapsedMs: Date.now() - startedAt,
-      escalations,
-      notes,
+      escalations: outcome.escalations,
+      notes: outcome.notes,
       at: Date.now(),
     });
     this.deps.log?.('action', `research_topic "${query}" → ${sources.length} source(s), ${cortexIndexed} indexed`);
