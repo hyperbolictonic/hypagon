@@ -15,9 +15,8 @@
  *   KUANG_SHADOW_WALK=off        disable every Shadow Walk path
  *   KUANG_FORCE_OPEN_SHADOW=1    arm the (not yet built) force-open patch
  */
-import fs from 'node:fs';
-import path from 'node:path';
 import { dataPath } from '../data-paths.js';
+import { readJsonFile, writeJsonFileAtomic } from '../settings/json-file.js';
 
 /** When to use: locating the persisted Shadow Walk settings file (tests, diagnostics). */
 export const SHADOW_WALK_SETTINGS_FILE = dataPath('shadow-walk.json');
@@ -189,12 +188,11 @@ export class ShadowWalkSettingsStore {
 
   load(): ShadowWalkSettings {
     let settings = cloneDefaults();
-    try {
-      const parsed = JSON.parse(fs.readFileSync(this.file, 'utf8'));
+    // Missing or corrupt file: defaults keep the browser working.
+    const parsed = readJsonFile(this.file);
+    if (parsed !== null) {
       const normalized = normalizeShadowWalkSettings(parsed);
       if (normalized.ok) settings = normalized.settings;
-    } catch {
-      // Missing or corrupt file: defaults keep the browser working.
     }
 
     const master = String(process.env.KUANG_SHADOW_WALK || '').trim().toLowerCase();
@@ -208,15 +206,11 @@ export class ShadowWalkSettingsStore {
   save(input: unknown): ShadowWalkSettingsResult {
     const normalized = normalizeShadowWalkSettings(input);
     if (!normalized.ok) return normalized;
-    try {
-      fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      const temp = `${this.file}.${process.pid}.${Date.now()}.tmp`;
-      fs.writeFileSync(temp, `${JSON.stringify(normalized.settings, null, 2)}\n`, 'utf8');
-      fs.renameSync(temp, this.file);
-      return normalized;
-    } catch (err: any) {
-      return { ...normalized, ok: false, errors: [`Could not save Shadow Walk settings: ${err?.message || err}`] };
+    const written = writeJsonFileAtomic(this.file, normalized.settings);
+    if (!written.ok) {
+      return { ...normalized, ok: false, errors: [`Could not save Shadow Walk settings: ${written.error}`] };
     }
+    return normalized;
   }
 }
 
