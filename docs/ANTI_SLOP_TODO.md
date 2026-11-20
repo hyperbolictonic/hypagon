@@ -11,14 +11,23 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **13 violations** across **6 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **10 violations** across **5 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **780 duplicated lines / 50,262 (1.6%)** | threshold is 3%; 24 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 271 files |
+| Duplicates | **744 duplicated lines / 50,389 (1.5%)** | threshold is 3%; 24 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 280 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
+- **Browser MCP split** - `mcp/browser-mcp.ts` 946 -> 179 (assembly only): `browser-surface.ts`
+  (bridge access, tool preferences moved out, result shaping, image/text content), `mcp-log.ts`
+  (file-first diagnostics, shared with the other stdio servers), `browser-guide.ts` (the OKF guide
+  as a function of the JEV flags + the recommended order), `browser-resources.ts`, `browser-help.ts`,
+  `browser-interceptors.ts` (tools/list enrichment + tools/call normalisation), `browser-params.ts`,
+  `tool-preferences.ts` and `tool-schema-surface.ts` (the four schema field names, now shared with
+  `bridge-server.ts`). `executeCatalogTool` was split into image vs text content, and the 101-line
+  `createBridgeMcpServer` lost its description block to `describeTool`. Verified: `test:mcp:surface`
+  35/35, `test:mcp:contract`, `npm run build:mcp`.
 - **Bootstrap split** - `main/index.ts` 866 -> ~200 (process setup, single instance, lifecycle):
   `bootstrap/state.ts` (the window/services hand-off), `paths.ts` (stable server paths, dirs,
   `safeStorage` cipher, brand icon), `ipc-settings.ts`, `ipc-wrap.ts` (credentials, audit, wrappers,
