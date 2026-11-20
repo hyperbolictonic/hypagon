@@ -21,6 +21,14 @@ import { resetSettingsResult, showSettingsResult } from './settings-feedback';
 import { loadDecisionSettings, setDecisionBadgeVisible, setDecisionTabSink } from './settings-decision';
 import { wrapState } from './settings-wrap-store';
 import { hideUrlSuggestions } from './url-suggestions';
+import { cursorTrail } from './cursor-trail';
+import {
+  appendLog,
+  appendTelemetry,
+  currentConstructMarkdown,
+  logsContainer,
+  renderConstruct,
+} from './telemetry-feed';
 
 setDecisionTabSink(setDecisionTabVisible);
 
@@ -93,7 +101,6 @@ void window.electronAPI
   .catch(() => undefined);
 
 // Stat elements
-const statCoords = document.getElementById('stat-coords') as HTMLElement;
 const statVelocity = document.getElementById('stat-velocity') as HTMLElement;
 const statTokens = document.getElementById('stat-tokens') as HTMLElement;
 const statInteractions = document.getElementById('stat-interactions') as HTMLElement;
@@ -114,21 +121,11 @@ const decisionBackendBadge = document.getElementById('decision-backend-badge') a
 let decisionCalls = 0;
 
 // Dynamic Lists & Preview
-const telemetryFeed = document.getElementById('telemetry-feed') as HTMLElement;
-const telemetryCount = document.getElementById('telemetry-count') as HTMLElement;
-const constructCodeBlock = document.getElementById('construct-code-block') as HTMLElement;
-const constructTokenBadge = document.getElementById('construct-token-badge') as HTMLElement;
-const logsContainer = document.getElementById('logs-container') as HTMLElement;
-const logCount = document.getElementById('log-count') as HTMLElement;
 
 // Radar Canvas for Cursor Tracking
 const canvas = document.getElementById('radar-canvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d');
-const cursorTrail: Array<{ x: number; y: number; alpha: number }> = [];
 
-let totalTelemetryPulses = 0;
-let totalLogEvents = 0;
-let currentConstructMarkdown = '';
 
 function resizeCanvas() {
   if (!canvas || !canvas.parentElement) return;
@@ -763,79 +760,6 @@ copyConstructBtn.addEventListener('click', async () => {
 });
 
 // Render Construct Payload
-function renderConstruct(construct: HarvestedConstruct) {
-  currentConstructMarkdown = construct.content;
-  constructCodeBlock.textContent = construct.content;
-  constructTokenBadge.textContent = `~${construct.estimatedTokens} tokens (${(construct.markdownLength / 1024).toFixed(1)} KB)`;
-}
-
-// Render Telemetry Event
-function appendTelemetry(event: TelemetryEvent) {
-  totalTelemetryPulses++;
-  telemetryCount.textContent = totalTelemetryPulses.toString();
-
-  if (event.x !== undefined && event.y !== undefined) {
-    cursorTrail.push({ x: event.x, y: event.y, alpha: 1.0 });
-    if (cursorTrail.length > 40) cursorTrail.shift();
-    statCoords.textContent = `X: ${event.x} Y: ${event.y}`;
-  }
-
-  const item = document.createElement('div');
-  item.className = 'flex items-center justify-between bg-base-200 px-2 py-1.5 rounded border border-base-300 text-[10px]';
-
-  let badgeColor = 'badge-neutral';
-  if (event.type === 'click') badgeColor = 'badge-primary';
-  else if (event.type === 'keystroke') badgeColor = 'badge-secondary';
-  else if (event.type === 'scroll') badgeColor = 'badge-accent';
-
-  item.innerHTML = `
-    <div class="flex items-center gap-1.5 truncate">
-      <span class="badge ${badgeColor} badge-xs font-mono uppercase">${event.type}</span>
-      <span class="text-base-content/70 truncate">${event.details || ''}</span>
-    </div>
-    <span class="opacity-40 shrink-0 font-mono">${new Date(event.timestamp).toLocaleTimeString()}</span>
-  `;
-
-  if (telemetryFeed.children.length === 1 && telemetryFeed.firstElementChild?.classList.contains('italic')) {
-    telemetryFeed.innerHTML = '';
-  }
-
-  telemetryFeed.insertBefore(item, telemetryFeed.firstChild);
-  if (telemetryFeed.children.length > 30) {
-    telemetryFeed.removeChild(telemetryFeed.lastChild!);
-  }
-}
-
-// Render Log Event
-function appendLog(log: { id: string; time: string; level: 'info' | 'warn' | 'action'; message: string }) {
-  totalLogEvents++;
-  logCount.textContent = `${totalLogEvents} events`;
-
-  const item = document.createElement('div');
-  item.className = 'p-1.5 bg-base-200 rounded border border-base-300 flex items-start gap-2 text-[10px] leading-relaxed';
-
-  let levelBadge = '<span class="badge badge-info badge-xs">INFO</span>';
-  if (log.level === 'warn') levelBadge = '<span class="badge badge-warning badge-xs">WARN</span>';
-  if (log.level === 'action') levelBadge = '<span class="badge badge-accent badge-xs">ACTION</span>';
-
-  item.innerHTML = `
-    <span class="shrink-0 text-base-content/40 font-mono">${log.time}</span>
-    ${levelBadge}
-    <span class="text-base-content/90 font-mono break-all">${log.message}</span>
-  `;
-
-  if (logsContainer.children.length === 1 && logsContainer.firstElementChild?.classList.contains('italic')) {
-    logsContainer.innerHTML = '';
-  }
-
-  logsContainer.insertBefore(item, logsContainer.firstChild);
-  // A long-running packaged session emits an entry for every bridge call. Keep
-  // the HUD bounded; an unbounded DOM was a slow renderer-memory leak.
-  while (logsContainer.children.length > 200) {
-    logsContainer.lastElementChild?.remove();
-  }
-}
-
 let currentZoom: ZoomState | null = null;
 
 function renderZoom(zoom: ZoomState | null | undefined): void {
