@@ -11,14 +11,22 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **15 violations** across **7 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **13 violations** across **6 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **863 duplicated lines / 50,145 (1.7%)** | threshold is 3%; 24 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 262 files |
+| Duplicates | **780 duplicated lines / 50,262 (1.6%)** | threshold is 3%; 24 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 271 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
+- **Bootstrap split** - `main/index.ts` 866 -> ~200 (process setup, single instance, lifecycle):
+  `bootstrap/state.ts` (the window/services hand-off), `paths.ts` (stable server paths, dirs,
+  `safeStorage` cipher, brand icon), `ipc-settings.ts`, `ipc-wrap.ts` (credentials, audit, wrappers,
+  connect-info), `ipc-media.ts`, `ipc-misc.ts` (recording, research run, collaboration, web-state),
+  `ipc-remote.ts`, `window.ts` (create, HUD diagnostics, first load) and `services.ts` (bridge,
+  wrap, tools, collaboration, media, remote). The 192-line `createWindow` is gone and the eleven
+  remote channels share one refusal/error helper. Verified: the dev instance rebuilt and restarted
+  on its own (`test:mcp:surface` 35/35, `test:act` 26/26 against the new bootstrap).
 - **Cortex split** - `cortex/cortex-db.ts` 841 -> 261 (connection + public API): `cortex-tables.ts`
   (table creation/seeding, FTS index, the embedding-provider guard, history reset),
   `history-store.ts` (index, hybrid recall, chronological history, clear), `bookmarks-store.ts`,
