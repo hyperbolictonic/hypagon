@@ -100,6 +100,7 @@ import { hideUrlSuggestions } from './url-suggestions';
 import { navBackBtn, navForwardBtn, navReloadBtn } from './url-bar';
 import { renderZoom, setZoomPinned } from './zoom-controls';
 import { renderTabs } from './tab-bar';
+import { renderTrail, resizeCanvas } from './canvas-trail';
 import { renderUpdateState } from './update-banner';
 import { refreshWebState } from './web-state';
 import {
@@ -211,15 +212,6 @@ const tabContentLogs = document.getElementById('tab-content-logs') as HTMLElemen
 // Dynamic Lists & Preview
 
 // Radar Canvas for Cursor Tracking
-const canvas = document.getElementById('radar-canvas') as HTMLCanvasElement;
-const ctx = canvas.getContext('2d');
-
-
-function resizeCanvas() {
-  if (!canvas || !canvas.parentElement) return;
-  canvas.width = canvas.parentElement.clientWidth;
-  canvas.height = canvas.parentElement.clientHeight;
-}
 window.addEventListener('resize', resizeCanvas);
 
 // ---- Native floating Cyberdeck panel ------------------------------------------------------
@@ -296,45 +288,6 @@ void refreshCollaborationCount();
 // Render loop for organic Ghost Cursor trail
 resizeCanvas();
 
-function renderTrail() {
-  if (SIDEBAR_MODE || MENU_POPUP_MODE || !ctx || !canvas) return;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  for (let i = cursorTrail.length - 1; i >= 0; i--) {
-    const pt = cursorTrail[i];
-    pt.alpha -= 0.02;
-
-    if (pt.alpha <= 0) {
-      cursorTrail.splice(i, 1);
-      continue;
-    }
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(0, 210, 255, ${pt.alpha})`;
-    ctx.shadowColor = '#00d2ff';
-    ctx.shadowBlur = 8;
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // Draw connecting line between last points
-  if (cursorTrail.length > 1) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(cursorTrail[0].x, cursorTrail[0].y);
-    for (let i = 1; i < cursorTrail.length; i++) {
-      ctx.lineTo(cursorTrail[i].x, cursorTrail[i].y);
-    }
-    ctx.strokeStyle = 'rgba(0, 210, 255, 0.25)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  requestAnimationFrame(renderTrail);
-}
 requestAnimationFrame(renderTrail);
 
 // Tab switching
