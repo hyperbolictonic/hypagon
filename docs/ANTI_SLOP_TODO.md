@@ -11,13 +11,18 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **2 violations** across **1 file** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,577 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 367 files |
+| Duplicates | **604 duplicated lines / 51,585 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 369 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer entry point under budget** - `renderer/main.ts` 331 -> 299, so the file violation is
+  cleared. `hud-copy.ts` (32) now owns the app-version readout and the copy buttons for logs,
+  decisions and the construct markdown. The remaining baseline is only `browser-chassis.ts`
+  (file + class). Verified: `npx vite build`, `test:settings:dom` (192 ids).
 
 - **Renderer IPC bootstrap extracted** - `renderer/main.ts` 605 -> 364,
   `ipc-bootstrap.ts` 278. Every main-process push (state, tabs, telemetry, logs, constructs, zoom,
