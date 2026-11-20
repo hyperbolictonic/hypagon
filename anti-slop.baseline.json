@@ -46,9 +46,6 @@
       "main/browser-chassis.ts": {
         "class": 1,
         "file": 1
-      },
-      "renderer/main.ts": {
-        "file": 1
       }
     }
   }

@@ -288,23 +288,10 @@ window.setTimeout(() => {
 }, 1500);
 
 
-// Harvest Action
 
 // Copy Construct Markdown
-copyConstructBtn.addEventListener('click', async () => {
-  if (!currentConstructMarkdown) return;
-  await navigator.clipboard.writeText(currentConstructMarkdown);
-  const prevText = copyConstructBtn.innerText;
-  copyConstructBtn.innerText = 'COPIED!';
-  setTimeout(() => {
-    copyConstructBtn.innerText = prevText;
-  }, 1500);
-});
 
-// Render Construct Payload
-// Update State from Electron
 
-// Tab Management in Renderer
 
 
 // About Modal & Viewport Visibility Management

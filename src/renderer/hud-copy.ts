@@ -7,6 +7,18 @@ import { aboutVersion, chassisVersionBadge } from './hud-dom';
 import { currentConstructMarkdown, logsContainer } from './telemetry-feed';
 import { decisionFeed } from './decision-feed';
 
+const copyConstructBtn = document.getElementById('copy-construct-btn') as HTMLButtonElement;
+
+copyConstructBtn.addEventListener('click', async () => {
+  if (!currentConstructMarkdown) return;
+  await navigator.clipboard.writeText(currentConstructMarkdown);
+  const prevText = copyConstructBtn.innerText;
+  copyConstructBtn.innerText = 'COPIED!';
+  setTimeout(() => {
+    copyConstructBtn.innerText = prevText;
+  }, 1500);
+});
+
 /** When to use: paint the app version into the HUD and About dialog. */
 export function renderAppVersion(version: string | undefined) {
   if (!version) return;
