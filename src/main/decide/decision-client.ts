@@ -276,7 +276,7 @@ async function runLocalOnnx(cfg: DecisionConfig, call: DecisionCall): Promise<De
       error: {
         code: 'NOT_CONFIGURED',
         message: 'The local decision runtime is not installed (open-jev).',
-        hint: 'Run `pnpm add open-jev @huggingface/transformers`. The model weights (kev-0.6b â‰ˆ 0.34 GB) download on first use; nothing is bundled with Kuang.',
+        hint: 'Run `pnpm add open-jev @huggingface/transformers`. The model weights (kev-0.6b ≈ 0.34 GB) download on first use; nothing is bundled with Kuang.',
       },
     };
   }

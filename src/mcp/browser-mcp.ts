@@ -319,7 +319,7 @@ async function executeCatalogTool(tool: ToolCatalogItem, args: any) {
         if (!raw) continue;
         content.push({
           type: 'text',
-          text: `Frame image �?" ${image.name ? `"${image.name}" ` : ''}${image.url || image.frameId} (${image.width}x${image.height})`,
+          text: `Frame image — ${image.name ? `"${image.name}" ` : ''}${image.url || image.frameId} (${image.width}x${image.height})`,
         });
         content.push({ type: 'image', data: raw, mimeType: image.mimeType || 'image/jpeg' });
       }
@@ -349,7 +349,7 @@ async function executeCatalogTool(tool: ToolCatalogItem, args: any) {
         const header = filePath
           ? `Set-of-Marks Screenshot saved to ${filePath} (${w}x${h}px). ${marks.length} interactive elements detected.${zoomNote}`
           : `Set-of-Marks text scan (viewport ${w}x${h}px, no image). ${marks.length} interactive elements detected.${zoomNote}`;
-        text = clampText(`${header}\n\nInteractive Elements:\n${marksTable}\n\nActuate via act(mark_id, action) �?" action defaults to "click"; "type" for inputs (text=...), "hover" for menus, "press" for keys.`);
+        text = clampText(`${header}\n\nInteractive Elements:\n${marksTable}\n\nActuate via act(mark_id, action) — action defaults to "click"; "type" for inputs (text=...), "hover" for menus, "press" for keys.`);
       } else {
         text = filePath
           ? `Screenshot captured and saved to ${filePath} (${w}x${h}px).${zoomNote}`
@@ -385,7 +385,7 @@ async function executeCatalogTool(tool: ToolCatalogItem, args: any) {
     }
 
     // observe(as:"components") is the input to the decision loop, so hand back the machine
-    // table too �?" decide(state: <this>, guard:{components: [ids]}) can consume it verbatim
+    // table too — decide(state: <this>, guard:{components: [ids]}) can consume it verbatim
     // instead of the agent re-typing ids out of the prose projection.
     if (tool.name === 'observe' && data?.as === 'components' && Array.isArray(data.components)) {
       const components = data.components.slice(0, 120).map((c: any) => ({

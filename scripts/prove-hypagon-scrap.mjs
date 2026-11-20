@@ -1,4 +1,4 @@
-﻿import { Page } from "hypagon-scrap";
+import { Page } from "hypagon-scrap";
 
 const html = `<html><body><div class="products">
   <article class="product" id="p1"><h3>Widget</h3><span class="price">19.99</span></article>

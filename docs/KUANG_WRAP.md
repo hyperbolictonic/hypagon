@@ -1,4 +1,4 @@
-﻿# Hypagon REST (legacy name: Kuang Wrap)
+# Hypagon REST (legacy name: Kuang Wrap)
 
 The canonical documentation moved to [HYPAGON_REST.md](./HYPAGON_REST.md).
 

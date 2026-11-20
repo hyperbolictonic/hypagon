@@ -1340,7 +1340,7 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
       conditions: z.array(z.record(z.string(), z.any())).describe('Array of condition objects, e.g. [{"type":"selector","selector":".result"}]'),
       require: z.enum(['any', 'all']).optional().default('any').describe('"all" = every condition must hold; "any" = first one (default)'),
       timeout_ms: z.coerce.number().optional().default(15000).describe('Give up after this many ms (default: 15000)'),
-      poll_ms: z.coerce.number().optional().default(120).describe('Poll interval in ms (default: 120 � sites settle in tens of ms, so 250 wastes a quarter second per wait)'),
+      poll_ms: z.coerce.number().optional().default(120).describe('Poll interval in ms (default: 120 — sites settle in tens of ms, so 250 wastes a quarter second per wait)'),
     },
     endpoint: '/wait-for',
     payload: (args) => ({
