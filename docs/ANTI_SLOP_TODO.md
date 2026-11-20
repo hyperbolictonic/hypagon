@@ -11,13 +11,22 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **7 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **4 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
 | Duplicates | **649 duplicated lines / 50,925 (1.3%)** | threshold is 3%; 28 files with clones (the catalog entries moved with their existing clones; the total is unchanged) |
 | Import cycles | **0** | 5 layer rules pass across 330 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Oversized handlers split** - three of the four function violations are gone without touching the
+  two file violations yet: `renderer/main.ts`'s 118-line wrapper-save handler is now
+  `readWrapperForm` / `resolveWrapperAuth` / `buildWrapperPayload` plus a 30-line handler;
+  `browser-chassis.ts`'s 144-line `setupTabManager` moved its four callbacks to private helpers, and
+  its 195-line `registerIpcHandlers` became four channel-group methods behind a dispatcher (the
+  class-size finding was already in the baseline and stayed at one). Verified: `npx vite build` (renderer
+  + preload + main), `test:settings:dom` (192 static ids), `test:mcp:surface` 35/35.
+  Modularity: 7 -> 4 violations (2 file + 1 function + 1 class).
 
 - **Tool catalog split** - `mcp/tools-catalog.ts` 2180 -> 60 (the assembly module). The 95 entries
   now live in `mcp/catalog/` by family (navigation, interaction, tabs, memory, shield, downloads,
