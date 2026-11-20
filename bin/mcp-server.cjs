@@ -38944,6 +38944,33 @@ var CONSOLIDATED_HIDDEN_TOOLS = /* @__PURE__ */ new Set([
 // src/shared/version.ts
 var APP_VERSION = "2.3.3";
 
+// src/shared/tool-settings.ts
+function compareByRank(aName, bName, rank, fallback) {
+  const aRank = rank.get(aName);
+  const bRank = rank.get(bName);
+  if (aRank !== void 0 || bRank !== void 0) {
+    if (aRank === void 0) return 1;
+    if (bRank === void 0) return -1;
+    if (aRank !== bRank) return aRank - bRank;
+  }
+  return fallback(aName, bName);
+}
+function collectActionInstructions(source, map2) {
+  const out = {};
+  if (!source || typeof source !== "object" || Array.isArray(source)) return out;
+  for (const [toolName, rawActions] of Object.entries(source)) {
+    if (!rawActions || typeof rawActions !== "object" || Array.isArray(rawActions)) continue;
+    const actions = {};
+    for (const [actionName, text] of Object.entries(rawActions)) {
+      if (typeof text !== "string" || !text.trim()) continue;
+      const mapped = map2(toolName, actionName, text);
+      if (mapped !== null) actions[actionName] = mapped;
+    }
+    if (Object.keys(actions).length) out[toolName] = actions;
+  }
+  return out;
+}
+
 // src/main/decide/decision-config.ts
 var import_node_fs2 = __toESM(require("node:fs"), 1);
 
@@ -39161,17 +39188,7 @@ async function loadToolPreferences() {
         if (typeof text === "string" && text.trim()) instructions[name] = text.trim();
       }
     }
-    const actionInstructions = {};
-    if (data?.actionInstructions && typeof data.actionInstructions === "object" && !Array.isArray(data.actionInstructions)) {
-      for (const [toolName, rawActions] of Object.entries(data.actionInstructions)) {
-        if (!rawActions || typeof rawActions !== "object" || Array.isArray(rawActions)) continue;
-        const actions = {};
-        for (const [actionName, text] of Object.entries(rawActions)) {
-          if (typeof text === "string" && text.trim()) actions[actionName] = text.trim();
-        }
-        if (Object.keys(actions).length) actionInstructions[toolName] = actions;
-      }
-    }
+    const actionInstructions = collectActionInstructions(data?.actionInstructions, (_tool, _action, text) => text.trim());
     const value = {
       order,
       disabled,
@@ -39425,16 +39442,14 @@ async function createBridgeMcpServer() {
   const defaultOrder = surfaceOrder;
   const baseRank = new Map(defaultOrder.map((name, index) => [name, index]));
   const configuredRank = new Map(toolPreferences.order.map((name, index) => [name, index]));
-  const orderedTools = baseTools.filter((tool) => !disabledTools.has(tool.name)).sort((a, b) => {
-    const aRank = configuredRank.get(a.name);
-    const bRank = configuredRank.get(b.name);
-    if (aRank !== void 0 || bRank !== void 0) {
-      if (aRank === void 0) return 1;
-      if (bRank === void 0) return -1;
-      if (aRank !== bRank) return aRank - bRank;
-    }
-    return (baseRank.get(a.name) ?? Number.MAX_SAFE_INTEGER) - (baseRank.get(b.name) ?? Number.MAX_SAFE_INTEGER);
-  });
+  const orderedTools = baseTools.filter((tool) => !disabledTools.has(tool.name)).sort(
+    (a, b) => compareByRank(
+      a.name,
+      b.name,
+      configuredRank,
+      (aName, bName) => (baseRank.get(aName) ?? Number.MAX_SAFE_INTEGER) - (baseRank.get(bName) ?? Number.MAX_SAFE_INTEGER)
+    )
+  );
   for (const tool of orderedTools) {
     if ((tool.name === "decide" || tool.name === "drive") && !decisionConfigured) continue;
     if (JEV_TOOL_NAMES.includes(tool.name) && !toolPreferences.jevAvailable) continue;
@@ -39813,16 +39828,7 @@ Rules of thumb:
       const result = await rawListHandler(request, extra);
       if (result && Array.isArray(result.tools)) {
         const surfaceRank = new Map(surfaceOrder.map((name, index) => [name, index]));
-        const visible = result.tools.filter((t) => !HIDDEN_TOOLS.has(t.name) && !CONSOLIDATED_HIDDEN_TOOLS.has(t.name)).sort((a, b) => {
-          const aRank = surfaceRank.get(a.name);
-          const bRank = surfaceRank.get(b.name);
-          if (aRank !== void 0 || bRank !== void 0) {
-            if (aRank === void 0) return 1;
-            if (bRank === void 0) return -1;
-            if (aRank !== bRank) return aRank - bRank;
-          }
-          return a.name.localeCompare(b.name);
-        });
+        const visible = result.tools.filter((t) => !HIDDEN_TOOLS.has(t.name) && !CONSOLIDATED_HIDDEN_TOOLS.has(t.name)).sort((a, b) => compareByRank(a.name, b.name, surfaceRank, (aName, bName) => aName.localeCompare(bName)));
         result.tools = visible.map((t) => {
           const rawSchema = t.inputSchema || {};
           const schema = {

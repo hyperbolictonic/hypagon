@@ -42,3 +42,43 @@ export interface ToolManagerResult {
   state?: ToolManagerState;
   errors: string[];
 }
+
+/** When to use: ordering tools by a saved rank, then by a caller-provided fallback. */
+export function compareByRank(
+  aName: string,
+  bName: string,
+  rank: Map<string, number>,
+  fallback: (a: string, b: string) => number,
+): number {
+  const aRank = rank.get(aName);
+  const bRank = rank.get(bName);
+  if (aRank !== undefined || bRank !== undefined) {
+    if (aRank === undefined) return 1;
+    if (bRank === undefined) return -1;
+    if (aRank !== bRank) return aRank - bRank;
+  }
+  return fallback(aName, bName);
+}
+
+/**
+ * When to use: reading saved per-action instruction text from settings or a tools/list result.
+ * The caller decides which (tool, action) pairs are acceptable and how to trim the text.
+ */
+export function collectActionInstructions(
+  source: unknown,
+  map: (toolName: string, actionName: string, text: string) => string | null,
+): Record<string, Record<string, string>> {
+  const out: Record<string, Record<string, string>> = {};
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return out;
+  for (const [toolName, rawActions] of Object.entries(source as Record<string, unknown>)) {
+    if (!rawActions || typeof rawActions !== 'object' || Array.isArray(rawActions)) continue;
+    const actions: Record<string, string> = {};
+    for (const [actionName, text] of Object.entries(rawActions as Record<string, unknown>)) {
+      if (typeof text !== 'string' || !text.trim()) continue;
+      const mapped = map(toolName, actionName, text);
+      if (mapped !== null) actions[actionName] = mapped;
+    }
+    if (Object.keys(actions).length) out[toolName] = actions;
+  }
+  return out;
+}

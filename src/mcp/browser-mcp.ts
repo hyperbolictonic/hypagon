@@ -11,6 +11,7 @@ import {
 } from './tool-groups.js';
 import { formatMark } from './format-mark.js';
 import { APP_VERSION } from '../shared/version.js';
+import { collectActionInstructions, compareByRank } from '../shared/tool-settings.js';
 import { BRAND } from '../shared/brand.js';
 import { decisionStatus } from '../main/decide/decision-client.js';
 
@@ -171,17 +172,7 @@ async function loadToolPreferences(): Promise<ToolPreferences> {
         if (typeof text === 'string' && text.trim()) instructions[name] = text.trim();
       }
     }
-    const actionInstructions: Record<string, Record<string, string>> = {};
-    if (data?.actionInstructions && typeof data.actionInstructions === 'object' && !Array.isArray(data.actionInstructions)) {
-      for (const [toolName, rawActions] of Object.entries(data.actionInstructions)) {
-        if (!rawActions || typeof rawActions !== 'object' || Array.isArray(rawActions)) continue;
-        const actions: Record<string, string> = {};
-        for (const [actionName, text] of Object.entries(rawActions)) {
-          if (typeof text === 'string' && text.trim()) actions[actionName] = text.trim();
-        }
-        if (Object.keys(actions).length) actionInstructions[toolName] = actions;
-      }
-    }
+    const actionInstructions = collectActionInstructions(data?.actionInstructions, (_tool, _action, text) => text.trim());
     const value = {
       order,
       disabled,
@@ -504,17 +495,15 @@ export async function createBridgeMcpServer() {
   const configuredRank = new Map(toolPreferences.order.map((name, index) => [name, index]));
   const orderedTools = baseTools
     .filter((tool) => !disabledTools.has(tool.name))
-    .sort((a, b) => {
-      const aRank = configuredRank.get(a.name);
-      const bRank = configuredRank.get(b.name);
-      if (aRank !== undefined || bRank !== undefined) {
-        if (aRank === undefined) return 1;
-        if (bRank === undefined) return -1;
-        if (aRank !== bRank) return aRank - bRank;
-      }
-      return (baseRank.get(a.name) ?? Number.MAX_SAFE_INTEGER) -
-        (baseRank.get(b.name) ?? Number.MAX_SAFE_INTEGER);
-    });
+    .sort((a, b) =>
+      compareByRank(
+        a.name,
+        b.name,
+        configuredRank,
+        (aName, bName) =>
+          (baseRank.get(aName) ?? Number.MAX_SAFE_INTEGER) - (baseRank.get(bName) ?? Number.MAX_SAFE_INTEGER),
+      ),
+    );
 
   for (const tool of orderedTools) {
     // The decision model is opt-in: when no backend is configured, `decide`/`drive` are not
@@ -870,16 +859,7 @@ Rules of thumb:
         const surfaceRank = new Map(surfaceOrder.map((name, index) => [name, index]));
         const visible = result.tools
           .filter((t: any) => !HIDDEN_TOOLS.has(t.name) && !CONSOLIDATED_HIDDEN_TOOLS.has(t.name))
-          .sort((a: any, b: any) => {
-            const aRank = surfaceRank.get(a.name);
-            const bRank = surfaceRank.get(b.name);
-            if (aRank !== undefined || bRank !== undefined) {
-              if (aRank === undefined) return 1;
-              if (bRank === undefined) return -1;
-              if (aRank !== bRank) return aRank - bRank;
-            }
-            return a.name.localeCompare(b.name);
-          });
+          .sort((a: any, b: any) => compareByRank(a.name, b.name, surfaceRank, (aName, bName) => aName.localeCompare(bName)));
         result.tools = visible.map((t: any) => {
           const rawSchema = t.inputSchema || {};
           const schema = {

@@ -4,6 +4,7 @@ import {
   META_TOOL_NAMES,
   TOOL_GROUPS,
 } from '../../mcp/tool-groups.js';
+import { collectActionInstructions, compareByRank } from '../../shared/tool-settings.js';
 import type { ToolManagerEntry, ToolManagerState, ToolSettings } from '../../shared/tool-settings.js';
 
 const ADVERTISED_CATALOG = TOOLS_CATALOG.filter(
@@ -32,20 +33,9 @@ export function sanitizeToolSettings(input: unknown): ToolSettings {
       }
     }
   }
-  const actionInstructions: Record<string, Record<string, string>> = {};
-  if (source.actionInstructions && typeof source.actionInstructions === 'object' && !Array.isArray(source.actionInstructions)) {
-    for (const [toolName, rawActions] of Object.entries(source.actionInstructions)) {
-      const allowed = GROUP_ACTIONS.get(toolName);
-      if (!allowed || !rawActions || typeof rawActions !== 'object' || Array.isArray(rawActions)) continue;
-      const actions: Record<string, string> = {};
-      for (const [actionName, text] of Object.entries(rawActions)) {
-        if (allowed.has(actionName) && typeof text === 'string' && text.trim()) {
-          actions[actionName] = text.trim().slice(0, 4_000);
-        }
-      }
-      if (Object.keys(actions).length) actionInstructions[toolName] = actions;
-    }
-  }
+  const actionInstructions = collectActionInstructions(source.actionInstructions, (toolName, actionName, text) =>
+    GROUP_ACTIONS.get(toolName)?.has(actionName) ? text.trim().slice(0, 4_000) : null,
+  );
   return {
     schemaVersion: 1,
     order: names(source.order),
@@ -92,16 +82,14 @@ export function buildToolManagerState(settings: ToolSettings): ToolManagerState 
     })),
   }));
 
-  const tools = [...catalogEntries, ...groupedEntries].sort((a, b) => {
-    const aRank = rank.get(a.name);
-    const bRank = rank.get(b.name);
-    if (aRank !== undefined || bRank !== undefined) {
-      if (aRank === undefined) return 1;
-      if (bRank === undefined) return -1;
-      if (aRank !== bRank) return aRank - bRank;
-    }
-    return (fallback.get(a.name) ?? Number.MAX_SAFE_INTEGER) -
-      (fallback.get(b.name) ?? Number.MAX_SAFE_INTEGER);
-  });
+  const tools = [...catalogEntries, ...groupedEntries].sort((a, b) =>
+    compareByRank(
+      a.name,
+      b.name,
+      rank,
+      (aName, bName) =>
+        (fallback.get(aName) ?? Number.MAX_SAFE_INTEGER) - (fallback.get(bName) ?? Number.MAX_SAFE_INTEGER),
+    ),
+  );
   return { tools, settings };
 }
