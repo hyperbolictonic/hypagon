@@ -3262,8 +3262,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path3) {
-      let input2 = path3;
+    function removeDotSegments(path4) {
+      let input2 = path4;
       const output2 = [];
       let nextSlash = -1;
       let len = 0;
@@ -3672,8 +3672,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path3 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path3 && path3 !== "/" ? path3 : void 0;
+        const path4 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path4 && path4 !== "/" ? path4 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -7186,12 +7186,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs4, exportName) {
+    function addFormats(ajv, list, fs5, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs4[f]);
+        ajv.addFormat(f, fs5[f]);
     }
     module2.exports = exports2 = formatsPlugin;
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -8019,10 +8019,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path3) {
-  if (!path3)
+function getElementAtPath(obj, path4) {
+  if (!path4)
     return obj;
-  return path3.reduce((acc, key) => acc?.[key], obj);
+  return path4.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -8362,11 +8362,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path3, issues) {
+function prefixIssues(path4, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path3);
+    iss.path.unshift(path4);
     return iss;
   });
 }
@@ -8828,16 +8828,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path3 = []) => {
+  const processError = (error63, path4 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path3, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path4, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
       } else {
-        const fullpath = [...path3, ...issue2.path];
+        const fullpath = [...path4, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8876,17 +8876,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path3 = []) => {
+  const processError = (error63, path4 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path3, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path4, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path3, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path4, ...issue2.path]);
       } else {
-        const fullpath = [...path3, ...issue2.path];
+        const fullpath = [...path4, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -8925,8 +8925,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path3 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path3) {
+  const path4 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path4) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -26064,13 +26064,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path3 = ref.slice(1).split("/").filter(Boolean);
-  if (path3.length === 0) {
+  const path4 = ref.slice(1).split("/").filter(Boolean);
+  if (path4.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path3[0] === defsKey) {
-    const key = path3[1] === void 0 ? void 0 : decodeJSONPointerSegment(path3[1]);
+  if (path4[0] === defsKey) {
+    const key = path4[1] === void 0 ? void 0 : decodeJSONPointerSegment(path4[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -28554,10 +28554,6 @@ var StdioServerTransport = class {
   }
 };
 
-// src/mcp/browser-mcp.ts
-var import_node_fs3 = __toESM(require("node:fs"), 1);
-var import_node_path2 = __toESM(require("node:path"), 1);
-
 // node_modules/zod/v3/helpers/util.js
 var util;
 (function(util2) {
@@ -28932,8 +28928,8 @@ function getErrorMap2() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path3, errorMaps, issueData } = params;
-  const fullPath = [...path3, ...issueData.path || []];
+  const { data, path: path4, errorMaps, issueData } = params;
+  const fullPath = [...path4, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -29048,11 +29044,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path3, key) {
+  constructor(parent, value, path4, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path3;
+    this._path = path4;
     this._key = key;
   }
   get path() {
@@ -32603,11 +32599,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path3) {
-  if (path3.length === 0) {
+function getDotPath(path4) {
+  if (path4.length === 0) {
     return "object root";
   }
-  return path3.reduce((acc, seg, index) => {
+  return path4.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -36593,6 +36589,9 @@ var EMPTY_COMPLETION_RESULT = {
   }
 };
 
+// src/shared/version.ts
+var APP_VERSION = "2.3.3";
+
 // src/mcp/format-mark.ts
 function formatMark(m) {
   const attrs = `${m.type ? ` type="${m.type}"` : ""}${m.role ? ` role=${m.role}` : ""}`;
@@ -38941,36 +38940,6 @@ var CONSOLIDATED_HIDDEN_TOOLS = /* @__PURE__ */ new Set([
   "recipe"
 ]);
 
-// src/shared/version.ts
-var APP_VERSION = "2.3.3";
-
-// src/shared/tool-settings.ts
-function compareByRank(aName, bName, rank, fallback) {
-  const aRank = rank.get(aName);
-  const bRank = rank.get(bName);
-  if (aRank !== void 0 || bRank !== void 0) {
-    if (aRank === void 0) return 1;
-    if (bRank === void 0) return -1;
-    if (aRank !== bRank) return aRank - bRank;
-  }
-  return fallback(aName, bName);
-}
-function collectActionInstructions(source, map2) {
-  const out = {};
-  if (!source || typeof source !== "object" || Array.isArray(source)) return out;
-  for (const [toolName, rawActions] of Object.entries(source)) {
-    if (!rawActions || typeof rawActions !== "object" || Array.isArray(rawActions)) continue;
-    const actions = {};
-    for (const [actionName, text] of Object.entries(rawActions)) {
-      if (typeof text !== "string" || !text.trim()) continue;
-      const mapped = map2(toolName, actionName, text);
-      if (mapped !== null) actions[actionName] = mapped;
-    }
-    if (Object.keys(actions).length) out[toolName] = actions;
-  }
-  return out;
-}
-
 // src/main/decide/decision-config.ts
 var import_node_fs2 = __toESM(require("node:fs"), 1);
 
@@ -39086,7 +39055,36 @@ function decisionStatus() {
   };
 }
 
-// src/mcp/browser-mcp.ts
+// src/shared/tool-settings.ts
+function compareByRank(aName, bName, rank, fallback) {
+  const aRank = rank.get(aName);
+  const bRank = rank.get(bName);
+  if (aRank !== void 0 || bRank !== void 0) {
+    if (aRank === void 0) return 1;
+    if (bRank === void 0) return -1;
+    if (aRank !== bRank) return aRank - bRank;
+  }
+  return fallback(aName, bName);
+}
+function collectActionInstructions(source, map2) {
+  const out = {};
+  if (!source || typeof source !== "object" || Array.isArray(source)) return out;
+  for (const [toolName, rawActions] of Object.entries(source)) {
+    if (!rawActions || typeof rawActions !== "object" || Array.isArray(rawActions)) continue;
+    const actions = {};
+    for (const [actionName, text] of Object.entries(rawActions)) {
+      if (typeof text !== "string" || !text.trim()) continue;
+      const mapped = map2(toolName, actionName, text);
+      if (mapped !== null) actions[actionName] = mapped;
+    }
+    if (Object.keys(actions).length) out[toolName] = actions;
+  }
+  return out;
+}
+
+// src/mcp/mcp-log.ts
+var import_node_fs3 = __toESM(require("node:fs"), 1);
+var import_node_path2 = __toESM(require("node:path"), 1);
 var BRIDGE_URL = process.env.HB_BRIDGE_URL || process.env.KUANG_BRIDGE_URL || "http://127.0.0.1:4111";
 var LOG_TO_FILE = (process.env.HB_MCP_LOG ?? process.env.KUANG_MCP_LOG) !== "0";
 var STDERR_MODE = (process.env.HB_MCP_STDERR ?? process.env.KUANG_MCP_STDERR) === "0" ? "off" : (process.env.HB_MCP_STDERR ?? process.env.KUANG_MCP_STDERR) === "verbose" ? "verbose" : "boot";
@@ -39162,6 +39160,8 @@ function logMcp(message, level = "call") {
     writeStderr(`[${BRAND.browser} MCP ${timestamp}] ${message}`);
   }
 }
+
+// src/mcp/browser-surface.ts
 var MAX_TEXT_CHARS = 6e4;
 function clampText(text) {
   if (typeof text !== "string" || text.length <= MAX_TEXT_CHARS) return text;
@@ -39173,36 +39173,6 @@ var BRIDGE_TIMEOUT_MS = (() => {
   const raw = Number(process.env.HB_BRIDGE_TIMEOUT_MS ?? process.env.KUANG_BRIDGE_TIMEOUT_MS);
   return Number.isFinite(raw) && raw > 0 ? raw : 3e5;
 })();
-var cachedToolPreferences = null;
-async function loadToolPreferences() {
-  if (cachedToolPreferences && Date.now() - cachedToolPreferences.at < 2e3) {
-    return cachedToolPreferences.value;
-  }
-  try {
-    const data = await callBridge("/tools/config", "GET");
-    const order = Array.isArray(data?.order) ? data.order.filter((name) => typeof name === "string") : [];
-    const disabled = Array.isArray(data?.disabled) ? data.disabled.filter((name) => typeof name === "string") : [];
-    const instructions = {};
-    if (data?.instructions && typeof data.instructions === "object" && !Array.isArray(data.instructions)) {
-      for (const [name, text] of Object.entries(data.instructions)) {
-        if (typeof text === "string" && text.trim()) instructions[name] = text.trim();
-      }
-    }
-    const actionInstructions = collectActionInstructions(data?.actionInstructions, (_tool, _action, text) => text.trim());
-    const value = {
-      order,
-      disabled,
-      instructions,
-      actionInstructions,
-      jevAvailable: data?.jev?.available === true,
-      jevMode: data?.jev?.mode === "enforce" ? "enforce" : "prefer"
-    };
-    cachedToolPreferences = { value, at: Date.now() };
-    return value;
-  } catch {
-    return { order: [], disabled: [], instructions: {}, actionInstructions: {}, jevAvailable: false, jevMode: "prefer" };
-  }
-}
 async function callBridge(endpoint, method = "GET", body = null) {
   let url2 = `${BRIDGE_URL}${endpoint}`;
   const options = {
@@ -39271,6 +39241,70 @@ var IMAGE_TOOLS = /* @__PURE__ */ new Set([
   "take_economy_screenshot",
   "list_marks"
 ]);
+function imageToolContent(tool, data, args) {
+  if (tool.name === "media_preview") {
+    const text = clampText(tool.format ? tool.format(data, args) : JSON.stringify(data, null, 2));
+    const content = [{ type: "text", text }];
+    const images = Array.isArray(data?.images) ? data.images : [];
+    for (const image of images) {
+      if (typeof image?.base64 !== "string" || image.base64 === "") continue;
+      content.push({ type: "image", data: image.base64, mimeType: image.mimeType || "image/jpeg" });
+    }
+    logMcp(`[Tool Success] "media_preview" returning text + ${images.length} image(s)`);
+    return { content };
+  }
+  if (tool.name === "frames") {
+    const images = Array.isArray(data?.images) ? data.images : [];
+    const text = clampText(tool.format ? tool.format(data, args) : JSON.stringify(data, null, 2));
+    const content = [{ type: "text", text }];
+    for (const image of images) {
+      const raw = typeof image?.base64Image === "string" ? image.base64Image.replace(/^data:image\/[a-z]+;base64,/, "") : "";
+      if (!raw) continue;
+      content.push({
+        type: "text",
+        text: `Frame image \u2014 ${image.name ? `"${image.name}" ` : ""}${image.url || image.frameId} (${image.width}x${image.height})`
+      });
+      content.push({ type: "image", data: raw, mimeType: image.mimeType || "image/jpeg" });
+    }
+    logMcp(`[Tool Success] "frames" returning text + ${images.length} frame image(s)`);
+    return { content };
+  }
+  if (IMAGE_TOOLS.has(tool.name)) {
+    const rawBase64 = extractCleanBase64(data);
+    const screenshot = data.screenshot || data;
+    const filePath = screenshot.filePath || "";
+    const w = screenshot.width || 0;
+    const h = screenshot.height || 0;
+    const marks = Array.isArray(data.marks) ? data.marks : [];
+    const withMarks = tool.name !== "take_screenshot" || args?.marks === true;
+    const zoom = screenshot.zoom;
+    const zoomNote = zoom ? ` Page zoom ${Math.round((zoom.factor || 1) * 100)}% (${zoom.custom ? "custom" : zoom.mode}); CSS viewport ${zoom.viewport?.css?.width || 0}x${zoom.viewport?.css?.height || 0}; image/CSS scale ${Number(screenshot.coordinateScale || 1).toFixed(3)}.` : "";
+    let text;
+    if (withMarks) {
+      const marksTable = marks.map((m) => formatMark(m)).join("\n");
+      const header = filePath ? `Set-of-Marks Screenshot saved to ${filePath} (${w}x${h}px). ${marks.length} interactive elements detected.${zoomNote}` : `Set-of-Marks text scan (viewport ${w}x${h}px, no image). ${marks.length} interactive elements detected.${zoomNote}`;
+      text = clampText(`${header}
+
+Interactive Elements:
+${marksTable}
+
+Actuate via act(mark_id, action) \u2014 action defaults to "click"; "type" for inputs (text=...), "hover" for menus, "press" for keys.`);
+    } else {
+      text = filePath ? `Screenshot captured and saved to ${filePath} (${w}x${h}px).${zoomNote}` : `Screenshot captured (${w}x${h}px).${zoomNote}`;
+    }
+    const content = [{ type: "text", text }];
+    if (rawBase64) {
+      content.push({
+        type: "image",
+        data: rawBase64,
+        mimeType: screenshot.mimeType || (filePath.endsWith(".png") ? "image/png" : "image/jpeg")
+      });
+    }
+    logMcp(`[Tool Success] "${tool.name}" returning text${rawBase64 ? " + image part" : " only"} (${rawBase64.length} chars base64, ${marks.length} marks, path: ${filePath})`);
+    return { content };
+  }
+  return null;
+}
 async function executeCatalogTool(tool, args) {
   try {
     logMcp(`[Tool Dispatch] "${tool.name}" with args: ${preview(args)}`);
@@ -39278,67 +39312,8 @@ async function executeCatalogTool(tool, args) {
     const endpoint = tool.endpointFor ? tool.endpointFor(args) : tool.endpoint;
     logMcp(`[HTTP Forward] ${tool.method || "POST"} ${endpoint} body: ${preview(body)}`);
     const data = await callBridge(endpoint, tool.method || "POST", body);
-    if (tool.name === "media_preview") {
-      const text2 = clampText(tool.format ? tool.format(data, args) : JSON.stringify(data, null, 2));
-      const content = [{ type: "text", text: text2 }];
-      const images = Array.isArray(data?.images) ? data.images : [];
-      for (const image of images) {
-        if (typeof image?.base64 !== "string" || image.base64 === "") continue;
-        content.push({ type: "image", data: image.base64, mimeType: image.mimeType || "image/jpeg" });
-      }
-      logMcp(`[Tool Success] "media_preview" returning text + ${images.length} image(s)`);
-      return { content };
-    }
-    if (tool.name === "frames") {
-      const images = Array.isArray(data?.images) ? data.images : [];
-      const text2 = clampText(tool.format ? tool.format(data, args) : JSON.stringify(data, null, 2));
-      const content = [{ type: "text", text: text2 }];
-      for (const image of images) {
-        const raw = typeof image?.base64Image === "string" ? image.base64Image.replace(/^data:image\/[a-z]+;base64,/, "") : "";
-        if (!raw) continue;
-        content.push({
-          type: "text",
-          text: `Frame image \uFFFD?" ${image.name ? `"${image.name}" ` : ""}${image.url || image.frameId} (${image.width}x${image.height})`
-        });
-        content.push({ type: "image", data: raw, mimeType: image.mimeType || "image/jpeg" });
-      }
-      logMcp(`[Tool Success] "frames" returning text + ${images.length} frame image(s)`);
-      return { content };
-    }
-    if (IMAGE_TOOLS.has(tool.name)) {
-      const rawBase64 = extractCleanBase64(data);
-      const screenshot = data.screenshot || data;
-      const filePath = screenshot.filePath || "";
-      const w = screenshot.width || 0;
-      const h = screenshot.height || 0;
-      const marks = Array.isArray(data.marks) ? data.marks : [];
-      const withMarks = tool.name !== "take_screenshot" || args?.marks === true;
-      const zoom = screenshot.zoom;
-      const zoomNote = zoom ? ` Page zoom ${Math.round((zoom.factor || 1) * 100)}% (${zoom.custom ? "custom" : zoom.mode}); CSS viewport ${zoom.viewport?.css?.width || 0}x${zoom.viewport?.css?.height || 0}; image/CSS scale ${Number(screenshot.coordinateScale || 1).toFixed(3)}.` : "";
-      let text2;
-      if (withMarks) {
-        const marksTable = marks.map((m) => formatMark(m)).join("\n");
-        const header = filePath ? `Set-of-Marks Screenshot saved to ${filePath} (${w}x${h}px). ${marks.length} interactive elements detected.${zoomNote}` : `Set-of-Marks text scan (viewport ${w}x${h}px, no image). ${marks.length} interactive elements detected.${zoomNote}`;
-        text2 = clampText(`${header}
-
-Interactive Elements:
-${marksTable}
-
-Actuate via act(mark_id, action) \uFFFD?" action defaults to "click"; "type" for inputs (text=...), "hover" for menus, "press" for keys.`);
-      } else {
-        text2 = filePath ? `Screenshot captured and saved to ${filePath} (${w}x${h}px).${zoomNote}` : `Screenshot captured (${w}x${h}px).${zoomNote}`;
-      }
-      const content = [{ type: "text", text: text2 }];
-      if (rawBase64) {
-        content.push({
-          type: "image",
-          data: rawBase64,
-          mimeType: screenshot.mimeType || (filePath.endsWith(".png") ? "image/png" : "image/jpeg")
-        });
-      }
-      logMcp(`[Tool Success] "${tool.name}" returning text${rawBase64 ? " + image part" : " only"} (${rawBase64.length} chars base64, ${marks.length} marks, path: ${filePath})`);
-      return { content };
-    }
+    const image = imageToolContent(tool, data, args);
+    if (image) return image;
     const rawText = tool.format ? tool.format(data, args) : typeof data === "string" ? data : JSON.stringify(data, null, 2);
     const text = clampText(typeof rawText === "string" ? rawText : String(rawText ?? ""));
     logMcp(`[Tool Success] "${tool.name}" result: ${text.slice(0, 100)}`);
@@ -39378,106 +39353,42 @@ ${text}`;
     };
   }
 }
-function registerToolGroup(server, group, preferences) {
-  const actions = group.actions.map((action) => action.action);
-  const actionList = group.actions.map((action) => {
-    const custom2 = preferences.actionInstructions?.[group.name]?.[action.action];
-    return `${action.action} (${custom2 || action.description})`;
-  }).join("; ");
-  const tier = group.tier;
-  const prefix = tier ? `[${TIER_LABELS[tier]}] ` : "";
-  server.registerTool(
-    group.name,
-    {
-      description: `${prefix}${group.description} Actions: ${actionList}`,
-      inputSchema: external_exports.object({ action: external_exports.enum(actions) }).passthrough()
-    },
-    async (args) => {
-      const action = group.actions.find((entry) => entry.action === args?.action);
-      if (!action) {
-        return { isError: true, content: [{ type: "text", text: `Unknown action "${args?.action}". Use one of: ${group.actions.map((entry) => entry.action).join(", ")}` }] };
+
+// src/mcp/tool-preferences.ts
+var cachedToolPreferences = null;
+async function loadToolPreferences() {
+  if (cachedToolPreferences && Date.now() - cachedToolPreferences.at < 2e3) {
+    return cachedToolPreferences.value;
+  }
+  try {
+    const data = await callBridge("/tools/config", "GET");
+    const order = Array.isArray(data?.order) ? data.order.filter((name) => typeof name === "string") : [];
+    const disabled = Array.isArray(data?.disabled) ? data.disabled.filter((name) => typeof name === "string") : [];
+    const instructions = {};
+    if (data?.instructions && typeof data.instructions === "object" && !Array.isArray(data.instructions)) {
+      for (const [name, text] of Object.entries(data.instructions)) {
+        if (typeof text === "string" && text.trim()) instructions[name] = text.trim();
       }
-      const { action: _action, ...rest } = args || {};
-      const mapped = action.map ? action.map(rest) : rest;
-      if (action.endpoint) {
-        try {
-          const data = await callBridge(action.endpoint, action.method || "POST", mapped);
-          return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-        } catch (error62) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: `[Hypagon Browser MCP Error] ${error62?.message || error62}` }]
-          };
-        }
-      }
-      const target = TOOLS_CATALOG.find((tool) => tool.name === action.tool);
-      if (!target) {
-        return { isError: true, content: [{ type: "text", text: `Action "${action.action}" is unavailable.` }] };
-      }
-      return executeCatalogTool(target, mapped);
     }
-  );
+    const actionInstructions = collectActionInstructions(data?.actionInstructions, (_tool, _action, text) => text.trim());
+    const value = {
+      order,
+      disabled,
+      instructions,
+      actionInstructions,
+      jevAvailable: data?.jev?.available === true,
+      jevMode: data?.jev?.mode === "enforce" ? "enforce" : "prefer"
+    };
+    cachedToolPreferences = { value, at: Date.now() };
+    return value;
+  } catch {
+    return { order: [], disabled: [], instructions: {}, actionInstructions: {}, jevAvailable: false, jevMode: "prefer" };
+  }
 }
-async function createBridgeMcpServer() {
-  const server = new McpServer({
-    name: "hb-browser",
-    version: APP_VERSION
-  });
-  const recordingToolsAvailable = await recordingToolsAllowed();
-  if (!recordingToolsAvailable) {
-    logMcp("[Recording] Tools are disabled by the human-only switch; not registering them.", "boot");
-  }
-  const decisionConfigured = decisionStatus().configured;
-  const toolPreferences = await loadToolPreferences();
-  const disabledTools = new Set(toolPreferences.disabled);
-  const JEV_TOOL_NAMES = ["jev_index", "read_section", "search_page"];
-  const jevActive = decisionConfigured && toolPreferences.jevAvailable;
-  const jevEnforced = jevActive && toolPreferences.jevMode === "enforce";
-  const lead = [...decisionConfigured ? ["drive", "decide"] : [], ...jevActive ? JEV_TOOL_NAMES : []];
-  const surfaceOrder = [...lead, ...DEFAULT_TOOL_ORDER.filter((name) => !lead.includes(name))];
-  const baseTools = lead.length ? [
-    ...TOOLS_CATALOG.filter((t) => lead.includes(t.name)),
-    ...TOOLS_CATALOG.filter((t) => !lead.includes(t.name))
-  ] : TOOLS_CATALOG;
-  const defaultOrder = surfaceOrder;
-  const baseRank = new Map(defaultOrder.map((name, index) => [name, index]));
-  const configuredRank = new Map(toolPreferences.order.map((name, index) => [name, index]));
-  const orderedTools = baseTools.filter((tool) => !disabledTools.has(tool.name)).sort(
-    (a, b) => compareByRank(
-      a.name,
-      b.name,
-      configuredRank,
-      (aName, bName) => (baseRank.get(aName) ?? Number.MAX_SAFE_INTEGER) - (baseRank.get(bName) ?? Number.MAX_SAFE_INTEGER)
-    )
-  );
-  for (const tool of orderedTools) {
-    if ((tool.name === "decide" || tool.name === "drive") && !decisionConfigured) continue;
-    if (JEV_TOOL_NAMES.includes(tool.name) && !toolPreferences.jevAvailable) continue;
-    if (!recordingToolsAvailable && RECORDING_TOOL_NAMES.has(tool.name)) continue;
-    const tier = TOOL_TIERS[tool.name];
-    let details = toolPreferences.instructions[tool.name] || tool.description;
-    if (jevActive) {
-      if (tool.name === "jev_index") {
-        details = `${jevEnforced ? "MANDATORY READING PATH (JEV ENFORCED)" : "PREFERRED READING PATH"} \u2014 call this first for the active page. ${details}`;
-      } else if (tool.name === "observe") {
-        details += jevEnforced ? ' JEV ENFORCED: unscoped markdown/text reads are REFUSED with code JEV_REQUIRED. Read with jev_index then read_section. as:"markdown" still works when scoped (region) or bounded (budget > 0, cursor), and full:true is the logged bypass.' : ' JEV ACTIVE: for page CONTENT prefer jev_index then read_section (a small index plus one section replaces a 10k+ token dump). Use as:"markdown" when you must act on [#ID] marks, or when the page is small.';
-      } else if (tool.name === "decide") {
-        details += jevEnforced ? " JEV ENFORCED: unscoped page dumps are refused; read content via jev_index then read_section." : " JEV ACTIVE: read page content via jev_index then read_section before deciding.";
-      }
-    }
-    const prefix = tool.hidden ? `[DEPRECATED \u2192 use "${tool.deprecatedInFavorOf || "the canonical tool"}"] ` : tier ? `[${TIER_LABELS[tier]}] ` : "";
-    server.tool(
-      tool.name,
-      `${prefix}${details}`,
-      tool.parameters,
-      async (args) => executeCatalogTool(tool, args)
-    );
-  }
-  for (const group of TOOL_GROUPS) {
-    if (disabledTools.has(group.name)) continue;
-    registerToolGroup(server, group, toolPreferences);
-  }
-  const OKF_SKILL_GUIDE = `# \u{1F9ED} MARK ELEVEN: OPERATIONAL KNOWLEDGE FORMAT (OKF)
+
+// src/mcp/browser-guide.ts
+function okfSkillGuide(jevActive, jevEnforced) {
+  return `# \u{1F9ED} MARK ELEVEN: OPERATIONAL KNOWLEDGE FORMAT (OKF)
 
 1. [CORE ARCHITECTURE & OPERATIONAL SEQUENCE]
   - Visual Browser: Active visible Chromium window ('headless: false') with B\xE9zier ghost-cursor telemetry.
@@ -39575,109 +39486,8 @@ async function createBridgeMcpServer() {
   - request_human_intervention(reason, timeout_seconds?, bring_to_front?): PROACTIVELY CALL THIS whenever hitting Cloudflare challenges, CAPTCHAs, login/2FA screens, checkout payments, or critical blockers. Halts agent, triggers audible desktop alerts, unhides window, flashes taskbar, and presents HUD banner until user confirms.
   - set_window_visibility(visible?, focus?): Shows/restores the window (and focuses it by default) or hides it to the tray.
   - send_notification(title, message, urgency?): Native OS desktop notification.`;
-  server.resource(
-    "mark-eleven-skill",
-    "mark-eleven://skills/guide",
-    {
-      description: "Comprehensive operational manual, Golden Operational Sequence, and workflow skill guide for Mark Eleven in OKF (Outline Knowledge Format).",
-      mimeType: "text/markdown"
-    },
-    async () => ({
-      contents: [
-        {
-          uri: "mark-eleven://skills/guide",
-          mimeType: "text/markdown",
-          text: OKF_SKILL_GUIDE
-        }
-      ]
-    })
-  );
-  server.resource(
-    "okf-manifest",
-    "mark-eleven://okf/manifest",
-    {
-      description: "Open Knowledge Format (OKF) manifest for the Hypagon Browser docs bundle and its available partitions.",
-      mimeType: "application/json"
-    },
-    async () => {
-      const manifestPath = import_node_path2.default.resolve(process.cwd(), "hypagon_docs", "okf.json");
-      let text = "{}";
-      try {
-        text = import_node_fs3.default.readFileSync(manifestPath, "utf8");
-      } catch {
-      }
-      return { contents: [{ uri: "mark-eleven://okf/manifest", mimeType: "application/json", text }] };
-    }
-  );
-  server.resource(
-    "okf-selector-som",
-    "mark-eleven://okf/partitions/selector-and-som",
-    {
-      description: "OKF Playbook: Golden Operational Sequence (Markdown -> Economy Screenshot -> Read-Only JS) and Set-of-Marks visual recipes.",
-      mimeType: "text/markdown"
-    },
-    async () => {
-      const docPath = import_node_path2.default.resolve(process.cwd(), "hypagon_docs", "partitions", "selector_and_som_recipes.md");
-      let text = "";
-      try {
-        text = import_node_fs3.default.readFileSync(docPath, "utf8");
-      } catch {
-      }
-      return { contents: [{ uri: "mark-eleven://okf/partitions/selector-and-som", mimeType: "text/markdown", text }] };
-    }
-  );
-  server.resource(
-    "okf-captcha-antibot",
-    "mark-eleven://okf/partitions/captcha-and-anti-bot",
-    {
-      description: "OKF Playbook: Challenge Triage Matrix, Turnstile, text CAPTCHA solving, and HIL trigger rules.",
-      mimeType: "text/markdown"
-    },
-    async () => {
-      const docPath = import_node_path2.default.resolve(process.cwd(), "hypagon_docs", "partitions", "captcha_and_anti_bot_strategies.md");
-      let text = "";
-      try {
-        text = import_node_fs3.default.readFileSync(docPath, "utf8");
-      } catch {
-      }
-      return { contents: [{ uri: "mark-eleven://okf/partitions/captcha-and-anti-bot", mimeType: "text/markdown", text }] };
-    }
-  );
-  server.resource(
-    "okf-browser-navigation",
-    "mark-eleven://okf/partitions/browser-navigation",
-    {
-      description: "OKF Playbook: 0ms speculative prerender navigation, multi-tab orchestration, and session persistence.",
-      mimeType: "text/markdown"
-    },
-    async () => {
-      const docPath = import_node_path2.default.resolve(process.cwd(), "hypagon_docs", "partitions", "browser_navigation_playbook.md");
-      let text = "";
-      try {
-        text = import_node_fs3.default.readFileSync(docPath, "utf8");
-      } catch {
-      }
-      return { contents: [{ uri: "mark-eleven://okf/partitions/browser-navigation", mimeType: "text/markdown", text }] };
-    }
-  );
-  server.resource(
-    "okf-primitives-workflows",
-    "mark-eleven://okf/partitions/primitives-and-workflows",
-    {
-      description: "OKF Reference: the orthogonal primitive layer (observe/act/wait_for/expect/find/extract/collect_all/page_state/diff/export_har/contexts), wait vocabulary, error codes, recipes R1-R5, and input-delivery guarantees.",
-      mimeType: "text/markdown"
-    },
-    async () => {
-      const docPath = import_node_path2.default.resolve(process.cwd(), "hypagon_docs", "partitions", "primitives_and_workflows.md");
-      let text = "";
-      try {
-        text = import_node_fs3.default.readFileSync(docPath, "utf8");
-      } catch {
-      }
-      return { contents: [{ uri: "mark-eleven://okf/partitions/primitives-and-workflows", mimeType: "text/markdown", text }] };
-    }
-  );
-  const RECOMMENDED_ORDER = `# Mark Eleven \u2014 Recommended Tool Order
+}
+var RECOMMENDED_ORDER = `# Mark Eleven \u2014 Recommended Tool Order
 
 Reach for these first; anything whose description starts with \`[TIER n]\` is a fallback.
 
@@ -39700,6 +39510,113 @@ Rules of thumb:
 - Prefer \`observe\` over screenshots; prefer a mark id over a CSS selector.
 - Use \`expect(...)\` to assert now, \`page_state()\`/\`diff(since)\` to confirm change cheaply.
 `;
+
+// src/mcp/browser-resources.ts
+var import_node_fs4 = __toESM(require("node:fs"), 1);
+var import_node_path3 = __toESM(require("node:path"), 1);
+function registerResources(server, guide) {
+  server.resource(
+    "mark-eleven-skill",
+    "mark-eleven://skills/guide",
+    {
+      description: "Comprehensive operational manual, Golden Operational Sequence, and workflow skill guide for Mark Eleven in OKF (Outline Knowledge Format).",
+      mimeType: "text/markdown"
+    },
+    async () => ({
+      contents: [
+        {
+          uri: "mark-eleven://skills/guide",
+          mimeType: "text/markdown",
+          text: guide
+        }
+      ]
+    })
+  );
+  server.resource(
+    "okf-manifest",
+    "mark-eleven://okf/manifest",
+    {
+      description: "Open Knowledge Format (OKF) manifest for the Hypagon Browser docs bundle and its available partitions.",
+      mimeType: "application/json"
+    },
+    async () => {
+      const manifestPath = import_node_path3.default.resolve(process.cwd(), "hypagon_docs", "okf.json");
+      let text = "{}";
+      try {
+        text = import_node_fs4.default.readFileSync(manifestPath, "utf8");
+      } catch {
+      }
+      return { contents: [{ uri: "mark-eleven://okf/manifest", mimeType: "application/json", text }] };
+    }
+  );
+  server.resource(
+    "okf-selector-som",
+    "mark-eleven://okf/partitions/selector-and-som",
+    {
+      description: "OKF Playbook: Golden Operational Sequence (Markdown -> Economy Screenshot -> Read-Only JS) and Set-of-Marks visual recipes.",
+      mimeType: "text/markdown"
+    },
+    async () => {
+      const docPath = import_node_path3.default.resolve(process.cwd(), "hypagon_docs", "partitions", "selector_and_som_recipes.md");
+      let text = "";
+      try {
+        text = import_node_fs4.default.readFileSync(docPath, "utf8");
+      } catch {
+      }
+      return { contents: [{ uri: "mark-eleven://okf/partitions/selector-and-som", mimeType: "text/markdown", text }] };
+    }
+  );
+  server.resource(
+    "okf-captcha-antibot",
+    "mark-eleven://okf/partitions/captcha-and-anti-bot",
+    {
+      description: "OKF Playbook: Challenge Triage Matrix, Turnstile, text CAPTCHA solving, and HIL trigger rules.",
+      mimeType: "text/markdown"
+    },
+    async () => {
+      const docPath = import_node_path3.default.resolve(process.cwd(), "hypagon_docs", "partitions", "captcha_and_anti_bot_strategies.md");
+      let text = "";
+      try {
+        text = import_node_fs4.default.readFileSync(docPath, "utf8");
+      } catch {
+      }
+      return { contents: [{ uri: "mark-eleven://okf/partitions/captcha-and-anti-bot", mimeType: "text/markdown", text }] };
+    }
+  );
+  server.resource(
+    "okf-browser-navigation",
+    "mark-eleven://okf/partitions/browser-navigation",
+    {
+      description: "OKF Playbook: 0ms speculative prerender navigation, multi-tab orchestration, and session persistence.",
+      mimeType: "text/markdown"
+    },
+    async () => {
+      const docPath = import_node_path3.default.resolve(process.cwd(), "hypagon_docs", "partitions", "browser_navigation_playbook.md");
+      let text = "";
+      try {
+        text = import_node_fs4.default.readFileSync(docPath, "utf8");
+      } catch {
+      }
+      return { contents: [{ uri: "mark-eleven://okf/partitions/browser-navigation", mimeType: "text/markdown", text }] };
+    }
+  );
+  server.resource(
+    "okf-primitives-workflows",
+    "mark-eleven://okf/partitions/primitives-and-workflows",
+    {
+      description: "OKF Reference: the orthogonal primitive layer (observe/act/wait_for/expect/find/extract/collect_all/page_state/diff/export_har/contexts), wait vocabulary, error codes, recipes R1-R5, and input-delivery guarantees.",
+      mimeType: "text/markdown"
+    },
+    async () => {
+      const docPath = import_node_path3.default.resolve(process.cwd(), "hypagon_docs", "partitions", "primitives_and_workflows.md");
+      let text = "";
+      try {
+        text = import_node_fs4.default.readFileSync(docPath, "utf8");
+      } catch {
+      }
+      return { contents: [{ uri: "mark-eleven://okf/partitions/primitives-and-workflows", mimeType: "text/markdown", text }] };
+    }
+  );
   server.resource(
     "tools-recommended",
     "mark-eleven://tools/recommended",
@@ -39709,6 +39626,10 @@ Rules of thumb:
     },
     async () => ({ contents: [{ uri: "mark-eleven://tools/recommended", mimeType: "text/markdown", text: RECOMMENDED_ORDER }] })
   );
+}
+
+// src/mcp/browser-help.ts
+function registerHelpTool(server, guide) {
   server.tool(
     "help",
     "Returns a categorized guide, cheatsheet, and workflow tips for all available Hypagon Browser MCP tools (served directly in OKF).",
@@ -39813,66 +39734,15 @@ Rules of thumb:
         content: [
           {
             type: "text",
-            text: OKF_SKILL_GUIDE
+            text: guide
           }
         ]
       };
     }
   );
-  const HIDDEN_TOOLS = new Map(
-    TOOLS_CATALOG.filter((t) => t.hidden).map((t) => [t.name, t.deprecatedInFavorOf])
-  );
-  const rawListHandler = server.server?._requestHandlers?.get?.("tools/list");
-  if (rawListHandler) {
-    server.server._requestHandlers.set("tools/list", async (request, extra) => {
-      const result = await rawListHandler(request, extra);
-      if (result && Array.isArray(result.tools)) {
-        const surfaceRank = new Map(surfaceOrder.map((name, index) => [name, index]));
-        const visible = result.tools.filter((t) => !HIDDEN_TOOLS.has(t.name) && !CONSOLIDATED_HIDDEN_TOOLS.has(t.name)).sort((a, b) => compareByRank(a.name, b.name, surfaceRank, (aName, bName) => aName.localeCompare(bName)));
-        result.tools = visible.map((t) => {
-          const rawSchema = t.inputSchema || {};
-          const schema = {
-            ...rawSchema,
-            type: "object",
-            properties: rawSchema.properties || {},
-            required: Array.isArray(rawSchema.required) ? rawSchema.required : [],
-            additionalProperties: true
-          };
-          return {
-            ...t,
-            inputSchema: schema,
-            parameters: schema,
-            // Required by OpenAI, Vercel AI SDK, and generic agent adapters
-            input_schema: schema,
-            // Required by Anthropic Claude and Python MCP adapters
-            schema
-            // Required by JSON-RPC standard schema adapters
-          };
-        });
-      }
-      return result;
-    });
-  }
-  const rawCallHandler = server.server?._requestHandlers?.get?.("tools/call");
-  if (rawCallHandler) {
-    server.server._requestHandlers.set("tools/call", async (request, extra) => {
-      if (request?.params) {
-        request.params.arguments = normalizeIncomingParams(request.params);
-        logMcp(`tools/call: "${request.params.name}" args: ${preview(request.params.arguments)}`);
-      }
-      const result = await rawCallHandler(request, extra);
-      const canonical = HIDDEN_TOOLS.get(request?.params?.name);
-      if (canonical && result?.content?.[0]?.type === "text") {
-        logMcp(`[Deprecated] "${request.params.name}" called; canonical is "${canonical}".`);
-        result.content[0].text = `\u26A0 deprecated tool name \u2014 use "${canonical}".
-
-${result.content[0].text}`;
-      }
-      return result;
-    });
-  }
-  return server;
 }
+
+// src/mcp/browser-params.ts
 function normalizeIncomingParams(params) {
   if (!params || typeof params !== "object") return {};
   let container = params.arguments;
@@ -39966,6 +39836,172 @@ function normalizeIncomingParams(params) {
   return normalized;
 }
 
+// src/mcp/tool-schema-surface.ts
+function withSchemaAliases(tool) {
+  const rawSchema = tool.inputSchema || tool.parameters || tool.input_schema || {};
+  const schema = {
+    ...rawSchema,
+    type: "object",
+    properties: rawSchema.properties || {},
+    required: Array.isArray(rawSchema.required) ? rawSchema.required : [],
+    additionalProperties: true
+  };
+  return {
+    ...tool,
+    inputSchema: schema,
+    parameters: schema,
+    input_schema: schema,
+    schema
+  };
+}
+
+// src/mcp/browser-interceptors.ts
+function installSurfaceInterceptors(server, surfaceOrder) {
+  const HIDDEN_TOOLS = new Map(
+    TOOLS_CATALOG.filter((t) => t.hidden).map((t) => [t.name, t.deprecatedInFavorOf])
+  );
+  const rawListHandler = server.server?._requestHandlers?.get?.("tools/list");
+  if (rawListHandler) {
+    server.server._requestHandlers.set("tools/list", async (request, extra) => {
+      const result = await rawListHandler(request, extra);
+      if (result && Array.isArray(result.tools)) {
+        const surfaceRank = new Map(surfaceOrder.map((name, index) => [name, index]));
+        const visible = result.tools.filter((t) => !HIDDEN_TOOLS.has(t.name) && !CONSOLIDATED_HIDDEN_TOOLS.has(t.name)).sort((a, b) => compareByRank(a.name, b.name, surfaceRank, (aName, bName) => aName.localeCompare(bName)));
+        result.tools = visible.map(withSchemaAliases);
+      }
+      return result;
+    });
+  }
+  const rawCallHandler = server.server?._requestHandlers?.get?.("tools/call");
+  if (rawCallHandler) {
+    server.server._requestHandlers.set("tools/call", async (request, extra) => {
+      if (request?.params) {
+        request.params.arguments = normalizeIncomingParams(request.params);
+        logMcp(`tools/call: "${request.params.name}" args: ${preview(request.params.arguments)}`);
+      }
+      const result = await rawCallHandler(request, extra);
+      const canonical = HIDDEN_TOOLS.get(request?.params?.name);
+      if (canonical && result?.content?.[0]?.type === "text") {
+        logMcp(`[Deprecated] "${request.params.name}" called; canonical is "${canonical}".`);
+        result.content[0].text = `\u26A0 deprecated tool name \u2014 use "${canonical}".
+
+${result.content[0].text}`;
+      }
+      return result;
+    });
+  }
+}
+
+// src/mcp/browser-mcp.ts
+function registerToolGroup(server, group, preferences) {
+  const actions = group.actions.map((action) => action.action);
+  const actionList = group.actions.map((action) => {
+    const custom2 = preferences.actionInstructions?.[group.name]?.[action.action];
+    return `${action.action} (${custom2 || action.description})`;
+  }).join("; ");
+  const tier = group.tier;
+  const prefix = tier ? `[${TIER_LABELS[tier]}] ` : "";
+  server.registerTool(
+    group.name,
+    {
+      description: `${prefix}${group.description} Actions: ${actionList}`,
+      inputSchema: external_exports.object({ action: external_exports.enum(actions) }).passthrough()
+    },
+    async (args) => {
+      const action = group.actions.find((entry) => entry.action === args?.action);
+      if (!action) {
+        return { isError: true, content: [{ type: "text", text: `Unknown action "${args?.action}". Use one of: ${group.actions.map((entry) => entry.action).join(", ")}` }] };
+      }
+      const { action: _action, ...rest } = args || {};
+      const mapped = action.map ? action.map(rest) : rest;
+      if (action.endpoint) {
+        try {
+          const data = await callBridge(action.endpoint, action.method || "POST", mapped);
+          return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+        } catch (error62) {
+          return {
+            isError: true,
+            content: [{ type: "text", text: `[Hypagon Browser MCP Error] ${error62?.message || error62}` }]
+          };
+        }
+      }
+      const target = TOOLS_CATALOG.find((tool) => tool.name === action.tool);
+      if (!target) {
+        return { isError: true, content: [{ type: "text", text: `Action "${action.action}" is unavailable.` }] };
+      }
+      return executeCatalogTool(target, mapped);
+    }
+  );
+}
+function describeTool(tool, preferences, jevActive, jevEnforced) {
+  const tier = TOOL_TIERS[tool.name];
+  let details = preferences.instructions[tool.name] || tool.description;
+  if (jevActive) {
+    if (tool.name === "jev_index") {
+      details = `${jevEnforced ? "MANDATORY READING PATH (JEV ENFORCED)" : "PREFERRED READING PATH"} \u2014 call this first for the active page. ${details}`;
+    } else if (tool.name === "observe") {
+      details += jevEnforced ? ' JEV ENFORCED: unscoped markdown/text reads are REFUSED with code JEV_REQUIRED. Read with jev_index then read_section. as:"markdown" still works when scoped (region) or bounded (budget > 0, cursor), and full:true is the logged bypass.' : ' JEV ACTIVE: for page CONTENT prefer jev_index then read_section (a small index plus one section replaces a 10k+ token dump). Use as:"markdown" when you must act on [#ID] marks, or when the page is small.';
+    } else if (tool.name === "decide") {
+      details += jevEnforced ? " JEV ENFORCED: unscoped page dumps are refused; read content via jev_index then read_section." : " JEV ACTIVE: read page content via jev_index then read_section before deciding.";
+    }
+  }
+  const prefix = tool.hidden ? `[DEPRECATED \u2192 use "${tool.deprecatedInFavorOf || "the canonical tool"}"] ` : tier ? `[${TIER_LABELS[tier]}] ` : "";
+  return `${prefix}${details}`;
+}
+async function createBridgeMcpServer() {
+  const server = new McpServer({
+    name: "hb-browser",
+    version: APP_VERSION
+  });
+  const recordingToolsAvailable = await recordingToolsAllowed();
+  if (!recordingToolsAvailable) {
+    logMcp("[Recording] Tools are disabled by the human-only switch; not registering them.", "boot");
+  }
+  const decisionConfigured = decisionStatus().configured;
+  const toolPreferences = await loadToolPreferences();
+  const disabledTools = new Set(toolPreferences.disabled);
+  const JEV_TOOL_NAMES = ["jev_index", "read_section", "search_page"];
+  const jevActive = decisionConfigured && toolPreferences.jevAvailable;
+  const jevEnforced = jevActive && toolPreferences.jevMode === "enforce";
+  const lead = [...decisionConfigured ? ["drive", "decide"] : [], ...jevActive ? JEV_TOOL_NAMES : []];
+  const surfaceOrder = [...lead, ...DEFAULT_TOOL_ORDER.filter((name) => !lead.includes(name))];
+  const baseTools = lead.length ? [
+    ...TOOLS_CATALOG.filter((t) => lead.includes(t.name)),
+    ...TOOLS_CATALOG.filter((t) => !lead.includes(t.name))
+  ] : TOOLS_CATALOG;
+  const defaultOrder = surfaceOrder;
+  const baseRank = new Map(defaultOrder.map((name, index) => [name, index]));
+  const configuredRank = new Map(toolPreferences.order.map((name, index) => [name, index]));
+  const orderedTools = baseTools.filter((tool) => !disabledTools.has(tool.name)).sort(
+    (a, b) => compareByRank(
+      a.name,
+      b.name,
+      configuredRank,
+      (aName, bName) => (baseRank.get(aName) ?? Number.MAX_SAFE_INTEGER) - (baseRank.get(bName) ?? Number.MAX_SAFE_INTEGER)
+    )
+  );
+  for (const tool of orderedTools) {
+    if ((tool.name === "decide" || tool.name === "drive") && !decisionConfigured) continue;
+    if (JEV_TOOL_NAMES.includes(tool.name) && !toolPreferences.jevAvailable) continue;
+    if (!recordingToolsAvailable && RECORDING_TOOL_NAMES.has(tool.name)) continue;
+    server.tool(
+      tool.name,
+      describeTool(tool, toolPreferences, jevActive, jevEnforced),
+      tool.parameters,
+      async (args) => executeCatalogTool(tool, args)
+    );
+  }
+  for (const group of TOOL_GROUPS) {
+    if (disabledTools.has(group.name)) continue;
+    registerToolGroup(server, group, toolPreferences);
+  }
+  const guide = okfSkillGuide(jevActive, jevEnforced);
+  registerResources(server, guide);
+  registerHelpTool(server, guide);
+  installSurfaceInterceptors(server, surfaceOrder);
+  return server;
+}
+
 // src/mcp/process-guards.ts
 function installProcessGuards(hooks) {
   let stdoutClosed = false;
@@ -40012,26 +40048,7 @@ async function start() {
   if (typeof prevSend === "function") {
     transport.send = (msg) => {
       if (msg?.result?.tools && Array.isArray(msg.result.tools)) {
-        msg.result.tools = msg.result.tools.map((t) => {
-          const rawSchema = t.inputSchema || t.parameters || t.input_schema || {};
-          const schema = {
-            ...rawSchema,
-            type: "object",
-            properties: rawSchema.properties || {},
-            required: Array.isArray(rawSchema.required) ? rawSchema.required : [],
-            additionalProperties: true
-          };
-          return {
-            ...t,
-            inputSchema: schema,
-            parameters: schema,
-            // Guaranteed for OpenAI / Vercel AI SDK adapters
-            input_schema: schema,
-            // Guaranteed for Anthropic Claude adapters
-            schema
-            // Guaranteed for generic JSON-RPC adapters
-          };
-        });
+        msg.result.tools = msg.result.tools.map(withSchemaAliases);
       }
       return prevSend.call(transport, msg);
     };

@@ -1,6 +1,7 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createBridgeMcpServer, normalizeIncomingParams, logMcp, flushLogSync } from './browser-mcp.js';
 import { installProcessGuards } from './process-guards.js';
+import { withSchemaAliases } from './tool-schema-surface.js';
 
 // --- Process resilience -----------------------------------------------------
 // EPIPE on stdout, stdin close, and stray async errors are handled once, in the
@@ -27,23 +28,7 @@ async function start() {
   if (typeof prevSend === 'function') {
     (transport as any).send = (msg: any) => {
       if (msg?.result?.tools && Array.isArray(msg.result.tools)) {
-        msg.result.tools = msg.result.tools.map((t: any) => {
-          const rawSchema = t.inputSchema || t.parameters || t.input_schema || {};
-          const schema = {
-            ...rawSchema,
-            type: 'object',
-            properties: rawSchema.properties || {},
-            required: Array.isArray(rawSchema.required) ? rawSchema.required : [],
-            additionalProperties: true,
-          };
-          return {
-            ...t,
-            inputSchema: schema,
-            parameters: schema,     // Guaranteed for OpenAI / Vercel AI SDK adapters
-            input_schema: schema,   // Guaranteed for Anthropic Claude adapters
-            schema: schema,         // Guaranteed for generic JSON-RPC adapters
-          };
-        });
+        msg.result.tools = msg.result.tools.map(withSchemaAliases);
       }
       return prevSend.call(transport, msg);
     };

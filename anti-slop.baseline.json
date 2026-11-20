@@ -19,14 +19,12 @@
       "main/wrap/anyapi/executor.ts": 41,
       "main/wrap/executor.ts": 39,
       "main/wrap/store.ts": 12,
-      "mcp/bridge-server.ts": 18,
-      "mcp/browser-mcp.ts": 18,
       "mcp/format-mark.ts": 7,
       "mcp/tools-catalog.ts": 197,
       "preload/index.ts": 34,
       "renderer/main.ts": 93
     },
-    "totalDuplicatedLines": 780
+    "totalDuplicatedLines": 744
   },
   "imports": {
     "cycles": []
@@ -43,10 +41,6 @@
       },
       "main/primitives/primitives.ts": {
         "file": 1
-      },
-      "mcp/browser-mcp.ts": {
-        "file": 1,
-        "function": 2
       },
       "mcp/tools-catalog.ts": {
         "file": 1
