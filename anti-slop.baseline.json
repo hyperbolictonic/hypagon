@@ -18,7 +18,6 @@
       "main/scripts/script-vault.ts": 9,
       "main/shadow-walk/settings.ts": 5,
       "main/shadow-walk/tab-walk.ts": 23,
-      "main/telemetry/input-simulator.ts": 34,
       "main/wrap/anyapi/executor.ts": 41,
       "main/wrap/executor.ts": 39,
       "main/wrap/store.ts": 12,
@@ -29,7 +28,7 @@
       "preload/index.ts": 34,
       "renderer/main.ts": 93
     },
-    "totalDuplicatedLines": 919
+    "totalDuplicatedLines": 885
   },
   "imports": {
     "cycles": []
@@ -52,9 +51,6 @@
         "function": 1
       },
       "main/primitives/primitives.ts": {
-        "file": 1
-      },
-      "main/telemetry/input-simulator.ts": {
         "file": 1
       },
       "mcp/browser-mcp.ts": {
