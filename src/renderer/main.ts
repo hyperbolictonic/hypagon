@@ -86,6 +86,7 @@ import {
   wrapFieldNotesEl,
 } from './settings-wrap-dom';
 import { hideUrlSuggestions } from './url-suggestions';
+import { navBackBtn, navForwardBtn, navReloadBtn } from './url-bar';
 import { renderZoom, setZoomPinned } from './zoom-controls';
 import { renderTabs } from './tab-bar';
 import { sidebarPanel, sidebarRailToggle, sidebarState } from './sidebar-state';
@@ -560,31 +561,6 @@ window.setTimeout(() => {
   void refreshDecisionTab();
 }, 1500);
 
-// Form Submit (Manual Navigation)
-urlForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  hideUrlSuggestions();
-  const url = urlInput.value.trim();
-  if (!url) return;
-  if (window.electronAPI) {
-    await window.electronAPI.navigate(url);
-  }
-});
-
-// URL-bar suggestions: lexical history/bookmarks immediately, semantic recall after a debounce.
-const navBackBtn = document.getElementById('nav-back-btn') as HTMLButtonElement | null;
-const navForwardBtn = document.getElementById('nav-forward-btn') as HTMLButtonElement | null;
-const navReloadBtn = document.getElementById('nav-reload-btn') as HTMLButtonElement | null;
-
-navBackBtn?.addEventListener('click', () => {
-  void window.electronAPI?.goBack();
-});
-navForwardBtn?.addEventListener('click', () => {
-  void window.electronAPI?.goForward();
-});
-navReloadBtn?.addEventListener('click', () => {
-  void window.electronAPI?.reload();
-});
 
 // Harvest Action
 harvestBtn.addEventListener('click', async () => {
