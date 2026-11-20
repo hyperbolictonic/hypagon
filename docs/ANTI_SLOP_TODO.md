@@ -11,13 +11,27 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **9 violations** across **4 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **8 violations** across **3 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **744 duplicated lines / 50,512 (1.5%)** | threshold is 3%; 24 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 293 files |
+| Duplicates | **649 duplicated lines / 50,672 (1.3%)** | threshold is 3%; 22 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 310 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Primitives split** - `primitives/primitives.ts` 1836 -> 44 (the composed class + re-exports).
+  The vocabulary moved to `types.ts` (host, options, wait grammar, guard inputs), the error to
+  `error.ts`, and the page scripts to `scripts-wait.ts` / `scripts-extract.ts`. The class itself is
+  an inheritance chain so the methods stay methods: `base -> page-state -> components -> extract ->
+  observe-text -> observe -> find -> wait -> typing -> act -> traffic`; each part imports only the
+  bindings it mentions, which is what keeps the parts under budget without cloning a header.
+  Three real dedups fell out: `markLine` now delegates to `formatMark` (moved to
+  `main/marks/format-mark.ts`, since main must not depend on mcp), the JEV precheck is one
+  `precheckRead` helper for text and markdown, and the frame-control filter is shared with `find`
+  (`frame-controls.ts`). The guard input shapes are now `PageReadGuardInput` /
+  `PageReadPrecheckInput`, used by both the host interface and the chassis. Verified:
+  `test:primitives` 37/37, `test:act` 26/26, `test:mcp:surface` 35/35, `test:mcp:contract`,
+  `npm run build:mcp`.
 
 - **Collaboration overlay split** - `collaboration/overlay.ts` 1420 -> 30 (prefixes + re-exports):
   `overlay-css*.ts` (the stylesheet by surface: drawer, selection, layer, element bar, CSS popover),
