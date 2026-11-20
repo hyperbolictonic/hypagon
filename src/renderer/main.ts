@@ -86,6 +86,7 @@ import {
   wrapFieldNotesEl,
 } from './settings-wrap-dom';
 import { hideUrlSuggestions } from './url-suggestions';
+import { renderZoom, setZoomPinned } from './zoom-controls';
 import { cursorTrail } from './cursor-trail';
 import {
   appendLog,
@@ -825,42 +826,6 @@ copyConstructBtn.addEventListener('click', async () => {
 });
 
 // Render Construct Payload
-let currentZoom: ZoomState | null = null;
-
-function renderZoom(zoom: ZoomState | null | undefined): void {
-  if (!zoom) return;
-  currentZoom = zoom;
-  const percent = Math.round(zoom.factor * 100);
-  if (zoomLevelBtn) {
-    zoomLevelBtn.textContent = `${percent}%`;
-    zoomLevelBtn.title = `Reset page zoom to the ${zoom.mode === 'compensate' ? 'fitted' : 'Windows'} default (Ctrl+0)`;
-  }
-  if (zoomOutBtn) zoomOutBtn.title = `Zoom out (Ctrl+-) - ${percent}%`;
-  if (zoomInBtn) zoomInBtn.title = `Zoom in (Ctrl+=) - ${percent}%`;
-}
-
-async function applyZoomAction(action: 'in' | 'out' | 'reset'): Promise<void> {
-  try {
-    renderZoom(await window.electronAPI?.setZoom?.({ action }));
-  } catch {
-    // A render surface can race a window reload; the next state broadcast wins.
-  }
-}
-
-/** Page zoom is pinned while a device viewport is emulated. */
-function setZoomPinned(pinned: boolean): void {
-  for (const control of [zoomOutBtn, zoomInBtn, zoomLevelBtn]) {
-    if (!control) continue;
-    control.disabled = pinned;
-    if (pinned) control.title = 'Page zoom is pinned to 100% while a responsive device is active';
-  }
-  if (!pinned) renderZoom(currentZoom);
-}
-
-zoomOutBtn?.addEventListener('click', () => void applyZoomAction('out'));
-zoomInBtn?.addEventListener('click', () => void applyZoomAction('in'));
-zoomLevelBtn?.addEventListener('click', () => void applyZoomAction('reset'));
-
 // Update State from Electron
 function updateState(state: ChassisState) {
   viewportUrlDisplay.textContent = state.currentUrl;
