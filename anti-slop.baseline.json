@@ -77,9 +77,6 @@
       "main/primitives/primitives.ts": {
         "file": 1
       },
-      "main/recording/recording-service.ts": {
-        "file": 1
-      },
       "main/remote/service.ts": {
         "file": 1
       },

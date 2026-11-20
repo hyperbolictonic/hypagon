@@ -13,6 +13,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { app, dialog, type BrowserWindow } from 'electron';
+import { listRecordingFiles, recordingFilename, writeRecordingFile, type RecordingResult } from './files.js';
+
+export type { RecordingResult } from './files.js';
 
 /** When to use: reading or patching the recording settings (enabled, tools switch, output directory). */
 export interface RecordingConfig {
@@ -33,19 +36,6 @@ export interface RecordingConfig {
   maxWidth: number;
   /** Video bitrate in bits/second. */
   bitrate: number;
-}
-
-/** When to use: reporting a finished recording (path, bytes, frames) to the caller and HUD. */
-export interface RecordingResult {
-  path: string;
-  filename: string;
-  bytes: number;
-  frames: number;
-  durationMs: number;
-  /** Seconds of video produced (frames / fps). */
-  videoSeconds: number;
-  /** Playback speed-up factor relative to real time. */
-  speedup: number;
 }
 
 /** When to use: rendering the deck recorder or answering `GET /recording/status`. */
@@ -175,20 +165,6 @@ export async function pickRecordingDir(): Promise<string | null> {
   return result.filePaths[0];
 }
 
-function slug(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48);
-}
-
-function timestamp(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-}
-
 /** Start recording the Cyberdeck window. Resolves when the renderer has the stream running. */
 export async function startRecording(name?: string): Promise<{ filename: string; config: RecordingConfig }> {
   if (!config.enabled) throw new Error('Recording is disabled in Settings.');
@@ -196,7 +172,7 @@ export async function startRecording(name?: string): Promise<{ filename: string;
   if (!mainWindow || mainWindow.isDestroyed()) throw new Error('No window to record.');
 
   fs.mkdirSync(config.outputDir, { recursive: true });
-  const filename = `${timestamp()}${name ? `-${slug(name)}` : ''}.webm`;
+  const filename = recordingFilename(name);
   const startedAt = Date.now();
 
   const sourceId = mainWindow.getMediaSourceId();
@@ -259,7 +235,7 @@ export async function stopRecording(): Promise<RecordingResult> {
   if (!mainWindow || mainWindow.isDestroyed()) throw new Error('Window disappeared.');
 
   const startedAt = status.startedAt || Date.now();
-  const filename = status.filename || `${timestamp()}.webm`;
+  const filename = status.filename || recordingFilename();
 
   return new Promise<RecordingResult>((resolve, reject) => {
     pending = { filename, startedAt, resolve, reject };
@@ -280,22 +256,14 @@ export function saveRecording(buffer: ArrayBuffer, frames: number): RecordingRes
   if (!active) throw new Error('No recording to save.');
   pending = null;
 
-  const data = Buffer.from(buffer);
-  const target = path.join(config.outputDir, active.filename);
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.writeFileSync(target, data);
-
-  const durationMs = Date.now() - active.startedAt;
-  const videoSeconds = frames / Math.max(1, config.fps);
-  const result: RecordingResult = {
-    path: target,
+  const result = writeRecordingFile({
+    outputDir: config.outputDir,
     filename: active.filename,
-    bytes: data.length,
+    startedAt: active.startedAt,
+    buffer,
     frames,
-    durationMs,
-    videoSeconds: Number(videoSeconds.toFixed(2)),
-    speedup: videoSeconds > 0 ? Number((durationMs / 1000 / videoSeconds).toFixed(1)) : 0,
-  };
+    fps: config.fps,
+  });
   setStatus({ recording: false, frames, lastResult: result, error: undefined });
   active.resolve(result);
   return result;
@@ -317,19 +285,5 @@ export function failRecording(message: string): void {
 
 /** Finished recordings, newest first. Paths are absolute and ready for a file-upload field. */
 export function listRecordings(limit = 50): Array<{ path: string; filename: string; bytes: number; modified: number }> {
-  try {
-    fs.mkdirSync(config.outputDir, { recursive: true });
-    return fs
-      .readdirSync(config.outputDir)
-      .filter((name) => name.toLowerCase().endsWith('.webm'))
-      .map((name) => {
-        const full = path.join(config.outputDir, name);
-        const stat = fs.statSync(full);
-        return { path: full, filename: name, bytes: stat.size, modified: stat.mtimeMs };
-      })
-      .sort((a, b) => b.modified - a.modified)
-      .slice(0, Math.max(1, Math.min(limit, 500)));
-  } catch {
-    return [];
-  }
+  return listRecordingFiles(config.outputDir, limit);
 }
