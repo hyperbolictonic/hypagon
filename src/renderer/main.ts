@@ -17,6 +17,7 @@ import { loadResearchSettings } from './settings-research';
 import { loadShadowWalkSettings } from './settings-shadow';
 import { loadInputSettings } from './settings-input';
 import { loadJevSettings } from './settings-jev';
+import { resetSettingsResult, showSettingsResult } from './settings-feedback';
 
 declare global {
   interface Window {
@@ -1185,7 +1186,6 @@ if (settingsBtn && settingsModal) {
   const formEl = document.getElementById('settings-form') as HTMLFormElement;
   const testBtn = document.getElementById('settings-test-btn') as HTMLButtonElement;
   const closeBtn = document.getElementById('settings-close-btn') as HTMLButtonElement;
-  const resultEl = document.getElementById('settings-test-result') as HTMLElement;
   const settingsTabs = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-settings-tab]'));
   const settingsPanels = Array.from(document.querySelectorAll<HTMLElement>('[data-settings-panel]'));
 
@@ -1981,10 +1981,6 @@ if (settingsBtn && settingsModal) {
   }
 
 
-  const showResult = (kind: 'success' | 'error' | 'info', text: string) => {
-    resultEl.className = `alert alert-${kind} alert-sm font-mono text-xs`;
-    resultEl.textContent = text;
-  };
 
   const showStatus = (status: any, stored: any) => {
     if (status?.configured) {
@@ -2004,13 +2000,13 @@ if (settingsBtn && settingsModal) {
 
   settingsBtn.addEventListener('click', async () => {
     window.electronAPI?.setViewportVisibility(false);
-    resultEl.className = 'alert alert-ghost alert-sm font-mono text-xs hidden';
+    resetSettingsResult();
     try {
       const { stored, status } = await window.electronAPI!.getDecisionSettings();
       showStatus(status, stored);
     } catch (err: any) {
       showStatus(null, null);
-      showResult('error', `Could not read settings: ${err?.message || err}`);
+      showSettingsResult('error', `Could not read settings: ${err?.message || err}`);
     }
     void loadJevSettings();
     settingsModal.showModal();
@@ -2046,7 +2042,7 @@ if (settingsBtn && settingsModal) {
       const saved = await window.electronAPI!.saveDecisionSettings(payload);
       showStatus(saved?.status, payload);
       setDecisionTabVisible(Boolean(saved?.status?.configured), saved?.status);
-      showResult(
+      showSettingsResult(
         'success',
         saved?.ok
           ? saved.status?.configured
@@ -2055,27 +2051,27 @@ if (settingsBtn && settingsModal) {
           : 'Saved to disk, but the configuration could not be applied.'
       );
     } catch (err: any) {
-      showResult('error', `Save failed: ${err?.message || err}`);
+      showSettingsResult('error', `Save failed: ${err?.message || err}`);
     }
   });
 
   testBtn.addEventListener('click', async () => {
     testBtn.disabled = true;
     testBtn.classList.add('loading');
-    showResult('info', 'Testing…');
+    showSettingsResult('info', 'Testing…');
     try {
       const result = await window.electronAPI!.testDecisionModel();
       if (result?.ok) {
         const answer = result.answers?.reachable;
-        showResult(
+        showSettingsResult(
           'success',
           `${result.protocol} · ${result.model} · ${result.latencyMs}ms — answered ${JSON.stringify(answer ?? result.answers)}`
         );
       } else {
-        showResult('error', `${result?.error?.code || 'ERROR'} — ${result?.error?.message || 'no answer'}${result?.error?.hint ? ` (${result.error.hint})` : ''}`);
+        showSettingsResult('error', `${result?.error?.code || 'ERROR'} — ${result?.error?.message || 'no answer'}${result?.error?.hint ? ` (${result.error.hint})` : ''}`);
       }
     } catch (err: any) {
-      showResult('error', `Test failed: ${err?.message || err}`);
+      showSettingsResult('error', `Test failed: ${err?.message || err}`);
     } finally {
       testBtn.disabled = false;
       testBtn.classList.remove('loading');
