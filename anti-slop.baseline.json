@@ -58,9 +58,6 @@
       "main/llm/llm-surface.ts": {
         "file": 1
       },
-      "main/marks/marks-overlay.ts": {
-        "file": 1
-      },
       "main/primitives/primitives.ts": {
         "file": 1
       },
