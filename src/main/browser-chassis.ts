@@ -18,6 +18,7 @@ import { HumanizedInputSimulator } from './telemetry/input-simulator.js';
 import { loadInputProfile, saveInputProfile, type InputProfile } from './telemetry/input-profile.js';
 import { HumanActivityMonitor, humanListenerScript, type HumanActivity } from './input/human-activity.js';
 import { HumanControl } from './input/human-control.js';
+import { isHumanTakeoverShortcut } from './input/takeover-shortcut.js';
 import { classifyNavigationFailure } from './navigation-error.js';
 import {
   COLLABORATION_CLASS_PREFIX,
@@ -515,15 +516,9 @@ export class BrowserChassis {
     if (!this.hudShortcutBound) {
       this.hudShortcutBound = true;
       win.webContents.on('before-input-event', (event, input) => {
-        if (input.type !== 'keyDown' || input.alt) return;
-        const mod = process.platform === 'darwin' ? input.meta : input.control;
-        const takeoverKey =
-          input.shift &&
-          (input.key === ' ' || input.key === 'Space' || input.code === 'Space' || input.key.toLowerCase() === 'h');
-        if (mod && takeoverKey) {
-          event.preventDefault();
-          this.toggleHumanControl();
-        }
+        if (!isHumanTakeoverShortcut(input)) return;
+        event.preventDefault();
+        this.toggleHumanControl();
       });
     }
     this.trayManager = new TrayManager({

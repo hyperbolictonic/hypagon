@@ -96,7 +96,12 @@ try {
   process.exit(0);
 }
 
-const transport = new StdioClientTransport({ command: 'node', args: ['./bin/mcp-server.cjs'] });
+// Forward the caller's environment: the MCP SDK otherwise passes only a safe allowlist, which
+// silently drops HB_BRIDGE_URL and makes the suite test port 4111 even when told otherwise.
+const env = Object.fromEntries(
+  Object.entries(process.env).filter(([, value]) => typeof value === 'string'),
+);
+const transport = new StdioClientTransport({ command: 'node', args: ['./bin/mcp-server.cjs'], env });
 const client = new Client({ name: 'mcp-surface-test', version: '0.0.0' }, { capabilities: {} });
 await client.connect(transport);
 

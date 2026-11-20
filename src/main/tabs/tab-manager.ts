@@ -1,56 +1,17 @@
-import {
-  BrowserWindow,
-  WebContentsView,
-  type BrowserWindowConstructorOptions,
-  type HandlerDetails,
-  type RenderProcessGoneDetails,
-  type WebContents,
-  type WindowOpenHandlerResponse,
-} from 'electron';
-import path from 'node:path';
-import fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import type { HostBrowserProfile } from '../telemetry/host-fingerprint.js';
+/**
+ * Tabs for the Cyberdeck browser.
+ *
+ * One `WebContentsView` per tab, attached to the shell window and swapped by bounds.
+ * The manager owns the tab map and which one is active; the view policy lives in
+ * `tab-views.ts` and the popup/sign-in window policy in `popups.ts`.
+ */
+import type { WebContentsView } from 'electron';
 import type { TabSummary } from '../../shared/types.js';
-import { attachContextMenu } from '../menu/context-menu.js';
-import { isPopupWindowRequest, popupWindowSize } from './window-open-policy.js';
+import { PopupWindows } from './popups.js';
+import { TabViews } from './tab-views.js';
+import type { TabInstance, TabManagerOptions } from './types.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-/** When to use: addressing one tab and its view/webContents. */
-export interface TabInstance {
-  id: string;
-  title: string;
-  url: string;
-  isLoading: boolean;
-  view: WebContentsView;
-  createdAt: number;
-}
-
-/** When to use: constructing the tab manager (window, callbacks, zoom). */
-export interface TabManagerOptions {
-  mainWindow: BrowserWindow;
-  hostProfile: HostBrowserProfile;
-  getViewportBounds: () => { x: number; y: number; width: number; height: number };
-  /** Bounds for one tab, so a responsive/emulated view can be letterboxed. */
-  getTabBounds?: (tabId: string) => { x: number; y: number; width: number; height: number };
-  onTabUpdated?: (tab: TabInstance) => void;
-  onTabsChanged?: (tabs: TabSummary[]) => void;
-  onTabCreated?: (tab: TabInstance) => void;
-  onTabClosed?: (tabId: string) => void;
-  /** Called after a tab's native view is attached, so an overlay can stay on top. */
-  onViewAdded?: () => void;
-  onLog?: (level: 'info' | 'warn' | 'action', message: string) => void;
-  onConsoleLog?: (log: { level: string; message: string; line: number; sourceId: string; timestamp: number }) => void;
-  /** Re-apply the current page zoom after creation, navigation and tab switches. */
-  applyZoom?: (wc: WebContents) => void;
-  /** Ctrl+= / Ctrl+- / Ctrl+0, owned by the browser rather than the page. */
-  onZoomShortcut?: (action: 'in' | 'out' | 'reset') => void;
-  /** Ctrl+Shift+Space: explicit human takeover / hand-back. */
-  onTakeoverShortcut?: () => void;
-  /** A tab renderer disappeared; the owner decides whether to reload it. */
-  onRendererGone?: (tab: TabInstance, details: RenderProcessGoneDetails) => void;
-}
+export type { TabInstance, TabManagerOptions } from './types.js';
 
 /** When to use: creating, switching and closing tabs. */
 export class TabManager {
@@ -59,24 +20,51 @@ export class TabManager {
   private counter: number = 0;
   /** Set while a full-window settings/dialog surface owns the UI. */
   private viewportHidden: boolean = false;
-  /** Tabs/popups already have a window-open handler; reused WebContents must not stack them. */
-  private wiredWindowOpen: WeakSet<WebContents> = new WeakSet();
+  private readonly options: TabManagerOptions;
+  private readonly views: TabViews;
+  private readonly popups: PopupWindows;
 
-  constructor(private options: TabManagerOptions) {}
+  constructor(options: TabManagerOptions) {
+    this.options = options;
+    this.popups = new PopupWindows({
+      mainWindow: options.mainWindow,
+      hostProfile: options.hostProfile,
+      ...(options.applyZoom === undefined ? {} : { applyZoom: options.applyZoom }),
+      ...(options.onLog === undefined ? {} : { onLog: options.onLog }),
+      openTab: (url) => {
+        const tab = this.createTab(url);
+        this.switchTab(tab.id);
+      },
+      activeContents: () => this.tabs.get(this.activeTabId)?.view.webContents,
+    });
+    this.views = new TabViews({
+      mainWindow: options.mainWindow,
+      hostProfile: options.hostProfile,
+      ...(options.onViewAdded === undefined ? {} : { onViewAdded: options.onViewAdded }),
+      ...(options.onTabCreated === undefined ? {} : { onTabCreated: options.onTabCreated }),
+      ...(options.onTabUpdated === undefined ? {} : { onTabUpdated: options.onTabUpdated }),
+      onTabsChanged: () => this.notifyTabsChanged(),
+      ...(options.onConsoleLog === undefined ? {} : { onConsoleLog: options.onConsoleLog }),
+      ...(options.onRendererGone === undefined ? {} : { onRendererGone: options.onRendererGone }),
+      ...(options.applyZoom === undefined ? {} : { applyZoom: options.applyZoom }),
+      ...(options.onZoomShortcut === undefined ? {} : { onZoomShortcut: options.onZoomShortcut }),
+      ...(options.onTakeoverShortcut === undefined ? {} : { onTakeoverShortcut: options.onTakeoverShortcut }),
+      ...(options.onLog === undefined ? {} : { onLog: options.onLog }),
+      openLinkInNewTab: (url) => {
+        try {
+          const tab = this.createTab(url);
+          this.switchTab(tab.id);
+        } catch (err) {
+          // Worst case the link still opens via "open in system browser".
+          options.onLog?.('warn', `Could not open link in a new tab: ${(err as Error)?.message || err}`);
+        }
+      },
+      wireWindowOpen: (wc) => this.popups.wire(wc),
+    });
+  }
 
   public getWelcomePagePath(): string {
-    const candidates = [
-      path.join(__dirname, '../../public/welcome.html'),
-      path.join(__dirname, '../../dist/welcome.html'),
-      path.join(__dirname, '../../../public/welcome.html'),
-      path.join(__dirname, '../../../dist/welcome.html'),
-      path.join(process.cwd(), 'public/welcome.html'),
-      path.join(process.cwd(), 'dist/welcome.html'),
-    ];
-    for (const p of candidates) {
-      if (fs.existsSync(p)) return p;
-    }
-    return candidates[0];
+    return this.views.welcomePagePath();
   }
 
   public getActiveTab(): TabInstance {
@@ -105,169 +93,8 @@ export class TabManager {
     this.counter++;
     const id = `tab_${this.counter}`;
 
-    const view = existingView || new WebContentsView({
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-        sandbox: true,
-        // An automated browser is routinely occluded (the human's editor/terminal owns the
-        // foreground), and Chromium then reports the page as hidden and throttles its timers
-        // to >=1s. That silently breaks lazy-loading harvests and 'infinite' feeds. Keep
-        // browsing tabs running at full speed while we drive them.
-        backgroundThrottling: false,
-      },
-    });
-
-    // Soft matte light zinc gray (#f4f4f5): prevents harsh white glare while making black typography 100% legible
-    view.setBackgroundColor('#f4f4f5');
-    this.options.mainWindow.contentView.addChildView(view);
-    this.options.onViewAdded?.();
-
-    const wc = view.webContents;
-
-    // Page zoom is an app-level policy (fit to the display scale, or Windows
-    // scale). Chromium persists zoom per origin, so re-assert it whenever a new
-    // document starts; otherwise a site that was last opened at 100% snaps back.
-    this.options.applyZoom?.(wc);
-    wc.on('did-navigate', () => this.options.applyZoom?.(wc));
-
-    // Ctrl+= / Ctrl+- / Ctrl+0 are browser shortcuts, not page content. Without
-    // this the app has no zoom path for a human, because Electron does not add
-    // Chrome's default menu accelerators.
-    wc.on('before-input-event', (event, input) => {
-      if (input.type !== 'keyDown' || input.alt) return;
-      const mod = process.platform === 'darwin' ? input.meta : input.control;
-      if (!mod) return;
-      const takeoverKey =
-        input.shift &&
-        (input.key === ' ' || input.key === 'Space' || input.code === 'Space' || input.key.toLowerCase() === 'h');
-      if (takeoverKey) {
-        event.preventDefault();
-        this.options.onTakeoverShortcut?.();
-        return;
-      }
-      if (input.key === '+' || input.key === '=') {
-        event.preventDefault();
-        this.options.onZoomShortcut?.('in');
-      } else if (input.key === '-') {
-        event.preventDefault();
-        this.options.onZoomShortcut?.('out');
-      } else if (input.key === '0') {
-        event.preventDefault();
-        this.options.onZoomShortcut?.('reset');
-      }
-    });
-
-    // Right-click: copy/paste/select-all, link and image actions, reload, inspect element.
-    // A WebContentsView has no default context menu, so without this the browser is unusable
-    // by hand even though every action exists in the API.
-    if (!(wc as any).__kuangContextMenu) {
-      (wc as any).__kuangContextMenu = true;
-      attachContextMenu(wc, {
-        window: this.options.mainWindow,
-        onOpenLinkInNewTab: (url) => {
-          try {
-            const tab = this.createTab(url);
-            this.switchTab(tab.id);
-          } catch (err) {
-            // Worst case the link still opens via "open in system browser".
-            this.options.onLog?.('warn', `Could not open link in a new tab: ${(err as Error)?.message || err}`);
-          }
-        },
-        onLog: (level, message) => this.options.onLog?.(level, message),
-      });
-    }
-
-    // Also covers reused views (e.g. a prerendered view promoted to a tab), where the
-    // webPreferences above are not re-applied.
-    try { wc.setBackgroundThrottling(false); } catch {}
-
-    // Apply Host Browser Stealth Profile
-    wc.setUserAgent(this.options.hostProfile.userAgent);
-    wc.session.webRequest.onBeforeSendHeaders((details, callback) => {
-      details.requestHeaders['User-Agent'] = this.options.hostProfile.userAgent;
-      details.requestHeaders['sec-ch-ua'] = this.options.hostProfile.secChUa;
-      details.requestHeaders['sec-ch-ua-mobile'] = '?0';
-      details.requestHeaders['sec-ch-ua-platform'] = this.options.hostProfile.secChUaPlatform;
-      callback({ requestHeaders: details.requestHeaders });
-    });
-
-    // Auto-spawn new tabs for target="_blank" and window.open
-    this.wireWindowOpen(wc);
-
-    const tab: TabInstance = {
-      id,
-      title: 'New Tab',
-      url: initialUrl,
-      isLoading: false,
-      view,
-      createdAt: Date.now(),
-    };
-
-    this.options.onTabCreated?.(tab);
-
-    // Navigation and status listeners
-    wc.on('did-start-loading', () => {
-      tab.isLoading = true;
-      this.options.onTabUpdated?.(tab);
-      this.notifyTabsChanged();
-    });
-
-    wc.on('did-finish-load', () => {
-      this.options.applyZoom?.(wc);
-      tab.isLoading = false;
-      const rawUrl = wc.getURL();
-      if (rawUrl.includes('welcome.html')) {
-        tab.url = 'mark-eleven://manual';
-        tab.title = 'Kuang Grade // Manual';
-      } else {
-        tab.url = rawUrl;
-        tab.title = wc.getTitle() || tab.url;
-      }
-      this.options.onLog?.('info', `[${tab.id}] Loaded: ${tab.title} (${tab.url})`);
-      this.options.onTabUpdated?.(tab);
-      this.notifyTabsChanged();
-    });
-
-    wc.on('page-title-updated', (_, title) => {
-      if (!wc.getURL().includes('welcome.html')) {
-        tab.title = title;
-        this.options.onTabUpdated?.(tab);
-        this.notifyTabsChanged();
-      }
-    });
-
-    wc.on('did-fail-load', (_, errorCode, errorDescription, validatedURL) => {
-      tab.isLoading = false;
-      this.options.onLog?.('warn', `[${tab.id}] Barrier [${errorCode}]: ${errorDescription} (${validatedURL})`);
-      this.options.onTabUpdated?.(tab);
-      this.notifyTabsChanged();
-    });
-
-    wc.on('render-process-gone', (_event, details) => {
-      this.options.onLog?.('warn', `[${tab.id}] Renderer gone (${details.reason}, exit ${details.exitCode})`);
-      this.options.onRendererGone?.(tab, details);
-    });
-
-    wc.on('unresponsive', () => {
-      this.options.onLog?.('warn', `[${tab.id}] Renderer unresponsive: ${tab.url || 'unknown URL'}`);
-    });
-
-    wc.on('console-message', (event: any, ...legacyArgs: any[]) => {
-      const level = typeof event?.level === 'number' ? event.level : (legacyArgs[0] ?? 0);
-      const message = event?.message ?? legacyArgs[1] ?? String(event ?? '');
-      const line = event?.lineNumber ?? legacyArgs[2] ?? 0;
-      const sourceId = event?.sourceId ?? legacyArgs[3] ?? '';
-      const levelStr = level === 0 ? 'info' : level === 1 ? 'warn' : 'error';
-
-      this.options.onConsoleLog?.({
-        level: levelStr,
-        message,
-        line,
-        sourceId,
-        timestamp: Date.now(),
-      });
-    });
+    const tab = this.views.create(id, initialUrl, existingView);
+    const wc = tab.view.webContents;
 
     this.tabs.set(id, tab);
 
@@ -283,135 +110,12 @@ export class TabManager {
         : `https://${initialUrl}`;
       wc.loadURL(formatted);
     } else {
-      wc.loadFile(this.getWelcomePagePath());
+      wc.loadFile(this.views.welcomePagePath());
     }
 
     // Switch focus to new tab
     this.switchTab(id);
     return tab;
-  }
-
-  /**
-   * Route `window.open()` / `target="_blank"` requests.
-   *
-   * Plain links keep the tab treatment (so they stay inside the Cyberdeck tab bar). Sign-in
-   * popups and form POSTs become a real child window instead: they need `window.opener` to
-   * exist so the provider's `postMessage` reaches the page that started the flow, and so the
-   * provider's `window.close()` actually closes the popup and returns to the browsing tab.
-   */
-  private wireWindowOpen(wc: WebContents): void {
-    if (this.wiredWindowOpen.has(wc)) return;
-    this.wiredWindowOpen.add(wc);
-
-    wc.setWindowOpenHandler((details) => this.onWindowOpenRequested(details));
-    // Electron creates the child window before this event fires. Wire the popup so it can open
-    // nested popups, share the stealth UA/zoom policy, and hand focus back when it closes.
-    wc.on('did-create-window', (popup) => this.configurePopupWindow(popup));
-  }
-
-  private onWindowOpenRequested(details: HandlerDetails): WindowOpenHandlerResponse {
-    if (isPopupWindowRequest(details)) {
-      this.options.onLog?.('action', `Sign-in/popup link: opening a child window -> ${details.url}`);
-      return {
-        action: 'allow',
-        // A human can close the originating tab while the provider is still mid-flow. Keeping
-        // the popup alive lets them finish (or read the error) instead of losing the window.
-        outlivesOpener: true,
-        overrideBrowserWindowOptions: this.popupWindowOptions(details),
-      };
-    }
-
-    this.options.onLog?.('action', `Intercepted popup/external link: opening new Cyberdeck tab -> ${details.url}`);
-    try {
-      this.createTab(details.url);
-    } catch (err) {
-      // The tab could not be created (window tearing down); do not let the click vanish silently.
-      this.options.onLog?.('warn', `Could not open link in a new tab: ${(err as Error)?.message || err}`);
-    }
-    return { action: 'deny' };
-  }
-
-  private popupWindowOptions(details: HandlerDetails): BrowserWindowConstructorOptions {
-    const { width, height } = popupWindowSize(details.features);
-    return {
-      // Owned by the browser window: it stays above the tab strip without blocking it.
-      parent: this.options.mainWindow,
-      modal: false,
-      show: true,
-      width,
-      height,
-      minWidth: 320,
-      minHeight: 320,
-      autoHideMenuBar: true,
-      backgroundColor: '#f4f4f5',
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-        sandbox: true,
-        // A sign-in popup is often occluded by the tab the human is watching; keep its
-        // timers and redirects running at full speed.
-        backgroundThrottling: false,
-      },
-    };
-  }
-
-  private configurePopupWindow(popup: BrowserWindow): void {
-    const wc = popup.webContents;
-
-    try {
-      popup.setMenuBarVisibility(false);
-    } catch {
-      // Window already gone or unsupported on this platform.
-    }
-
-    try {
-      wc.setUserAgent(this.options.hostProfile.userAgent);
-    } catch {
-      // Best effort, same as the tab path.
-    }
-
-    this.options.applyZoom?.(wc);
-    wc.on('did-navigate', () => this.options.applyZoom?.(wc));
-
-    if (!(wc as any).__kuangContextMenu) {
-      (wc as any).__kuangContextMenu = true;
-      attachContextMenu(wc, {
-        window: popup,
-        onOpenLinkInNewTab: (url) => {
-          try {
-            const tab = this.createTab(url);
-            this.switchTab(tab.id);
-          } catch (err) {
-            this.options.onLog?.('warn', `Could not open link in a new tab: ${(err as Error)?.message || err}`);
-          }
-        },
-        onLog: (level, message) => this.options.onLog?.(level, message),
-      });
-    }
-
-    // The popup may itself call window.open() (nested provider hops).
-    this.wireWindowOpen(wc);
-
-    wc.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
-      if (!isMainFrame) return;
-      this.options.onLog?.('warn', `Popup barrier [${errorCode}]: ${errorDescription} (${validatedURL})`);
-    });
-
-    popup.on('closed', () => {
-      const mainWindow = this.options.mainWindow;
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      this.options.onLog?.('info', 'Popup closed; returning focus to the browsing tab.');
-      try {
-        if (mainWindow.isMinimized()) mainWindow.restore();
-        mainWindow.show();
-        mainWindow.focus();
-        this.tabs.get(this.activeTabId)?.view.webContents.focus();
-      } catch {
-        // The shell is tearing down.
-      }
-    });
-
-    this.options.onLog?.('info', `Opened popup window (${wc.getURL() || 'pending navigation'})`);
   }
 
   public switchTab(tabId: string): void {
@@ -449,7 +153,7 @@ export class TabManager {
 
     // If only 1 tab remaining, reset it to Cyberdeck manual rather than closing window
     if (this.tabs.size <= 1) {
-      tabToClose.view.webContents.loadFile(this.getWelcomePagePath());
+      tabToClose.view.webContents.loadFile(this.views.welcomePagePath());
       tabToClose.title = 'Kuang Grade // Manual';
       tabToClose.url = 'mark-eleven://manual';
       this.options.onTabUpdated?.(tabToClose);

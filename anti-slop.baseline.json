@@ -5,7 +5,7 @@
   },
   "duplicates": {
     "files": {
-      "main/browser-chassis.ts": 155,
+      "main/browser-chassis.ts": 150,
       "main/cortex/cortex-db.ts": 22,
       "main/decide/decision-client.ts": 7,
       "main/decide/decision-guard.ts": 7,
@@ -20,7 +20,6 @@
       "main/shadow-walk/sealed-targets.ts": 10,
       "main/shadow-walk/settings.ts": 5,
       "main/shadow-walk/tab-walk.ts": 49,
-      "main/tabs/tab-manager.ts": 30,
       "main/telemetry/input-simulator.ts": 34,
       "main/tools/state.ts": 11,
       "main/wrap/anyapi/executor.ts": 49,
@@ -36,7 +35,7 @@
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 1270
+    "totalDuplicatedLines": 1235
   },
   "imports": {
     "cycles": []
@@ -68,9 +67,6 @@
         "file": 1
       },
       "main/shadow-walk/ax-controls.ts": {
-        "file": 1
-      },
-      "main/tabs/tab-manager.ts": {
         "file": 1
       },
       "main/telemetry/input-simulator.ts": {
