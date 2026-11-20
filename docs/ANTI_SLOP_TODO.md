@@ -13,11 +13,19 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **649 duplicated lines / 50,925 (1.3%)** | threshold is 3%; 28 files with clones (the catalog entries moved with their existing clones; the total is unchanged) |
-| Import cycles | **0** | 5 layer rules pass across 330 files |
+| Duplicates | **649 duplicated lines / 51,053 (1.3%)** | threshold is 3%; 28 files with clones (relocated clones, unchanged total) |
+| Import cycles | **0** | 5 layer rules pass across 332 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer about + Cortex extracted** - `renderer/main.ts` 3968 -> 3676. `about-modal.ts` (20 lines)
+  wires the version dialog at import; `cortex-panel.ts` (300) owns the recall/history/bookmark panel.
+  The panel has no cycle with the entry point: main pushes the page identity in through
+  `syncCortexPage(url, title)` (called from `updateState`) and hands over the log feed through
+  `setCortexLogger(appendLog)`. Verified: `npx vite build`, `test:settings:dom` (192 ids),
+  `test:mcp:surface` 35/35. Modularity stays at 3 (the remaining two are the chassis file/class and
+  the renderer file).
 
 - **Constructor split** - `browser-chassis.ts`'s 253-line constructor is now ten ordered phases
   (`initDecisionLog`, `initSimulator`, `initCoreServices`, `initHil`, `initActionLedger`,
