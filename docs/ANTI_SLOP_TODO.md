@@ -13,11 +13,17 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,461 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 352 files |
+| Duplicates | **604 duplicated lines / 51,475 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 353 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer sidebar layout extracted** - `renderer/main.ts` 1634 -> 1519, `sidebar-mode.ts` 130.
+  The state module from the previous slice made this a plain move: `SIDEBAR_MODE`,
+  `applySidebarMode`, `toggleSidebar`, `applySidebarState` and the orb-drag/rail handlers now
+  import `sidebarState`, `sidebarPanel` and `sidebarRailToggle` instead of owning them.
+  Verified: `npx vite build`, `test:settings:dom` (192 ids).
 
 - **Sidebar state extracted** - `renderer/sidebar-state.ts` (20) now owns `sidebarState.mode`,
   `sidebarState.collabModeOn`, `sidebarPanel`, `sidebarRailToggle` and the `SidebarMode` type.
