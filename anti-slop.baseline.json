@@ -6,7 +6,6 @@
   "duplicates": {
     "files": {
       "main/browser-chassis.ts": 150,
-      "main/cortex/cortex-db.ts": 22,
       "main/decide/decision-client.ts": 7,
       "main/decide/decision-guard.ts": 7,
       "main/index.ts": 83,
@@ -28,7 +27,7 @@
       "preload/index.ts": 34,
       "renderer/main.ts": 93
     },
-    "totalDuplicatedLines": 885
+    "totalDuplicatedLines": 863
   },
   "imports": {
     "cycles": []
@@ -41,9 +40,6 @@
         "function": 3
       },
       "main/collaboration/overlay.ts": {
-        "file": 1
-      },
-      "main/cortex/cortex-db.ts": {
         "file": 1
       },
       "main/index.ts": {
