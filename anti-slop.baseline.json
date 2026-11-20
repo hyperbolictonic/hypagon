@@ -14,6 +14,7 @@
       "main/media/ffmpeg.ts": 24,
       "main/media/service.ts": 34,
       "main/media/transcript.ts": 5,
+      "main/network/stream-capture.ts": 28,
       "main/primitives/primitives.ts": 66,
       "main/recipes/recipe-store.ts": 10,
       "main/research/settings.ts": 6,
@@ -39,7 +40,7 @@
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 1355
+    "totalDuplicatedLines": 1383
   },
   "imports": {
     "cycles": []
@@ -89,7 +90,6 @@
         "function": 1
       },
       "main/network/network-interceptor.ts": {
-        "file": 1,
         "function": 1
       },
       "main/primitives/primitives.ts": {

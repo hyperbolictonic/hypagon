@@ -1,4 +1,7 @@
 import type { WebContents } from 'electron';
+import { StreamCapture, type RealtimeStream, type StreamListFilter, type StreamMessage, type StreamMessageFilter } from './stream-capture.js';
+
+export type { RealtimeStream, StreamMessage } from './stream-capture.js';
 
 /** When to use: reading one captured request/response (headers, timing, body preview). */
 export interface CapturedNetworkRequest {
@@ -17,34 +20,6 @@ export interface CapturedNetworkRequest {
   bodyPreview?: string;
 }
 
-/** When to use: listing a detected websocket/SSE stream and its message counts. */
-export interface RealtimeStream {
-  streamId: string;
-  type: 'websocket' | 'sse';
-  url: string;
-  status: 'open' | 'closed' | 'error';
-  createdAt: number;
-  closedAt?: number;
-  framesSentCount: number;
-  framesReceivedCount: number;
-  lastActivity: number;
-}
-
-/** When to use: reading one captured stream message (direction, payload, time). */
-export interface StreamMessage {
-  id: string;
-  streamId: string;
-  streamType: 'websocket' | 'sse';
-  direction: 'sent' | 'received';
-  timestamp: number;
-  eventName?: string;
-  eventId?: string;
-  opcode?: number;
-  data: string;
-  isJson: boolean;
-  jsonData?: any;
-}
-
 /** When to use: filtering the traffic buffer by URL, method, type or since-time. */
 export interface NetworkFilter {
   urlPattern?: string;
@@ -59,11 +34,8 @@ export class NetworkInterceptor {
   private attachedWebContents: Set<WebContents> = new Set();
   private requests: Map<string, CapturedNetworkRequest> = new Map();
   private payloads: Map<string, { body: string; base64Encoded: boolean }> = new Map();
-  private streams: Map<string, RealtimeStream> = new Map();
-  private streamMessages: StreamMessage[] = [];
-  private streamMsgCounter: number = 0;
   private maxStoredRequests: number = 250;
-  private maxStreamMessages: number = 500;
+  private streams = new StreamCapture(500);
 
   /**
    * Attaches Chrome DevTools Protocol network listener to the specified WebContents.
@@ -167,98 +139,24 @@ export class NetworkInterceptor {
     // WebSocket Lifecycle & Framing
     else if (method === 'Network.webSocketCreated') {
       const { requestId, url } = params;
-      this.streams.set(requestId, {
-        streamId: requestId,
-        type: 'websocket',
-        url,
-        status: 'open',
-        createdAt: Date.now(),
-        framesSentCount: 0,
-        framesReceivedCount: 0,
-        lastActivity: Date.now(),
-      });
+      this.streams.openWebSocket(requestId, url);
     } else if (method === 'Network.webSocketClosed') {
-      const { requestId } = params;
-      const s = this.streams.get(requestId);
-      if (s) {
-        s.status = 'closed';
-        s.closedAt = Date.now();
-        s.lastActivity = Date.now();
-      }
+      this.streams.close(params.requestId);
     } else if (method === 'Network.webSocketFrameSent') {
       const { requestId, response } = params;
-      this.recordStreamMessage(requestId, 'websocket', 'sent', response?.payloadData || '', response?.opcode);
+      this.streams.record(requestId, 'websocket', 'sent', response?.payloadData || '', response?.opcode);
     } else if (method === 'Network.webSocketFrameReceived') {
       const { requestId, response } = params;
-      this.recordStreamMessage(requestId, 'websocket', 'received', response?.payloadData || '', response?.opcode);
+      this.streams.record(requestId, 'websocket', 'received', response?.payloadData || '', response?.opcode);
     } else if (method === 'Network.webSocketFrameError') {
-      const { requestId } = params;
-      const s = this.streams.get(requestId);
-      if (s) s.status = 'error';
+      this.streams.markError(params.requestId);
     }
     // Server-Sent Events (SSE / EventSource)
     else if (method === 'Network.eventSourceMessageReceived') {
       const { requestId, eventName, eventId, data } = params;
-      if (!this.streams.has(requestId)) {
-        const req = this.requests.get(requestId);
-        this.streams.set(requestId, {
-          streamId: requestId,
-          type: 'sse',
-          url: req?.url || 'event-source-stream',
-          status: 'open',
-          createdAt: Date.now(),
-          framesSentCount: 0,
-          framesReceivedCount: 0,
-          lastActivity: Date.now(),
-        });
-      }
-      this.recordStreamMessage(requestId, 'sse', 'received', data, undefined, eventName, eventId);
-    }
-  }
-
-  private recordStreamMessage(
-    streamId: string,
-    streamType: 'websocket' | 'sse',
-    direction: 'sent' | 'received',
-    data: string,
-    opcode?: number,
-    eventName?: string,
-    eventId?: string
-  ): void {
-    const s = this.streams.get(streamId);
-    if (s) {
-      if (direction === 'sent') s.framesSentCount++;
-      else s.framesReceivedCount++;
-      s.lastActivity = Date.now();
-    }
-
-    let isJson = false;
-    let jsonData: any = undefined;
-    const trimmed = (data || '').trim();
-    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-      try {
-        jsonData = JSON.parse(trimmed);
-        isJson = true;
-      } catch {}
-    }
-
-    const msg: StreamMessage = {
-      id: `msg_${++this.streamMsgCounter}`,
-      streamId,
-      streamType,
-      direction,
-      timestamp: Date.now(),
-      opcode,
-      eventName,
-      eventId,
-      data,
-      isJson,
-      jsonData,
-    };
-
-    this.streamMessages.push(msg);
-    if (this.streamMessages.length > this.maxStreamMessages) {
-      this.streamMessages.shift();
+      const req = this.requests.get(requestId);
+      this.streams.ensureSse(requestId, req?.url || 'event-source-stream');
+      this.streams.record(requestId, 'sse', 'received', data, undefined, eventName, eventId);
     }
   }
 
@@ -352,62 +250,27 @@ export class NetworkInterceptor {
     this.requests.clear();
     this.payloads.clear();
     this.streams.clear();
-    this.streamMessages = [];
   }
 
   /**
    * Returns list of observed WebSocket connections and SSE feeds.
    */
-  public getStreams(options?: { type?: 'websocket' | 'sse'; activeOnly?: boolean }): RealtimeStream[] {
-    let list = Array.from(this.streams.values()).sort((a, b) => b.lastActivity - a.lastActivity);
-
-    if (options?.type) {
-      list = list.filter((s) => s.type === options.type);
-    }
-
-    if (options?.activeOnly) {
-      list = list.filter((s) => s.status === 'open');
-    }
-
-    return list;
+  public getStreams(options?: StreamListFilter): RealtimeStream[] {
+    return this.streams.list(options);
   }
 
   /**
    * Retrieves rolling real-time stream messages and frames.
    */
-  public getStreamMessages(options?: {
-    streamId?: string;
-    type?: 'websocket' | 'sse';
-    direction?: 'sent' | 'received';
-    limit?: number;
-  }): StreamMessage[] {
-    let list = [...this.streamMessages];
-
-    if (options?.streamId) {
-      list = list.filter((m) => m.streamId === options.streamId);
-    }
-
-    if (options?.type) {
-      list = list.filter((m) => m.streamType === options.type);
-    }
-
-    if (options?.direction) {
-      list = list.filter((m) => m.direction === options.direction);
-    }
-
-    const limit = options?.limit && options.limit > 0 ? options.limit : 50;
-    return list.slice(-limit);
+  public getStreamMessages(options?: StreamMessageFilter): StreamMessage[] {
+    return this.streams.messagesFor(options);
   }
 
   /**
    * Clears streaming message buffers.
    */
   public clearStreamMessages(streamId?: string): void {
-    if (streamId) {
-      this.streamMessages = this.streamMessages.filter((m) => m.streamId !== streamId);
-    } else {
-      this.streamMessages = [];
-    }
+    this.streams.clearMessages(streamId);
   }
 
   private pruneBuffer(): void {
