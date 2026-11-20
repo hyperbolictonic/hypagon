@@ -11,13 +11,21 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **4 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
 | Duplicates | **649 duplicated lines / 50,925 (1.3%)** | threshold is 3%; 28 files with clones (the catalog entries moved with their existing clones; the total is unchanged) |
 | Import cycles | **0** | 5 layer rules pass across 330 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Constructor split** - `browser-chassis.ts`'s 253-line constructor is now ten ordered phases
+  (`initDecisionLog`, `initSimulator`, `initCoreServices`, `initHil`, `initActionLedger`,
+  `initPrimitives`, `initLlmSurfaces`, `initCrawler`, `initResearcher`, `initTimers`) called from a
+  12-line constructor. Initialization order is unchanged. Because TypeScript cannot see assignments
+  inside the helpers, the 17 service fields carry definite-assignment assertions. Verified: the dev
+  instance restarted and served the bridge (`/health` 2.3.3), `test:mcp:surface` 35/35,
+  `test:act` 26/26. Modularity: 4 -> 3 violations (2 file + 1 class).
 
 - **Oversized handlers split** - three of the four function violations are gone without touching the
   two file violations yet: `renderer/main.ts`'s 118-line wrapper-save handler is now
