@@ -13,11 +13,19 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,302 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 347 files |
+| Duplicates | **604 duplicated lines / 51,418 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 348 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Wrap panel DOM registry** - `settings-wrap-dom.ts` (114) exports all 53 `wrap*` handles once;
+  the entry point imports them. This is the prerequisite the last four wrap/secrets attempts were
+  missing: the secrets form and the wrapper modal share a credential sub-form
+  (`wrapKindEl`/`wrapOAuthEl`/`wrapValueEl`/`wrapHostsEl`/`wrapHeaderEl`/`wrapPrefixEl`/
+  `wrapNameEl`), so no range-based split could assign them. The elements are not contiguous —
+  `selectedWrapMethods` and other helpers sit between them — so they were collected by declaration,
+  not by range. Verified: `npx vite build`, `test:settings:dom` (192 ids).
 
 - **Renderer telemetry/logs feed extracted** - `renderer/main.ts` 1983 -> 1907,
   `telemetry-feed.ts` 99, plus `cursor-trail.ts` (10) for the trail the feed appends to and the
