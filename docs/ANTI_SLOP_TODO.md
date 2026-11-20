@@ -11,18 +11,43 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **53 violations** across **41 files** | file/function/class size budgets (300 / 80 / 10) |
-| Docs | **337 undocumented exports** across **116 files** | one-line `/** When to use ... */` required |
-| Duplicates | **1,727 duplicated lines / 47,107 (3.7%)** | threshold is 3%; 41 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 165 files |
-| Component index | **165 files / 658 exports** | 337 still undocumented |
+| Modularity | **32 violations** across **22 files** | file/function/class size budgets (300 / 80 / 10) |
+| Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
+| Duplicates | **1,295 duplicated lines / 47,936 (2.7%)** | threshold is 3%; 31 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 195 files |
+| Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
-- **Docs pass in progress** - 431 -> 337 undocumented exports (123 -> 116 files). Done so far:
-  `shared/viewport`, `shadow-walk/settings`, `wrap/render`, `wrap/secrets`, `wrap/types`,
-  `primitives/primitives`, `recording/recording-service`, `cortex/cortex-db`, `media/service`,
-  `media/jobs`.
+- **Docs gate closed** - 431 -> 0 undocumented exports (123 -> 0 files). The docs baseline is empty,
+  so a new export without a usage line fails immediately.
+- **Network capture split** - `network-interceptor.ts` 424 -> 252 lines plus `network/stream-capture.ts`:
+  websocket/SSE lifecycle and the rolling message buffer now live in `StreamCapture`, and the CDP
+  dispatcher has one handler per event kind (`captureRequest`/`captureResponse`/`captureBody`/
+  `captureStreamEvent`). Verified: 2 streams, SSE dedupe, JSON flags, filters, cap, close/error, clears.
+- **HIL notification split** - `hil/hil-manager.ts` 436 -> out of the baseline plus `hil/notifier.ts`:
+  the toast, the long-slot Windows XML, click-to-focus and the no-focus surface are one object. The
+  extraction exposed a real clone - `resolveIntervention` and `cancelIntervention` were the same
+  skeleton - now one `finish()` that keeps the exact difference (cancel records no history notes).
+  `ui/brand-icon.ts` is shared with the tray.
+- **anyapi executor split** - `wrap/anyapi/executor.ts` 436 -> out of the baseline across `gate.ts`
+  (what the core can serve exactly), `plan.ts` (declared arguments, redacted preview) and
+  `payload-store.ts` (retains nothing). `wrap/executor-options.ts` now owns the transport options and
+  wrapper resolution both executors share, which collapsed the `executor <-> anyapi/executor` clone
+  pair; `ExecutorOptions extends TransportOptionInput`. Verified: `test:wrap` 55/55, `test:anyapi` 17/17.
+- **Harvester split** - `harvester/markdown.ts` 252 -> 202: extraction is `extract()`, the notes/cap
+  and the front matter are small functions, and the four Turndown rules live in `turndown-rules.ts`.
+  Verified: `test:markdown` 20/20, `test:harvest` 4/4.
+- **Bridge transport split** - `bridge/http-plumbing.ts` owns logging (with secret redaction), CORS,
+  the body reader and the JSON responder; `http-bridge.ts` is 202 lines of named phases
+  (`blockedByHumanControl`, `dispatchRoute`, `sendRouteError`, `wireServerEvents`). Verified live:
+  CORS, OPTIONS 204, unknown route 404, non-JSON body, 409 HUMAN_CONTROL + GET still allowed, resume,
+  plus `test:harvest` and `test:decide` 23/23.
+- **Context menu split** - `menu/context-menu.ts`: spellcheck, selection/editing, link, image and
+  navigation sections, so no function is over budget.
+- **Recording files split** - `recording/files.ts` owns naming, writing and listing; the service keeps
+  configuration and the renderer handshake. Verified against a temp directory: name shape, slug cap,
+  bytes/seconds/speedup, newest-first order, limit, non-webm filtering.
 - **Settings stores share one file helper** - `src/main/settings/json-file.ts` owns the fail-open
   read and atomic replace; eight stores (shadow-walk, zoom, tools, media, research, experimental,
   jev, anchor-store) use it instead of copy-pasting the sequence. Duplicates 1,791 -> 1,727 (3.7%).
