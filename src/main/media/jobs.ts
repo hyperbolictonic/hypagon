@@ -11,242 +11,33 @@
  */
 
 import { spawn, type ChildProcess } from 'node:child_process';
-import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 
-import { ytdlpRuntimeOptions } from './platform.ts';
 import { needsLogin } from './auth.ts';
 import type { MediaBinary, MediaBinaryError } from './binaries.ts';
+import { readJobHistory, JobHistoryWriter } from './job-history.ts';
+import { listFiles, newJobId, nowIso, terminate } from './job-files.ts';
+import { buildDownloadArgs } from './ytdlp-args.ts';
+import { ytdlpRuntimeOptions } from './platform.ts';
+import { createQueuedJob, countJobs, MAX_CONCURRENT, MAX_JOBS, pruneFinished, sortJobs } from './job-queue.ts';
+import { watchDownload } from './download-stream.ts';
+import type { MediaJob, MediaJobInput, MediaJobsOptions } from './job-types.ts';
 
-/** When to use: selecting the downloader mode (video or audio-only). */
-export type MediaKind = 'video' | 'audio';
-/** When to use: capping the selected format (best, 1080/720/480, worst). */
-export type MediaQuality = 'best' | '1080' | '720' | '480' | 'worst';
-/** When to use: reporting or observing a media job lifecycle state. */
-export type MediaJobState = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type {
+  MediaJob,
+  MediaJobFile,
+  MediaJobInput,
+  MediaJobState,
+  MediaJobsOptions,
+  MediaKind,
+  MediaProgress,
+  MediaQuality,
+} from './job-types.js';
 
-/** When to use: describing one downloaded file (path, bytes, format note). */
-export interface MediaJobFile {
-  readonly name: string;
-  readonly path: string;
-  readonly bytes: number;
-}
 
-/** When to use: reporting download progress (percent, speed, ETA) to the deck. */
-export interface MediaProgress {
-  readonly percent: number | null;
-  readonly downloadedBytes: number | null;
-  readonly totalBytes: number | null;
-  readonly speedBytesPerSecond: number | null;
-  readonly etaSeconds: number | null;
-  readonly stage: 'starting' | 'downloading' | 'merging' | 'postprocessing' | 'finalising';
-}
-
-/** When to use: queueing, cancelling or inspecting one media job. */
-export interface MediaJob {
-  readonly id: string;
-  readonly url: string;
-  readonly kind: MediaKind;
-  readonly quality: MediaQuality;
-  state: MediaJobState;
-  title: string | null;
-  progress: MediaProgress | null;
-  files: MediaJobFile[];
-  error: { readonly code: string; readonly message: string } | null;
-  readonly createdAt: string;
-  startedAt: string | null;
-  finishedAt: string | null;
-}
-
-/** When to use: starting a media job from a URL plus kind/quality options. */
-export interface MediaJobInput {
-  readonly url: string;
-  readonly kind?: MediaKind;
-  readonly quality?: MediaQuality;
-}
-
-const MAX_JOBS = 50;
-const MAX_CONCURRENT = 1;
-const IDLE_TIMEOUT_MS = 120_000;
-const TOTAL_TIMEOUT_MS = 45 * 60_000;
-const MAX_FILESIZE = '2G';
-
-const QUALITY_HEIGHT: Record<Exclude<MediaQuality, 'best' | 'worst'>, number> = {
-  '1080': 1080,
-  '720': 720,
-  '480': 480,
-};
-
-/**
- * Format selector for one job.
- *
- * Without ffmpeg yt-dlp cannot merge separate video and audio streams, so the
- * selector asks for a single-file result that already contains both. The
- * `ffmpeg` argument is where the merge path lands once that mode ships.
- */
-export function buildFormatSelector(kind: MediaKind, quality: MediaQuality, ffmpeg: boolean): string {
-  if (kind === 'audio') {
-    return ffmpeg ? 'bestaudio' : 'bestaudio[ext=m4a]/bestaudio';
-  }
-  if (quality === 'best') {
-    return ffmpeg ? 'bestvideo+bestaudio/best' : 'best[ext=mp4]/best';
-  }
-  if (quality === 'worst') {
-    return ffmpeg ? 'worstvideo+worstaudio/worst' : 'worst[ext=mp4]/worst';
-  }
-  const height = QUALITY_HEIGHT[quality];
-  return ffmpeg
-    ? `bestvideo[height<=${height}]+bestaudio/best[height<=${height}]`
-    : `best[height<=${height}][ext=mp4]/best[height<=${height}]`;
-}
-
-/** yt-dlp arguments for a job. Every value is built here, never passed through. */
-export function buildDownloadArgs(input: {
-  url: string;
-  kind: MediaKind;
-  quality: MediaQuality;
-  home: string;
-  temp: string;
-  ffmpeg: boolean;
-  ffmpegDir?: string;
-  cookies?: string;
-}): string[] {
-  const runtime = ytdlpRuntimeOptions();
-  return [
-    ...runtime.args,
-    '--ignore-config',
-    '--no-playlist',
-    '--newline',
-    '--no-color',
-    '--no-mtime',
-    '--socket-timeout',
-    '20',
-    '--max-filesize',
-    MAX_FILESIZE,
-    '--retries',
-    '3',
-    '--paths',
-    `home:${input.home}`,
-    '--paths',
-    `temp:${input.temp}`,
-    ...(input.ffmpegDir === undefined ? [] : ['--ffmpeg-location', input.ffmpegDir]),
-    '--output',
-    '%(title).140B [%(id)s].%(ext)s',
-    '--format',
-    buildFormatSelector(input.kind, input.quality, input.ffmpeg),
-    ...(input.cookies === undefined ? [] : ['--cookies', input.cookies]),
-    '--',
-    input.url,
-  ];
-}
-
-/** Parse one `--newline` progress line. Returns null for lines that are not progress. */
-export function parseProgressLine(line: string): Partial<MediaProgress> | null {
-  const percent = line.match(/^\[download\]\s+(\d+(?:\.\d+)?)%/u);
-  if (percent) {
-    const size = line.match(/of\s+~?\s*([\d.]+)([KMG]?i?B)/u);
-    const speed = line.match(/at\s+([\d.]+)([KMG]?i?B)\/s/u);
-    const eta = line.match(/ETA\s+(\d+(?::\d+){1,2})/u);
-    const totalBytes = size ? toBytes(Number.parseFloat(size[1]), size[2]) : null;
-    const percentValue = Number.parseFloat(percent[1]);
-    return {
-      stage: 'downloading',
-      percent: percentValue,
-      // yt-dlp prints the total and the percentage, not the running byte count.
-      downloadedBytes: totalBytes === null ? null : Math.round((totalBytes * percentValue) / 100),
-      totalBytes,
-      speedBytesPerSecond: speed ? toBytes(Number.parseFloat(speed[1]), speed[2]) : null,
-      etaSeconds: eta ? toSeconds(eta[1]) : null,
-    };
-  }
-  if (/^\[Merger\]/u.test(line)) return { stage: 'merging' };
-  if (/^\[(ExtractAudio|VideoConvertor|FixupM4a|FixupM3u8)/u.test(line)) return { stage: 'postprocessing' };
-  if (/^\[download\]\s+(Destination|100%)/u.test(line)) return { stage: 'finalising' };
-  return null;
-}
-
-function toBytes(value: number, unit: string): number {
-  const scale: Record<string, number> = {
-    B: 1,
-    KiB: 1024,
-    MiB: 1024 ** 2,
-    GiB: 1024 ** 3,
-    KB: 1000,
-    MB: 1000 ** 2,
-    GB: 1000 ** 3,
-  };
-  return Math.round(value * (scale[unit] ?? 1));
-}
-
-function toSeconds(value: string): number {
-  return value.split(':').reduce((total, part) => total * 60 + Number.parseInt(part, 10), 0);
-}
-
-function terminate(child: ChildProcess): void {
-  if (!child.pid) return;
-  if (process.platform === 'win32') {
-    spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true });
-    return;
-  }
-  try {
-    process.kill(-child.pid, 'SIGTERM');
-  } catch {
-    child.kill('SIGTERM');
-  }
-  setTimeout(() => {
-    try {
-      process.kill(-child.pid!, 'SIGKILL');
-    } catch {
-      // Already gone.
-    }
-  }, 5_000).unref();
-}
-
-function nowIso(): string {
-  return new Date().toISOString();
-}
-
-function newJobId(): string {
-  return `mj_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-async function listFiles(dir: string): Promise<MediaJobFile[]> {
-  const out: MediaJobFile[] = [];
-  let entries: fs.Dirent[];
-  try {
-    entries = await fsp.readdir(dir, { withFileTypes: true });
-  } catch {
-    return out;
-  }
-  for (const entry of entries) {
-    if (!entry.isFile()) continue;
-    if (/\.(part|ytdl|tmp)$/u.test(entry.name)) continue;
-    const full = path.join(dir, entry.name);
-    try {
-      const stat = await fsp.stat(full);
-      out.push({ name: entry.name, path: full, bytes: stat.size });
-    } catch {
-      // Vanished between readdir and stat.
-    }
-  }
-  return out.sort((a, b) => b.bytes - a.bytes);
-}
-
-/** When to use: constructing the job queue (binary paths, ffmpeg) in the app or tests. */
-export interface MediaJobsOptions {
-  readonly rootDir: string;
-  readonly resolveBinary: () => Promise<MediaBinary | MediaBinaryError>;
-  readonly maxConcurrent?: number;
-  /** One-run cookie file for a URL, when the session setting is on. */
-  readonly cookieFileFor?: (url: string) => Promise<{ path: string; cleanup(): Promise<void> } | null>;
-  /** Called once when a job fails because the site wants a signed-in session. */
-  readonly onLoginRequired?: (job: MediaJob) => void;
-  /** Base folder for job output. Defaults to `rootDir`. */
-  readonly outputDir?: () => string;
-  /** Resolved ffmpeg, so the selector can merge and paths can be passed explicitly. */
-  readonly resolveFfmpeg?: () => Promise<{ available: boolean; path: string | null }>;
-}
+export { buildDownloadArgs, buildFormatSelector, parseProgressLine } from './ytdlp-args.js';
+export { listFiles, newJobId, nowIso, terminate } from './job-files.js';
 
 /** When to use: enqueueing, cancelling and listing media jobs from the bridge. */
 export class MediaJobs {
@@ -261,7 +52,7 @@ export class MediaJobs {
   private readonly outputDir?: MediaJobsOptions['outputDir'];
   private readonly resolveFfmpeg?: MediaJobsOptions['resolveFfmpeg'];
   private readonly cookieCleanups = new Map<string, () => Promise<void>>();
-  private persistTimer: NodeJS.Timeout | null = null;
+  private readonly history: JobHistoryWriter;
   private closed = false;
 
   constructor(options: MediaJobsOptions) {
@@ -272,11 +63,12 @@ export class MediaJobs {
     this.onLoginRequired = options.onLoginRequired;
     this.outputDir = options.outputDir;
     this.resolveFfmpeg = options.resolveFfmpeg;
-    this.load();
+    for (const job of readJobHistory(this.rootDir)) this.jobs.set(job.id, job);
+    this.history = new JobHistoryWriter(this.rootDir, () => this.list().slice(0, MAX_JOBS));
   }
 
   list(): MediaJob[] {
-    return [...this.jobs.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return sortJobs(this.jobs.values());
   }
 
   get(id: string): MediaJob | undefined {
@@ -284,30 +76,15 @@ export class MediaJobs {
   }
 
   counts(): { queued: number; running: number; completed: number; failed: number; cancelled: number } {
-    const counts = { queued: 0, running: 0, completed: 0, failed: 0, cancelled: 0 };
-    for (const job of this.jobs.values()) counts[job.state] += 1;
-    return counts;
+    return countJobs(this.jobs.values());
   }
 
   enqueue(input: MediaJobInput): MediaJob {
-    const job: MediaJob = {
-      id: newJobId(),
-      url: input.url,
-      kind: input.kind ?? 'video',
-      quality: input.quality ?? 'best',
-      state: 'queued',
-      title: null,
-      progress: null,
-      files: [],
-      error: null,
-      createdAt: nowIso(),
-      startedAt: null,
-      finishedAt: null,
-    };
+    const job = createQueuedJob(input);
     this.jobs.set(job.id, job);
     this.queue.push(job.id);
     this.prune();
-    this.persistSoon();
+    this.history.schedule();
     queueMicrotask(() => void this.pump());
     return { ...job };
   }
@@ -321,7 +98,7 @@ export class MediaJobs {
       if (index >= 0) this.queue.splice(index, 1);
       job.state = 'cancelled';
       job.finishedAt = nowIso();
-      this.persistSoon();
+      this.history.schedule();
       return true;
     }
 
@@ -329,7 +106,7 @@ export class MediaJobs {
       const child = this.running.get(id);
       job.state = 'cancelled';
       job.finishedAt = nowIso();
-      this.persistSoon();
+      this.history.schedule();
       if (child) terminate(child);
       return true;
     }
@@ -351,11 +128,7 @@ export class MediaJobs {
       void this.cleanupCookies(id);
     }
     this.running.clear();
-    if (this.persistTimer) {
-      clearTimeout(this.persistTimer);
-      this.persistTimer = null;
-    }
-    this.persist();
+    this.history.flush();
   }
 
   private async pump(): Promise<void> {
@@ -411,7 +184,7 @@ export class MediaJobs {
     job.state = 'running';
     job.startedAt = nowIso();
     job.progress = { percent: 0, downloadedBytes: null, totalBytes: null, speedBytesPerSecond: null, etaSeconds: null, stage: 'starting' };
-    this.persistSoon();
+    this.history.schedule();
 
     const child = spawn((binary as MediaBinary).path, args, {
       env: runtime.env,
@@ -421,57 +194,30 @@ export class MediaJobs {
     });
     this.running.set(job.id, child);
 
-    let stderrTail = '';
-    let idleTimer: NodeJS.Timeout;
-    const resetIdle = () => {
-      clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => {
-        stderrTail += `\nNo progress for ${IDLE_TIMEOUT_MS / 1000}s.`;
-        terminate(child);
-      }, IDLE_TIMEOUT_MS);
-    };
-    resetIdle();
-
-    const totalTimer = setTimeout(() => {
-      stderrTail += `\nJob exceeded ${TOTAL_TIMEOUT_MS / 60_000} minutes.`;
-      terminate(child);
-    }, TOTAL_TIMEOUT_MS);
-
-    let buffer = '';
-    child.stdout?.on('data', (chunk: Buffer) => {
-      buffer += chunk.toString('utf8');
-      let index = buffer.indexOf('\n');
-      while (index >= 0) {
-        const line = buffer.slice(0, index).trimEnd();
-        buffer = buffer.slice(index + 1);
-        index = buffer.indexOf('\n');
-        const update = parseProgressLine(line);
-        if (update) {
-          job.progress = { ...(job.progress ?? { percent: null, downloadedBytes: null, totalBytes: null, speedBytesPerSecond: null, etaSeconds: null, stage: 'starting' }), ...update };
-          resetIdle();
-        }
-        const destination = line.match(/^\[download\]\s+Destination:\s+(.+)$/u);
-        if (destination) job.title = path.basename(destination[1]).replace(/\.[^.]+$/u, '');
-      }
-    });
-
-    child.stderr?.on('data', (chunk: Buffer) => {
-      stderrTail = `${stderrTail}${chunk.toString('utf8')}`.slice(-4_000);
+    const watch = watchDownload(child, {
+      onProgress: (update) => {
+        job.progress = {
+          ...(job.progress ?? { percent: null, downloadedBytes: null, totalBytes: null, speedBytesPerSecond: null, etaSeconds: null, stage: 'starting' }),
+          ...update,
+        };
+      },
+      onTitle: (title) => {
+        job.title = title;
+      },
+      onIdle: () => terminate(child),
     });
 
     child.on('error', (error) => {
-      clearTimeout(idleTimer);
-      clearTimeout(totalTimer);
+      watch.stop();
       this.running.delete(job.id);
       void this.cleanupCookies(job.id);
       this.finish(job, 'failed', { code: 'SPAWN_FAILED', message: error.message });
     });
 
     child.on('close', (code) => {
-      clearTimeout(idleTimer);
-      clearTimeout(totalTimer);
+      watch.stop();
       this.running.delete(job.id);
-      void this.complete(job, home, temp, code, stderrTail, () => void this.pump());
+      void this.complete(job, home, temp, code, watch.stderr(), () => void this.pump());
     });
   }
 
@@ -488,7 +234,7 @@ export class MediaJobs {
     if (job.state === 'cancelled') {
       await fsp.rm(home, { recursive: true, force: true });
       await fsp.rm(temp, { recursive: true, force: true });
-      this.persistSoon();
+      this.history.schedule();
       next();
       return;
     }
@@ -536,54 +282,13 @@ export class MediaJobs {
     job.state = state;
     job.error = error;
     job.finishedAt = nowIso();
-    this.persistSoon();
+    this.history.schedule();
     next?.();
   }
 
   private prune(): void {
-    const finished = this.list().filter((job) => job.state !== 'queued' && job.state !== 'running');
-    for (const job of finished.slice(MAX_JOBS)) {
-      this.jobs.delete(job.id);
-      void fsp.rm(path.join(this.rootDir, job.id), { recursive: true, force: true });
-    }
-  }
-
-  private load(): void {
-    const file = path.join(this.rootDir, 'jobs.json');
-    try {
-      const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as { jobs?: MediaJob[] };
-      for (const stored of parsed.jobs ?? []) {
-        if (!stored || typeof stored.id !== 'string') continue;
-        // A job that was running when the app died cannot be resumed.
-        const job: MediaJob = stored.state === 'running' || stored.state === 'queued'
-          ? { ...stored, state: 'failed', error: { code: 'INTERRUPTED', message: 'The app exited while this job was pending.' }, finishedAt: nowIso() }
-          : stored;
-        this.jobs.set(job.id, job);
-      }
-    } catch {
-      // No history yet, or unreadable: start empty.
-    }
-  }
-
-  private persistSoon(): void {
-    if (this.persistTimer) return;
-    this.persistTimer = setTimeout(() => {
-      this.persistTimer = null;
-      this.persist();
-    }, 250);
-    this.persistTimer.unref?.();
-  }
-
-  private persist(): void {
-    try {
-      fs.mkdirSync(this.rootDir, { recursive: true });
-      const payload = { jobs: this.list().slice(0, MAX_JOBS) };
-      const file = path.join(this.rootDir, 'jobs.json');
-      const temp = `${file}.tmp`;
-      fs.writeFileSync(temp, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
-      fs.renameSync(temp, file);
-    } catch {
-      // History is a convenience; never fail a job because it could not be saved.
+    for (const id of pruneFinished(this.jobs)) {
+      void fsp.rm(path.join(this.rootDir, id), { recursive: true, force: true });
     }
   }
 }
