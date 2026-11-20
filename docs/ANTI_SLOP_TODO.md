@@ -13,11 +13,16 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,186 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 340 files |
+| Duplicates | **604 duplicated lines / 51,195 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 341 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer JEV controls extracted** - `renderer/main.ts` 2247 -> 2188, `settings-jev.ts` 68.
+  The JEV block (enable toggle, status line, prefer/enforce mode) was contiguous and did not use the
+  shared settings result writer, so it moved cleanly; `loadJevSettings` and `saveJevMode` are
+  exported. Verified: `npx vite build`, `test:settings:dom` (192 ids), `test:mcp:surface` 35/35.
 
 - **Renderer input pacing tab extracted** - `renderer/main.ts` 2314 -> 2247,
   `settings-input.ts` 76. The pacing panel was one contiguous block, so elements, helpers
