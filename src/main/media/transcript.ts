@@ -10,6 +10,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 
 import { runYtDlpProcess } from './exec.ts';
+import { stderrDetail, timeoutFailure } from './dlp-failure.ts';
 import { ytdlpRuntimeOptions } from './platform.ts';
 import { needsLogin } from './auth.ts';
 import type { MediaBinary } from './binaries.ts';
@@ -181,10 +182,10 @@ export async function fetchArtifacts(
   });
 
   if (result.timedOut) {
-    return { ok: false, code: 'TIMEOUT', error: `caption fetch did not finish in ${SUBTITLE_TIMEOUT_MS / 1000}s` };
+    return timeoutFailure(SUBTITLE_TIMEOUT_MS, 'caption fetch');
   }
   if (result.code !== 0) {
-    const detail = result.stderr.trim().split(/\r?\n/u).slice(-3).join(' ').slice(0, 400);
+    const detail = stderrDetail(result.stderr, 3, 400);
     if (needsLogin(result.stderr)) {
       return { ok: false, code: 'LOGIN_REQUIRED', error: detail || 'the site wants a signed-in session' };
     }

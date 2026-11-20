@@ -11,8 +11,7 @@
       "main/decide/decision-guard.ts": 7,
       "main/index.ts": 83,
       "main/media/ffmpeg.ts": 24,
-      "main/media/service.ts": 34,
-      "main/media/transcript.ts": 5,
+      "main/media/service.ts": 14,
       "main/primitives/primitives.ts": 66,
       "main/recipes/recipe-store.ts": 10,
       "main/research/settings.ts": 6,
@@ -37,7 +36,7 @@
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 1295
+    "totalDuplicatedLines": 1270
   },
   "imports": {
     "cycles": []
@@ -63,9 +62,6 @@
         "file": 1
       },
       "main/marks/marks-overlay.ts": {
-        "file": 1
-      },
-      "main/media/service.ts": {
         "file": 1
       },
       "main/primitives/primitives.ts": {
