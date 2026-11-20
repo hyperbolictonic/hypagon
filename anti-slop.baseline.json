@@ -5,9 +5,10 @@
   },
   "duplicates": {
     "files": {
-      "main/browser-chassis.ts": 105,
+      "main/browser-chassis.ts": 42,
       "main/chassis/jev-surface.ts": 12,
-      "main/chassis/screenshot-surface.ts": 11,
+      "main/chassis/marks-surface.ts": 50,
+      "main/chassis/screenshot-surface.ts": 23,
       "main/decide/decision-client.ts": 7,
       "main/decide/decision-guard.ts": 7,
       "main/media/ffmpeg.ts": 24,
@@ -37,7 +38,7 @@
       "renderer/connect-panel.ts": 20,
       "renderer/remote-actions.ts": 12
     },
-    "totalDuplicatedLines": 588
+    "totalDuplicatedLines": 587
   },
   "imports": {
     "cycles": []

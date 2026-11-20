@@ -144,7 +144,7 @@ const ROUTES: Record<string, Handler> = {
 
   'GET /marks/screenshot': async (ctx) => {
     const flag = (name: string) => ['1', 'true'].includes((ctx.url.searchParams.get(name) || '').toLowerCase());
-    const result = await ctx.chassis.takeAnnotatedScreenshot({
+    const result = await ctx.chassis.marks.takeAnnotatedScreenshot({
       economy: flag('economy'),
       textOnly: flag('text_only'),
       includeOffscreen: flag('include_offscreen'),
@@ -156,7 +156,7 @@ const ROUTES: Record<string, Handler> = {
     const body = await ctx.body();
     const markId = requireMarkId(ctx, body);
     if (markId === null) return;
-    ctx.json({ success: true, result: await ctx.chassis.clickMark(markId) });
+    ctx.json({ success: true, result: await ctx.chassis.marks.clickMark(markId) });
   },
 
   'POST /marks/type': async (ctx) => {
@@ -164,14 +164,14 @@ const ROUTES: Record<string, Handler> = {
     const markId = requireMarkId(ctx, body);
     if (markId === null) return;
     const text = body.text ?? body.value ?? body.content ?? body.input ?? '';
-    const result = await ctx.chassis.typeMark(markId, String(text), {
+    const result = await ctx.chassis.marks.typeMark(markId, String(text), {
       clearFirst: body?.clear_first === true || body?.clearFirst === true,
     });
     ctx.json({ success: true, result });
   },
 
   'GET /marks/list': async (ctx) => {
-    ctx.json({ success: true, marks: ctx.chassis.getActiveMarks() });
+    ctx.json({ success: true, marks: ctx.chassis.marks.getActiveMarks() });
   },
 
   'POST /scripts/save': async (ctx) => {
