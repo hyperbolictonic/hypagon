@@ -13,11 +13,16 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,536 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 362 files |
+| Duplicates | **604 duplicated lines / 51,540 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 363 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer auto-update banner extracted** - `renderer/main.ts` 809 -> 716,
+  `update-banner.ts` 94. The badge renderer had five near-identical branches; one `show(label, tone,
+  disabled, title)` helper removed the 16-line clone that blocked the first attempt. Verified:
+  `npx vite build`, `test:settings:dom` (192 ids), `test:mcp:surface` 35/35.
 
 - **Renderer WEB STATE tab extracted** - `renderer/main.ts` 885 -> 809, `web-state.ts` 86.
   The snapshot renderer and its two controls moved; the entry point only calls `refreshWebState`.
