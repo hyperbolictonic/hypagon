@@ -58,9 +58,6 @@
       "main/crawl/crawler.ts": {
         "file": 1
       },
-      "main/harvester/markdown.ts": {
-        "function": 1
-      },
       "main/http-bridge.ts": {
         "function": 2
       },
