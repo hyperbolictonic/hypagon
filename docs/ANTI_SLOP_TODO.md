@@ -13,11 +13,18 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **622 duplicated lines / 51,130 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 335 files |
+| Duplicates | **622 duplicated lines / 51,139 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 336 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer media panel extracted** - `renderer/main.ts` 2985 -> 2805, `settings-media.ts` 189.
+  The media tab (downloader updates, output directory, ffmpeg) was fully isolated: no references to
+  anything outside it, and only `loadMediaSettings` is used later, so it exports and the settings
+  modal imports it. Recording stays in the entry point for now; the two regions are interleaved and
+  need a separate pass. Verified: `npx vite build`, `test:settings:dom` (192 ids),
+  `test:mcp:surface` 35/35.
 
 - **Remote panel split** - `renderer/main.ts` 3399 -> 2985. `remote-panel.ts` (217) owns the element
   handles, the status renderers and `loadRemotePanel`; `remote-actions.ts` (263) owns the
