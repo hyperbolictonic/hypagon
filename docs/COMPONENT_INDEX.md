@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 149 files, 639 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 150 files, 641 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (576)
+## Types (578)
 
 | File | Export | When to use |
 |---|---|---|
@@ -105,6 +105,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/hil/hil-manager.ts` | `HilRequest` *(type)* | - |
 | `main/hil/hil-manager.ts` | `HilResolution` *(type)* | - |
 | `main/hil/hil-manager.ts` | `NotificationOptions` *(type)* | - |
+| `main/http/media-routes.ts` | `handleMediaRoutes` | When to use: the bridge request handler — dispatch `/media/*` before the |
+| `main/http/media-routes.ts` | `MediaRouteContext` *(type)* | When to use: building the media dispatcher — the request facts and the two bridge helpers. |
 | `main/http-bridge.ts` | `startHttpBridge` | - |
 | `main/http-bridge.ts` | `WrapBridge` *(type)* | - |
 | `main/input/human-activity.ts` | `shouldCountAsHuman` | Pure decision used by the monitor and by tests. |

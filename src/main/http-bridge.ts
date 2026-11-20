@@ -28,6 +28,7 @@ import { isWrapAuthorized, tokenFromHeaders } from './wrap/auth.js';
 import { DEFAULT_TOOL_SETTINGS, type ToolSettingsStore } from './tools/settings.js';
 import type { CollaborationService } from './collaboration/service.js';
 import type { MediaService } from './media/service.js';
+import { handleMediaRoutes } from './http/media-routes.js';
 import { deriveRecipe } from '../../packages/recipe/src/index.ts';
 
 export interface WrapBridge {
@@ -214,118 +215,7 @@ export function startHttpBridge(
         return;
       }
 
-      if (req.method === 'GET' && pathname === '/media/status') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        try {
-          sendJson({ success: true, ...(await media.status()) });
-        } catch (error) {
-          sendJson(
-            {
-              success: false,
-              code: 'MEDIA_UNAVAILABLE',
-              error: error instanceof Error ? error.message : String(error),
-            },
-            500,
-          );
-        }
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/media/info') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        const body = await readBody();
-        const result = await media.info(typeof body?.url === 'string' ? body.url : '');
-        sendJson(result.ok ? { success: true, ...result } : { success: false, ...result }, result.ok ? 200 : 400);
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/media/download') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        const body = await readBody();
-        const result = await media.download({
-          url: typeof body?.url === 'string' ? body.url : '',
-          kind: body?.kind === 'audio' ? 'audio' : body?.kind === 'video' ? 'video' : undefined,
-          quality: typeof body?.quality === 'string' ? body.quality : undefined,
-        });
-        sendJson(result.ok ? { success: true, ...result } : { success: false, ...result }, result.ok ? 200 : 400);
-        return;
-      }
-
-      if (req.method === 'GET' && pathname === '/media/jobs') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        sendJson({ success: true, jobs: media.jobs.list(), counts: media.jobs.counts() });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/media/cancel') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        const body = await readBody();
-        const id = typeof body?.id === 'string' ? body.id : '';
-        const result = media.cancel(id);
-        sendJson({ success: result.ok, ...result });
-        return;
-      }
-
-      if (req.method === 'GET' && pathname === '/media/library') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        const jobs = media.library();
-        sendJson({
-          success: true,
-          count: jobs.length,
-          bytes: jobs.reduce((total, job) => total + job.files.reduce((sum, file) => sum + file.bytes, 0), 0),
-          jobs,
-        });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/media/transcript') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        const body = await readBody();
-        const result = await media.transcript(typeof body?.url === 'string' ? body.url : '', {
-          lang: typeof body?.lang === 'string' ? body.lang : undefined,
-          maxChars: typeof body?.maxChars === 'number' ? body.maxChars : undefined,
-          cursor: typeof body?.cursor === 'number' ? body.cursor : undefined,
-          index: body?.index !== false,
-        });
-        sendJson(result.ok ? { success: true, ...result } : { success: false, ...result }, result.ok ? 200 : 400);
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/media/preview') {
-        if (!media) {
-          sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-          return;
-        }
-        const body = await readBody();
-        const result = await media.preview(typeof body?.url === 'string' ? body.url : '', {
-          lang: typeof body?.lang === 'string' ? body.lang : undefined,
-          maxChars: typeof body?.maxChars === 'number' ? body.maxChars : undefined,
-          thumbnail: body?.thumbnail !== false,
-        });
-        sendJson(result.ok ? { success: true, ...result } : { success: false, ...result }, result.ok ? 200 : 400);
-        return;
-      }
+      if (await handleMediaRoutes({ media, method: req.method, pathname, readBody, sendJson })) return;
 
       if (pathname.startsWith('/collaboration')) {
         if (!collaboration) {
