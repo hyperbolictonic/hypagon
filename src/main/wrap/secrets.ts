@@ -9,113 +9,37 @@
  * The cipher is injected so this module stays testable without Electron.
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { assertSafeUrl } from './security.ts';
 
-/** When to use: declaring whether a wrapper credential is a static value or an OAuth2 client. */
-export type WrapSecretKind = 'static' | 'oauth2';
+import { metadataOf, readSecretsFile, secretsFilePath, writeSecretsFile } from './secret-storage.js';
+import { hostAllowed, validateSecretInput } from './secret-validation.js';
+import { defaultMintToken } from './oauth-mint.js';
+import type {
+  SecretCipher,
+  SecretFile,
+  SecretRecord,
+  SecretResolution,
+  SecretStoreOptions,
+  TokenMinter,
+  TokenRequest,
+  TokenResult,
+  WrapOAuthMetadata,
+  WrapSecretInput,
+  WrapSecretKind,
+  WrapSecretMetadata,
+} from './secret-types.js';
 
-/** When to use: describing the token endpoint and client of an OAuth2 wrapper credential. */
-export interface WrapOAuthMetadata {
-  tokenUrl: string;
-  clientId: string;
-  scope?: string;
-  audience?: string;
-  /** When the cached access token expires (ISO). The token itself never leaves main. */
-  tokenExpiresAt?: string;
-}
-
-/** When to use: listing stored credentials in Settings → Wrappers without exposing values. */
-export interface WrapSecretMetadata {
-  name: string;
-  allowedHosts: string[];
-  header: string;
-  prefix: string;
-  createdAt: string;
-  updatedAt: string;
-  /** `static` (default) or `oauth2` client-credentials. */
-  kind: WrapSecretKind;
-  oauth2?: WrapOAuthMetadata;
-}
-
-/** When to use: creating or updating a stored credential from the settings UI. */
-export interface WrapSecretInput {
-  name: string;
-  value: string;
-  allowedHosts: string[] | string;
-  header?: string;
-  prefix?: string;
-  kind?: WrapSecretKind;
-  tokenUrl?: string;
-  clientId?: string;
-  scope?: string;
-  audience?: string;
-}
-
-/** When to use: injecting a different at-rest cipher in tests or a host with its own key store. */
-export interface SecretCipher {
-  available(): boolean;
-  warning?: string;
-  encrypt(value: string): string;
-  decrypt(payload: string): string;
-}
-
-/** When to use: reading a resolved credential just before a wrapped request is sent. */
-export interface SecretResolution {
-  ok: boolean;
-  header?: string;
-  value?: string;
-  code?: string;
-  message?: string;
-  /** True when the credential is an OAuth2 token that can be re-minted. */
-  refreshable?: boolean;
-}
-
-/** When to use: implementing a TokenMinter or minting an OAuth2 token for a wrapper. */
-export interface TokenRequest {
-  tokenUrl: string;
-  clientId: string;
-  clientSecret: string;
-  scope?: string;
-  audience?: string;
-}
-
-/** When to use: returning a minted token (or the failure) from a TokenMinter. */
-export interface TokenResult {
-  accessToken: string;
-  /** Lifetime in seconds. */
-  expiresIn: number;
-  tokenType?: string;
-}
-
-/** When to use: supplying the OAuth2 token exchange used by an oauth2 wrapper credential. */
-export type TokenMinter = (input: TokenRequest) => Promise<TokenResult>;
-
-/** When to use: constructing an isolated SecretStore (custom file, cipher) in tests. */
-export interface SecretStoreOptions {
-  /** Injected for tests; defaults to a policy-checked POST to the token URL. */
-  mintToken?: TokenMinter;
-  /** Injected clock (ms) for token-expiry tests. */
-  now?: () => number;
-}
-
-interface SecretRecord extends WrapSecretMetadata {
-  /** Static value, or the OAuth2 client secret. */
-  ciphertext: string;
-  /** Cached OAuth2 access token (encrypted). */
-  tokenCiphertext?: string;
-}
-
-interface SecretFile {
-  schemaVersion: 1;
-  secrets: SecretRecord[];
-}
-
-const NAME_PATTERN = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
-const HEADER_PATTERN = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
-const FORBIDDEN_HEADERS = new Set(['host', 'content-length', 'connection', 'transfer-encoding', 'upgrade', 'cookie', 'set-cookie']);
-const HOST_PATTERN = /^(\*\.)?[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/;
+export type {
+  SecretCipher,
+  SecretResolution,
+  SecretStoreOptions,
+  TokenMinter,
+  TokenRequest,
+  TokenResult,
+  WrapOAuthMetadata,
+  WrapSecretInput,
+  WrapSecretKind,
+  WrapSecretMetadata,
+} from './secret-types.js';
 
 /** When to use: storing or resolving wrapper credentials; values never leave the store unredacted. */
 export class SecretStore {
@@ -152,10 +76,6 @@ export class SecretStore {
   }
 
   set(input: WrapSecretInput): { ok: boolean; secret?: WrapSecretMetadata; errors: string[] } {
-    const errors: string[] = [];
-    const name = typeof input?.name === 'string' ? input.name.trim() : '';
-    const value = typeof input?.value === 'string' ? input.value : '';
-
     if (!this.available()) {
       return {
         ok: false,
@@ -166,67 +86,12 @@ export class SecretStore {
       };
     }
 
-    if (!NAME_PATTERN.test(name) || name.length > 64) {
-      errors.push('name must start with a lowercase letter and use only lowercase letters, numbers, dot, dash, or underscore');
-    }
-
     const file = this.readFile();
-    const existing = file.secrets.find((secret) => secret.name === name);
-    const keepExisting = Boolean(existing) && value === '';
-    if (!value && !keepExisting) errors.push('value is required');
-    if (value.length > 20_000) errors.push('value must be 20000 characters or fewer');
-    if (/[\r\n]/.test(value)) errors.push('value must not contain newlines');
-
-    const hosts = normalizeHosts(input?.allowedHosts);
-    if (hosts.length === 0) errors.push('allowedHosts must contain at least one host');
-    if (hosts.length > 20) errors.push('allowedHosts must contain at most 20 hosts');
-    for (const host of hosts) {
-      if (!HOST_PATTERN.test(host) || host.includes('..') || host.length > 253) {
-        errors.push(`allowedHosts entry "${host}" is not a valid hostname`);
-      }
-    }
-
-    const header = typeof input?.header === 'string' && input.header.trim() ? input.header.trim() : 'Authorization';
-    if (!HEADER_PATTERN.test(header)) errors.push('header must be a valid HTTP header name');
-    if (FORBIDDEN_HEADERS.has(header.toLowerCase())) errors.push(`header "${header}" cannot carry a secret`);
-
-    const prefix =
-      typeof input?.prefix === 'string'
-        ? input.prefix
-        : header.toLowerCase() === 'authorization'
-          ? 'Bearer '
-          : '';
-    if (header.toLowerCase() === 'authorization' && !/^[A-Za-z]+\s+$/.test(prefix)) {
-      errors.push('prefix for Authorization must be a scheme followed by a space, such as "Bearer "');
-    }
-    if (/[\r\n]/.test(prefix)) errors.push('prefix must not contain newlines');
-    if (prefix.length > 80) errors.push('prefix must be 80 characters or fewer');
-
-    const kind: WrapSecretKind = input?.kind === 'oauth2' ? 'oauth2' : 'static';
-    let oauth2: WrapOAuthMetadata | undefined;
-    if (kind === 'oauth2') {
-      const tokenUrl = typeof input?.tokenUrl === 'string' ? input.tokenUrl.trim() : '';
-      const clientId = typeof input?.clientId === 'string' ? input.clientId.trim() : '';
-      const scope = typeof input?.scope === 'string' ? input.scope.trim() : '';
-      const audience = typeof input?.audience === 'string' ? input.audience.trim() : '';
-
-      try {
-        const parsed = new URL(tokenUrl);
-        if (parsed.protocol !== 'https:') errors.push('tokenUrl must use https');
-        if (parsed.username || parsed.password) errors.push('tokenUrl must not contain credentials');
-      } catch {
-        errors.push('tokenUrl must be an absolute https URL');
-      }
-      if (!clientId) errors.push('clientId is required for an OAuth2 credential');
-      if (clientId.length > 500) errors.push('clientId must be 500 characters or fewer');
-      if (/[\r\n]/.test(clientId)) errors.push('clientId must not contain newlines');
-      if (scope.length > 1_000 || /[\r\n]/.test(scope)) errors.push('scope must be at most 1000 characters and single-line');
-      if (audience.length > 500 || /[\r\n]/.test(audience)) errors.push('audience must be at most 500 characters and single-line');
-
-      oauth2 = { tokenUrl, clientId, ...(scope ? { scope } : {}), ...(audience ? { audience } : {}) };
-    }
-
-    if (errors.length > 0) return { ok: false, errors };
+    const inputName = typeof input?.name === 'string' ? input.name.trim() : '';
+    const existing = file.secrets.find((secret) => secret.name === inputName);
+    const validation = validateSecretInput(input, Boolean(existing));
+    if (!validation.ok) return { ok: false, errors: validation.errors };
+    const { name, value, hosts, header, prefix, kind, oauth2, keepExisting } = validation.value;
 
     let ciphertext: string;
     if (keepExisting && existing) {
@@ -400,139 +265,14 @@ export class SecretStore {
   }
 
   private filePath(): string {
-    return path.join(this.dir, 'secrets.json');
+    return secretsFilePath(this.dir);
   }
 
   private readFile(): SecretFile {
-    try {
-      const parsed = JSON.parse(fs.readFileSync(this.filePath(), 'utf8'));
-      if (!parsed || parsed.schemaVersion !== 1 || !Array.isArray(parsed.secrets)) return { schemaVersion: 1, secrets: [] };
-      return {
-        schemaVersion: 1,
-        secrets: parsed.secrets.filter(isRecord).map((secret: SecretRecord) => ({ ...secret, kind: secret.kind ?? 'static' })),
-      };
-    } catch {
-      return { schemaVersion: 1, secrets: [] };
-    }
+    return readSecretsFile(this.filePath());
   }
 
   private writeFile(file: SecretFile): void {
-    fs.mkdirSync(this.dir, { recursive: true });
-    const target = this.filePath();
-    const temp = `${target}.${process.pid}.${Date.now()}.tmp`;
-    fs.writeFileSync(temp, `${JSON.stringify(file, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
-    fs.renameSync(temp, target);
-    try {
-      fs.chmodSync(target, 0o600);
-    } catch {
-      // Windows uses ACLs.
-    }
-  }
-}
-
-function metadataOf(record: SecretRecord): WrapSecretMetadata {
-  return {
-    name: record.name,
-    allowedHosts: [...record.allowedHosts],
-    header: record.header,
-    prefix: record.prefix,
-    createdAt: record.createdAt,
-    updatedAt: record.updatedAt,
-    kind: record.kind ?? 'static',
-    ...(record.oauth2 ? { oauth2: { ...record.oauth2 } } : {}),
-  };
-}
-
-function normalizeHosts(input: string[] | string | undefined): string[] {
-  const raw = Array.isArray(input) ? input : typeof input === 'string' ? input.split(/[,\s]+/) : [];
-  const hosts = raw
-    .map((host) => String(host || '').trim().toLowerCase().replace(/\.$/, ''))
-    .filter(Boolean);
-  return [...new Set(hosts)];
-}
-
-function hostAllowed(allowedHosts: string[], host: string): boolean {
-  const target = String(host || '').toLowerCase().replace(/\.$/, '');
-  if (!target) return false;
-  return allowedHosts.some((pattern) => {
-    if (pattern === target) return true;
-    if (pattern.startsWith('*.')) {
-      const suffix = pattern.slice(1);
-      return target.endsWith(suffix) && target.length > suffix.length;
-    }
-    return false;
-  });
-}
-
-function isRecord(value: unknown): value is SecretRecord {
-  if (!value || typeof value !== 'object') return false;
-  const record = value as Record<string, unknown>;
-  return (
-    typeof record.name === 'string' &&
-    Array.isArray(record.allowedHosts) &&
-    record.allowedHosts.every((host) => typeof host === 'string') &&
-    typeof record.header === 'string' &&
-    typeof record.prefix === 'string' &&
-    typeof record.ciphertext === 'string' &&
-    typeof record.createdAt === 'string' &&
-    typeof record.updatedAt === 'string' &&
-    (record.kind === undefined || record.kind === 'static' || record.kind === 'oauth2') &&
-    (record.oauth2 === undefined ||
-      (typeof record.oauth2 === 'object' &&
-        record.oauth2 !== null &&
-        typeof (record.oauth2 as any).tokenUrl === 'string' &&
-        typeof (record.oauth2 as any).clientId === 'string'))
-  );
-}
-
-/**
- * Default token minter: a policy-checked POST to the human-authored token URL with the
- * `client_credentials` grant. The client secret and the resulting token never leave main.
- */
-async function defaultMintToken(input: TokenRequest): Promise<TokenResult> {
-  const url = await assertSafeUrl(input.tokenUrl, {
-    allowHttp: false,
-    allowPrivateHosts: process.env.KUANG_WRAP_ALLOW_PRIVATE === '1',
-  });
-
-  const form = new URLSearchParams({
-    grant_type: 'client_credentials',
-    client_id: input.clientId,
-    client_secret: input.clientSecret,
-  });
-  if (input.scope) form.set('scope', input.scope);
-  if (input.audience) form.set('audience', input.audience);
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15_000);
-  try {
-    const response = await fetch(url.toString(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
-      body: form,
-      signal: controller.signal,
-    });
-    const text = await response.text();
-    let json: any;
-    try {
-      json = JSON.parse(text);
-    } catch {
-      json = undefined;
-    }
-    if (!response.ok || typeof json?.access_token !== 'string') {
-      const detail = json?.error_description || json?.error || (text ? text.slice(0, 200) : '');
-      throw new Error(`Token endpoint returned HTTP ${response.status}${detail ? `: ${detail}` : ''}`);
-    }
-    const expiresIn = Number(json.expires_in);
-    return {
-      accessToken: json.access_token,
-      expiresIn: Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : 3600,
-      tokenType: typeof json.token_type === 'string' ? json.token_type : undefined,
-    };
-  } catch (err: any) {
-    if (err?.name === 'AbortError') throw new Error('Token request timed out after 15000 ms.');
-    throw err;
-  } finally {
-    clearTimeout(timer);
+    writeSecretsFile(this.dir, this.filePath(), file);
   }
 }
