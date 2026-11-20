@@ -11,14 +11,22 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **20 violations** across **11 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **18 violations** across **10 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **1,106 duplicated lines / 49,372 (2.2%)** | threshold is 3%; 27 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 236 files |
+| Duplicates | **936 duplicated lines / 49,504 (1.9%)** | threshold is 3%; 25 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 242 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
+- **Wrap server split** - `mcp/wrap-server.ts` 728 -> 77 (and both its violations are gone):
+  `wrap-config.ts` (bridge URL/timeout/token, the generated-tool cap, `callBridge`), `wrap-log.ts`
+  (file-first diagnostics + shutdown), `wrap-format.ts` (result/preview/manifest/secret text and the
+  `failureText` refusal shape), `wrap-tools.ts` (the nine meta-tools, registered through one
+  `defineTool`), `wrap-generated.ts` (the `wrap_<id>` registry) and `process-guards.ts` (EPIPE,
+  stdin-close and stray-async guards shared with `bridge-server.ts`). The registrations lost their
+  repeated `server.tool(... try/catch)` skeleton, so duplicates fell as well. Verified:
+  `test:wrap:mcp` 15/15, `test:mcp:surface` 35/35, `test:mcp:contract`, `npm run build:mcp`.
 - **Tool ordering deduplicated** - `shared/tool-settings.ts` now owns `compareByRank` (saved rank, then a
   caller fallback) and `collectActionInstructions` (normalise saved per-action text through a caller
   filter). `main/tools/state.ts` and `mcp/browser-mcp.ts` had three copies of the rank comparator and
