@@ -127,30 +127,30 @@ export class BrowserChassis {
   /** Throttle for gate-triggered human hand-offs (one per URL per few minutes). */
   private lastGateHil: { url: string; at: number } | null = null;
   private tabManager: TabManager | null = null;
-  private simulator: HumanizedInputSimulator;
-  private harvester: ConstructHarvester;
+  private simulator!: HumanizedInputSimulator;
+  private harvester!: ConstructHarvester;
   /** JEV page compaction: surface index + in-memory depth store. */
   private jev = new JevEngine();
   private jevPolicyGate: () => { available: boolean; enforce: boolean } = () => ({ available: false, enforce: false });
   private jevBreaker = new FunnelBreaker();
   private jevStats = { blocked: 0, precheck: 0, bypassed: 0, loopBreaker: 0, blockedTokens: 0 };
-  private shieldBreaker: ShieldBreaker;
-  private downloadManager: DownloadManager;
-  private sessionVault: SessionVault;
-  private networkInterceptor: NetworkInterceptor;
-  private marksOverlay: MarksOverlay;
-  private scriptVault: ScriptVault;
+  private shieldBreaker!: ShieldBreaker;
+  private downloadManager!: DownloadManager;
+  private sessionVault!: SessionVault;
+  private networkInterceptor!: NetworkInterceptor;
+  private marksOverlay!: MarksOverlay;
+  private scriptVault!: ScriptVault;
   private trayManager: TrayManager | null = null;
-  private hilManager: HilManager;
-  private prerenderEngine: PrerenderEngine;
+  private hilManager!: HilManager;
+  private prerenderEngine!: PrerenderEngine;
   private hostProfile: HostBrowserProfile = detectHostBrowserProfile();
-  private primitives: Primitives;
-  private llmSurface: LlmSurface;
-  private researchLlmSurface: LlmSurface;
-  private searchHub: SearchHub;
-  private crawler: Crawler;
-  private researcher: Researcher;
-  private actionLedger: ActionLedger;
+  private primitives!: Primitives;
+  private llmSurface!: LlmSurface;
+  private researchLlmSurface!: LlmSurface;
+  private searchHub!: SearchHub;
+  private crawler!: Crawler;
+  private researcher!: Researcher;
+  private actionLedger!: ActionLedger;
   /** Reused off-screen view for detached reads (SERPs, Markdown alternates, crawls). */
   private utilView: WebContentsView | null = null;
   private researchSettings: ResearchSettings = {
@@ -255,6 +255,20 @@ export class BrowserChassis {
   private targetConsoleLogs: Array<{ level: string; message: string; line: number; sourceId: string; timestamp: number }> = [];
 
   constructor() {
+    this.initDecisionLog();
+    this.initSimulator();
+    this.initCoreServices();
+    this.initHil();
+    this.initActionLedger();
+    this.initPrimitives();
+    this.initLlmSurfaces();
+    this.initCrawler();
+    this.initResearcher();
+    this.initTimers();
+  }
+
+  /** When to use: the constructor's mirroring every decision call into the HUD feed step. */
+  private initDecisionLog(): void {
     // Mirror every decision call into the HUD's DECISIONS tab. The listener is passive: it cannot
     // delay or fail a decision (see emitDecision), and the ring buffer lets a late-joining renderer
     // catch up.
@@ -263,7 +277,10 @@ export class BrowserChassis {
       if (this.decisionLog.length > 50) this.decisionLog.shift();
       this.sendToSurfaces('chassis:decision', event);
     });
+  }
 
+  /** When to use: the constructor's the humanized simulator and its pacing/takeover hooks step. */
+  private initSimulator(): void {
     this.harvester = new ConstructHarvester();
     this.simulator = new HumanizedInputSimulator({
       onMouseMove: (point, velocity) => {
@@ -311,7 +328,10 @@ export class BrowserChassis {
     // from the person's, and the gate refuses input while the human has the wheel.
     this.simulator.setSyntheticMarker((at) => this.humanMonitor.markSynthetic(at));
     this.simulator.setHumanGate(() => this.isHumanActive());
+  }
 
+  /** When to use: the constructor's the harvester, breaker, download/session/network/marks/script vaults and prerender engine step. */
+  private initCoreServices(): void {
     this.shieldBreaker = new ShieldBreaker(this.simulator);
     this.downloadManager = new DownloadManager();
     this.sessionVault = new SessionVault();
@@ -324,7 +344,10 @@ export class BrowserChassis {
       cortex,
       (level, msg) => this.addLog(level, msg)
     );
+  }
 
+  /** When to use: the constructor's the human-in-the-loop manager and its status hand-off step. */
+  private initHil(): void {
     this.hilManager = new HilManager({
       getActiveWebContents: () => {
         try {
@@ -352,7 +375,10 @@ export class BrowserChassis {
         this.broadcastState();
       },
     });
+  }
 
+  /** When to use: the constructor's the local action ledger step. */
+  private initActionLedger(): void {
     // Action ledger — local, append-only record of executed actions and their outcomes
     // (data/transitions.jsonl). This is the dataset a runner-side decision model learns from;
     // it never leaves the machine and never stores typed text.
@@ -360,7 +386,10 @@ export class BrowserChassis {
       dir: dataPath(),
       log: (level, msg) => this.addLog(level, msg),
     });
+  }
 
+  /** When to use: the constructor's the observe / act / wait primitives layer step. */
+  private initPrimitives(): void {
     // Orthogonal primitives layer (observe / act / wait / extract / collect / find).
     // It borrows the chassis' real input + marks plumbing so it stays on the humanlike path.
     this.primitives = new Primitives({
@@ -397,7 +426,10 @@ export class BrowserChassis {
       windowFocused: () => this.isWindowFocused(),
       recordTransition: (record) => this.actionLedger.record(record),
     });
+  }
 
+  /** When to use: the constructor's the LLM surfaces (page and research session) and the search hub step. */
+  private initLlmSurfaces(): void {
     // LLM-friendly site discovery (TODO_RESEARCH_CRAWL.md §5, Feature 6).
     // `net.fetch` runs on Chromium's network stack (session cookies/UA/TLS); per-page
     // alternates go through a real document navigation instead of a synthetic fetch.
@@ -428,7 +460,10 @@ export class BrowserChassis {
       load: (url, script, opts) => this.loadDetached(url, script, opts),
       log: (level, msg) => this.addLog(level, msg),
     });
+  }
 
+  /** When to use: the constructor's the autonomous multi-page crawler step. */
+  private initCrawler(): void {
     // Autonomous multi-page crawl (TODO_RESEARCH_CRAWL.md §5, Feature 1).
     // Cheap path first: content-negotiated Markdown/Text, else a detached render.
     this.crawler = new Crawler({
@@ -489,7 +524,10 @@ export class BrowserChassis {
       },
       log: (level, msg) => this.addLog(level, msg),
     });
+  }
 
+  /** When to use: the constructor's the autonomous research orchestrator step. */
+  private initResearcher(): void {
     // Autonomous research mode (TODO_RESEARCH_CRAWL.md §5, Feature 3).
     this.researcher = new Researcher({
       search: (q, o) => this.searchHub.search(q, o),
@@ -497,7 +535,10 @@ export class BrowserChassis {
       log: (level, msg) => this.addLog(level, msg),
       events: (event) => this.broadcast('research:event', event),
     });
+  }
 
+  /** When to use: the constructor's the uptime and HUD-health timers step. */
+  private initTimers(): void {
     setInterval(() => {
       this.state.stats.uptimeSeconds++;
       this.broadcastState();
