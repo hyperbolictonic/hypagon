@@ -11,10 +11,9 @@
  */
 
 import { Notification, app, nativeImage, type BrowserWindow } from 'electron';
-import path from 'node:path';
-import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { BRAND } from '../../shared/brand.js';
+import { brandIconPath } from '../ui/brand-icon.js';
 
 /** When to use: sending a desktop toast (title, message, urgency, sound). */
 export interface NotificationOptions {
@@ -31,20 +30,8 @@ export interface NotificationOptions {
 export class HilNotifier {
   constructor(private readonly getWindow: () => BrowserWindow | null) {}
 
-  private resolveIconPath(): string | null {
-    const candidates = [
-      path.join(app.getAppPath(), 'public/assets/brand/hypagon-gateway-primary.png'),
-      path.join(app.getAppPath(), 'dist/assets/brand/hypagon-gateway-primary.png'),
-    ];
-
-    for (const p of candidates) {
-      if (fs.existsSync(p)) return p;
-    }
-    return null;
-  }
-
   private resolveIcon(): Electron.NativeImage {
-    const iconPath = this.resolveIconPath();
+    const iconPath = brandIconPath();
     if (!iconPath) return nativeImage.createEmpty();
     try {
       const img = nativeImage.createFromPath(iconPath);
@@ -66,7 +53,7 @@ export class HilNotifier {
   private longToastXml(title: string, message: string, silent: boolean): string {
     const esc = (value: string) =>
       value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const iconPath = this.resolveIconPath();
+    const iconPath = brandIconPath();
     const icon = iconPath
       ? `<image placement="appLogoOverride" hint-crop="circle" src="${esc(pathToFileURL(iconPath).toString())}" />`
       : '';

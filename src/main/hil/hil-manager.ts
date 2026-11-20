@@ -192,57 +192,24 @@ export class HilManager {
    * Resolves the active intervention request (e.g. user clicked 'Resume Agent').
    */
   public resolveIntervention(id?: string, notes?: string): boolean {
-    if (!this.activeRequest || this.activeRequest.status !== 'pending') {
-      return false;
-    }
-
-    if (id && this.activeRequest.id !== id) {
-      return false;
-    }
-
-    if (this.activeTimer) {
-      clearTimeout(this.activeTimer);
-      this.activeTimer = null;
-    }
-    this.clearReminder();
-
-    this.activeRequest.status = 'resolved';
-    this.activeRequest.resolvedAt = Date.now();
-    this.activeRequest.notes = notes || 'User confirmed action completed.';
-
-    const elapsed = Math.round((Date.now() - this.activeRequest.requestedAt) / 1000);
-    const resolvedReq = this.activeRequest;
-
-    this.cleanup();
-
-    this.requestHistory.push(resolvedReq);
-    this.activeRequest = null;
-    this.onHilStateChanged?.(false, null);
-
-    if (this.activeResolver) {
-      const resolver = this.activeResolver;
-      this.activeResolver = null;
-      resolver({
-        status: 'resolved',
-        elapsedSeconds: elapsed,
-        notes: resolvedReq.notes,
-      });
-    }
-
-    return true;
+    const text = notes || 'User confirmed action completed.';
+    return this.finish('resolved', { historyNotes: text, resolverNotes: text, id });
   }
 
   /**
    * Cancels the active intervention request.
    */
   public cancelIntervention(id?: string): boolean {
-    if (!this.activeRequest || this.activeRequest.status !== 'pending') {
-      return false;
-    }
+    return this.finish('cancelled', { resolverNotes: 'Human intervention was cancelled.', id });
+  }
 
-    if (id && this.activeRequest.id !== id) {
-      return false;
-    }
+  /** Shared terminal path: clear timers, record history, resolve the waiter. */
+  private finish(
+    status: 'resolved' | 'cancelled',
+    options: { historyNotes?: string; resolverNotes: string; id?: string },
+  ): boolean {
+    if (!this.activeRequest || this.activeRequest.status !== 'pending') return false;
+    if (options.id && this.activeRequest.id !== options.id) return false;
 
     if (this.activeTimer) {
       clearTimeout(this.activeTimer);
@@ -250,25 +217,22 @@ export class HilManager {
     }
     this.clearReminder();
 
-    this.activeRequest.status = 'cancelled';
+    this.activeRequest.status = status;
     this.activeRequest.resolvedAt = Date.now();
+    this.activeRequest.notes = options.historyNotes;
     const elapsed = Math.round((Date.now() - this.activeRequest.requestedAt) / 1000);
-    const cancelledReq = this.activeRequest;
+    const finished = this.activeRequest;
 
     this.cleanup();
 
-    this.requestHistory.push(cancelledReq);
+    this.requestHistory.push(finished);
     this.activeRequest = null;
     this.onHilStateChanged?.(false, null);
 
     if (this.activeResolver) {
       const resolver = this.activeResolver;
       this.activeResolver = null;
-      resolver({
-        status: 'cancelled',
-        elapsedSeconds: elapsed,
-        notes: 'Human intervention was cancelled.',
-      });
+      resolver({ status, elapsedSeconds: elapsed, notes: options.resolverNotes });
     }
 
     return true;
