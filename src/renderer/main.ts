@@ -100,6 +100,26 @@ import { hideUrlSuggestions } from './url-suggestions';
 import { navBackBtn, navForwardBtn, navReloadBtn } from './url-bar';
 import { renderZoom, setZoomPinned } from './zoom-controls';
 import { renderTabs } from './tab-bar';
+import {
+  urlForm,
+  urlInput,
+  viewportUrlDisplay,
+  viewportLoadingSpinner,
+  agentStatusBadge,
+  activeActionText,
+  copyConstructBtn,
+  chassisVersionBadge,
+  aboutVersion,
+  statVelocity,
+  statTokens,
+  statInteractions,
+  tabBtnTelemetry,
+  tabBtnConstruct,
+  tabBtnLogs,
+  tabContentTelemetry,
+  tabContentConstruct,
+  tabContentLogs,
+} from './hud-dom';
 import { renderTrail, resizeCanvas } from './canvas-trail';
 import { renderUpdateState } from './update-banner';
 import { refreshWebState } from './web-state';
@@ -138,14 +158,8 @@ const MENU_POPUP_MODE = new URLSearchParams(window.location.search).has('menupop
 if (MENU_POPUP_MODE) bootMenuPopup();
 
 // UI Elements
-const urlForm = document.getElementById('url-form') as HTMLFormElement;
-const urlInput = document.getElementById('url-input') as HTMLInputElement;
-const viewportUrlDisplay = document.getElementById('viewport-url-display') as HTMLElement;
-const viewportLoadingSpinner = document.getElementById('viewport-loading-spinner') as HTMLElement;
-const agentStatusBadge = document.getElementById('agent-status-badge') as HTMLElement;
 const resumeAgentBtn = document.getElementById('resume-agent-btn') as HTMLButtonElement | null;
 const takeOverBtn = document.getElementById('take-over-btn') as HTMLButtonElement | null;
-const activeActionText = document.getElementById('active-action-text') as HTMLElement;
 
 resumeAgentBtn?.addEventListener('click', async () => {
   if (!resumeAgentBtn) return;
@@ -176,9 +190,6 @@ takeOverBtn?.addEventListener('click', async () => {
     takeOverBtn.disabled = false;
   }
 });
-const copyConstructBtn = document.getElementById('copy-construct-btn') as HTMLButtonElement;
-const chassisVersionBadge = document.getElementById('chassis-version');
-const aboutVersion = document.getElementById('about-version');
 const zoomOutBtn = document.getElementById('zoom-out-btn') as HTMLButtonElement | null;
 const zoomInBtn = document.getElementById('zoom-in-btn') as HTMLButtonElement | null;
 const zoomLevelBtn = document.getElementById('zoom-level-btn') as HTMLButtonElement | null;
@@ -196,18 +207,9 @@ void window.electronAPI
   .catch(() => undefined);
 
 // Stat elements
-const statVelocity = document.getElementById('stat-velocity') as HTMLElement;
-const statTokens = document.getElementById('stat-tokens') as HTMLElement;
-const statInteractions = document.getElementById('stat-interactions') as HTMLElement;
 
 // Tabs
-const tabBtnTelemetry = document.getElementById('tab-btn-telemetry') as HTMLButtonElement;
-const tabBtnConstruct = document.getElementById('tab-btn-construct') as HTMLButtonElement;
-const tabBtnLogs = document.getElementById('tab-btn-logs') as HTMLButtonElement;
 
-const tabContentTelemetry = document.getElementById('tab-content-telemetry') as HTMLElement;
-const tabContentConstruct = document.getElementById('tab-content-construct') as HTMLElement;
-const tabContentLogs = document.getElementById('tab-content-logs') as HTMLElement;
 
 // Dynamic Lists & Preview
 
