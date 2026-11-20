@@ -37,7 +37,7 @@ const ROUTES: Record<string, Handler> = {
 
   'POST /network/payload': async (ctx) => {
     const body = await ctx.body();
-    ctx.json({ success: true, payload: ctx.chassis.getApiPayload(body.requestId) });
+    ctx.json({ success: true, payload: ctx.chassis.network.payload(body.requestId) });
   },
 
   'POST /network/clear': async (ctx) => {

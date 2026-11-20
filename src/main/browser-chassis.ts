@@ -61,6 +61,7 @@ import { controlFactsExpression, parseControlFacts, type ControlFacts, type Cont
 import { dataPath } from './data-paths.js';
 import { logMainEvent } from './diagnostics/main-log.js';
 import { SessionVault, type SessionSnapshot } from './session/session-vault.js';
+import { SessionSurface } from './chassis/session-surface.js';
 import {
   NetworkInterceptor,
   type CapturedNetworkRequest,
@@ -137,6 +138,12 @@ export class BrowserChassis {
   private shieldBreaker!: ShieldBreaker;
   private downloadManager!: DownloadManager;
   private sessionVault!: SessionVault;
+
+  /** When to use: `chassis.sessions` — save/restore/list/delete session snapshots. */
+  public sessions!: SessionSurface;
+
+  /** When to use: `chassis.network` — payload lookup for an intercepted request. */
+  public network!: { payload: (requestId: string) => unknown };
   private networkInterceptor!: NetworkInterceptor;
   private marksOverlay!: MarksOverlay;
   private scriptVault!: ScriptVault;
@@ -335,7 +342,19 @@ export class BrowserChassis {
     this.shieldBreaker = new ShieldBreaker(this.simulator);
     this.downloadManager = new DownloadManager();
     this.sessionVault = new SessionVault();
+    this.sessions = new SessionSurface({
+      vault: this.sessionVault,
+      webContents: () => this.getActiveWebContents(),
+      log: (level, message) => this.addLog(level, message),
+      telemetry: (event) => this.emitTelemetry(event),
+    });
     this.networkInterceptor = new NetworkInterceptor();
+    this.network = {
+      payload: (requestId: string) => {
+        this.addLog('action', `MCP Directive: get_api_payload("${requestId}")`);
+        return this.networkInterceptor.getPayload(requestId);
+      },
+    };
     this.marksOverlay = new MarksOverlay();
     this.scriptVault = new ScriptVault();
 
@@ -3215,46 +3234,8 @@ export class BrowserChassis {
     return await this.downloadManager.readDocumentContent(filenameOrId);
   }
 
-  public async saveSession(name?: string) {
-    this.addLog('action', `MCP Directive: save_session("${name || 'auto'}")`);
-    const wc = this.getActiveWebContents();
-    const result = await this.sessionVault.saveSession(wc.session, wc, name);
-    this.emitTelemetry({
-      type: 'harvest',
-      timestamp: Date.now(),
-      details: `Saved session "${result.name}" with ${result.cookiesCount} cookies`,
-    });
-    return result;
-  }
-
-  public async restoreSession(name: string) {
-    this.addLog('action', `MCP Directive: restore_session("${name}")`);
-    const wc = this.getActiveWebContents();
-    const result = await this.sessionVault.restoreSession(wc.session, wc, name);
-    this.emitTelemetry({
-      type: 'harvest',
-      timestamp: Date.now(),
-      details: `Restored session "${result.name}" (${result.cookiesRestored} cookies)`,
-    });
-    return result;
-  }
-
-  public listSessions() {
-    return this.sessionVault.listSessions();
-  }
-
-  public deleteSession(name: string) {
-    this.addLog('action', `MCP Directive: delete_session("${name}")`);
-    return this.sessionVault.deleteSession(name);
-  }
-
   public getNetworkTraffic(filter?: NetworkFilter): CapturedNetworkRequest[] {
     return this.networkInterceptor.getTraffic(filter);
-  }
-
-  public getApiPayload(requestId: string) {
-    this.addLog('action', `MCP Directive: get_api_payload("${requestId}")`);
-    return this.networkInterceptor.getPayload(requestId);
   }
 
   public clearNetworkTraffic(): void {

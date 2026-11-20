@@ -44,12 +44,12 @@ async function runRecording(ctx: BridgeContext, run: () => Promise<void>): Promi
 
 const saveSession: Handler = async (ctx) => {
   const body = await ctx.body();
-  ctx.json({ success: true, result: await ctx.chassis.saveSession(body.name) });
+  ctx.json({ success: true, result: await ctx.chassis.sessions.save(body.name) });
 };
 
 const deleteSession: Handler = async (ctx) => {
   const body = await ctx.body();
-  ctx.json({ success: true, deleted: ctx.chassis.deleteSession(body.name) });
+  ctx.json({ success: true, deleted: ctx.chassis.sessions.delete(body.name) });
 };
 
 const windowState: Handler = async (ctx) => {
@@ -97,7 +97,7 @@ const ROUTES: Record<string, Handler> = {
 
   'POST /session/restore': async (ctx) => {
     const body = await ctx.body();
-    ctx.json({ success: true, result: await ctx.chassis.restoreSession(body.name) });
+    ctx.json({ success: true, result: await ctx.chassis.sessions.restore(body.name) });
   },
 
   'POST /context/open': async (ctx) => {
@@ -106,15 +106,15 @@ const ROUTES: Record<string, Handler> = {
       ctx.fail('Provide { name }', 400, 'BAD_REQUEST');
       return;
     }
-    ctx.json({ success: true, result: await ctx.chassis.restoreSession(body.name) });
+    ctx.json({ success: true, result: await ctx.chassis.sessions.restore(body.name) });
   },
 
   'GET /session/list': async (ctx) => {
-    ctx.json({ success: true, sessions: ctx.chassis.listSessions() });
+    ctx.json({ success: true, sessions: ctx.chassis.sessions.list() });
   },
 
   'GET /context/list': async (ctx) => {
-    ctx.json({ success: true, contexts: ctx.chassis.listSessions() });
+    ctx.json({ success: true, contexts: ctx.chassis.sessions.list() });
   },
 
   'POST /session/delete': deleteSession,
