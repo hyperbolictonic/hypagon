@@ -11,14 +11,25 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **23 violations** across **14 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **21 violations** across **12 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **1,190 duplicated lines / 49,078 (2.4%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 223 files |
+| Duplicates | **1,135 duplicated lines / 49,250 (2.3%)** | threshold is 3%; 27 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 232 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
+- **Marks overlay split** - `marks/marks-overlay.ts` 594 -> 168: the injected badge script is now
+  three page-side phases (`injected-helpers.ts`, `injected-collect.ts`, `injected-assign.ts`) composed
+  by `injected-script.ts`. The generated script was diffed against the previous build and is
+  byte-identical. Verified: `test:framemarks` 13/13 (including OOPIF click/type and 100+ ids).
+- **Sealed discovery split** - `shadow-walk/ax-controls.ts` 611 -> 132: `sealed-types.ts` (published
+  shapes + the rate-limit error), `sealed-util.ts` (role actions, viewport, closed-root index,
+  quad->rect), `sealed-scan.ts` (AX tree + pierce) and `sealed-measure.ts` (filter + boxes + tokens),
+  with `sealed-sessions.ts` owning attach/detach so the two phases cannot drift. The extraction also
+  collapsed the quad->rect math repeated in `sealed-targets.ts` and `tab-walk.ts`. Verified:
+  `test:sealed` 21/21 (same-site and cross-site frames, offscreen tokens, scroll+click, rate limit)
+  and `test:tabwalk` 11/11.
 - **Cheap-slice sweep** - the mid-size files are out of the modularity baseline: `tabs/tab-manager`
   (513 -> 217 across `types.ts`, `tab-views.ts`, `popups.ts`, plus a shared `input/takeover-shortcut.ts`
   the shell and tabs now both use), `renderer/research-panel` (514 -> 112 across `research-dom.ts`,
