@@ -13,11 +13,15 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,450 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 350 files |
+| Duplicates | **604 duplicated lines / 51,457 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 351 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer tab bar extracted** - `renderer/main.ts` 1693 -> 1637, `tab-bar.ts` 67. Acyclic:
+  the module owns the tab list and the new-tab button; the entry point only calls `renderTabs`.
+  Verified: `npx vite build`, `test:settings:dom` (192 ids).
 
 - **Renderer zoom controls extracted** - `renderer/main.ts` 1728 -> 1693, `zoom-controls.ts` 51.
   Acyclic: the block owns `currentZoom` and looks up the three buttons itself; the entry point only
