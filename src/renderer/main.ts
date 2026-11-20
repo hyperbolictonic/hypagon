@@ -89,6 +89,7 @@ import { hideUrlSuggestions } from './url-suggestions';
 import { navBackBtn, navForwardBtn, navReloadBtn } from './url-bar';
 import { renderZoom, setZoomPinned } from './zoom-controls';
 import { renderTabs } from './tab-bar';
+import { harvestBtn, setHarvestTabSink } from './harvest-button';
 import { sidebarPanel, sidebarRailToggle, sidebarState } from './sidebar-state';
 import { applySidebarMode, applySidebarState, SIDEBAR_MODE, toggleSidebar } from './sidebar-mode';
 import { setDeckHilMode } from './hil-panel';
@@ -152,7 +153,6 @@ takeOverBtn?.addEventListener('click', async () => {
     takeOverBtn.disabled = false;
   }
 });
-const harvestBtn = document.getElementById('harvest-btn') as HTMLButtonElement;
 const copyConstructBtn = document.getElementById('copy-construct-btn') as HTMLButtonElement;
 const chassisVersionBadge = document.getElementById('chassis-version');
 const aboutVersion = document.getElementById('about-version');
@@ -322,6 +322,8 @@ function renderTrail() {
 requestAnimationFrame(renderTrail);
 
 // Tab switching
+setHarvestTabSink(() => switchTab('construct'));
+
 function switchTab(activeTab: 'telemetry' | 'construct' | 'logs' | 'decisions') {
   tabBtnTelemetry.classList.toggle('tab-active', activeTab === 'telemetry');
   tabBtnConstruct.classList.toggle('tab-active', activeTab === 'construct');
@@ -563,24 +565,6 @@ window.setTimeout(() => {
 
 
 // Harvest Action
-harvestBtn.addEventListener('click', async () => {
-  if (window.electronAPI) {
-    const icon = document.getElementById('harvest-icon');
-    const spinner = document.getElementById('harvest-spinner');
-    harvestBtn.disabled = true;
-    icon?.classList.add('hidden');
-    spinner?.classList.remove('hidden');
-    try {
-      const construct = await window.electronAPI.harvest();
-      renderConstruct(construct);
-      switchTab('construct');
-    } finally {
-      harvestBtn.disabled = false;
-      spinner?.classList.add('hidden');
-      icon?.classList.remove('hidden');
-    }
-  }
-});
 
 // Copy Construct Markdown
 copyConstructBtn.addEventListener('click', async () => {
