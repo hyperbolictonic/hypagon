@@ -13,11 +13,15 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,530 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 361 files |
+| Duplicates | **604 duplicated lines / 51,536 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 362 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer WEB STATE tab extracted** - `renderer/main.ts` 885 -> 809, `web-state.ts` 86.
+  The snapshot renderer and its two controls moved; the entry point only calls `refreshWebState`.
+  Verified: `npx vite build`, `test:settings:dom` (192 ids).
 
 - **Renderer decisions feed extracted** - `renderer/main.ts` 976 -> 885,
   `decision-feed.ts` 126. The brace-depth span helper (blanking strings/comments before counting
