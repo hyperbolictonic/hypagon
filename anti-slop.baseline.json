@@ -55,9 +55,6 @@
       "main/cortex/cortex-db.ts": {
         "file": 1
       },
-      "main/crawl/crawler.ts": {
-        "file": 1
-      },
       "main/index.ts": {
         "file": 1,
         "function": 1
