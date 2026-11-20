@@ -66,6 +66,7 @@ import { JevSurface } from './chassis/jev-surface.js';
 import { ScreenshotSurface } from './chassis/screenshot-surface.js';
 import { MarksSurface } from './chassis/marks-surface.js';
 import { WindowSurface } from './chassis/window-surface.js';
+import { researchState } from './chassis/research-state.js';
 import {
   NetworkInterceptor,
   type CapturedNetworkRequest,
@@ -175,7 +176,6 @@ export class BrowserChassis {
   private researcher!: Researcher;
   private actionLedger!: ActionLedger;
   /** Reused off-screen view for detached reads (SERPs, Markdown alternates, crawls). */
-  private utilView: WebContentsView | null = null;
   private researchSettings: ResearchSettings = {
     ...DEFAULT_RESEARCH_SETTINGS,
     engineChain: [...DEFAULT_RESEARCH_SETTINGS.engineChain],
@@ -186,9 +186,7 @@ export class BrowserChassis {
   /** Origins a human has authenticated; skip the anonymous static tier for them. */
   private warmOrigins = new Set<string>();
   /** Only one human hand-off at a time (the shared research view is serialized). */
-  private hilActive = false;
   /** Why the last hand-off was skipped (surfaced in the WAF error). */
-  private handoffSkipReason: string | null = null;
   #anchorStore: AnchorStore | null = null;
   /** Responsive device emulation; one controller for the whole browser. */
   private viewportController: ViewportController | null = null;
@@ -237,7 +235,6 @@ export class BrowserChassis {
   private orbEdge: 'left' | 'right' = 'right';
   /** False while a full-window settings/dialog surface is open. */
   private sidebarOverlayVisible = true;
-  private utilQueue: Promise<void> = Promise.resolve();
   /** Monotonic page revision: bumped on navigation and every mutating action. */
   private revision = 0;
   private onCollaborationNote?: (input: { target: CollaborationTarget; text: string; tags: string[] }) => void;
@@ -3214,8 +3211,8 @@ export class BrowserChassis {
    * hand-off and anchor capture, which otherwise let a concurrent detached read steal the view.
    */
   private async withUtilView<T>(task: () => Promise<T>): Promise<T> {
-    const p = this.utilQueue.then(task, task);
-    this.utilQueue = p.then(
+    const p = researchState.utilQueue.then(task, task);
+    researchState.utilQueue = p.then(
       () => undefined,
       () => undefined,
     );
@@ -3294,8 +3291,8 @@ export class BrowserChassis {
         })();
       });
 
-    const p = this.utilQueue.then(run, run);
-    this.utilQueue = p.then(
+    const p = researchState.utilQueue.then(run, run);
+    researchState.utilQueue = p.then(
       () => undefined,
       () => undefined,
     );
@@ -3304,7 +3301,7 @@ export class BrowserChassis {
 
   /** Lazily created, reused off-screen view for detached reads (SERPs, alternates, crawls). */
   private getUtilView(): WebContentsView {
-    if (!this.utilView) {
+    if (!researchState.utilView) {
       const view = new WebContentsView({
         webPreferences: {
           nodeIntegration: false,
@@ -3320,9 +3317,9 @@ export class BrowserChassis {
         /* profile optional */
       }
       view.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-      this.utilView = view;
+      researchState.utilView = view;
     }
-    return this.utilView;
+    return researchState.utilView;
   }
 
   /**
@@ -3662,10 +3659,10 @@ export class BrowserChassis {
     if (!win || win.isDestroyed()) return null;
     if (process.env.HYPAGON_HIL === '0') return null;
     if (!this.researchSettings.humanInLoop) return null;
-    if (this.hilActive) return null;
+    if (researchState.hilActive) return null;
 
-    this.handoffSkipReason = null;
-    this.hilActive = true;
+    researchState.handoffSkipReason = null;
+    researchState.hilActive = true;
     const view = this.getUtilView();
     const wc = view.webContents;
     let attached = false;
@@ -3684,7 +3681,7 @@ export class BrowserChassis {
 
       const probe = await this.probeHumanActionable(wc);
       if (!probe.actionable && process.env.HYPAGON_HIL_FORCE !== '1') {
-        this.handoffSkipReason = probe.why;
+        researchState.handoffSkipReason = probe.why;
         this.addLog('info', `Skipping human hand-off for ${url}: ${probe.why}.`);
         return null;
       }
@@ -3800,7 +3797,7 @@ export class BrowserChassis {
       this.addLog('warn', `Human hand-off failed for ${url}: ${err?.message || err}`);
       return null;
     } finally {
-      this.hilActive = false;
+      researchState.hilActive = false;
       this.hilManager.setActiveWebContentsGetter(() => {
         try {
           return this.getActiveWebContents();
@@ -3882,7 +3879,7 @@ export class BrowserChassis {
       const handoff = await this.attemptHumanHandoff(url, opts.onHuman, opts.anchorsFor);
       if (handoff) return handoff;
 
-      const skip = this.handoffSkipReason ? ` — ${this.handoffSkipReason}` : '';
+      const skip = researchState.handoffSkipReason ? ` — ${researchState.handoffSkipReason}` : '';
       this.markResearchCooldown(host, 'WAF/challenge page');
       throw this.researchError(
         'WAF_CHALLENGE',
