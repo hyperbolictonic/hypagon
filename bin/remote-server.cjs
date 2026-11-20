@@ -39759,7 +39759,7 @@ var EMPTY_COMPLETION_RESULT = {
 // src/shared/version.ts
 var APP_VERSION = "2.3.3";
 
-// src/mcp/format-mark.ts
+// src/main/marks/format-mark.ts
 function formatMark(m) {
   const attrs = `${m.type ? ` type="${m.type}"` : ""}${m.role ? ` role=${m.role}` : ""}`;
   const extras = [];

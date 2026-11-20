@@ -69,7 +69,7 @@ import {
   type StreamMessage,
 } from './network/network-interceptor.js';
 import { MarksOverlay, type MarkItem } from './marks/marks-overlay.js';
-import { Primitives } from './primitives/primitives.js';
+import { Primitives, type PageReadGuardInput, type PageReadPrecheckInput } from './primitives/primitives.js';
 import { ScriptVault } from './scripts/script-vault.js';
 import type { ScriptItem } from './cortex/cortex-db.js';
 import { TrayManager } from './tray/tray-manager.js';
@@ -822,13 +822,7 @@ export class BrowserChassis {
    * URLs can push real markdown over the threshold), so this is a latency
    * optimization, not a second policy.
    */
-  public async precheckJevPageRead(input: {
-    as: string;
-    region?: unknown;
-    budget?: number;
-    cursor?: unknown;
-    full?: boolean;
-  }): Promise<{ blocked: boolean; note?: string; refusal?: Record<string, any> }> {
+  public async precheckJevPageRead(input: PageReadPrecheckInput): Promise<{ blocked: boolean; note?: string; refusal?: Record<string, any> }> {
     const policy = this.getJevPolicy();
     if (!policy.enforce) return { blocked: false };
     if (input.as !== 'markdown' && input.as !== 'text') return { blocked: false };
@@ -885,17 +879,7 @@ export class BrowserChassis {
    * markdown/text projection leaves the process. Returns a refusal payload that
    * names the next call, or a `note` when the loop breaker released the read.
    */
-  public guardJevPageRead(input: {
-    as: string;
-    region?: unknown;
-    budget?: number;
-    cursor?: unknown;
-    full?: boolean;
-    pageTokens: number;
-    url?: string;
-    title?: string;
-    content?: string;
-  }): {
+  public guardJevPageRead(input: PageReadGuardInput): {
     allowed: boolean;
     reason: string;
     note?: string;

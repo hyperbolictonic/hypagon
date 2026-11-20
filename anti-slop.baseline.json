@@ -5,12 +5,11 @@
   },
   "duplicates": {
     "files": {
-      "main/browser-chassis.ts": 150,
+      "main/browser-chassis.ts": 128,
       "main/decide/decision-client.ts": 7,
       "main/decide/decision-guard.ts": 7,
       "main/media/ffmpeg.ts": 24,
       "main/media/service.ts": 14,
-      "main/primitives/primitives.ts": 66,
       "main/recipes/recipe-store.ts": 10,
       "main/research/settings.ts": 6,
       "main/scripts/script-vault.ts": 9,
@@ -19,12 +18,11 @@
       "main/wrap/anyapi/executor.ts": 41,
       "main/wrap/executor.ts": 39,
       "main/wrap/store.ts": 12,
-      "mcp/format-mark.ts": 7,
       "mcp/tools-catalog.ts": 197,
       "preload/index.ts": 34,
       "renderer/main.ts": 93
     },
-    "totalDuplicatedLines": 744
+    "totalDuplicatedLines": 649
   },
   "imports": {
     "cycles": []
@@ -35,9 +33,6 @@
         "class": 1,
         "file": 1,
         "function": 3
-      },
-      "main/primitives/primitives.ts": {
-        "file": 1
       },
       "mcp/tools-catalog.ts": {
         "file": 1
