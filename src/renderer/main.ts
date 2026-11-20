@@ -1,5 +1,5 @@
 import type { ElectronAPI } from '../preload/index.js';
-import type { ChassisState, HarvestedConstruct, TelemetryEvent } from '../shared/types.js';
+import type { ChassisState, ConnectInfo, HarvestedConstruct, TelemetryEvent } from '../shared/types.js';
 import type { ZoomState } from '../shared/zoom.js';
 import { BRAND } from '../shared/brand.js';
 import { beginRecording, finishRecording } from './recording';
@@ -2856,25 +2856,6 @@ const researchHilTimeoutEl = document.getElementById('settings-research-hil-time
 // ---- MCP client snippets (Settings → MCP Clients) ------------------------------------------
 type ConnectRuntime = 'bundled' | 'node';
 type ConnectServer = 'browser' | 'wrap' | 'devlogs' | 'legacy-browser' | 'legacy-wrap';
-
-interface ConnectInfo {
-  platform: string;
-  version: string;
-  bridgeUrl: string;
-  bridgePort: number;
-  serverPath: string;
-  serverExists: boolean;
-  wrapServerPath: string;
-  wrapServerExists: boolean;
-  devlogsServerPath: string;
-  devlogsServerExists: boolean;
-  devlogsDir: string;
-  devMode: boolean;
-  wrapTokenFile: string;
-  runtimePath: string;
-  packaged: boolean;
-  homedir: string;
-}
 
 interface ConnectClient {
   id: string;

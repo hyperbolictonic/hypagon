@@ -30,10 +30,10 @@
       "mcp/format-mark.ts": 7,
       "mcp/tools-catalog.ts": 197,
       "mcp/wrap-server.ts": 149,
-      "preload/index.ts": 52,
-      "renderer/main.ts": 111
+      "preload/index.ts": 34,
+      "renderer/main.ts": 93
     },
-    "totalDuplicatedLines": 1226
+    "totalDuplicatedLines": 1190
   },
   "imports": {
     "cycles": []
@@ -83,9 +83,6 @@
       "mcp/wrap-server.ts": {
         "file": 1,
         "function": 1
-      },
-      "preload/index.ts": {
-        "file": 1
       },
       "renderer/main.ts": {
         "file": 1,

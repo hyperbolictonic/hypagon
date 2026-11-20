@@ -75,3 +75,23 @@ export interface ChassisState {
     uptimeSeconds: number;
   };
 }
+
+/** When to use: typing the app -> renderer connection details shown in Settings -> MCP Clients. */
+export interface ConnectInfo {
+  platform: string;
+  version: string;
+  bridgeUrl: string;
+  bridgePort: number;
+  serverPath: string;
+  serverExists: boolean;
+  wrapServerPath: string;
+  wrapServerExists: boolean;
+  devlogsServerPath: string;
+  devlogsServerExists: boolean;
+  devlogsDir: string;
+  devMode: boolean;
+  wrapTokenFile: string;
+  runtimePath: string;
+  packaged: boolean;
+  homedir: string;
+}
