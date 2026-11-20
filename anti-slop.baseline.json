@@ -58,9 +58,6 @@
       "main/crawl/crawler.ts": {
         "file": 1
       },
-      "main/http-bridge.ts": {
-        "function": 2
-      },
       "main/index.ts": {
         "file": 1,
         "function": 1
@@ -76,9 +73,6 @@
       },
       "main/media/service.ts": {
         "file": 1
-      },
-      "main/menu/context-menu.ts": {
-        "function": 1
       },
       "main/primitives/primitives.ts": {
         "file": 1
