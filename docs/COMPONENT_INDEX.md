@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 150 files, 641 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 151 files, 643 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (578)
+## Types (580)
 
 | File | Export | When to use |
 |---|---|---|
@@ -105,6 +105,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/hil/hil-manager.ts` | `HilRequest` *(type)* | - |
 | `main/hil/hil-manager.ts` | `HilResolution` *(type)* | - |
 | `main/hil/hil-manager.ts` | `NotificationOptions` *(type)* | - |
+| `main/http/collaboration-routes.ts` | `handleCollaborationRoutes` | When to use: the bridge request handler — dispatch `/collaboration/*` before |
+| `main/http/collaboration-routes.ts` | `CollaborationRouteContext` *(type)* | When to use: building the collaboration dispatcher — request facts, page context and bridge helpers. |
 | `main/http/media-routes.ts` | `handleMediaRoutes` | When to use: the bridge request handler — dispatch `/media/*` before the |
 | `main/http/media-routes.ts` | `MediaRouteContext` *(type)* | When to use: building the media dispatcher — the request facts and the two bridge helpers. |
 | `main/http-bridge.ts` | `startHttpBridge` | - |

@@ -27,6 +27,7 @@ import type { WrapAuditLog } from './wrap/audit.js';
 import { isWrapAuthorized, tokenFromHeaders } from './wrap/auth.js';
 import { DEFAULT_TOOL_SETTINGS, type ToolSettingsStore } from './tools/settings.js';
 import type { CollaborationService } from './collaboration/service.js';
+import { handleCollaborationRoutes } from './http/collaboration-routes.js';
 import type { MediaService } from './media/service.js';
 import { handleMediaRoutes } from './http/media-routes.js';
 import { deriveRecipe } from '../../packages/recipe/src/index.ts';
@@ -217,100 +218,7 @@ export function startHttpBridge(
 
       if (await handleMediaRoutes({ media, method: req.method, pathname, readBody, sendJson })) return;
 
-      if (pathname.startsWith('/collaboration')) {
-        if (!collaboration) {
-          sendJson({ success: false, error: 'Collaboration is not initialised.', code: 'COLLAB_UNAVAILABLE' }, 503);
-          return;
-        }
-        const info = chassis.getPageInfo();
-        const activeTab = chassis.getTabsSummary().find((tab) => tab.isActive);
-        if (req.method === 'GET' && pathname === '/collaboration/threads') {
-          const id = url.searchParams.get('id');
-          if (id) {
-            const thread = collaboration.get(id);
-            if (!thread) {
-              sendJson({ success: false, error: `Collaboration thread "${id}" not found.`, code: 'COLLAB_NOT_FOUND' }, 404);
-              return;
-            }
-            sendJson({ success: true, thread });
-            return;
-          }
-          const status = url.searchParams.get('status');
-          const threads = collaboration.list({
-            url: url.searchParams.get('url') || undefined,
-            status: status && ['open', 'answered', 'resolved', 'stale'].includes(status) ? status as any : undefined,
-            tabId: url.searchParams.get('tabId') || undefined,
-            limit: Number(url.searchParams.get('limit')) || undefined,
-          });
-          sendJson({ success: true, threads });
-          return;
-        }
-
-        const body = await readBody();
-        const target = body?.target && typeof body.target === 'object'
-          ? { ...body.target, url: body.target.url || info.url, tabId: body.target.tabId || activeTab?.id }
-          : undefined;
-
-        if (req.method === 'POST' && (pathname === '/collaboration/highlight' || pathname === '/collaboration/ask')) {
-          if (!target) {
-            sendJson({ success: false, error: 'A target is required.', code: 'BAD_REQUEST' }, 400);
-            return;
-          }
-          const text = String(body?.text || body?.comment || body?.question || '').trim();
-          if (!text) {
-            sendJson({ success: false, error: 'A comment or question is required.', code: 'BAD_REQUEST' }, 400);
-            return;
-          }
-          const thread = collaboration.create({
-            target,
-            intent: body?.intent,
-            tags: body?.tags,
-            kind: pathname === '/collaboration/ask' ? 'question' : 'comment',
-            text,
-            choices: body?.choices,
-          });
-          sendJson({ success: true, thread });
-          return;
-        }
-
-        if (req.method === 'POST' && pathname === '/collaboration/reply') {
-          const id = String(body?.id || '');
-          const text = String(body?.text || '').trim();
-          if (!id || !text) {
-            sendJson({ success: false, error: 'Thread id and text are required.', code: 'BAD_REQUEST' }, 400);
-            return;
-          }
-          try {
-            const thread = collaboration.reply(id, {
-              author: body?.author === 'human' ? 'human' : 'agent',
-              kind: body?.kind === 'answer' ? 'answer' : 'comment',
-              text,
-              answer: body?.answer,
-            });
-            sendJson({ success: true, thread });
-          } catch (error: any) {
-            sendJson({ success: false, error: error?.message || String(error), code: 'COLLAB_NOT_FOUND' }, 404);
-          }
-          return;
-        }
-
-        if (req.method === 'POST' && pathname === '/collaboration/resolve') {
-          const id = String(body?.id || '');
-          if (!id) {
-            sendJson({ success: false, error: 'Thread id is required.', code: 'BAD_REQUEST' }, 400);
-            return;
-          }
-          try {
-            sendJson({ success: true, thread: collaboration.resolve(id, body?.notes) });
-          } catch (error: any) {
-            sendJson({ success: false, error: error?.message || String(error), code: 'COLLAB_NOT_FOUND' }, 404);
-          }
-          return;
-        }
-
-        sendJson({ success: false, error: 'Collaboration endpoint not found.', code: 'NOT_FOUND' }, 404);
-        return;
-      }
+      if (await handleCollaborationRoutes({ collaboration, chassis, method: req.method, pathname, url, readBody, sendJson })) return;
 
       if (req.method === 'GET' && pathname === '/metrics') {
         sendJson({ success: true, version: APP_VERSION, counters: snapshot() });
