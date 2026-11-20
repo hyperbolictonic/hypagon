@@ -67,6 +67,7 @@ import { ScreenshotSurface } from './chassis/screenshot-surface.js';
 import { MarksSurface } from './chassis/marks-surface.js';
 import { WindowSurface } from './chassis/window-surface.js';
 import { researchState } from './chassis/research-state.js';
+import { CitationSurface } from './chassis/citation-surface.js';
 import {
   NetworkInterceptor,
   type CapturedNetworkRequest,
@@ -141,6 +142,9 @@ export class BrowserChassis {
 
   /** When to use: `chassis.jevSurface` — JEV policy, index and section reads. */
   public jevSurface!: JevSurface;
+
+  /** When to use: `chassis.citations` — relocate and revalidate citations. */
+  public citations!: CitationSurface;
 
   /** When to use: `chassis.screenshots` — capture and housekeeping. */
   public screenshots!: ScreenshotSurface;
@@ -3492,138 +3496,6 @@ export class BrowserChassis {
   /** Parse the live rendered page and fingerprint the blocks behind matching highlights. */
   /** Revalidate a stored citation anchor against the page's current markup. */
   /** Fetch a URL for citation work, following the research tier policy. */
-  private async fetchCitationHtml(url: string): Promise<{
-    html: string;
-    status: number;
-    via: 'static' | 'render';
-    error?: string;
-  }> {
-    let html = '';
-    let status = 0;
-    let via: 'static' | 'render' = 'render';
-
-    if (this.researchSettings.preferStatic) {
-      try {
-        const outcome = await fetchStatic(url);
-        if (outcome.kind === 'ok' && outcome.result.status < 400) {
-          html = outcome.result.body;
-          status = outcome.result.status;
-          via = 'static';
-        }
-      } catch {
-        /* fall through to render */
-      }
-    }
-
-    if (!html) {
-      const rendered = await this.loadDetached<string>(
-        url,
-        'document.documentElement.outerHTML',
-        { timeoutMs: 25_000, settleMs: 400 },
-      );
-      html = typeof rendered.result === 'string' ? rendered.result : '';
-      status = rendered.status;
-      via = 'render';
-    }
-
-    if (!html) return { html: '', status, via, error: 'could not read the page' };
-
-    // Judge the challenge on visible text: raw HTML contains scripts/meta that can trip a marker.
-    const visible = html
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 4000);
-    if (looksLikeChallenge(status, visible)) {
-      return { html: '', status, via, error: 'challenge page' };
-    }
-
-    return { html, status, via };
-  }
-
-  /** Revalidate a stored citation anchor against the page's current markup. */
-  public async relocateCitation(opts: {
-    url: string;
-    fingerprint: unknown;
-    threshold?: number;
-  }): Promise<CitationRelocation> {
-    if (!opts?.url || typeof opts.url !== 'string') {
-      throw this.researchError('BAD_REQUEST', 'relocate_citation needs a url.');
-    }
-    if (!opts.fingerprint || typeof opts.fingerprint !== 'object') {
-      throw this.researchError('BAD_REQUEST', 'relocate_citation needs a fingerprint object.');
-    }
-
-    const fetched = await this.fetchCitationHtml(opts.url);
-    if (fetched.error) {
-      return {
-        found: false,
-        score: null,
-        path: null,
-        text: null,
-        candidates: [],
-        via: fetched.via,
-        error: fetched.error,
-      };
-    }
-
-    const result = await relocateAgainstHtml(fetched.html, opts.fingerprint as any, opts.threshold ?? 40);
-    return { ...result, via: fetched.via };
-  }
-
-  /** Revalidate every stored anchor for one URL (or the most recent URLs). */
-  public async revalidateStored(opts: { url?: string; maxUrls?: number } = {}): Promise<{
-    urls: number;
-    checked: number;
-    found: number;
-    missing: number;
-    results: Array<{ url: string; checked: number; found: number; error?: string }>;
-  }> {
-    const urls = opts.url
-      ? [opts.url]
-      // Each URL is fetched sequentially with a 25s limit. Keep a single call bounded so an agent
-      // cannot pin the bridge for hours by asking for every stored URL at once.
-      : this.anchorStore.urls().slice(0, Math.min(25, Math.max(1, Number(opts.maxUrls) || 5)));
-
-    let checked = 0;
-    let found = 0;
-    const results: Array<{ url: string; checked: number; found: number; error?: string }> = [];
-
-    for (const url of urls) {
-      const records = this.anchorStore.list(url);
-      if (records.length === 0) continue;
-
-      const fetched = await this.fetchCitationHtml(url);
-      if (fetched.error) {
-        results.push({ url, checked: 0, found: 0, error: fetched.error });
-        continue;
-      }
-
-      const relocations = await relocateMany(
-        fetched.html,
-        records.map((record) => record.fingerprint),
-        40,
-      );
-      this.anchorStore.applyChecks(url, relocations);
-
-      const urlFound = relocations.filter((result) => result.found).length;
-      checked += relocations.length;
-      found += urlFound;
-      results.push({ url, checked: relocations.length, found: urlFound });
-    }
-
-    return { urls: results.length, checked, found, missing: checked - found, results };
-  }
-
-  /**
-   * Human hand-off for a challenged page.
-   *
-   * Research renders in `persist:hypagon-research`; solving the challenge in a normal browsing tab
-   * would populate a different cookie jar. This temporarily attaches the shared research util view
-   * to the window so the human solves it in the same session, then harvests that live view.
-   */
   private async attemptHumanHandoff(
     url: string,
     onHuman?: (info: HumanAssistInfo) => void,

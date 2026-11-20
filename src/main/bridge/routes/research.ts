@@ -83,7 +83,7 @@ const ROUTES: Record<string, Handler> = {
 
   'POST /citation/relocate': async (ctx) => {
     const body = await ctx.body();
-    const result = await ctx.chassis.relocateCitation({
+    const result = await ctx.chassis.citations.relocateCitation({
       url: body?.url,
       fingerprint: body?.fingerprint,
       threshold: body?.threshold,
@@ -93,7 +93,7 @@ const ROUTES: Record<string, Handler> = {
 
   'POST /citation/revalidate': async (ctx) => {
     const body = await ctx.body();
-    const result = await ctx.chassis.revalidateStored({
+    const result = await ctx.chassis.citations.revalidateStored({
       url: body?.url,
       maxUrls: body?.max_urls ?? body?.maxUrls,
     });
