@@ -13,11 +13,15 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,486 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 354 files |
+| Duplicates | **604 duplicated lines / 51,490 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 355 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer address bar extracted** - `renderer/main.ts` 1428 -> 1404, `url-bar.ts` 39.
+  The submit handler and the back/forward/reload buttons moved; the three buttons are exported
+  because `updateState` greys them out. Verified: `npx vite build`, `test:settings:dom` (192 ids).
 
 - **Renderer HIL panel extracted** - `renderer/main.ts` 1519 -> 1426, `hil-panel.ts` 104.
   The docked panel owns its elements and restore state and imports the sidebar state/mode it
