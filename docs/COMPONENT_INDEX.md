@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 148 files, 637 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 149 files, 639 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (574)
+## Types (576)
 
 | File | Export | When to use |
 |---|---|---|
@@ -508,6 +508,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/validate-wrapper.ts` | `validateWrapper` | - |
 | `main/wrap/validate-wrapper.ts` | `isPlainObject` | - |
 | `main/wrap/validate-wrapper.ts` | `WrapperValidation` *(type)* | - |
+| `mcp/process-guard.ts` | `installProcessGuards` | When to use: at the top of a stdio MCP server entrypoint, before connecting |
+| `mcp/process-guard.ts` | `ProcessGuardOptions` *(type)* | Process resilience shared by the stdio MCP entrypoints. |
 | `mcp/tool-groups.ts` | `groupAction` | - |
 | `mcp/tool-groups.ts` | `TOOL_GROUPS` | - |
 | `mcp/tool-groups.ts` | `META_TOOL_NAMES` | - |
@@ -521,7 +523,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/tools-catalog.ts` | `TOOL_TIERS` | - |
 | `mcp/tools-catalog.ts` | `DEFAULT_TOOL_ORDER` | Curated default order for `tools/list` and the Settings -> Tools list. |
 | `mcp/tools-catalog.ts` | `ToolCatalogItem` *(type)* | - |
-| `preload/index.ts` | `ElectronAPI` *(type)* | - |
+| `preload/index.ts` | `ElectronAPI` *(type)* | When to use: the preload bridge surface — every renderer call goes through `window.electronAPI`. |
 | `renderer/recording.ts` | `isRecording` | - |
 | `renderer/recording.ts` | `beginRecording` | - |
 | `renderer/recording.ts` | `finishRecording` | - |

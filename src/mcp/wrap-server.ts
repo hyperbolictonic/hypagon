@@ -26,6 +26,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { APP_VERSION } from '../shared/version.js';
 import { generatedToolName, wrapInputToZodShape } from './wrap-tool-schema.js';
+import { installProcessGuards } from './process-guard.js';
 
 const BRIDGE_URL = (process.env.HB_BRIDGE_URL || process.env.KUANG_BRIDGE_URL || 'http://127.0.0.1:4111').replace(/\/$/, '');
 const BRIDGE_TIMEOUT_MS = (() => {
@@ -118,37 +119,7 @@ function logWrap(message: string, level: 'boot' | 'call' | 'error' = 'call'): vo
   }
 }
 
-let stdoutClosed = false;
-process.stdout.on('error', (err: any) => {
-  if (err?.code === 'EPIPE' || err?.code === 'ERR_STREAM_DESTROYED') {
-    if (!stdoutClosed) {
-      stdoutClosed = true;
-      logWrap('stdout pipe closed by client (EPIPE); shutting down cleanly.', 'boot');
-    }
-    process.exit(0);
-  }
-  logWrap(`stdout stream error: ${err?.message || err}`, 'error');
-});
-process.stderr.on('error', () => {
-  // Never let logging throw.
-});
-
-let shuttingDown = false;
-function shutdown(reason: string): void {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  logWrap(reason, 'boot');
-  process.exit(0);
-}
-process.stdin.on('end', () => shutdown('stdin closed by client; shutting down cleanly.'));
-process.stdin.on('close', () => shutdown('stdin stream closed; shutting down cleanly.'));
-
-process.on('unhandledRejection', (reason: any) => {
-  logWrap(`Unhandled promise rejection (server kept alive): ${reason?.stack || reason}`, 'error');
-});
-process.on('uncaughtException', (err: any) => {
-  logWrap(`Uncaught exception (server kept alive): ${err?.stack || err}`, 'error');
-});
+installProcessGuards({ log: logWrap });
 
 const MAX_TEXT_CHARS = 60_000;
 function clampText(text: string): string {

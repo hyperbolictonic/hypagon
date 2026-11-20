@@ -164,18 +164,18 @@
       "main/wrap/store.ts": 12,
       "main/wrap/token.ts": 13,
       "main/zoom/settings.ts": 11,
-      "mcp/bridge-server.ts": 39,
+      "mcp/bridge-server.ts": 18,
       "mcp/browser-mcp.ts": 36,
       "mcp/format-mark.ts": 7,
       "mcp/tool-groups.ts": 135,
       "mcp/tools-catalog.ts": 217,
-      "mcp/wrap-server.ts": 153,
+      "mcp/wrap-server.ts": 131,
       "preload/index.ts": 32,
       "renderer/main.ts": 111,
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 2148
+    "totalDuplicatedLines": 2105
   },
   "modularity": {
     "files": {
