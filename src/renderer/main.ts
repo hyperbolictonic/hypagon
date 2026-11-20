@@ -2441,9 +2441,8 @@ const researchHilTimeoutEl = document.getElementById('settings-research-hil-time
     }
   }
 
-  wrapWrapperFormEl.addEventListener('submit', async (event) => {
-    event.preventDefault();
-
+  /** When to use: the save handler's first step — read the form and report every field error at once. */
+  function readWrapperForm() {
     const name = wrapFieldNameEl.value.trim();
     const id = wrapFieldIdEl.value.trim();
     const url = wrapFieldUrlEl.value.trim();
@@ -2466,17 +2465,6 @@ const researchHilTimeoutEl = document.getElementById('settings-research-hil-time
       if (!result.ok) errors.push(result.error);
     }
 
-    if (errors.length) {
-      showWrapperResult('error', errors.join(' '));
-      return;
-    }
-
-    const inputSchemaValue = inputSchemaResult.ok ? inputSchemaResult.value : DEFAULT_INPUT_SCHEMA;
-    const queryValue = queryResult.ok ? queryResult.value : undefined;
-    const headersValue = headersResult.ok ? headersResult.value : undefined;
-    const bodyValue = bodyResult.ok ? bodyResult.value : undefined;
-    const responseValue = responseResult.ok ? responseResult.value : undefined;
-
     const original = selectedWrapperId ? wrapWrappers.find((wrapper) => wrapper.id === selectedWrapperId) : undefined;
     const preferred = original?.request?.method;
     const primaryMethod =
@@ -2484,69 +2472,108 @@ const researchHilTimeoutEl = document.getElementById('settings-research-hil-time
         ? preferred.toUpperCase()
         : methods[0];
     const orderedMethods = [primaryMethod, ...methods.filter((method) => method !== primaryMethod)];
-    let auth = wrapFieldAuthEl.value;
+
+    return {
+      name,
+      id,
+      url,
+      methods,
+      description,
+      errors,
+      original,
+      primaryMethod,
+      orderedMethods,
+      inputSchemaValue: inputSchemaResult.ok ? inputSchemaResult.value : DEFAULT_INPUT_SCHEMA,
+      queryValue: queryResult.ok ? queryResult.value : undefined,
+      headersValue: headersResult.ok ? headersResult.value : undefined,
+      bodyValue: bodyResult.ok ? bodyResult.value : undefined,
+      responseValue: responseResult.ok ? responseResult.value : undefined,
+    };
+  }
+
+  /**
+   * When to use: the save handler's credential step — a saved name passes through, and the
+   * inline "new credential" form is written and selected. Returns null when the panel refused.
+   */
+  async function resolveWrapperAuth(auth: string, url: string): Promise<string | null> {
+    if (auth !== '__new__') return auth;
+
+    const credentialName = wrapCredentialNameEl.value.trim();
+    const credentialValue = wrapCredentialValueEl.value;
+    const allowedHosts = wrapCredentialHostsEl.value.trim() || hostFromUrl(url);
+    if (!credentialName || !credentialValue || !allowedHosts) {
+      showWrapperResult('error', 'New credential needs a name, value, and allowed host.');
+      return null;
+    }
+
+    const header = wrapCredentialHeaderEl.value.trim() || 'Authorization';
+    const prefix =
+      header.toLowerCase() !== 'authorization' && wrapCredentialPrefixEl.value === 'Bearer '
+        ? ''
+        : wrapCredentialPrefixEl.value;
+    const credential = await window.electronAPI?.setWrapSecret({
+      name: credentialName,
+      value: credentialValue,
+      allowedHosts,
+      header,
+      prefix,
+    });
+    if (!credential?.ok) {
+      showWrapperResult('error', `Credential rejected: ${(credential?.errors || []).join('; ') || 'unknown error'}`);
+      return null;
+    }
+
+    await loadWrapSettings();
+    wrapFieldAuthEl.value = credentialName;
+    updateCredentialPanel();
+    return credentialName;
+  }
+
+  /** When to use: the save handler's last step — the wrapper object sent to the main process. */
+  function buildWrapperPayload(form: ReturnType<typeof readWrapperForm>, auth: string): Record<string, unknown> {
+    const request: Record<string, unknown> = { method: form.primaryMethod, url: form.url };
+    if (form.orderedMethods.length > 1) request.methods = form.orderedMethods;
+    if (auth && auth !== '__new__') request.auth = auth;
+    if (form.queryValue !== undefined) request.query = form.queryValue;
+    if (form.headersValue !== undefined) request.headers = form.headersValue;
+    if (form.bodyValue !== undefined) request.body = form.bodyValue;
+    if (wrapFieldBodyFormatEl.value) request.bodyFormat = wrapFieldBodyFormatEl.value;
+    if (form.original?.request?.timeoutMs) request.timeoutMs = form.original.request.timeoutMs;
+
+    const wrapper: Record<string, unknown> = {
+      schemaVersion: 1,
+      id: form.id,
+      name: form.name,
+      request,
+      inputSchema: form.inputSchemaValue,
+      mutating: wrapFieldMutatingEl.checked,
+    };
+    if (form.description) wrapper.description = form.description;
+    if (form.responseValue !== undefined) wrapper.response = form.responseValue;
+    if (wrapFieldNotesEl.value.trim()) wrapper.notes = wrapFieldNotesEl.value.trim();
+    if (form.original?.exposeAsTool !== undefined) wrapper.exposeAsTool = form.original.exposeAsTool;
+    if (form.original?.lastVerified !== undefined) wrapper.lastVerified = form.original.lastVerified;
+    return wrapper;
+  }
+
+  wrapWrapperFormEl.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const form = readWrapperForm();
+    if (form.errors.length) {
+      showWrapperResult('error', form.errors.join(' '));
+      return;
+    }
 
     wrapWrapperSaveEl.disabled = true;
     wrapWrapperSaveEl.classList.add('loading');
     try {
-      if (auth === '__new__') {
-        const credentialName = wrapCredentialNameEl.value.trim();
-        const credentialValue = wrapCredentialValueEl.value;
-        const allowedHosts = wrapCredentialHostsEl.value.trim() || hostFromUrl(url);
-        if (!credentialName || !credentialValue || !allowedHosts) {
-          showWrapperResult('error', 'New credential needs a name, value, and allowed host.');
-          return;
-        }
+      const auth = await resolveWrapperAuth(wrapFieldAuthEl.value, form.url);
+      if (auth === null) return;
 
-        const header = wrapCredentialHeaderEl.value.trim() || 'Authorization';
-        const prefix =
-          header.toLowerCase() !== 'authorization' && wrapCredentialPrefixEl.value === 'Bearer '
-            ? ''
-            : wrapCredentialPrefixEl.value;
-        const credential = await window.electronAPI?.setWrapSecret({
-          name: credentialName,
-          value: credentialValue,
-          allowedHosts,
-          header,
-          prefix,
-        });
-        if (!credential?.ok) {
-          showWrapperResult('error', `Credential rejected: ${(credential?.errors || []).join('; ') || 'unknown error'}`);
-          return;
-        }
-
-        auth = credentialName;
-        await loadWrapSettings();
-        wrapFieldAuthEl.value = credentialName;
-        updateCredentialPanel();
-      }
-
-      const request: Record<string, unknown> = { method: primaryMethod, url };
-      if (orderedMethods.length > 1) request.methods = orderedMethods;
-      if (auth && auth !== '__new__') request.auth = auth;
-      if (queryValue !== undefined) request.query = queryValue;
-      if (headersValue !== undefined) request.headers = headersValue;
-      if (bodyValue !== undefined) request.body = bodyValue;
-      if (wrapFieldBodyFormatEl.value) request.bodyFormat = wrapFieldBodyFormatEl.value;
-      if (original?.request?.timeoutMs) request.timeoutMs = original.request.timeoutMs;
-
-      const wrapper: Record<string, unknown> = {
-        schemaVersion: 1,
-        id,
-        name,
-        request,
-        inputSchema: inputSchemaValue,
-        mutating: wrapFieldMutatingEl.checked,
-      };
-      if (description) wrapper.description = description;
-      if (responseValue !== undefined) wrapper.response = responseValue;
-      if (wrapFieldNotesEl.value.trim()) wrapper.notes = wrapFieldNotesEl.value.trim();
-      if (original?.exposeAsTool !== undefined) wrapper.exposeAsTool = original.exposeAsTool;
-      if (original?.lastVerified !== undefined) wrapper.lastVerified = original.lastVerified;
-
-      const result = await window.electronAPI?.saveWrapWrapper(wrapper);
+      const result = await window.electronAPI?.saveWrapWrapper(buildWrapperPayload(form, auth));
       if (result?.ok) {
-        const savedId = result.wrapper?.id || id;
+        const savedId = result.wrapper?.id || form.id;
         await loadWrapWrappers(savedId, false);
         wrapWrapperModalEl.close();
       } else {

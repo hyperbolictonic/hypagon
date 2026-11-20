@@ -44,11 +44,10 @@
       "main/browser-chassis.ts": {
         "class": 1,
         "file": 1,
-        "function": 3
+        "function": 1
       },
       "renderer/main.ts": {
-        "file": 1,
-        "function": 1
+        "file": 1
       }
     }
   }

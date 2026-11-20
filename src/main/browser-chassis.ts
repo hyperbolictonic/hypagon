@@ -637,111 +637,19 @@ export class BrowserChassis {
         this.setZoom({ action });
       },
       onTakeoverShortcut: () => this.toggleHumanControl(),
-      onRendererGone: (tab, details) => {
-        logMainEvent('tab-renderer-gone', {
-          tabId: tab.id,
-          url: tab.url,
-          reason: details.reason,
-          exitCode: details.exitCode,
-        });
-        if (details.reason === 'clean-exit') return;
-        setTimeout(() => {
-          const live = this.tabManager?.allTabs().find((candidate) => candidate.id === tab.id);
-          if (!live || live.view.webContents.isDestroyed()) return;
-          try {
-            live.view.webContents.reload();
-          } catch {
-            // The tab was closed while the renderer was restarting.
-          }
-          this.reassertViewport();
-        }, 600);
-      },
-      onTabUpdated: (tab: TabInstance) => {
-        if (tab.id === this.tabManager?.getActiveTabId()) {
-          this.state.currentUrl = tab.url;
-          this.state.pageTitle = tab.title;
-          this.state.isLoading = tab.isLoading;
-          this.state.activeTabId = tab.id;
-          this.broadcastState();
-
-          if (!tab.isLoading) this.bumpRevision();
-
-          // Re-arm the takeover listener after every document (listeners die with the page).
-          if (!tab.isLoading && tab.url && !tab.url.startsWith('mark-eleven:') && tab.url !== 'about:blank') {
-            void tab.view.webContents.executeJavaScript(humanListenerScript()).catch(() => null);
-          }
-          if (!tab.isLoading && tab.url && !tab.url.startsWith('mark-eleven:') && tab.url !== 'about:blank') {
-            this.indexTabQuietly(tab);
-          }
-        }
-      },
+      onRendererGone: (tab, details) => this.handleRendererGone(tab, details),
+      onTabUpdated: (tab: TabInstance) => this.handleTabUpdated(tab),
       onTabsChanged: (tabs: TabSummary[]) => {
         this.state.tabs = tabs;
         this.broadcastState();
         this.trayManager?.updateStatus(this.state.agentStatus, tabs.length, !!this.hilManager.getActiveRequest());
         this.sendToSurfaces('chassis:tabs-updated', tabs);
       },
-      onTabCreated: (tab: TabInstance) => {
-        this.networkInterceptor.attach(tab.view.webContents);
-        this.viewportController?.registerTab(tab);
-        // A tab created while force-open is armed must be patched *before* its document runs.
-        // onTabCreated fires before the first load, but CDP arming is async; if the first document
-        // already started, reload once so the patch is actually present.
-        void this.syncForceOpenFor(tab.view.webContents).then((result) => {
-          if (result.changed && result.armed && !tab.view.webContents.isDestroyed()) {
-            setTimeout(() => {
-              try {
-                tab.view.webContents.reload();
-              } catch {}
-            }, 60);
-          }
-        });
-      },
+      onTabCreated: (tab: TabInstance) => this.handleTabCreated(tab),
       onViewAdded: () => this.bringSidebarToFront(),
       onTabClosed: (tabId) => this.viewportController?.unregisterTab(tabId),
       onLog: (level, msg) => this.addLog(level, msg),
-      onConsoleLog: (log) => {
-        this.targetConsoleLogs.push(log);
-        if (this.targetConsoleLogs.length > 200) this.targetConsoleLogs.shift();
-        // Takeover channel: the page reports trusted pointer/key/wheel activity with a magic prefix.
-        const human = this.humanMonitor.ingest(log.message);
-        if (human) this.noteHumanInput(human);
-        if (log.message === COLLABORATION_EXIT_PREFIX) {
-          this.setCollabMode(false);
-        }
-        if (log.message.startsWith(COLLABORATION_RESOLVE_PREFIX)) {
-          try {
-            const payload = JSON.parse(log.message.slice(COLLABORATION_RESOLVE_PREFIX.length));
-            if (typeof payload?.id === 'string') void this.resolveCollaborationNote(payload.id);
-          } catch {
-            this.addLog('warn', 'Collaboration note resolve signal was invalid.');
-          }
-        }
-        if (log.message.startsWith(COLLABORATION_NOTE_PREFIX)) {
-          try {
-            const note = JSON.parse(log.message.slice(COLLABORATION_NOTE_PREFIX.length));
-            if (note?.target && typeof note.text === 'string') {
-              this.onCollaborationNote?.({
-                target: note.target,
-                text: note.text,
-                tags: Array.isArray(note.tags) ? note.tags.filter((tag: unknown): tag is string => typeof tag === 'string') : [],
-              });
-            }
-          } catch {}
-        }
-        if (log.message.startsWith(COLLABORATION_CLASS_PREFIX)) {
-          try {
-            const edit = JSON.parse(log.message.slice(COLLABORATION_CLASS_PREFIX.length));
-            if (edit?.target) {
-              this.collaborationClassListener?.(
-                edit.target,
-                Array.isArray(edit.added) ? edit.added.map(String) : [],
-                Array.isArray(edit.removed) ? edit.removed.map(String) : [],
-              );
-            }
-          } catch {}
-        }
-      },
+      onConsoleLog: (log) => this.handleTargetConsoleLog(log),
     });
 
     this.addLog('info', `Stealth Profile Active: Spoofing host ${this.hostProfile.name} v${this.hostProfile.version}`);
@@ -754,6 +662,114 @@ export class BrowserChassis {
       this.tabManager?.updateActiveTabBounds();
       this.viewportController?.scheduleRefresh();
     });
+  }
+
+/** When to use: a tab's console line — takeover channel, collaboration signals, human activity. */
+  private handleTargetConsoleLog(log: { level: string; message: string; line: number; sourceId: string; timestamp: number }): void {
+
+    this.targetConsoleLogs.push(log);
+    if (this.targetConsoleLogs.length > 200) this.targetConsoleLogs.shift();
+    // Takeover channel: the page reports trusted pointer/key/wheel activity with a magic prefix.
+    const human = this.humanMonitor.ingest(log.message);
+    if (human) this.noteHumanInput(human);
+    if (log.message === COLLABORATION_EXIT_PREFIX) {
+      this.setCollabMode(false);
+    }
+    if (log.message.startsWith(COLLABORATION_RESOLVE_PREFIX)) {
+      try {
+        const payload = JSON.parse(log.message.slice(COLLABORATION_RESOLVE_PREFIX.length));
+        if (typeof payload?.id === 'string') void this.resolveCollaborationNote(payload.id);
+      } catch {
+        this.addLog('warn', 'Collaboration note resolve signal was invalid.');
+      }
+    }
+    if (log.message.startsWith(COLLABORATION_NOTE_PREFIX)) {
+      try {
+        const note = JSON.parse(log.message.slice(COLLABORATION_NOTE_PREFIX.length));
+        if (note?.target && typeof note.text === 'string') {
+          this.onCollaborationNote?.({
+            target: note.target,
+            text: note.text,
+            tags: Array.isArray(note.tags) ? note.tags.filter((tag: unknown): tag is string => typeof tag === 'string') : [],
+          });
+        }
+      } catch {}
+    }
+    if (log.message.startsWith(COLLABORATION_CLASS_PREFIX)) {
+      try {
+        const edit = JSON.parse(log.message.slice(COLLABORATION_CLASS_PREFIX.length));
+        if (edit?.target) {
+          this.collaborationClassListener?.(
+            edit.target,
+            Array.isArray(edit.added) ? edit.added.map(String) : [],
+            Array.isArray(edit.removed) ? edit.removed.map(String) : [],
+          );
+        }
+      } catch {}
+    }
+  }
+
+  /** When to use: the active tab's own state changed (URL, title, loading) — refresh and re-arm. */
+  private handleTabUpdated(tab: TabInstance): void {
+
+    if (tab.id === this.tabManager?.getActiveTabId()) {
+      this.state.currentUrl = tab.url;
+      this.state.pageTitle = tab.title;
+      this.state.isLoading = tab.isLoading;
+      this.state.activeTabId = tab.id;
+      this.broadcastState();
+
+      if (!tab.isLoading) this.bumpRevision();
+
+      // Re-arm the takeover listener after every document (listeners die with the page).
+      if (!tab.isLoading && tab.url && !tab.url.startsWith('mark-eleven:') && tab.url !== 'about:blank') {
+        void tab.view.webContents.executeJavaScript(humanListenerScript()).catch(() => null);
+      }
+      if (!tab.isLoading && tab.url && !tab.url.startsWith('mark-eleven:') && tab.url !== 'about:blank') {
+        this.indexTabQuietly(tab);
+      }
+    }
+  }
+
+  /** When to use: a new tab exists — attach the interceptor, register it, arm force-open. */
+  private handleTabCreated(tab: TabInstance): void {
+
+    this.networkInterceptor.attach(tab.view.webContents);
+    this.viewportController?.registerTab(tab);
+    // A tab created while force-open is armed must be patched *before* its document runs.
+    // onTabCreated fires before the first load, but CDP arming is async; if the first document
+    // already started, reload once so the patch is actually present.
+    void this.syncForceOpenFor(tab.view.webContents).then((result) => {
+      if (result.changed && result.armed && !tab.view.webContents.isDestroyed()) {
+        setTimeout(() => {
+          try {
+            tab.view.webContents.reload();
+          } catch {}
+        }, 60);
+      }
+    });
+  }
+
+  /** When to use: a tab's renderer died — log it and reload once unless it exited cleanly. */
+  private handleRendererGone(tab: TabInstance, details: Electron.RenderProcessGoneDetails): void {
+
+    logMainEvent('tab-renderer-gone', {
+      tabId: tab.id,
+      url: tab.url,
+      reason: details.reason,
+      exitCode: details.exitCode,
+    });
+    if (details.reason === 'clean-exit') return;
+    setTimeout(() => {
+      const live = this.tabManager?.allTabs().find((candidate) => candidate.id === tab.id);
+      if (!live || live.view.webContents.isDestroyed()) return;
+      try {
+        live.view.webContents.reload();
+      } catch {
+        // The tab was closed while the renderer was restarting.
+      }
+      this.reassertViewport();
+    }, 600);
   }
 
   public getViewportBounds(): { x: number; y: number; width: number; height: number } {
@@ -1770,7 +1786,8 @@ export class BrowserChassis {
     return this.zoomRuntime.set(input);
   }
 
-  private registerIpcHandlers() {
+  /** When to use: registering the shell, navigation and input-profile channels. */
+  private registerChassisIpc(): void {
     ipcMain.on('chassis:hud-heartbeat', () => {
       this.hudLastHeartbeat = Date.now();
     });
@@ -1811,7 +1828,10 @@ export class BrowserChassis {
     ipcMain.handle('chassis:harvest', async () => {
       return await this.harvestMarkdown();
     });
+  }
 
+  /** When to use: registering the tab, zoom, viewport and devtools channels. */
+  private registerTabAndViewIpc(): void {
     // Tab IPC Handlers
     ipcMain.handle('chassis:get-tabs', () => this.getTabsSummary());
     ipcMain.handle('chassis:create-tab', (_, url?: string) => this.createTab(url));
@@ -1846,7 +1866,10 @@ export class BrowserChassis {
 
     ipcMain.handle('chassis:set-viewport-visibility', setVisibility);
     ipcMain.on('chassis:set-viewport-visibility', setVisibility);
+  }
 
+  /** When to use: registering the sidebar, orb-drag and collaboration channels. */
+  private registerSidebarIpc(): void {
     ipcMain.handle('chassis:get-sidebar-mode', () => this.getSidebarMode());
     ipcMain.handle('chassis:get-sidebar-state', () => this.getSidebarSurfaceState());
     // TEMP instrumentation: live bounds for verifying collab-mode geometry.
@@ -1910,7 +1933,10 @@ export class BrowserChassis {
     ipcMain.on('chassis:collab-navigate', (_: any, delta: number) => this.collabNavigate(delta));
     ipcMain.on('chassis:collab-toggle-list', (_: any, anchor?: { x: number; y: number; width: number; height: number }) =>
       this.collabToggleList(anchor));
+  }
 
+  /** When to use: registering the Cortex, decision-model and clipboard channels. */
+  private registerCortexAndSettingsIpc(): void {
     // Cortex & Bookmarks IPC Handlers
     ipcMain.handle('cortex:recall', async (_, query: string, options?: any) => {
       return await cortex.recall(query, options);
@@ -1966,7 +1992,13 @@ export class BrowserChassis {
     });
   }
 
-  public getCortex(): CortexDB {
+  /** When to use: once, from the constructor — every chassis IPC channel. */
+  private registerIpcHandlers(): void {
+    this.registerChassisIpc();
+    this.registerTabAndViewIpc();
+    this.registerSidebarIpc();
+    this.registerCortexAndSettingsIpc();
+  }  public getCortex(): CortexDB {
     return cortex;
   }
 
