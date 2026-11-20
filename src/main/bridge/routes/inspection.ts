@@ -77,7 +77,7 @@ const ROUTES: Record<string, Handler> = {
   'GET /screenshot': async (ctx) => {
     const maxWidthParam = ctx.url.searchParams.get('max_width');
     const qualityParam = ctx.url.searchParams.get('quality');
-    const screenshot = await ctx.chassis.takeScreenshot({
+    const screenshot = await ctx.chassis.screenshots.takeScreenshot({
       maxWidth: maxWidthParam !== null ? Number(maxWidthParam) : 768,
       format: (ctx.url.searchParams.get('format') || 'jpeg').toLowerCase() as 'jpeg' | 'png',
       quality: qualityParam !== null ? Number(qualityParam) : 70,
@@ -89,7 +89,7 @@ const ROUTES: Record<string, Handler> = {
     const body = await ctx.body();
     const maxFiles = body.maxFiles !== undefined ? Number(body.maxFiles) : 50;
     const maxAgeMs = body.maxAgeDays !== undefined ? Number(body.maxAgeDays) * 86400000 : 7 * 86400000;
-    ctx.json({ success: true, ...ctx.chassis.cleanupScreenshots(maxFiles, maxAgeMs) });
+    ctx.json({ success: true, ...ctx.chassis.screenshots.cleanupScreenshots(maxFiles, maxAgeMs) });
   },
 
   'POST /evaluate': async (ctx) => {

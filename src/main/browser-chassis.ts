@@ -63,6 +63,7 @@ import { logMainEvent } from './diagnostics/main-log.js';
 import { SessionVault, type SessionSnapshot } from './session/session-vault.js';
 import { SessionSurface } from './chassis/session-surface.js';
 import { JevSurface } from './chassis/jev-surface.js';
+import { ScreenshotSurface } from './chassis/screenshot-surface.js';
 import {
   NetworkInterceptor,
   type CapturedNetworkRequest,
@@ -137,6 +138,9 @@ export class BrowserChassis {
 
   /** When to use: `chassis.jevSurface` — JEV policy, index and section reads. */
   public jevSurface!: JevSurface;
+
+  /** When to use: `chassis.screenshots` — capture and housekeeping. */
+  public screenshots!: ScreenshotSurface;
   private jevBreaker = new FunnelBreaker();
   private jevStats = { blocked: 0, precheck: 0, bypassed: 0, loopBreaker: 0, blockedTokens: 0 };
   private shieldBreaker!: ShieldBreaker;
@@ -360,6 +364,16 @@ export class BrowserChassis {
       },
     };
     this.marksOverlay = new MarksOverlay();
+    this.screenshots = new ScreenshotSurface({
+      log: (level, message) => this.addLog(level, message),
+      webContents: () => this.getActiveWebContents(),
+      telemetry: (event) => this.emitTelemetry(event),
+      state: this.state,
+      broadcastState: () => this.broadcastState(),
+      viewportBounds: () => this.getViewportBounds(),
+      capturePageWithRetry: (wc, bounds) => this.capturePageWithRetry(wc, bounds),
+      zoomState: () => this.getZoomState(),
+    });
     this.scriptVault = new ScriptVault();
 
     this.prerenderEngine = new PrerenderEngine(
@@ -2505,18 +2519,6 @@ export class BrowserChassis {
     return `Scrolled ${direction} by ${amount}px${usedFallback ? ' (wheel was swallowed — scrolled the active scroll container instead)' : ''}`;
   }
 
-  public getScreenshotsDir(): string {
-    return screenshotsDir();
-  }
-
-  public cleanupScreenshots(maxFiles: number = 50, maxAgeMs: number = 7 * 24 * 60 * 60 * 1000): { prunedCount: number; remainingCount: number } {
-    const result = pruneScreenshots(maxFiles, maxAgeMs);
-    if (result.prunedCount > 0) {
-      this.addLog('info', `Disk Maintenance: Pruned ${result.prunedCount} old screenshots from data/screenshots/ (kept ${result.remainingCount})`);
-    }
-    return result;
-  }
-
   private async capturePageWithRetry(
     wc: Electron.WebContents,
     bounds: { x: number; y: number; width: number; height: number },
@@ -2547,65 +2549,6 @@ export class BrowserChassis {
     });
   }
 
-  public async takeScreenshot(opts: {
-    maxWidth?: number;
-    format?: 'jpeg' | 'png';
-    quality?: number;
-  } = {}): Promise<{
-    base64Image: string;
-    filePath: string;
-    width: number;
-    height: number;
-    mimeType: string;
-    zoom: ZoomState;
-    nativeWidth: number;
-    nativeHeight: number;
-    coordinateScale: number;
-  }> {
-    const wc = this.getActiveWebContents();
-    this.addLog('action', 'MCP Directive: take_screenshot()');
-
-    const bounds = this.getViewportBounds();
-    const rawImage = await this.capturePageWithRetry(wc, bounds);
-    const zoom = this.getZoomState();
-    const nativeSize = rawImage.getSize();
-
-    const maxWidth = opts.maxWidth !== undefined ? opts.maxWidth : 768;
-    const format = opts.format || 'jpeg';
-    const quality = opts.quality !== undefined ? opts.quality : 70;
-
-    let outImage = rawImage;
-    if (maxWidth > 0 && rawImage.getSize().width > maxWidth) {
-      outImage = rawImage.resize({ width: maxWidth, quality: 'good' });
-    }
-
-    const size = outImage.getSize();
-    const isJpeg = format === 'jpeg';
-    const mimeType = isJpeg ? 'image/jpeg' : 'image/png';
-    const buffer = isJpeg ? outImage.toJPEG(quality) : outImage.toPNG();
-    const base64Image = `data:${mimeType};base64,${buffer.toString('base64')}`;
-
-    // Save image to disk & run retention cleanup
-    const filePath = saveCapture(buffer, `screenshot_${Date.now()}.${isJpeg ? 'jpg' : 'png'}`);
-
-    this.emitTelemetry({
-      type: 'harvest',
-      timestamp: Date.now(),
-      details: `Captured live viewport screenshot: ${size.width}x${size.height}px (${mimeType}, ${(buffer.length / 1024).toFixed(1)} KB), saved to ${filePath}`,
-    });
-
-    return {
-      base64Image,
-      filePath,
-      width: size.width,
-      height: size.height,
-      mimeType,
-      zoom,
-      nativeWidth: nativeSize.width,
-      nativeHeight: nativeSize.height,
-      coordinateScale: zoom.viewport.css.width > 0 ? size.width / zoom.viewport.css.width : 1,
-    };
-  }
 
   public async harvestMarkdown(opts: { includeMarks?: boolean; includeOffscreen?: boolean } = {}): Promise<HarvestedConstruct> {
     const wc = this.getActiveWebContents();

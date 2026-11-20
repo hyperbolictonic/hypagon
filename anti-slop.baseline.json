@@ -5,8 +5,9 @@
   },
   "duplicates": {
     "files": {
-      "main/browser-chassis.ts": 116,
+      "main/browser-chassis.ts": 105,
       "main/chassis/jev-surface.ts": 12,
+      "main/chassis/screenshot-surface.ts": 11,
       "main/decide/decision-client.ts": 7,
       "main/decide/decision-guard.ts": 7,
       "main/media/ffmpeg.ts": 24,
