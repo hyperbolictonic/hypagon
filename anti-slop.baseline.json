@@ -31,11 +31,9 @@
       "mcp/tools-catalog.ts": 197,
       "mcp/wrap-server.ts": 149,
       "preload/index.ts": 52,
-      "renderer/main.ts": 111,
-      "renderer/research-panel.ts": 5,
-      "renderer/viewport-controls.ts": 4
+      "renderer/main.ts": 111
     },
-    "totalDuplicatedLines": 1235
+    "totalDuplicatedLines": 1226
   },
   "imports": {
     "cycles": []
@@ -90,10 +88,6 @@
         "file": 1
       },
       "renderer/main.ts": {
-        "file": 1,
-        "function": 1
-      },
-      "renderer/research-panel.ts": {
         "file": 1,
         "function": 1
       }
