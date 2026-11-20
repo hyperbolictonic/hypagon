@@ -39,7 +39,6 @@
       "main/media/settings.ts": 3,
       "main/media/transcript.ts": 2,
       "main/media/updater.ts": 2,
-      "main/menu/context-menu.ts": 2,
       "main/metrics.ts": 3,
       "main/migrate-user-data.ts": 1,
       "main/navigation-error.ts": 1,
@@ -214,9 +213,6 @@
       },
       "main/media/service.ts": {
         "file": 1
-      },
-      "main/menu/context-menu.ts": {
-        "function": 1
       },
       "main/network/network-interceptor.ts": {
         "function": 1
