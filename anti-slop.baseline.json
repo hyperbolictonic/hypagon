@@ -32,7 +32,8 @@
       "mcp/catalog/streams.ts": 26,
       "mcp/catalog/tabs.ts": 7,
       "preload/index.ts": 34,
-      "renderer/main.ts": 93
+      "renderer/connect-panel.ts": 20,
+      "renderer/main.ts": 73
     },
     "totalDuplicatedLines": 649
   },
