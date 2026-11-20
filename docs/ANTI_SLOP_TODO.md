@@ -11,14 +11,22 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **29 violations** across **19 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **28 violations** across **18 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **1,295 duplicated lines / 48,294 (2.7%)** | threshold is 3%; 31 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 207 files |
+| Duplicates | **1,270 duplicated lines / 48,530 (2.6%)** | threshold is 3%; 30 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 212 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
+- **Media service split** - `media/service.ts` 615 -> under budget: `media-types.ts` (published shapes),
+  `media-info.ts` (the `--dump-single-json` run and `buildInfo`), `media-read.ts` (`MediaReader`:
+  transcript paging, preview degradation, artifact resolution) and `media-artifacts.ts`
+  (`pickLanguage`, bounded `TranscriptCache`, `loadArtifacts`). `dlp-failure.ts` now owns the
+  timeout wording and stderr tail both `media-info` and `transcript` used to repeat — which removed an
+  accepted clone, so duplicates also fell. Verified: `test:media` 22/22 plus a 30-case probe
+  (metadata mapping, audio-only detection, language choice, cache TTL/eviction/index flags, failure
+  wording, missing-binary refusals, preview degradation, cookie handoff).
 - **Media jobs split** - `media/jobs.ts` 590 -> 300: `job-types.ts` (the published shapes and options),
   `job-queue.ts` (bounds, job factory, sort/count/prune), `job-history.ts` (fail-open load, atomic
   save, 250 ms debounced `JobHistoryWriter`) and `download-stream.ts` (the idle clock, the hard
