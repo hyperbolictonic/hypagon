@@ -11,14 +11,20 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **16 violations** across **8 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **15 violations** across **7 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **885 duplicated lines / 49,993 (1.8%)** | threshold is 3%; 24 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 256 files |
+| Duplicates | **863 duplicated lines / 50,145 (1.7%)** | threshold is 3%; 24 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 262 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
+- **Cortex split** - `cortex/cortex-db.ts` 841 -> 261 (connection + public API): `cortex-tables.ts`
+  (table creation/seeding, FTS index, the embedding-provider guard, history reset),
+  `history-store.ts` (index, hybrid recall, chronological history, clear), `bookmarks-store.ts`,
+  `scripts-store.ts`, `cortex-search.ts` (tokens, Arrow list coercion, cosine, SQL escaping) and
+  `cortex-types.ts`. The manual seed row and the two script-row mappers collapsed into helpers.
+  Verified: `test:cortex:bookmarks` 7/7, `test:harvest` 4/4, `test:research` 7/7.
 - **Input simulator split** - `telemetry/input-simulator.ts` 750 -> 143 (facade only): `cdp-input.ts`
   (debugger transport, native fallback, focus emulation), `mouse-control.ts` (glide, click, scroll,
   cursor state, emulation scale), `text-entry.ts` (typing, paste, insertText, named keys, clear),
