@@ -13,11 +13,17 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,457 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 351 files |
+| Duplicates | **604 duplicated lines / 51,461 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 352 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Sidebar state extracted** - `renderer/sidebar-state.ts` (20) now owns `sidebarState.mode`,
+  `sidebarState.collabModeOn`, `sidebarPanel`, `sidebarRailToggle` and the `SidebarMode` type.
+  This is the prerequisite the sidebar extraction needed: those four are read by both the sidebar
+  renderer and the toolbar handlers, so no range-based move could assign them. Verified:
+  `npx vite build`, `test:settings:dom` (192 ids).
 
 - **Renderer tab bar extracted** - `renderer/main.ts` 1693 -> 1637, `tab-bar.ts` 67. Acyclic:
   the module owns the tab list and the new-tab button; the entry point only calls `renderTabs`.
