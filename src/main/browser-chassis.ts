@@ -65,6 +65,7 @@ import { SessionSurface } from './chassis/session-surface.js';
 import { JevSurface } from './chassis/jev-surface.js';
 import { ScreenshotSurface } from './chassis/screenshot-surface.js';
 import { MarksSurface } from './chassis/marks-surface.js';
+import { WindowSurface } from './chassis/window-surface.js';
 import {
   NetworkInterceptor,
   type CapturedNetworkRequest,
@@ -145,6 +146,9 @@ export class BrowserChassis {
 
   /** When to use: `chassis.marks` — Set-of-Marks capture and actuation. */
   public marks!: MarksSurface;
+
+  /** When to use: `chassis.window` — visibility, focus and close-to-tray. */
+  public window!: WindowSurface;
   private jevBreaker = new FunnelBreaker();
   private jevStats = { blocked: 0, precheck: 0, bypassed: 0, loopBreaker: 0, blockedTokens: 0 };
   private shieldBreaker!: ShieldBreaker;
@@ -368,6 +372,10 @@ export class BrowserChassis {
       },
     };
     this.marksOverlay = new MarksOverlay();
+    this.window = new WindowSurface({
+      mainWindow: () => this.mainWindow,
+      trayManager: () => this.trayManager,
+    });
     this.marks = new MarksSurface({
       marksOverlay: this.marksOverlay,
       simulator: this.simulator,
@@ -478,7 +486,7 @@ export class BrowserChassis {
       getNetworkTraffic: (filter) => this.getNetworkTraffic(filter),
       getPageInfo: () => this.getPageInfo(),
       revision: () => this.revision,
-      windowFocused: () => this.isWindowFocused(),
+      windowFocused: () => this.window.isWindowFocused(),
       recordTransition: (record) => this.actionLedger.record(record),
     });
   }
@@ -4093,47 +4101,6 @@ export class BrowserChassis {
   }
 
   // System Tray & Window Visibility
-  public setWindowVisibility(visible: boolean, focus = true): void {
-    if (visible) {
-      this.trayManager?.showWindow(focus);
-    } else {
-      this.trayManager?.hideWindow();
-    }
-  }
-
-  public isWindowVisible(): boolean {
-    return this.trayManager ? this.trayManager.isWindowVisible() : true;
-  }
-
-  /** True when the app window currently owns OS focus (required for synthetic input). */
-  public isWindowFocused(): boolean {
-    try {
-      return Boolean(this.mainWindow && !this.mainWindow.isDestroyed() && this.mainWindow.isFocused());
-    } catch {
-      return false;
-    }
-  }
-
-  /** Brings the app window to the foreground (best effort). */
-  public focusWindow(): boolean {
-    try {
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        if (!this.mainWindow.isVisible()) this.trayManager?.showWindow();
-        this.mainWindow.show();
-        this.mainWindow.focus();
-        this.mainWindow.moveTop();
-      }
-    } catch {}
-    return this.isWindowFocused();
-  }
-
-  public setCloseToTray(enabled: boolean): void {
-    this.trayManager?.setCloseToTray(enabled);
-  }
-
-  public isCloseToTray(): boolean {
-    return this.trayManager ? this.trayManager.isCloseToTray() : true;
-  }
 
   // Human-In-The-Loop & Notifications
   public async requestHumanIntervention(

@@ -53,7 +53,7 @@ const deleteSession: Handler = async (ctx) => {
 };
 
 const windowState: Handler = async (ctx) => {
-  ctx.json({ success: true, visible: ctx.chassis.isWindowVisible(), focused: ctx.chassis.isWindowFocused() });
+  ctx.json({ success: true, visible: ctx.chassis.window.isWindowVisible(), focused: ctx.chassis.window.isWindowFocused() });
 };
 
 const ROUTES: Record<string, Handler> = {
@@ -160,25 +160,25 @@ const ROUTES: Record<string, Handler> = {
     // focus defaults to true for the human surface (tray menu, HIL, deck); agents
     // pass focus:false to lay the window out without stealing the foreground.
     const focus = body?.focus === undefined ? true : body.focus !== false;
-    ctx.chassis.setWindowVisibility(!!body.visible, focus);
-    if (body.visible && focus) ctx.chassis.focusWindow();
-    ctx.json({ success: true, visible: ctx.chassis.isWindowVisible(), focused: ctx.chassis.isWindowFocused() });
+    ctx.chassis.window.setWindowVisibility(!!body.visible, focus);
+    if (body.visible && focus) ctx.chassis.window.focusWindow();
+    ctx.json({ success: true, visible: ctx.chassis.window.isWindowVisible(), focused: ctx.chassis.window.isWindowFocused() });
   },
 
   'POST /window/focus': async (ctx) => {
-    ctx.json({ success: true, focused: ctx.chassis.focusWindow() });
+    ctx.json({ success: true, focused: ctx.chassis.window.focusWindow() });
   },
 
   'GET /window/tray': async (ctx) => {
-    ctx.json({ success: true, closeToTray: ctx.chassis.isCloseToTray() });
+    ctx.json({ success: true, closeToTray: ctx.chassis.window.isCloseToTray() });
   },
 
   'POST /window/tray': async (ctx) => {
     const body = await ctx.body();
     if (typeof body.closeToTray === 'boolean') {
-      ctx.chassis.setCloseToTray(body.closeToTray);
+      ctx.chassis.window.setCloseToTray(body.closeToTray);
     }
-    ctx.json({ success: true, closeToTray: ctx.chassis.isCloseToTray() });
+    ctx.json({ success: true, closeToTray: ctx.chassis.window.isCloseToTray() });
   },
 };
 

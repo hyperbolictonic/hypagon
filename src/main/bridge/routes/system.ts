@@ -30,7 +30,7 @@ function healthPayload(ctx: BridgeContext): Record<string, unknown> {
     capabilities: ctx.chassis.getCapabilities(),
     decision: decisionStatus(),
     lastActionAt: ctx.lastActionAt,
-    window: { visible: ctx.chassis.isWindowVisible(), focused: ctx.chassis.isWindowFocused() },
+    window: { visible: ctx.chassis.window.isWindowVisible(), focused: ctx.chassis.window.isWindowFocused() },
     input: { transport: ctx.chassis.getSimulator().lastInputTransport },
     human: { paused: ctx.chassis.isHumanActive(), ...ctx.chassis.getHumanStatus() },
     metrics: summary(),
