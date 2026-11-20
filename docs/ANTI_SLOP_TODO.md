@@ -11,14 +11,20 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **17 violations** across **9 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **16 violations** across **8 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **919 duplicated lines / 49,791 (1.8%)** | threshold is 3%; 25 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 250 files |
+| Duplicates | **885 duplicated lines / 49,993 (1.8%)** | threshold is 3%; 24 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 256 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
+- **Input simulator split** - `telemetry/input-simulator.ts` 750 -> 143 (facade only): `cdp-input.ts`
+  (debugger transport, native fallback, focus emulation), `mouse-control.ts` (glide, click, scroll,
+  cursor state, emulation scale), `text-entry.ts` (typing, paste, insertText, named keys, clear),
+  `key-tables.ts` (US-layout descriptors), `visual-cursor.ts` (the in-page ghost cursor) and
+  `input-types.ts` (the reporter shape, so no facade cycle). The click's two button events collapsed
+  into one helper. Verified: `test:human` 9/9, `test:act` 26/26, `test:primitives` 37/37.
 - **Wrap executor split** - `wrap/executor.ts` 773 -> 170, and its 273-line `execute()` is gone:
   `execute.ts` (the entry point and the one error boundary), `execute-prepare.ts` (validation,
   request building, credential resolution), `execute-fetch.ts` (pagination loop, audit, one OAuth2
