@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { formatMark } from './format-mark.js';
+import { normaliseUrl, requireUrl } from './tool-args.js';
 import { BRAND } from '../shared/brand.js';
 
 export interface ToolCatalogItem {
@@ -34,18 +35,7 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
       auto_dismiss_consent: z.boolean().optional().default(true).describe('Whether to automatically detect and dismiss cookie/GDPR consent overlays (default: true)'),
     },
     endpoint: '/navigate',
-    payload: (args) => {
-      let targetUrl = args?.url || args?.destination || args?.target || args?.link || args?.href || args?.address || '';
-      if (typeof targetUrl === 'string' && targetUrl) {
-        if (!/^https?:\/\//i.test(targetUrl) && !/^about:/i.test(targetUrl) && !/^mark-eleven:/i.test(targetUrl)) {
-          targetUrl = 'https://' + targetUrl;
-        }
-      }
-      if (!targetUrl) {
-        throw new Error('Missing destination URL. Please provide { "url": "https://..." }');
-      }
-      return { url: targetUrl, autoDismissConsent: args?.auto_dismiss_consent ?? true };
-    },
+    payload: (args) => ({ url: requireUrl(args), autoDismissConsent: args?.auto_dismiss_consent ?? true }),
     format: (data) => data.result || 'Navigation complete',
   },
   {
@@ -57,18 +47,7 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
       url: z.string().describe('The destination URL (e.g. "https://www.skyscanner.net")'),
     },
     endpoint: '/navigate',
-    payload: (args) => {
-      let targetUrl = args?.url || args?.destination || args?.target || args?.link || args?.href || args?.address || '';
-      if (typeof targetUrl === 'string' && targetUrl) {
-        if (!/^https?:\/\//i.test(targetUrl) && !/^about:/i.test(targetUrl) && !/^mark-eleven:/i.test(targetUrl)) {
-          targetUrl = 'https://' + targetUrl;
-        }
-      }
-      if (!targetUrl) {
-        throw new Error('Missing destination URL. Please provide { "url": "https://..." }');
-      }
-      return { url: targetUrl };
-    },
+    payload: (args) => ({ url: requireUrl(args) }),
     format: (data) => data.result || 'Navigation complete',
   },
 
@@ -320,15 +299,7 @@ export const TOOLS_CATALOG: ToolCatalogItem[] = [
       url: z.string().optional().describe('Initial URL to load (e.g. "https://news.ycombinator.com")'),
     },
     endpoint: '/tabs/new',
-    payload: (args) => {
-      let targetUrl = args?.url || args?.destination || args?.target || args?.link || args?.href || args?.address || '';
-      if (typeof targetUrl === 'string' && targetUrl) {
-        if (!/^https?:\/\//i.test(targetUrl) && !/^about:/i.test(targetUrl) && !/^mark-eleven:/i.test(targetUrl)) {
-          targetUrl = 'https://' + targetUrl;
-        }
-      }
-      return { url: targetUrl };
-    },
+    payload: (args) => ({ url: normaliseUrl(args) }),
     format: (data) => `Tab opened: ${data.tab?.id || data.tabId} (${data.tab?.url || data.url || 'about:blank'})`,
   },
   {

@@ -169,14 +169,14 @@
       "mcp/browser-mcp.ts": 36,
       "mcp/format-mark.ts": 7,
       "mcp/tool-groups.ts": 135,
-      "mcp/tools-catalog.ts": 255,
+      "mcp/tools-catalog.ts": 217,
       "mcp/wrap-server.ts": 153,
       "preload/index.ts": 52,
       "renderer/main.ts": 111,
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 2206
+    "totalDuplicatedLines": 2168
   },
   "modularity": {
     "files": {

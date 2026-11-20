@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 147 files, 635 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 148 files, 637 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -593,7 +593,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (58)
+## Modules (60)
 
 | File | Export | When to use |
 |---|---|---|
@@ -643,6 +643,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/browser-mcp.ts` | `createBridgeMcpServer` | - |
 | `mcp/browser-mcp.ts` | `normalizeIncomingParams` | - |
 | `mcp/format-mark.ts` | `formatMark` | Renders one Set-of-Marks entry as a compact, accessibility-aware line: |
+| `mcp/tool-args.ts` | `normaliseUrl` | When to use: a navigation tool payload — normalise the URL aliases and add a |
+| `mcp/tool-args.ts` | `requireUrl` | When to use: a navigation tool that cannot work without a URL — normalise the |
 | `mcp/wrap-server.ts` | `createWrapMcpServer` | - |
 | `mcp/wrap-tool-schema.ts` | `wrapInputToZodShape` | Convert a wrapper input schema into a Zod raw shape (one entry per property). |
 | `mcp/wrap-tool-schema.ts` | `generatedToolName` | Deterministic MCP-safe name for a wrapper: `wrap_` + id with every character outside |
