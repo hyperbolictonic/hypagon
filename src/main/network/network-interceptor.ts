@@ -78,68 +78,77 @@ export class NetworkInterceptor {
   }
 
   private async handleCdpMessage(wc: WebContents, method: string, params: any) {
-    if (method === 'Network.requestWillBeSent') {
-      const { requestId, request, type } = params;
-      const captured: CapturedNetworkRequest = {
-        requestId,
-        url: request.url,
-        method: request.method,
-        resourceType: type || 'Other',
-        requestTime: Date.now(),
-        requestHeaders: request.headers,
-        hasBody: false,
-      };
+    if (method === 'Network.requestWillBeSent') return this.captureRequest(params);
+    if (method === 'Network.responseReceived') return this.captureResponse(params);
+    if (method === 'Network.loadingFinished') return this.captureBody(wc, params);
+    this.captureStreamEvent(method, params);
+  }
 
-      this.requests.set(requestId, captured);
-      this.pruneBuffer();
-    } else if (method === 'Network.responseReceived') {
-      const { requestId, response } = params;
-      const captured = this.requests.get(requestId);
-      if (captured) {
-        captured.status = response.status;
-        captured.statusText = response.statusText;
-        captured.mimeType = response.mimeType;
-        captured.responseHeaders = response.headers;
-        captured.responseDurationMs = Date.now() - captured.requestTime;
-      }
-    } else if (method === 'Network.loadingFinished') {
-      const { requestId } = params;
-      const captured = this.requests.get(requestId);
-      if (!captured) return;
+  private captureRequest(params: any): void {
+    const { requestId, request, type } = params;
+    const captured: CapturedNetworkRequest = {
+      requestId,
+      url: request.url,
+      method: request.method,
+      resourceType: type || 'Other',
+      requestTime: Date.now(),
+      requestHeaders: request.headers,
+      hasBody: false,
+    };
 
-      // Only attempt to retrieve body for text/JSON or XHR/Fetch to save memory
-      const isXhrOrFetch = captured.resourceType === 'XHR' || captured.resourceType === 'Fetch';
-      const isJsonOrText =
-        captured.mimeType?.includes('json') ||
-        captured.mimeType?.includes('text') ||
-        captured.mimeType?.includes('javascript') ||
-        captured.mimeType?.includes('xml');
+    this.requests.set(requestId, captured);
+    this.pruneBuffer();
+  }
 
-      if (isXhrOrFetch || isJsonOrText) {
-        try {
-          if (wc && !wc.isDestroyed() && wc.debugger.isAttached()) {
-            const bodyRes = await wc.debugger.sendCommand('Network.getResponseBody', { requestId });
-            if (bodyRes && bodyRes.body) {
-              captured.hasBody = true;
-              this.payloads.set(requestId, {
-                body: bodyRes.body,
-                base64Encoded: bodyRes.base64Encoded || false,
-              });
+  private captureResponse(params: any): void {
+    const { requestId, response } = params;
+    const captured = this.requests.get(requestId);
+    if (!captured) return;
+    captured.status = response.status;
+    captured.statusText = response.statusText;
+    captured.mimeType = response.mimeType;
+    captured.responseHeaders = response.headers;
+    captured.responseDurationMs = Date.now() - captured.requestTime;
+  }
 
-              // Create preview snippet
-              const preview = bodyRes.body.slice(0, 300).trim();
-              captured.bodyPreview = preview.length === 300 ? preview + '...' : preview;
-            }
-          }
-        } catch {
-          // Some responses (redirects, 304s, CORS preflights) don't have bodies
+  private async captureBody(wc: WebContents, params: any): Promise<void> {
+    const { requestId } = params;
+    const captured = this.requests.get(requestId);
+    if (!captured) return;
+
+    // Only attempt to retrieve body for text/JSON or XHR/Fetch to save memory
+    const isXhrOrFetch = captured.resourceType === 'XHR' || captured.resourceType === 'Fetch';
+    const isJsonOrText =
+      captured.mimeType?.includes('json') ||
+      captured.mimeType?.includes('text') ||
+      captured.mimeType?.includes('javascript') ||
+      captured.mimeType?.includes('xml');
+    if (!isXhrOrFetch && !isJsonOrText) return;
+
+    try {
+      if (wc && !wc.isDestroyed() && wc.debugger.isAttached()) {
+        const bodyRes = await wc.debugger.sendCommand('Network.getResponseBody', { requestId });
+        if (bodyRes && bodyRes.body) {
+          captured.hasBody = true;
+          this.payloads.set(requestId, {
+            body: bodyRes.body,
+            base64Encoded: bodyRes.base64Encoded || false,
+          });
+
+          // Create preview snippet
+          const preview = bodyRes.body.slice(0, 300).trim();
+          captured.bodyPreview = preview.length === 300 ? preview + '...' : preview;
         }
       }
+    } catch {
+      // Some responses (redirects, 304s, CORS preflights) don't have bodies
     }
-    // WebSocket Lifecycle & Framing
-    else if (method === 'Network.webSocketCreated') {
-      const { requestId, url } = params;
-      this.streams.openWebSocket(requestId, url);
+  }
+
+  /** WebSocket lifecycle/framing and SSE messages. */
+  private captureStreamEvent(method: string, params: any): void {
+    if (method === 'Network.webSocketCreated') {
+      this.streams.openWebSocket(params.requestId, params.url);
     } else if (method === 'Network.webSocketClosed') {
       this.streams.close(params.requestId);
     } else if (method === 'Network.webSocketFrameSent') {
@@ -150,9 +159,7 @@ export class NetworkInterceptor {
       this.streams.record(requestId, 'websocket', 'received', response?.payloadData || '', response?.opcode);
     } else if (method === 'Network.webSocketFrameError') {
       this.streams.markError(params.requestId);
-    }
-    // Server-Sent Events (SSE / EventSource)
-    else if (method === 'Network.eventSourceMessageReceived') {
+    } else if (method === 'Network.eventSourceMessageReceived') {
       const { requestId, eventName, eventId, data } = params;
       const req = this.requests.get(requestId);
       this.streams.ensureSse(requestId, req?.url || 'event-source-stream');

@@ -61,33 +61,30 @@ export class StreamCapture {
 
   constructor(private readonly maxMessages: number = 500) {}
 
-  /** When to use: `Network.webSocketCreated` — always (re)creates the stream entry. */
-  public openWebSocket(streamId: string, url: string): void {
-    this.streams.set(streamId, {
+  /** One fresh stream entry; the only place its counters start at zero. */
+  private createStream(streamId: string, type: 'websocket' | 'sse', url: string): RealtimeStream {
+    const now = Date.now();
+    return {
       streamId,
-      type: 'websocket',
+      type,
       url,
       status: 'open',
-      createdAt: Date.now(),
+      createdAt: now,
       framesSentCount: 0,
       framesReceivedCount: 0,
-      lastActivity: Date.now(),
-    });
+      lastActivity: now,
+    };
+  }
+
+  /** When to use: `Network.webSocketCreated` — always (re)creates the stream entry. */
+  public openWebSocket(streamId: string, url: string): void {
+    this.streams.set(streamId, this.createStream(streamId, 'websocket', url));
   }
 
   /** When to use: `Network.eventSourceMessageReceived` before the first frame — creates once. */
   public ensureSse(streamId: string, url: string): void {
     if (this.streams.has(streamId)) return;
-    this.streams.set(streamId, {
-      streamId,
-      type: 'sse',
-      url,
-      status: 'open',
-      createdAt: Date.now(),
-      framesSentCount: 0,
-      framesReceivedCount: 0,
-      lastActivity: Date.now(),
-    });
+    this.streams.set(streamId, this.createStream(streamId, 'sse', url));
   }
 
   /** When to use: `Network.webSocketClosed`. */
