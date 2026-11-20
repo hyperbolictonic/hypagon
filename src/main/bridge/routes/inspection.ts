@@ -25,7 +25,7 @@ const ROUTES: Record<string, Handler> = {
     const full = ['1', 'true'].includes((params.get('full') || '').toLowerCase());
     // The hidden alias dumps the whole construct, so it passes through the same
     // hard funnel as observe(as:"markdown") with no budget or region.
-    const pre = await ctx.chassis.precheckJevPageRead({ as: 'markdown', full });
+    const pre = await ctx.chassis.jevSurface.precheckJevPageRead({ as: 'markdown', full });
     if (pre.blocked) {
       ctx.json({ success: false, error: 'Unscoped page reads are disabled while JEV enforce is on. Call jev_index, then read_section.', code: 'JEV_REQUIRED', ...(pre.refusal || {}) }, 409);
       return;
@@ -33,7 +33,7 @@ const ROUTES: Record<string, Handler> = {
     const construct = await ctx.chassis.harvestMarkdown({ includeMarks, includeOffscreen });
     const guard: { allowed: boolean; note?: string; refusal?: Record<string, any> } = pre.note
       ? { allowed: true, note: pre.note }
-      : ctx.chassis.guardJevPageRead({
+      : ctx.chassis.jevSurface.guardJevPageRead({
           as: 'markdown',
           full,
           pageTokens: construct.estimatedTokens || Math.ceil(String(construct.content || '').length / 4),
@@ -53,25 +53,25 @@ const ROUTES: Record<string, Handler> = {
   },
 
   'GET /jev/stats': async (ctx) => {
-    ctx.json({ success: true, ...ctx.chassis.getJevStats(), status: ctx.chassis.getJevStatus() });
+    ctx.json({ success: true, ...ctx.chassis.jevSurface.getJevStats(), status: ctx.chassis.jevSurface.getJevStatus() });
   },
 
   // JEV (Just-Enough-View) page compaction. Requires a decision model and the
   // optional JEV toggle; otherwise each route returns a clear error.
   'GET /jev/index': async (ctx) => {
-    ctx.json(await ctx.chassis.jevIndex());
+    ctx.json(await ctx.chassis.jevSurface.jevIndex());
   },
 
   'POST /jev/read': async (ctx) => {
     const body = await ctx.body();
     const sectionId = String(body.section_id ?? body.sectionId ?? '');
     const includeChildren = body.include_children === true || body.includeChildren === true;
-    ctx.json(ctx.chassis.jevReadSection(sectionId, includeChildren));
+    ctx.json(ctx.chassis.jevSurface.jevReadSection(sectionId, includeChildren));
   },
 
   'POST /jev/search': async (ctx) => {
     const body = await ctx.body();
-    ctx.json(ctx.chassis.jevSearch(String(body.query ?? '')));
+    ctx.json(ctx.chassis.jevSurface.jevSearch(String(body.query ?? '')));
   },
 
   'GET /screenshot': async (ctx) => {

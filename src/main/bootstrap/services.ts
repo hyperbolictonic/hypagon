@@ -72,7 +72,7 @@ export async function startServices(chassis: BrowserChassis, bridgePort: number,
     state.media = media;
     media.startUpdater();
     chassis.setCollabEnabledProvider(() => experimentalSettings().get().collab);
-    chassis.setJevPolicyProvider(() => jevPolicy());
+    chassis.jevSurface.setJevPolicyProvider(() => jevPolicy());
     // The deck toolbar's list + note cycling read exactly what the page overlay shows.
     chassis.setCollaborationThreadsProvider((filter) => collaboration.list(filter));
     chassis.setCollaborationOverlayRefresher(() => collaboration.refreshOverlay());

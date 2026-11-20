@@ -53,7 +53,7 @@ const ROUTES: Record<string, Handler> = {
     const settings = ctx.toolSettings?.load() ?? DEFAULT_TOOL_SETTINGS;
     // JEV availability is live bridge state, not a saved preference: the MCP server reads it
     // to lead tools/list with the index/read path and to mark the full-page dump as a fallback.
-    const policy = ctx.chassis.getJevPolicy();
+    const policy = ctx.chassis.jevSurface.getJevPolicy();
     ctx.json({
       success: true,
       ...settings,

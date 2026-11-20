@@ -90,9 +90,9 @@ const ROUTES: Record<string, Handler> = {
     const autoDismiss = body.autoDismissConsent !== undefined ? Boolean(body.autoDismissConsent) : true;
     const result = await ctx.chassis.navigateTo(navigateTarget(body), autoDismiss);
     // Live nudge at the moment reading starts: the index is cheap, the dump is not.
-    const guided = ctx.chassis.isJevEnforced()
+    const guided = ctx.chassis.jevSurface.isJevEnforced()
       ? `${result} | JEV ENFORCED: unscoped page reads are refused. Call jev_index, then read_section for only what you need.`
-      : ctx.chassis.isJevEnabled()
+      : ctx.chassis.jevSurface.isJevEnabled()
         ? `${result} | JEV ACTIVE: call jev_index before reading this page, then read_section for only what you need.`
         : result;
     ctx.json({ success: true, result: guided });
