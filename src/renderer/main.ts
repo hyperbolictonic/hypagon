@@ -100,6 +100,7 @@ import { hideUrlSuggestions } from './url-suggestions';
 import { navBackBtn, navForwardBtn, navReloadBtn } from './url-bar';
 import { renderZoom, setZoomPinned } from './zoom-controls';
 import { renderTabs } from './tab-bar';
+import { switchTab } from './hud-tabs';
 import { applyExperimentalSettings, refreshCollaborationCount } from './ipc-bootstrap';
 import './ipc-bootstrap';
 import { updateState } from './update-state';
@@ -273,40 +274,6 @@ setHarvestTabSink(() => switchTab('construct'));
 
 setDecisionSwitchSink((tab) => switchTab(tab));
 
-function switchTab(activeTab: 'telemetry' | 'construct' | 'logs' | 'decisions') {
-  tabBtnTelemetry.classList.toggle('tab-active', activeTab === 'telemetry');
-  tabBtnConstruct.classList.toggle('tab-active', activeTab === 'construct');
-  tabBtnLogs.classList.toggle('tab-active', activeTab === 'logs');
-  tabBtnDecisions.classList.toggle('tab-active', activeTab === 'decisions');
-
-  tabContentTelemetry.classList.toggle('hidden', activeTab !== 'telemetry');
-  tabContentConstruct.classList.toggle('hidden', activeTab !== 'construct');
-  tabContentLogs.classList.toggle('hidden', activeTab !== 'logs');
-  tabContentDecisions.classList.toggle('hidden', activeTab !== 'decisions');
-
-  tabContentConstruct.classList.toggle('flex', activeTab === 'construct');
-  tabContentLogs.classList.toggle('flex', activeTab === 'logs');
-  tabContentDecisions.classList.toggle('flex', activeTab === 'decisions');
-}
-
-tabBtnTelemetry.addEventListener('click', () => switchTab('telemetry'));
-tabBtnConstruct.addEventListener('click', () => switchTab('construct'));
-tabBtnLogs.addEventListener('click', () => {
-  switchTab('logs');
-  void refreshWebState();
-});
-
-initResearchPanel();
-initViewportControls();
-
-// ---- WEB STATE: breadcrumbs, cookies, localStorage/sessionStorage ----------
-tabBtnDecisions.addEventListener('click', () => switchTab('decisions'));
-
-// ---- Decision model mirror (tab appears only when a backend is configured) -------------------
-
-tabBtnDecisions.addEventListener('click', () => {
-  void syncDecisions();
-});
 
 // One-click copy for the HUD panels: selection + Ctrl+C is unreliable when a native menu or the
 // browsing view owns focus, and the construct panel already had a COPY button of its own.
