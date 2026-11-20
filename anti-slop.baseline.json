@@ -9,7 +9,8 @@
       "main/cortex/cortex-db.ts": 22,
       "main/decide/decision-client.ts": 7,
       "main/decide/decision-guard.ts": 7,
-      "main/hil/hil-manager.ts": 8,
+      "main/hil/hil-manager.ts": 56,
+      "main/hil/notifier.ts": 8,
       "main/index.ts": 83,
       "main/media/ffmpeg.ts": 24,
       "main/media/service.ts": 34,
@@ -39,7 +40,7 @@
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 1355
+    "totalDuplicatedLines": 1411
   },
   "imports": {
     "cycles": []

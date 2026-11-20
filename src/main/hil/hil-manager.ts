@@ -1,8 +1,8 @@
-import { BrowserWindow, Notification, nativeImage, app, ipcMain } from 'electron';
-import { pathToFileURL } from 'node:url';
-import path from 'node:path';
-import fs from 'node:fs';
+import { BrowserWindow, ipcMain } from 'electron';
 import { BRAND } from '../../shared/brand.js';
+import { HilNotifier, type NotificationOptions } from './notifier.js';
+
+export type { NotificationOptions } from './notifier.js';
 
 /** When to use: reading the active hand-off (id, reason, timeout, status) in the deck or bridge. */
 export interface HilRequest {
@@ -23,20 +23,12 @@ export interface HilResolution {
   notes?: string;
 }
 
-/** When to use: sending a desktop toast (title, message, urgency, sound). */
-export interface NotificationOptions {
-  title: string;
-  message: string;
-  urgency?: 'normal' | 'critical' | 'low';
-  sound?: boolean;
-}
-
-/** How often a still-pending hand-off re-toasts the human. */
 const REMINDER_INTERVAL_MS = 60_000;
 
 /** When to use: raising, resolving or inspecting human hand-offs; the deck and bridge share one instance. */
 export class HilManager {
   private mainWindow: BrowserWindow | null = null;
+  private notifier = new HilNotifier(() => this.mainWindow);
   private activeRequest: HilRequest | null = null;
   private activeResolver: ((res: HilResolution) => void) | null = null;
   private activeTimer: NodeJS.Timeout | null = null;
@@ -89,133 +81,16 @@ export class HilManager {
     ipcMain.handle('hil:reload', () => this.reloadActive());
   }
 
-  private resolveIconPath(): string | null {
-    const candidates = [
-      path.join(app.getAppPath(), 'public/assets/brand/hypagon-gateway-primary.png'),
-      path.join(app.getAppPath(), 'dist/assets/brand/hypagon-gateway-primary.png'),
-    ];
-
-    for (const p of candidates) {
-      if (fs.existsSync(p)) return p;
-    }
-    return null;
-  }
-
-  private resolveIcon(): Electron.NativeImage {
-    const iconPath = this.resolveIconPath();
-    if (!iconPath) return nativeImage.createEmpty();
-    try {
-      const img = nativeImage.createFromPath(iconPath);
-      return img.isEmpty() ? nativeImage.createEmpty() : img.resize({ width: 64, height: 64 });
-    } catch {
-      return nativeImage.createEmpty();
-    }
-  }
-
   /**
-   * Raw toast XML that asks Windows for the long on-screen slot.
-   *
-   * Windows dismisses a standard toast after a few seconds, and the plain
-   * `Notification` options cannot change that. A hand-off (`urgency: 'critical'`)
-   * must survive a glance-away, so it goes out as XML with `duration="long"`
-   * (~25s instead of ~7s). Audio and the icon live in the XML too: when
-   * `toastXml` is set the other display options are ignored.
-   */
-  private longToastXml(title: string, message: string, silent: boolean): string {
-    const esc = (value: string) =>
-      value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const iconPath = this.resolveIconPath();
-    const icon = iconPath
-      ? `<image placement="appLogoOverride" hint-crop="circle" src="${esc(pathToFileURL(iconPath).toString())}" />`
-      : '';
-    const audio = silent ? '<audio silent="true" />' : '<audio src="ms-winsoundevent:Notification.Default" />';
-    return (
-      `<toast duration="long">` +
-      `<visual><binding template="ToastGeneric">` +
-      `<text>${esc(title)}</text>` +
-      `<text>${esc(message)}</text>` +
-      icon +
-      `</binding></visual>` +
-      audio +
-      `</toast>`
-    );
-  }
-
-  /**
-   * Dispatches a native desktop OS notification.
+   * Dispatches a native desktop OS notification (delegates to the notifier).
    */
   public sendNotification(options: NotificationOptions): boolean {
-    try {
-      if (Notification.isSupported()) {
-        const silent = options.sound === false;
-        // Long-slot XML first; if Windows rejects it, the plain toast still fires —
-        // a hand-off alert must never disappear because a formatting path failed.
-        let notif: Notification | null = null;
-        if (process.platform === 'win32' && options.urgency === 'critical') {
-          try {
-            notif = new Notification({ toastXml: this.longToastXml(options.title || BRAND.product, options.message, silent) });
-          } catch {
-            notif = null;
-          }
-        }
-        if (!notif) {
-          notif = new Notification({
-            title: options.title || BRAND.product,
-            body: options.message,
-            icon: this.resolveIcon(),
-            urgency: options.urgency || 'normal',
-            silent,
-          });
-        }
-
-        notif.on('click', () => {
-          this.bringWindowToFront();
-        });
-
-        notif.show();
-        return true;
-      }
-    } catch {
-      // Fallback
-    }
-    return false;
+    return this.notifier.send(options);
   }
 
-  /**
-   * Summons and focuses the main cyberdeck window, flashing the taskbar.
-   *
-   * Used when the human themselves clicks a notification: that is explicit intent,
-   * so taking the foreground is correct here.
-   */
+  /** Focus the deck because the human clicked the toast (explicit intent). */
   public bringWindowToFront(): void {
-    if (!this.mainWindow || this.mainWindow.isDestroyed()) return;
-
-    if (this.mainWindow.isMinimized()) {
-      this.mainWindow.restore();
-    }
-    this.mainWindow.show();
-    this.mainWindow.focus();
-    this.mainWindow.flashFrame(true);
-  }
-
-  /**
-   * Surface the deck for a hand-off without stealing the foreground.
-   *
-   * The agent asking for help must never yank the window in front of someone who is
-   * mid-task. Unhide it, flash the taskbar and let the long-lived toast + deck panel
-   * wait; the human switches over when they choose (or clicks the toast, which does
-   * focus).
-   */
-  private surfaceWindow(): void {
-    if (!this.mainWindow || this.mainWindow.isDestroyed()) return;
-
-    if (this.mainWindow.isMinimized()) {
-      this.mainWindow.restore();
-    }
-    if (!this.mainWindow.isVisible()) {
-      this.mainWindow.showInactive();
-    }
-    this.mainWindow.flashFrame(true);
+    this.notifier.bringWindowToFront();
   }
 
   /**
@@ -249,7 +124,7 @@ export class HilManager {
     this.onHilStateChanged?.(true, request);
 
     // 1. Desktop Notification
-    this.sendNotification({
+    this.notifier.send({
       title: `⚠️ Action Required: ${BRAND.deck}`,
       message: `${options.reason} (The deck is waiting for you)`,
       urgency: 'critical',
@@ -262,7 +137,7 @@ export class HilManager {
     const nudge = () => {
       this.reminderTimer = setTimeout(() => {
         if (this.activeRequest?.id !== reqId || this.activeRequest.status !== 'pending') return;
-        this.sendNotification({
+        this.notifier.send({
           title: `⏳ Still waiting: ${BRAND.deck}`,
           message: `${options.reason.split('\n')[0].slice(0, 80)} — reopen the deck from the tray icon to answer it.`,
           urgency: 'critical',
@@ -276,7 +151,7 @@ export class HilManager {
     // 2. Surface the deck unless explicitly suppressed. Never steal focus: the
     // agent asking for help must not interrupt someone mid-task.
     if (options.bringToFront !== false) {
-      this.surfaceWindow();
+      this.notifier.surfaceWindow();
     }
 
     // 3. Notify the renderer: the Command Deck swaps into its hand-off panel.
