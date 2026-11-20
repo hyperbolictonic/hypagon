@@ -20,6 +20,61 @@ import { loadJevSettings } from './settings-jev';
 import { resetSettingsResult, showSettingsResult } from './settings-feedback';
 import { loadDecisionSettings, setDecisionBadgeVisible, setDecisionTabSink } from './settings-decision';
 import { wrapState } from './settings-wrap-store';
+import {
+  wrapWarningEl,
+  wrapFormEl,
+  wrapNameEl,
+  wrapHeaderEl,
+  wrapValueEl,
+  wrapHostsEl,
+  wrapPrefixEl,
+  wrapKindEl,
+  wrapOAuthEl,
+  wrapTokenUrlEl,
+  wrapClientIdEl,
+  wrapScopeEl,
+  wrapResultEl,
+  wrapRefreshEl,
+  wrapSaveEl,
+  wrapListEl,
+  wrapCancelEditEl,
+  wrapSubTabs,
+  wrapSubPanels,
+  wrapWrapperModalEl,
+  wrapWrapperCloseEl,
+  wrapWrapperCancelEl,
+  wrapWrapperListEl,
+  wrapWrapperFilterEl,
+  wrapWrapperHeadingEl,
+  wrapWrapperTitleEl,
+  wrapWrapperBadgeEl,
+  wrapWrapperFormEl,
+  wrapWrapperResultEl,
+  wrapWrapperSaveEl,
+  wrapWrapperDeleteEl,
+  wrapWrapperNewEl,
+  wrapWrapperRefreshEl,
+  wrapFieldNameEl,
+  wrapFieldIdEl,
+  wrapFieldDescriptionEl,
+  wrapFieldMethodEl,
+  wrapFieldUrlEl,
+  wrapFieldAuthEl,
+  wrapFieldMutatingEl,
+  wrapCredentialPanelEl,
+  wrapCredentialNameEl,
+  wrapCredentialValueEl,
+  wrapCredentialHostsEl,
+  wrapCredentialHeaderEl,
+  wrapCredentialPrefixEl,
+  wrapFieldInputSchemaEl,
+  wrapFieldQueryEl,
+  wrapFieldHeadersEl,
+  wrapFieldBodyEl,
+  wrapFieldBodyFormatEl,
+  wrapFieldResponseEl,
+  wrapFieldNotesEl,
+} from './settings-wrap-dom';
 import { hideUrlSuggestions } from './url-suggestions';
 import { cursorTrail } from './cursor-trail';
 import {
@@ -995,49 +1050,9 @@ if (settingsBtn && settingsModal) {
 
 
   // Hypagon REST secrets: write-only from this panel.
-  const wrapWarningEl = document.getElementById('settings-wrap-warning') as HTMLElement;
-  const wrapFormEl = document.getElementById('settings-wrap-secret-form') as HTMLFormElement;
-  const wrapNameEl = document.getElementById('settings-wrap-name') as HTMLInputElement;
-  const wrapHeaderEl = document.getElementById('settings-wrap-header') as HTMLInputElement;
-  const wrapValueEl = document.getElementById('settings-wrap-value') as HTMLInputElement;
-  const wrapHostsEl = document.getElementById('settings-wrap-hosts') as HTMLInputElement;
-  const wrapPrefixEl = document.getElementById('settings-wrap-prefix') as HTMLInputElement;
-  const wrapKindEl = document.getElementById('settings-wrap-kind') as HTMLSelectElement;
-  const wrapOAuthEl = document.getElementById('settings-wrap-oauth') as HTMLElement;
-  const wrapTokenUrlEl = document.getElementById('settings-wrap-token-url') as HTMLInputElement;
-  const wrapClientIdEl = document.getElementById('settings-wrap-client-id') as HTMLInputElement;
-  const wrapScopeEl = document.getElementById('settings-wrap-scope') as HTMLInputElement;
-  const wrapResultEl = document.getElementById('settings-wrap-result') as HTMLElement;
-  const wrapRefreshEl = document.getElementById('settings-wrap-refresh') as HTMLButtonElement;
-  const wrapSaveEl = document.querySelector<HTMLButtonElement>('#settings-wrap-secret-form button[type="submit"]');
-  const wrapListEl = document.getElementById('settings-wrap-secret-list') as HTMLElement;
-  const wrapCancelEditEl = document.getElementById('settings-wrap-cancel-edit') as HTMLButtonElement;
 
-  const wrapSubTabs = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-wrap-tab]'));
-  const wrapSubPanels = Array.from(document.querySelectorAll<HTMLElement>('[data-wrap-panel]'));
 
-  const wrapWrapperModalEl = document.getElementById('wrap-wrapper-modal') as HTMLDialogElement;
-  const wrapWrapperCloseEl = document.getElementById('settings-wrap-wrapper-close') as HTMLButtonElement;
-  const wrapWrapperCancelEl = document.getElementById('settings-wrap-wrapper-cancel') as HTMLButtonElement;
-  const wrapWrapperListEl = document.getElementById('settings-wrap-wrapper-list') as HTMLElement;
-  const wrapWrapperFilterEl = document.getElementById('settings-wrap-wrapper-filter') as HTMLInputElement;
-  const wrapWrapperHeadingEl = document.getElementById('settings-wrap-wrapper-heading') as HTMLElement;
-  const wrapWrapperTitleEl = document.getElementById('settings-wrap-wrapper-title') as HTMLElement;
-  const wrapWrapperBadgeEl = document.getElementById('settings-wrap-wrapper-badge') as HTMLElement;
-  const wrapWrapperFormEl = document.getElementById('settings-wrap-wrapper-form') as HTMLFormElement;
-  const wrapWrapperResultEl = document.getElementById('settings-wrap-wrapper-result') as HTMLElement;
-  const wrapWrapperSaveEl = document.getElementById('settings-wrap-wrapper-save') as HTMLButtonElement;
-  const wrapWrapperDeleteEl = document.getElementById('settings-wrap-wrapper-delete') as HTMLButtonElement;
-  const wrapWrapperNewEl = document.getElementById('settings-wrap-wrapper-new') as HTMLButtonElement;
-  const wrapWrapperRefreshEl = document.getElementById('settings-wrap-wrapper-refresh') as HTMLButtonElement;
 
-  const wrapFieldNameEl = document.getElementById('settings-wrap-field-name') as HTMLInputElement;
-  const wrapFieldIdEl = document.getElementById('settings-wrap-field-id') as HTMLInputElement;
-  const wrapFieldDescriptionEl = document.getElementById('settings-wrap-field-description') as HTMLInputElement;
-  const wrapFieldMethodEl = document.getElementById('settings-wrap-field-method') as HTMLSelectElement;
-  const wrapFieldUrlEl = document.getElementById('settings-wrap-field-url') as HTMLInputElement;
-  const wrapFieldAuthEl = document.getElementById('settings-wrap-field-auth') as HTMLSelectElement;
-  const wrapFieldMutatingEl = document.getElementById('settings-wrap-field-mutating') as HTMLInputElement;
 
   function selectedWrapMethods(): string[] {
     return Array.from(wrapFieldMethodEl.selectedOptions).map((option) => option.value);
@@ -1055,19 +1070,6 @@ if (settingsBtn && settingsModal) {
     if (methods.length) return methods.map((method: string) => String(method).toUpperCase());
     return [String(wrapper?.request?.method || 'GET').toUpperCase()];
   }
-  const wrapCredentialPanelEl = document.getElementById('settings-wrap-credential-panel') as HTMLElement;
-  const wrapCredentialNameEl = document.getElementById('settings-wrap-credential-name') as HTMLInputElement;
-  const wrapCredentialValueEl = document.getElementById('settings-wrap-credential-value') as HTMLInputElement;
-  const wrapCredentialHostsEl = document.getElementById('settings-wrap-credential-hosts') as HTMLInputElement;
-  const wrapCredentialHeaderEl = document.getElementById('settings-wrap-credential-header') as HTMLInputElement;
-  const wrapCredentialPrefixEl = document.getElementById('settings-wrap-credential-prefix') as HTMLInputElement;
-  const wrapFieldInputSchemaEl = document.getElementById('settings-wrap-field-input-schema') as HTMLTextAreaElement;
-  const wrapFieldQueryEl = document.getElementById('settings-wrap-field-query') as HTMLTextAreaElement;
-  const wrapFieldHeadersEl = document.getElementById('settings-wrap-field-headers') as HTMLTextAreaElement;
-  const wrapFieldBodyEl = document.getElementById('settings-wrap-field-body') as HTMLTextAreaElement;
-  const wrapFieldBodyFormatEl = document.getElementById('settings-wrap-field-body-format') as HTMLSelectElement;
-  const wrapFieldResponseEl = document.getElementById('settings-wrap-field-response') as HTMLTextAreaElement;
-  const wrapFieldNotesEl = document.getElementById('settings-wrap-field-notes') as HTMLInputElement;
 
   let wrapSecretsAvailable = true;
   let wrapSecretNames: string[] = [];
