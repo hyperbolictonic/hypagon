@@ -11,14 +11,21 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **30 violations** across **20 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **29 violations** across **19 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **1,295 duplicated lines / 48,083 (2.7%)** | threshold is 3%; 31 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 201 files |
+| Duplicates | **1,295 duplicated lines / 48,294 (2.7%)** | threshold is 3%; 31 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 207 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
+- **Media jobs split** - `media/jobs.ts` 590 -> 300: `job-types.ts` (the published shapes and options),
+  `job-queue.ts` (bounds, job factory, sort/count/prune), `job-history.ts` (fail-open load, atomic
+  save, 250 ms debounced `JobHistoryWriter`) and `download-stream.ts` (the idle clock, the hard
+  ceiling, progress/title parsing and the stderr tail). `job-files.ts` and `ytdlp-args.ts` keep the
+  spawn/kill/file-listing helpers and the yt-dlp argument + progress-line rules. Verified:
+  `test:media` 22/22 plus a 17-case probe (interrupted history, prune cap/order, counts, debounce
+  flush, progress/merger/title parsing, stderr tail, timer release).
 - **Crawl split** - `crawl/crawler.ts` 423 -> 229: `crawl/types.ts` holds the published shapes
   (`CrawlOptions`, `CrawlPage`, `CrawlOutcome`, `CrawlerDeps`) and `crawl/urls.ts` the pure rules
   (`normalizeUrl`, `matchesAnyPattern`, `linksFromMarkdown`). Re-exported from the crawler, so no
