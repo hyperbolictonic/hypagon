@@ -11,14 +11,21 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **28 violations** across **18 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **27 violations** across **17 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **1,270 duplicated lines / 48,530 (2.6%)** | threshold is 3%; 30 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 212 files |
+| Duplicates | **1,270 duplicated lines / 48,770 (2.6%)** | threshold is 3%; 30 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 215 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
+- **Remote service split** - `remote/service.ts` 565 -> 300 across `gateway-child.ts` (spawn, port
+  readiness, SIGTERM/SIGKILL tree, stderr tail, exit reporting), `tunnel.ts` (`RemoteTunnel`:
+  token/hostname persistence, `normalizeHostname`, enable/disable, public URL, status) and
+  `cloudflared-control.ts` (managed vs system binary, last check, install, automatic check).
+  Parameter properties were replaced with explicit fields after the remote suite caught that it
+  type-strips instead of transpiling. Verified: `npm run test:remote` — gateway smoke (19 tools),
+  remote service, remote OAuth all pass.
 - **Media service split** - `media/service.ts` 615 -> under budget: `media-types.ts` (published shapes),
   `media-info.ts` (the `--dump-single-json` run and `buildInfo`), `media-read.ts` (`MediaReader`:
   transcript paging, preview degradation, artifact resolution) and `media-artifacts.ts`
