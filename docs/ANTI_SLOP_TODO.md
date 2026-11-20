@@ -11,13 +11,23 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **8 violations** across **3 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **7 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **649 duplicated lines / 50,672 (1.3%)** | threshold is 3%; 16 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 310 files |
+| Duplicates | **649 duplicated lines / 50,925 (1.3%)** | threshold is 3%; 28 files with clones (the catalog entries moved with their existing clones; the total is unchanged) |
+| Import cycles | **0** | 5 layer rules pass across 330 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Tool catalog split** - `mcp/tools-catalog.ts` 2180 -> 60 (the assembly module). The 95 entries
+  now live in `mcp/catalog/` by family (navigation, interaction, tabs, memory, shield, downloads,
+  sessions, network, marks, scripts, streams, system, hil, primitives 1-5), with the entry shape and
+  the three shared formatters in `catalog/shared.ts`. `TOOLS_CATALOG` concatenates the families in
+  the original order, so registration order is unchanged. `scripts/test-mcp-contract.mjs` now reads
+  every catalog file, so the same parsers still validate names, endpoints, tiers and aliases.
+  Verified: `test:mcp:contract` (95 tools, 98/98 route checks), `test:mcp:surface` 35/35,
+  `npm run build:mcp`. The duplicate total is unchanged at 649 lines: the pre-existing entry-level
+  clones moved with their entries rather than growing.
 
 - **Primitives split** - `primitives/primitives.ts` 1836 -> 44 (the composed class + re-exports).
   The vocabulary moved to `types.ts` (host, options, wait grammar, guard inputs), the error to
