@@ -11,14 +11,24 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **32 violations** across **22 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **30 violations** across **20 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **1,295 duplicated lines / 47,936 (2.7%)** | threshold is 3%; 31 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 195 files |
+| Duplicates | **1,295 duplicated lines / 48,083 (2.7%)** | threshold is 3%; 31 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 201 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
+- **Crawl split** - `crawl/crawler.ts` 423 -> 229: `crawl/types.ts` holds the published shapes
+  (`CrawlOptions`, `CrawlPage`, `CrawlOutcome`, `CrawlerDeps`) and `crawl/urls.ts` the pure rules
+  (`normalizeUrl`, `matchesAnyPattern`, `linksFromMarkdown`). Re-exported from the crawler, so no
+  caller changed. Verified: `test:crawl` 7/7 (depth, budget, patterns, same-origin, LLM tier, Cortex).
+- **Secret store split** - `wrap/secrets.ts` 539 -> 292: `secret-types.ts` (published shapes and the
+  injected cipher/minter), `secret-storage.ts` (fail-closed read, atomic 0600 write, metadata), 
+  `secret-validation.ts` (every refusal rule, pure) and `oauth-mint.ts` (the client-credentials
+  exchange). The reorder surfaced one TDZ bug (`existing` looked up via `name` before declaration),
+  caught by inspection and fixed. Verified: `test:wrap` 55/55, `test:anyapi` 17/17, plus a 21-case
+  validation probe (name/value/hosts/header/prefix/OAuth2 rules, keep-existing, wildcard hosts).
 - **Docs gate closed** - 431 -> 0 undocumented exports (123 -> 0 files). The docs baseline is empty,
   so a new export without a usage line fails immediately.
 - **Network capture split** - `network-interceptor.ts` 424 -> 252 lines plus `network/stream-capture.ts`:
