@@ -11,6 +11,19 @@ import type { ExperimentalSettings } from '../shared/experimental.js';
 import type { MediaSettings, MediaUpdaterState } from '../shared/media.js';
 import type { ResearchEvent } from '../shared/research-events.js';
 
+/**
+ * Subscribe to a main-process event and return the unsubscribe function the
+ * renderer stores. Every channel used to repeat the same three lines
+ * (handler -> ipcRenderer.on -> removeListener); one helper keeps the pair
+ * correct, so a listener can never be registered without its removal.
+ */
+function subscribe<T>(channel: string, callback: (value: T) => void, map?: (raw: any) => T): () => void {
+  const handler = (_event: any, raw: any) => callback(map ? map(raw) : raw);
+  ipcRenderer.on(channel, handler);
+  return () => ipcRenderer.removeListener(channel, handler);
+}
+
+/** When to use: the preload bridge surface — every renderer call goes through `window.electronAPI`. */
 export interface ElectronAPI {
   getState: () => Promise<ChassisState>;
   getLatestConstruct: () => Promise<HarvestedConstruct | null>;
@@ -302,11 +315,7 @@ const api: ElectronAPI = {
   getSidebarMode: () => ipcRenderer.invoke('chassis:get-sidebar-mode'),
   setSidebarMode: (mode) => ipcRenderer.send('chassis:set-sidebar-mode', mode),
   toggleSidebarMode: () => ipcRenderer.send('chassis:toggle-sidebar-mode'),
-  onSidebarMode: (callback) => {
-    const handler = (_: any, mode: 'docked' | 'floating' | 'collapsed') => callback(mode);
-    ipcRenderer.on('chassis:sidebar-mode', handler);
-    return () => ipcRenderer.removeListener('chassis:sidebar-mode', handler);
-  },
+  onSidebarMode: (callback) => subscribe('chassis:sidebar-mode', callback),
   setSidebarOrbEdge: (edge: 'left' | 'right') => ipcRenderer.send('chassis:set-sidebar-orb-edge', edge),
   orbitDragMove: (dx, dy) => ipcRenderer.send('chassis:orbit-drag', { dx, dy }),
   orbitDragEnd: () => ipcRenderer.send('chassis:orbit-drag-end'),
@@ -316,11 +325,7 @@ const api: ElectronAPI = {
   escapeCollabUi: () => ipcRenderer.send('chassis:collab-escape'),
   getSidebarState: () => ipcRenderer.invoke('chassis:get-sidebar-state'),
   getSidebarBounds: () => ipcRenderer.invoke('chassis:get-sidebar-bounds'),
-  onSidebarState: (callback) => {
-    const handler = (_: any, state: SidebarSurfaceState) => callback(state);
-    ipcRenderer.on('chassis:sidebar-state', handler);
-    return () => ipcRenderer.removeListener('chassis:sidebar-state', handler);
-  },
+  onSidebarState: (callback) => subscribe('chassis:sidebar-state', callback),
 
   getTabs: () => ipcRenderer.invoke('chassis:get-tabs'),
   createTab: (url?: string) => ipcRenderer.invoke('chassis:create-tab', url),
@@ -349,18 +354,10 @@ const api: ElectronAPI = {
   getWebState: () => ipcRenderer.invoke('chassis:web-state'),
   getExperimentalSettings: () => ipcRenderer.invoke('settings:get-experimental'),
   saveExperimentalSettings: (patch: any) => ipcRenderer.invoke('settings:save-experimental', patch),
-  onExperimentalSettings: (callback) => {
-    const handler = (_: any, settings: any) => callback(settings);
-    ipcRenderer.on('experimental:settings', handler);
-    return () => ipcRenderer.removeListener('experimental:settings', handler);
-  },
+  onExperimentalSettings: (callback) => subscribe('experimental:settings', callback),
   getJevSettings: () => ipcRenderer.invoke('settings:get-jev'),
   saveJevSettings: (patch: { power?: boolean; mode?: 'prefer' | 'enforce' }) => ipcRenderer.invoke('settings:save-jev', patch),
-  onJevSettings: (callback) => {
-    const handler = (_: any, settings: any) => callback(settings);
-    ipcRenderer.on('jev:settings', handler);
-    return () => ipcRenderer.removeListener('jev:settings', handler);
-  },
+  onJevSettings: (callback) => subscribe('jev:settings', callback),
   getDecisionSettings: () => ipcRenderer.invoke('settings:get-decision'),
   saveDecisionSettings: (config: any) => ipcRenderer.invoke('settings:save-decision', config),
   testDecisionModel: () => ipcRenderer.invoke('settings:test-decision'),
@@ -370,61 +367,25 @@ const api: ElectronAPI = {
   checkForUpdates: () => ipcRenderer.invoke('app:update-check'),
   installUpdate: () => ipcRenderer.invoke('app:update-install'),
 
-  onUpdateStatus: (callback) => {
-    const handler = (_: any, state: any) => callback(state);
-    ipcRenderer.on('app:update-status', handler);
-    return () => ipcRenderer.removeListener('app:update-status', handler);
-  },
+  onUpdateStatus: (callback) => subscribe('app:update-status', callback),
 
-  onDecision: (callback) => {
-    const handler = (_: any, event: any) => callback(event);
-    ipcRenderer.on('chassis:decision', handler);
-    return () => ipcRenderer.removeListener('chassis:decision', handler);
-  },
+  onDecision: (callback) => subscribe('chassis:decision', callback),
 
-  onDecisionStatus: (callback) => {
-    const handler = (_: any, status: any) => callback(status);
-    ipcRenderer.on('chassis:decision-status', handler);
-    return () => ipcRenderer.removeListener('chassis:decision-status', handler);
-  },
+  onDecisionStatus: (callback) => subscribe('chassis:decision-status', callback),
 
-  onTabsUpdated: (callback) => {
-    const handler = (_: any, tabs: TabSummary[]) => callback(tabs);
-    ipcRenderer.on('chassis:tabs-updated', handler);
-    return () => ipcRenderer.removeListener('chassis:tabs-updated', handler);
-  },
+  onTabsUpdated: (callback) => subscribe('chassis:tabs-updated', callback),
 
-  onStateUpdated: (callback) => {
-    const handler = (_: any, state: ChassisState) => callback(state);
-    ipcRenderer.on('chassis:state-updated', handler);
-    return () => ipcRenderer.removeListener('chassis:state-updated', handler);
-  },
+  onStateUpdated: (callback) => subscribe('chassis:state-updated', callback),
 
-  onTelemetry: (callback) => {
-    const handler = (_: any, event: TelemetryEvent) => callback(event);
-    ipcRenderer.on('chassis:telemetry', handler);
-    return () => ipcRenderer.removeListener('chassis:telemetry', handler);
-  },
+  onTelemetry: (callback) => subscribe('chassis:telemetry', callback),
 
   researchRun: (opts) => ipcRenderer.invoke('research:run', opts),
 
-  onResearchEvent: (callback) => {
-    const handler = (_: any, event: ResearchEvent) => callback(event);
-    ipcRenderer.on('research:event', handler);
-    return () => ipcRenderer.removeListener('research:event', handler);
-  },
+  onResearchEvent: (callback) => subscribe('research:event', callback),
 
-  onConstructHarvested: (callback) => {
-    const handler = (_: any, construct: HarvestedConstruct) => callback(construct);
-    ipcRenderer.on('chassis:construct-harvested', handler);
-    return () => ipcRenderer.removeListener('chassis:construct-harvested', handler);
-  },
+  onConstructHarvested: (callback) => subscribe('chassis:construct-harvested', callback),
 
-  onLog: (callback) => {
-    const handler = (_: any, log: any) => callback(log);
-    ipcRenderer.on('chassis:log', handler);
-    return () => ipcRenderer.removeListener('chassis:log', handler);
-  },
+  onLog: (callback) => subscribe('chassis:log', callback),
 
   resolveHil: (id?: string, notes?: string) => ipcRenderer.invoke('hil:resolve', { id, notes }),
   cancelHil: (id?: string) => ipcRenderer.invoke('hil:cancel', { id }),
@@ -436,17 +397,9 @@ const api: ElectronAPI = {
 
   revalidateCitations: (opts) => ipcRenderer.invoke('research:revalidate', opts),
 
-  onHilRequested: (callback) => {
-    const handler = (_: any, req: any) => callback(req);
-    ipcRenderer.on('hil:requested', handler);
-    return () => ipcRenderer.removeListener('hil:requested', handler);
-  },
+  onHilRequested: (callback) => subscribe('hil:requested', callback),
 
-  onHilCleared: (callback) => {
-    const handler = () => callback();
-    ipcRenderer.on('hil:cleared', handler);
-    return () => ipcRenderer.removeListener('hil:cleared', handler);
-  },
+  onHilCleared: (callback) => subscribe('hil:cleared', callback),
 
   getRecordingConfig: () => ipcRenderer.invoke('recording:config:get'),
   getMediaSettings: () => ipcRenderer.invoke('media:settings:get'),
@@ -463,18 +416,10 @@ const api: ElectronAPI = {
   listCollaborationThreads: (filter?: any) => ipcRenderer.invoke('collaboration:list', filter),
   startCollaborationPicker: () => ipcRenderer.invoke('collaboration:start-picker'),
   getMenuPopupItems: () => ipcRenderer.invoke('menu-popup:items'),
-  onMenuPopupShow: (callback) => {
-    const handler = (_: any, items: PopupMenuItem[]) => callback(Array.isArray(items) ? items : []);
-    ipcRenderer.on('menu-popup:show', handler);
-    return () => ipcRenderer.removeListener('menu-popup:show', handler);
-  },
+  onMenuPopupShow: (callback) => subscribe('menu-popup:show', callback, (items: any) => (Array.isArray(items) ? items : [])),
   menuPopupSelect: (id: string, action?: string) => ipcRenderer.send('menu-popup:select', id, action),
   menuPopupClose: () => ipcRenderer.send('menu-popup:close'),
-  onCollaborationUpdated: (callback) => {
-    const handler = () => callback();
-    ipcRenderer.on('collaboration:updated', handler);
-    return () => ipcRenderer.removeListener('collaboration:updated', handler);
-  },
+  onCollaborationUpdated: (callback) => subscribe('collaboration:updated', callback),
   getRemoteInfo: () => ipcRenderer.invoke('remote:info'),
   setRemoteEnabled: (enabled: boolean) => ipcRenderer.invoke('remote:set-enabled', enabled),
   rotateRemoteToken: () => ipcRenderer.invoke('remote:rotate-token'),
@@ -496,23 +441,11 @@ const api: ElectronAPI = {
   recordingReady: () => ipcRenderer.send('recording:ready'),
   recordingFailed: (message: string) => ipcRenderer.send('recording:failed', message),
 
-  onRecordingBegin: (callback) => {
-    const handler = (_: any, payload: any) => callback(payload);
-    ipcRenderer.on('recording:begin', handler);
-    return () => ipcRenderer.removeListener('recording:begin', handler);
-  },
+  onRecordingBegin: (callback) => subscribe('recording:begin', callback),
 
-  onRecordingStop: (callback) => {
-    const handler = () => callback();
-    ipcRenderer.on('recording:stop', handler);
-    return () => ipcRenderer.removeListener('recording:stop', handler);
-  },
+  onRecordingStop: (callback) => subscribe('recording:stop', callback),
 
-  onRecordingStatus: (callback) => {
-    const handler = (_: any, state: any) => callback(state);
-    ipcRenderer.on('recording:status', handler);
-    return () => ipcRenderer.removeListener('recording:status', handler);
-  },
+  onRecordingStatus: (callback) => subscribe('recording:status', callback),
 
   listWrapSecrets: () => ipcRenderer.invoke('wrap:secrets:list'),
   setWrapSecret: (input: any) => ipcRenderer.invoke('wrap:secrets:set', input),

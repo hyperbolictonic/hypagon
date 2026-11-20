@@ -111,7 +111,6 @@
       "mcp/tool-groups.ts": 6,
       "mcp/tools-catalog.ts": 3,
       "mcp/wrap-server.ts": 1,
-      "preload/index.ts": 1,
       "renderer/menu-popup.ts": 1,
       "renderer/recording.ts": 4,
       "renderer/research-panel.ts": 1,
@@ -171,12 +170,12 @@
       "mcp/tool-groups.ts": 135,
       "mcp/tools-catalog.ts": 217,
       "mcp/wrap-server.ts": 153,
-      "preload/index.ts": 52,
+      "preload/index.ts": 32,
       "renderer/main.ts": 111,
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 2168
+    "totalDuplicatedLines": 2148
   },
   "modularity": {
     "files": {
@@ -248,9 +247,6 @@
       "mcp/wrap-server.ts": {
         "file": 1,
         "function": 1
-      },
-      "preload/index.ts": {
-        "file": 1
       },
       "renderer/main.ts": {
         "file": 1,
