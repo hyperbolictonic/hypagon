@@ -19,6 +19,7 @@ import { loadInputSettings } from './settings-input';
 import { loadJevSettings } from './settings-jev';
 import { resetSettingsResult, showSettingsResult } from './settings-feedback';
 import { loadDecisionSettings, setDecisionBadgeVisible, setDecisionTabSink } from './settings-decision';
+import { wrapState } from './settings-wrap-store';
 
 setDecisionTabSink(setDecisionTabVisible);
 
@@ -1265,9 +1266,7 @@ if (settingsBtn && settingsModal) {
   const wrapFieldNotesEl = document.getElementById('settings-wrap-field-notes') as HTMLInputElement;
 
   let wrapSecretsAvailable = true;
-  let wrapWrappers: any[] = [];
   let wrapSecretNames: string[] = [];
-  let selectedWrapperId: string | null = null;
   let editingSecretName: string | null = null;
   let wrapperIdTouched = false;
 
@@ -1302,15 +1301,15 @@ if (settingsBtn && settingsModal) {
     wrapWrapperListEl.replaceChildren();
     const query = wrapWrapperFilterEl.value.trim().toLowerCase();
     const visible = query
-      ? wrapWrappers.filter((wrapper) =>
+      ? wrapState.wrappers.filter((wrapper) =>
           `${wrapper.id} ${wrapper.name} ${safeHostLabel(wrapper.request?.url)}`.toLowerCase().includes(query),
         )
-      : wrapWrappers;
+      : wrapState.wrappers;
 
     if (!visible.length) {
       const empty = document.createElement('li');
       empty.className = 'font-mono text-[11px] text-base-content/50 px-1 py-2';
-      empty.textContent = wrapWrappers.length
+      empty.textContent = wrapState.wrappers.length
         ? 'No wrappers match that filter.'
         : 'No wrappers saved. Press NEW or ask an agent to create one.';
       wrapWrapperListEl.append(empty);
@@ -1322,7 +1321,7 @@ if (settingsBtn && settingsModal) {
       button.type = 'button';
       button.className =
         'w-full text-left rounded-box border px-3 py-2 transition-colors ' +
-        (wrapper.id === selectedWrapperId
+        (wrapper.id === wrapState.selectedId
           ? 'border-primary bg-primary/10'
           : 'border-base-100 bg-base-200/60 hover:bg-base-200');
       const id = document.createElement('div');
@@ -1422,7 +1421,7 @@ if (settingsBtn && settingsModal) {
     resetCredentialPanel();
 
     if (wrapper) {
-      selectedWrapperId = wrapper.id;
+      wrapState.selectedId = wrapper.id;
       wrapWrapperHeadingEl.textContent = 'EDIT WRAPPER';
       wrapWrapperTitleEl.textContent = wrapper.id;
       const bits = [wrapperMethods(wrapper).join('/')];
@@ -1449,7 +1448,7 @@ if (settingsBtn && settingsModal) {
       wrapWrapperDeleteEl.disabled = false;
       populateAuthOptions(wrapper.request?.auth || '');
     } else {
-      selectedWrapperId = null;
+      wrapState.selectedId = null;
       wrapWrapperHeadingEl.textContent = 'NEW WRAPPER';
       wrapWrapperTitleEl.textContent = 'Not saved';
       wrapWrapperBadgeEl.className = 'badge badge-ghost badge-xs font-mono hidden';
@@ -1477,7 +1476,7 @@ if (settingsBtn && settingsModal) {
   }
 
   function selectWrapWrapper(id: string, open = true): void {
-    const wrapper = wrapWrappers.find((entry) => entry.id === id);
+    const wrapper = wrapState.wrappers.find((entry) => entry.id === id);
     if (!wrapper) return;
     setWrapperForm(wrapper);
     if (open) openWrapWrapperModal();
@@ -1493,13 +1492,13 @@ if (settingsBtn && settingsModal) {
     try {
       const wrappers = await window.electronAPI?.listWrapWrappers();
       if (!Array.isArray(wrappers)) return;
-      wrapWrappers = wrappers;
-      const wanted = selectId ?? selectedWrapperId;
+      wrapState.wrappers = wrappers;
+      const wanted = selectId ?? wrapState.selectedId;
       const next = wanted ? wrappers.find((wrapper) => wrapper.id === wanted) : undefined;
       if (next) {
         selectWrapWrapper(next.id, open);
       } else {
-        selectedWrapperId = null;
+        wrapState.selectedId = null;
         wrapWrapperHeadingEl.textContent = 'NEW WRAPPER';
         wrapWrapperTitleEl.textContent = 'Not saved';
         wrapWrapperBadgeEl.className = 'badge badge-ghost badge-xs font-mono hidden';
@@ -1792,7 +1791,7 @@ if (settingsBtn && settingsModal) {
       if (!result.ok) errors.push(result.error);
     }
 
-    const original = selectedWrapperId ? wrapWrappers.find((wrapper) => wrapper.id === selectedWrapperId) : undefined;
+    const original = wrapState.selectedId ? wrapState.wrappers.find((wrapper) => wrapper.id === wrapState.selectedId) : undefined;
     const preferred = original?.request?.method;
     const primaryMethod =
       typeof preferred === 'string' && methods.includes(preferred.toUpperCase())
@@ -1915,9 +1914,9 @@ if (settingsBtn && settingsModal) {
   });
 
   wrapWrapperDeleteEl.addEventListener('click', async () => {
-    if (!selectedWrapperId) return;
-    if (!window.confirm(`Delete wrapper "${selectedWrapperId}"? Credentials are kept.`)) return;
-    const result = await window.electronAPI?.deleteWrapWrapper(selectedWrapperId);
+    if (!wrapState.selectedId) return;
+    if (!window.confirm(`Delete wrapper "${wrapState.selectedId}"? Credentials are kept.`)) return;
+    const result = await window.electronAPI?.deleteWrapWrapper(wrapState.selectedId);
     if (result?.ok) {
       await loadWrapWrappers(undefined, false);
       wrapWrapperModalEl.close();
