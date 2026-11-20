@@ -13,11 +13,20 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **649 duplicated lines / 51,064 (1.3%)** | threshold is 3%; 29 files with clones (relocated clones, unchanged total) |
-| Import cycles | **0** | 5 layer rules pass across 333 files |
+| Duplicates | **622 duplicated lines / 51,130 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 335 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Remote panel split** - `renderer/main.ts` 3399 -> 2985. `remote-panel.ts` (217) owns the element
+  handles, the status renderers and `loadRemotePanel`; `remote-actions.ts` (263) owns the
+  enable/token, tunnel, cloudflared, OAuth and session listeners. The seam is a namespace import
+  plus one destructure in the actions module, which keeps the `const` binding so TypeScript's
+  closure narrowing survives the `await`s. Two dedups fell out of isolating the code: one
+  `runRemoteAction` helper replaced three copies of the try/catch/finally block, and one
+  `wireCopyButton` replaced five copy handlers. Duplicates: 649 -> 622. Verified: `npx vite build`,
+  `test:settings:dom` (192 ids), `test:mcp:surface` 35/35.
 
 - **Renderer connect panel extracted** - `renderer/main.ts` 3676 -> 3399, `connect-panel.ts` 289.
   The block was fully isolated (zero external references, nothing declared inside leaked out), so it
