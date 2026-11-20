@@ -11,14 +11,27 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **21 violations** across **12 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **20 violations** across **11 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **1,135 duplicated lines / 49,250 (2.3%)** | threshold is 3%; 27 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 232 files |
+| Duplicates | **1,135 duplicated lines / 49,364 (2.3%)** | threshold is 3%; 27 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 236 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
+- **LLM surface split** - `llm/llm-surface.ts` 637 -> 232: `llm-types.ts` (published shapes),
+  `llm-net.ts` (session fetch, accept headers, content-type rules, `coded`), `llm-probe.ts`
+  (`LlmProbe`: origin/page probes, alternate ranking, `recommend`) and `llm-read.ts` (paging +
+  render fallback). Verified: `test:llm` 22/22 (page vs origin scope, anchor-discovered alternate,
+  render fallback reasons, paging/next_cursor).
+
+### Queued for the next session (still over the file budget)
+
+`mcp/wrap-server.ts` (728 + 1 function), `telemetry/input-simulator.ts` (750), `wrap/executor.ts`
+(773), `cortex/cortex-db.ts` (841), `index.ts` (866 + 1 function), `mcp/browser-mcp.ts` (1053 +
+2 functions) — then the five giants: `collaboration/overlay.ts` (1420), `primitives/primitives.ts`
+(1836), `mcp/tools-catalog.ts` (2180, with `scripts/test-mcp-contract.mjs` in the same commit),
+`renderer/main.ts` (3960), `browser-chassis.ts` (4637 + 3 functions + 16-method class).
 - **Marks overlay split** - `marks/marks-overlay.ts` 594 -> 168: the injected badge script is now
   three page-side phases (`injected-helpers.ts`, `injected-collect.ts`, `injected-assign.ts`) composed
   by `injected-script.ts`. The generated script was diffed against the previous build and is
