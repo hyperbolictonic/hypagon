@@ -11,14 +11,22 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **27 violations** across **17 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **23 violations** across **14 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **1,270 duplicated lines / 48,770 (2.6%)** | threshold is 3%; 30 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 215 files |
+| Duplicates | **1,190 duplicated lines / 49,078 (2.4%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 223 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
+- **Cheap-slice sweep** - the mid-size files are out of the modularity baseline: `tabs/tab-manager`
+  (513 -> 217 across `types.ts`, `tab-views.ts`, `popups.ts`, plus a shared `input/takeover-shortcut.ts`
+  the shell and tabs now both use), `renderer/research-panel` (514 -> 112 across `research-dom.ts`,
+  `research-controller.ts`, `research-citations.ts`, which also removed the 151-line event handler),
+  and `preload/index` (535 -> 269 across `api-types.ts`, with `ConnectInfo` moved to `shared/types.ts`
+  so the renderer no longer restates it). Verified: `test:mcp:surface` 35/35 (after teaching the suite
+  to forward `HB_BRIDGE_URL` to the spawned MCP server), `test:research` 7/7, `test:research:events`,
+  `test:act` 26/26, `vite build` clean.
 - **Remote service split** - `remote/service.ts` 565 -> 300 across `gateway-child.ts` (spawn, port
   readiness, SIGTERM/SIGKILL tree, stderr tail, exit reporting), `tunnel.ts` (`RemoteTunnel`:
   token/hostname persistence, `normalizeHostname`, enable/disable, public URL, status) and
