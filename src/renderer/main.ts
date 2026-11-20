@@ -88,6 +88,8 @@ import {
 import { hideUrlSuggestions } from './url-suggestions';
 import { renderZoom, setZoomPinned } from './zoom-controls';
 import { renderTabs } from './tab-bar';
+import { sidebarPanel, sidebarRailToggle, sidebarState } from './sidebar-state';
+import type { SidebarMode } from './sidebar-state';
 import { cursorTrail } from './cursor-trail';
 import {
   appendLog,
@@ -207,16 +209,12 @@ window.addEventListener('resize', resizeCanvas);
 const SIDEBAR_MODE = new URLSearchParams(window.location.search).has('sidebar');
 document.documentElement.classList.toggle('sidebar-mode', SIDEBAR_MODE);
 
-const sidebarPanel = document.getElementById('sidebar-panel') as HTMLElement | null;
 const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn') as HTMLButtonElement | null;
 const sidebarCollapseBtn = document.getElementById('sidebar-collapse-btn') as HTMLButtonElement | null;
 const sidebarDockBtn = document.getElementById('sidebar-dock-btn') as HTMLButtonElement | null;
-const sidebarRailToggle = document.getElementById('sidebar-rail-toggle') as HTMLButtonElement | null;
-type SidebarMode = 'docked' | 'floating' | 'collapsed';
-let currentSidebarMode: SidebarMode = 'floating';
 
 function applySidebarMode(mode: SidebarMode): void {
-  currentSidebarMode = mode;
+  sidebarState.mode = mode;
   document.documentElement.classList.toggle('sidebar-collapsed', mode === 'collapsed');
   document.documentElement.classList.toggle('sidebar-docked', mode === 'docked');
   document.documentElement.classList.toggle('sidebar-floating', mode === 'floating');
@@ -254,7 +252,7 @@ sidebarCollapseBtn?.addEventListener('click', () => {
   window.electronAPI?.setSidebarMode('collapsed');
 });
 sidebarDockBtn?.addEventListener('click', () => {
-  const target: SidebarMode = currentSidebarMode === 'docked' ? 'floating' : 'docked';
+  const target: SidebarMode = sidebarState.mode === 'docked' ? 'floating' : 'docked';
   applySidebarMode(target);
   window.electronAPI?.setSidebarMode(target);
 });
@@ -268,12 +266,12 @@ function applySidebarState(state: {
   applySidebarMode(state.mode);
   document.documentElement.classList.toggle('collab-mode', state.collabMode && state.mode === 'collapsed');
   document.documentElement.classList.toggle('collab-disabled', state.collabEnabled === false);
-  collabModeOn = state.collabMode && state.mode === 'collapsed';
+  sidebarState.collabModeOn = state.collabMode && state.mode === 'collapsed';
   const collabButton = document.getElementById('collab-btn');
-  collabButton?.classList.toggle('btn-warning', collabModeOn);
-  collabButton?.classList.toggle('btn-ghost', !collabModeOn);
-  collabButton?.classList.toggle('text-accent', !collabModeOn);
-  collabButton?.setAttribute('aria-pressed', String(collabModeOn));
+  collabButton?.classList.toggle('btn-warning', sidebarState.collabModeOn);
+  collabButton?.classList.toggle('btn-ghost', !sidebarState.collabModeOn);
+  collabButton?.classList.toggle('text-accent', !sidebarState.collabModeOn);
+  collabButton?.setAttribute('aria-pressed', String(sidebarState.collabModeOn));
   sidebarRailToggle?.classList.toggle('orb-left', state.orbEdge === 'left');
   try {
     localStorage.setItem('deck.orb-edge', state.orbEdge);
@@ -332,13 +330,12 @@ document.getElementById('collab-next-btn')?.addEventListener('click', () => wind
 document.getElementById('collab-list-btn')?.addEventListener('click', () => window.electronAPI?.collabToggleList());
 document.getElementById('collab-pick-btn')?.addEventListener('click', () => void window.electronAPI?.startCollaborationPicker());
 document.getElementById('collab-exit-btn')?.addEventListener('click', () => window.electronAPI?.setCollabMode(false));
-let collabModeOn = false;
 window.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
   if (document.activeElement instanceof HTMLInputElement) return;
   if (document.activeElement instanceof HTMLTextAreaElement) return;
   // Deck focus owns Escape while the note picker/toolbar is in play.
-  if (collabModeOn) window.electronAPI?.setCollabMode(false);
+  if (sidebarState.collabModeOn) window.electronAPI?.setCollabMode(false);
   else window.electronAPI?.escapeCollabUi();
 });
 
@@ -425,8 +422,8 @@ function setDeckHilMode(active: boolean, reason?: string): void {
   if (active) {
     // A hand-off must be visible: bring the deck into its docked slot, remembering
     // where it was so the user's layout comes back afterwards.
-    if (currentSidebarMode !== 'docked') {
-      hilRestoreMode = currentSidebarMode;
+    if (sidebarState.mode !== 'docked') {
+      hilRestoreMode = sidebarState.mode;
       applySidebarMode('docked');
       window.electronAPI?.setSidebarMode('docked');
     }
