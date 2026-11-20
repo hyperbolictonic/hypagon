@@ -11,14 +11,19 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **10 violations** across **5 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **9 violations** across **4 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **744 duplicated lines / 50,389 (1.5%)** | threshold is 3%; 24 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 280 files |
+| Duplicates | **744 duplicated lines / 50,512 (1.5%)** | threshold is 3%; 24 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 293 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
+- **Collaboration overlay split** - `collaboration/overlay.ts` 1420 -> 30 (prefixes + re-exports):
+  `overlay-css*.ts` (the stylesheet by surface: drawer, selection, layer, element bar, CSS popover),
+  `drawer-script-{shell,compose,events}.ts` (the note composer's three phases), `note-drawer.ts`,
+  `picker-script.ts` and `overlay-script.ts`. The three generated page scripts were diffed against
+  the previous build and are byte-identical. Verified: `test:collaboration`, `test:mcp:surface` 35/35.
 - **Browser MCP split** - `mcp/browser-mcp.ts` 946 -> 179 (assembly only): `browser-surface.ts`
   (bridge access, tool preferences moved out, result shaping, image/text content), `mcp-log.ts`
   (file-first diagnostics, shared with the other stdio servers), `browser-guide.ts` (the OKF guide
