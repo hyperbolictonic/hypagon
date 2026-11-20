@@ -100,6 +100,8 @@ import { hideUrlSuggestions } from './url-suggestions';
 import { navBackBtn, navForwardBtn, navReloadBtn } from './url-bar';
 import { renderZoom, setZoomPinned } from './zoom-controls';
 import { renderTabs } from './tab-bar';
+import { renderAppVersion } from './hud-copy';
+import './hud-copy';
 import { switchTab } from './hud-tabs';
 import { applyExperimentalSettings, refreshCollaborationCount } from './ipc-bootstrap';
 import './ipc-bootstrap';
@@ -198,12 +200,6 @@ const zoomOutBtn = document.getElementById('zoom-out-btn') as HTMLButtonElement 
 const zoomInBtn = document.getElementById('zoom-in-btn') as HTMLButtonElement | null;
 const zoomLevelBtn = document.getElementById('zoom-level-btn') as HTMLButtonElement | null;
 
-function renderAppVersion(version: string | undefined) {
-  if (!version) return;
-  if (chassisVersionBadge) chassisVersionBadge.textContent = `v${version}`;
-  if (aboutVersion) aboutVersion.textContent = `v${version}`;
-  document.title = `${BRAND.product} v${version}`;
-}
 
 void window.electronAPI
   ?.getConnectInfo?.()
@@ -277,21 +273,6 @@ setDecisionSwitchSink((tab) => switchTab(tab));
 
 // One-click copy for the HUD panels: selection + Ctrl+C is unreliable when a native menu or the
 // browsing view owns focus, and the construct panel already had a COPY button of its own.
-const copyLogsBtn = document.getElementById('copy-logs-btn') as HTMLButtonElement | null;
-copyLogsBtn?.addEventListener('click', async () => {
-  await window.electronAPI?.copyToClipboard(logsContainer.innerText);
-  copyLogsBtn.textContent = 'COPIED';
-  setTimeout(() => (copyLogsBtn.textContent = 'COPY'), 1200);
-});
-
-const copyDecisionsBtn = document.getElementById('copy-decisions-btn') as HTMLButtonElement | null;
-copyDecisionsBtn?.addEventListener('click', async () => {
-  await window.electronAPI?.copyToClipboard(decisionFeed.innerText);
-  copyDecisionsBtn.textContent = 'COPIED';
-  setTimeout(() => (copyDecisionsBtn.textContent = 'COPY'), 1200);
-});
-
-// The sidebar overlay is a hidden WebContentsView, so gating this on
 // document.visibilityState would stop it from ever re-checking the decision
 // backend. Keep the poll unconditional; it is one small IPC round-trip.
 setInterval(() => {
