@@ -15,6 +15,7 @@
  */
 import type { WebContents } from 'electron';
 import { INTERACTIVE_ROLES, axProp, collectBackendIds, focusedNode, median, roleOf } from './ax-tree.js';
+import { rectFromQuad } from './sealed-util.js';
 import { bump } from '../metrics.js';
 
 /** When to use: shaping a Tab walk (host, direction, steps, restore). */
@@ -174,18 +175,8 @@ export async function runTabWalk(
       let rect = { x: 0, y: 0, width: 0, height: 0 };
       try {
         const raw = await send('DOM.getBoxModel', { backendNodeId: initialBackend });
-        const model = (raw as any)?.model || raw;
-        const quad = model?.content;
-        if (Array.isArray(quad) && quad.length >= 8) {
-          const xs = [quad[0], quad[2], quad[4], quad[6]].map(Number);
-          const ys = [quad[1], quad[3], quad[5], quad[7]].map(Number);
-          rect = {
-            x: Math.min(...xs),
-            y: Math.min(...ys),
-            width: Math.max(...xs) - Math.min(...xs),
-            height: Math.max(...ys) - Math.min(...ys),
-          };
-        }
+        const measured = rectFromQuad(((raw as any)?.model || raw)?.content);
+        if (measured) rect = measured;
       } catch {}
       steps.push({ index: 0, role: roleOf(initial), name: String(initial.name?.value || ''), rect, gapMs: 0 });
     }
@@ -213,18 +204,8 @@ export async function runTabWalk(
       let rect = { x: 0, y: 0, width: 0, height: 0 };
       try {
         const raw = await send('DOM.getBoxModel', { backendNodeId: backend });
-        const model = (raw as any)?.model || raw;
-        const quad = model?.content;
-        if (Array.isArray(quad) && quad.length >= 8) {
-          const xs = [quad[0], quad[2], quad[4], quad[6]].map(Number);
-          const ys = [quad[1], quad[3], quad[5], quad[7]].map(Number);
-          rect = {
-            x: Math.min(...xs),
-            y: Math.min(...ys),
-            width: Math.max(...xs) - Math.min(...xs),
-            height: Math.max(...ys) - Math.min(...ys),
-          };
-        }
+        const measured = rectFromQuad(((raw as any)?.model || raw)?.content);
+        if (measured) rect = measured;
       } catch {
         // A focused node without a box is still a valid focus step; keep the step with a zero rect.
       }

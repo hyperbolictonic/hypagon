@@ -16,10 +16,8 @@
       "main/recipes/recipe-store.ts": 10,
       "main/research/settings.ts": 6,
       "main/scripts/script-vault.ts": 9,
-      "main/shadow-walk/ax-controls.ts": 19,
-      "main/shadow-walk/sealed-targets.ts": 10,
       "main/shadow-walk/settings.ts": 5,
-      "main/shadow-walk/tab-walk.ts": 49,
+      "main/shadow-walk/tab-walk.ts": 23,
       "main/telemetry/input-simulator.ts": 34,
       "main/tools/state.ts": 11,
       "main/wrap/anyapi/executor.ts": 49,
@@ -33,7 +31,7 @@
       "preload/index.ts": 34,
       "renderer/main.ts": 93
     },
-    "totalDuplicatedLines": 1190
+    "totalDuplicatedLines": 1135
   },
   "imports": {
     "cycles": []
@@ -59,9 +57,6 @@
         "file": 1
       },
       "main/primitives/primitives.ts": {
-        "file": 1
-      },
-      "main/shadow-walk/ax-controls.ts": {
         "file": 1
       },
       "main/telemetry/input-simulator.ts": {
