@@ -100,6 +100,7 @@ import { hideUrlSuggestions } from './url-suggestions';
 import { navBackBtn, navForwardBtn, navReloadBtn } from './url-bar';
 import { renderZoom, setZoomPinned } from './zoom-controls';
 import { renderTabs } from './tab-bar';
+import { renderUpdateState } from './update-banner';
 import { refreshWebState } from './web-state';
 import {
   decisionFeed,
@@ -708,100 +709,6 @@ if (settingsBtn && settingsModal) {
 
 
 // ---- Auto-update banner (packaged builds only; the main process disables it elsewhere) ------
-const updateBanner = document.getElementById('update-banner') as HTMLElement | null;
-const updateText = document.getElementById('update-text') as HTMLElement | null;
-const updateAction = document.getElementById('update-action') as HTMLButtonElement | null;
-const updateBadge = document.getElementById('update-badge') as HTMLButtonElement | null;
-let lastUpdateState: any = null;
-
-function renderUpdateBadge(state: any): void {
-  if (!updateBadge) return;
-  const status = state?.status;
-  const version = state?.version ? ` v${state.version}` : '';
-  updateBadge.classList.remove('hidden', 'badge-info', 'badge-warning', 'badge-success', 'badge-error');
-  if (status === 'checking') {
-    updateBadge.textContent = 'CHECKING UPDATE';
-    updateBadge.classList.add('badge-info');
-    updateBadge.disabled = true;
-    updateBadge.title = 'Checking GitHub Releases for a newer version.';
-  } else if (status === 'available') {
-    updateBadge.textContent = `UPDATE${version}`;
-    updateBadge.classList.add('badge-info');
-    updateBadge.disabled = true;
-    updateBadge.title = 'Update found; downloading now.';
-  } else if (status === 'downloading') {
-    updateBadge.textContent = `DOWNLOADING${state.percent ? ` ${state.percent}%` : ''}`;
-    updateBadge.classList.add('badge-warning');
-    updateBadge.disabled = true;
-    updateBadge.title = 'Downloading the update in the background.';
-  } else if (status === 'ready') {
-    updateBadge.textContent = `RESTART${version}`;
-    updateBadge.classList.add('badge-success');
-    updateBadge.disabled = false;
-    updateBadge.title = 'Update downloaded. Click to restart and install.';
-  } else if (status === 'error') {
-    updateBadge.textContent = 'UPDATE FAILED';
-    updateBadge.classList.add('badge-error');
-    updateBadge.disabled = true;
-    updateBadge.title = state?.message || 'Update check failed.';
-  } else {
-    updateBadge.classList.add('hidden');
-    updateBadge.disabled = true;
-    updateBadge.textContent = '';
-  }
-}
-
-function renderUpdateState(state: any) {
-  lastUpdateState = state;
-  renderUpdateBadge(state);
-  if (!updateBanner || !updateText || !updateAction) return;
-  const show = (text: string, withAction = false) => {
-    updateText.textContent = text;
-    updateBanner.classList.remove('hidden');
-    updateBanner.classList.add('flex');
-    updateAction.classList.toggle('hidden', !withAction);
-  };
-  const hide = () => {
-    updateBanner.classList.add('hidden');
-    updateBanner.classList.remove('flex');
-  };
-
-  switch (state?.status) {
-    case 'checking':
-      hide();
-      break;
-    case 'available':
-      show(`Update ${state.version ? `v${state.version}` : ''} found — downloading…`);
-      break;
-    case 'downloading':
-      show(`Downloading update${state.percent ? ` ${state.percent}%` : ''}…`);
-      break;
-    case 'ready':
-      show(`Update ${state.version ? `v${state.version}` : ''} ready`, true);
-      break;
-    default:
-      // idle / disabled / error stay quiet — there is nothing for the human to do.
-      hide();
-  }
-}
-
-async function restartForUpdate(): Promise<void> {
-  if (lastUpdateState?.status !== 'ready') return;
-  if (updateAction) {
-    updateAction.disabled = true;
-    updateAction.textContent = 'RESTARTING…';
-  }
-  if (updateBadge) {
-    updateBadge.disabled = true;
-    updateBadge.textContent = 'RESTARTING…';
-  }
-  await window.electronAPI?.installUpdate();
-}
-
-updateAction?.addEventListener('click', () => void restartForUpdate());
-updateBadge?.addEventListener('click', () => void restartForUpdate());
-
-window.electronAPI?.onUpdateStatus(renderUpdateState);
 window.electronAPI?.getUpdateStatus().then(renderUpdateState).catch(() => {});
 
 // About Modal & Viewport Visibility Management
