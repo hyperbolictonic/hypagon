@@ -13,11 +13,21 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,496 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 356 files |
+| Duplicates | **604 duplicated lines / 51,520 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 360 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer wrapper panel split** - `renderer/main.ts` 1386 -> 976, plus
+  `settings-wrap-modal.ts` (288), `settings-wrap-list.ts` (161), `settings-wrap-actions.ts` (124)
+  and `settings-wrap-ui.ts`. This was the region that failed nine times: the form and the list are
+  mutually recursive, so they now call each other through `wrapUi` (`refreshList`,
+  `refreshAuthOptions`, `showResult`, `openModal`, `fillForm`) registered once by the entry
+  point. `wrapperIdTouched` moved into `wrapState`, and the pure helpers (`hostFromUrl`,
+  `wrapperMethods`, `updateCredentialPanel`, `prettyJson`, `DEFAULT_INPUT_SCHEMA`) live in the
+  modal so the dependency graph is one-way. Verified: `npx vite build`, `test:settings:dom`
+  (192 ids), `test:mcp:surface` 35/35.
 
 - **Renderer harvest button extracted** - `renderer/main.ts` 1404 -> 1386, `harvest-button.ts` 39.
   The button and its handler moved; `switchTab` stays in the entry point and is injected through
