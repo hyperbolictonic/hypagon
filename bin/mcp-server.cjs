@@ -38944,7 +38944,7 @@ var CONSOLIDATED_HIDDEN_TOOLS = /* @__PURE__ */ new Set([
 // src/shared/version.ts
 var APP_VERSION = "2.3.3";
 
-// src/main/decide/decision-client.ts
+// src/main/decide/decision-config.ts
 var import_node_fs2 = __toESM(require("node:fs"), 1);
 
 // src/main/data-paths.ts
@@ -39019,7 +39019,7 @@ function dataPath(...segments) {
   return import_node_path.default.join(dataRoot(), ...segments);
 }
 
-// src/main/decide/decision-client.ts
+// src/main/decide/decision-config.ts
 var CONFIG_FILE = dataPath("decision.json");
 function readConfigFile() {
   try {
