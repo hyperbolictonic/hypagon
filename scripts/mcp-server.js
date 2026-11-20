@@ -39966,20 +39966,33 @@ function normalizeIncomingParams(params) {
   return normalized;
 }
 
-// src/mcp/bridge-server.ts
-var stdoutClosed = false;
-process.stdout.on("error", (err) => {
-  if (err?.code === "EPIPE" || err?.code === "ERR_STREAM_DESTROYED") {
-    if (!stdoutClosed) {
-      stdoutClosed = true;
-      logMcp("stdout pipe closed by client (EPIPE); shutting down cleanly.", "boot");
+// src/mcp/process-guards.ts
+function installProcessGuards(hooks) {
+  let stdoutClosed = false;
+  process.stdout.on("error", (err) => {
+    if (err?.code === "EPIPE" || err?.code === "ERR_STREAM_DESTROYED") {
+      if (!stdoutClosed) {
+        stdoutClosed = true;
+        hooks.log("stdout pipe closed by client (EPIPE); shutting down cleanly.", "boot");
+      }
+      process.exit(0);
     }
-    process.exit(0);
-  }
-  logMcp(`stdout stream error: ${err?.message || err}`, "error");
-});
-process.stderr.on("error", () => {
-});
+    hooks.log(`stdout stream error: ${err?.message || err}`, "error");
+  });
+  process.stderr.on("error", () => {
+  });
+  if (hooks.onExit) process.on("exit", () => hooks.onExit());
+  process.stdin.on("end", () => hooks.shutdown("stdin closed by client; shutting down cleanly."));
+  process.stdin.on("close", () => hooks.shutdown("stdin stream closed; shutting down cleanly."));
+  process.on("unhandledRejection", (reason) => {
+    hooks.log(`Unhandled promise rejection (server kept alive): ${reason?.stack || reason}`, "error");
+  });
+  process.on("uncaughtException", (err) => {
+    hooks.log(`Uncaught exception (server kept alive): ${err?.stack || err}`, "error");
+  });
+}
+
+// src/mcp/bridge-server.ts
 var shuttingDown = false;
 function shutdown(reason) {
   if (shuttingDown) return;
@@ -39988,15 +40001,7 @@ function shutdown(reason) {
   flushLogSync();
   process.exit(0);
 }
-process.stdin.on("end", () => shutdown("stdin closed by client; shutting down cleanly."));
-process.stdin.on("close", () => shutdown("stdin stream closed; shutting down cleanly."));
-process.on("exit", () => flushLogSync());
-process.on("unhandledRejection", (reason) => {
-  logMcp(`Unhandled promise rejection (server kept alive): ${reason?.stack || reason}`, "error");
-});
-process.on("uncaughtException", (err) => {
-  logMcp(`Uncaught exception (server kept alive): ${err?.stack || err}`, "error");
-});
+installProcessGuards({ log: logMcp, shutdown, onExit: flushLogSync });
 async function start() {
   logMcp("Initializing Hypagon Browser MCP Server over stdio...", "boot");
   const server = await createBridgeMcpServer();

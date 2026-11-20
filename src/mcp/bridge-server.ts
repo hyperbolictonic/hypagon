@@ -1,25 +1,10 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createBridgeMcpServer, normalizeIncomingParams, logMcp, flushLogSync } from './browser-mcp.js';
+import { installProcessGuards } from './process-guards.js';
 
 // --- Process resilience -----------------------------------------------------
-// A closed stdout pipe (EPIPE) used to arrive as an unhandled 'error' event on
-// process.stdout, which crashed the whole MCP server and made the client drop the
-// entire kuang tool namespace. Guard it and exit cleanly instead.
-let stdoutClosed = false;
-process.stdout.on('error', (err: any) => {
-  if (err?.code === 'EPIPE' || err?.code === 'ERR_STREAM_DESTROYED') {
-    if (!stdoutClosed) {
-      stdoutClosed = true;
-      logMcp('stdout pipe closed by client (EPIPE); shutting down cleanly.', 'boot');
-    }
-    process.exit(0);
-  }
-  logMcp(`stdout stream error: ${err?.message || err}`, 'error');
-});
-process.stderr.on('error', () => { /* never let logging throw */ });
-
-// Explicit lifecycle: if the client closes our stdin, exit rather than linger as
-// an orphan that keeps competing for the single browser session.
+// EPIPE on stdout, stdin close, and stray async errors are handled once, in the
+// shared guards; this server only supplies its log and shutdown behaviour.
 let shuttingDown = false;
 function shutdown(reason: string): void {
   if (shuttingDown) return;
@@ -28,19 +13,7 @@ function shutdown(reason: string): void {
   flushLogSync();
   process.exit(0);
 }
-process.stdin.on('end', () => shutdown('stdin closed by client; shutting down cleanly.'));
-process.stdin.on('close', () => shutdown('stdin stream closed; shutting down cleanly.'));
-process.on('exit', () => flushLogSync());
-
-// Keep the namespace alive on stray async errors. This server is a stateless
-// HTTP forwarder, so continuing after a rejection is safe and far better than
-// vanishing mid-session.
-process.on('unhandledRejection', (reason: any) => {
-  logMcp(`Unhandled promise rejection (server kept alive): ${reason?.stack || reason}`, 'error');
-});
-process.on('uncaughtException', (err: any) => {
-  logMcp(`Uncaught exception (server kept alive): ${err?.stack || err}`, 'error');
-});
+installProcessGuards({ log: logMcp, shutdown, onExit: flushLogSync });
 
 async function start() {
   logMcp('Initializing Hypagon Browser MCP Server over stdio...', 'boot');
