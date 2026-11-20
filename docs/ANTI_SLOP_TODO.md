@@ -13,11 +13,17 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,243 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 343 files |
+| Duplicates | **604 duplicated lines / 51,247 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 344 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Wrap panel state extracted** - `settings-wrap-store.ts` now owns `wrappers` and
+  `selectedId`; the 17 references in the entry point read `wrapState`. This is the enabling step
+  for splitting the wrap/secrets region: the secrets form and the wrapper modal share this state,
+  so neither can move until it lives outside the closure. Verified: `npx vite build`,
+  `test:settings:dom` (192 ids).
 
 - **Renderer decision-model tab extracted** - `renderer/main.ts` 2184 -> 2104,
   `settings-decision.ts` 112. Elements (including the status badge), `showStatus` and the
