@@ -13,11 +13,17 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,247 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 344 files |
+| Duplicates | **604 duplicated lines / 51,269 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 345 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer suggestion popup extracted** - `renderer/main.ts` 2104 -> 1983,
+  `url-suggestions.ts` 134. Self-contained: the popup owns its element, timers and selection state,
+  and only `hideUrlSuggestions` is used by the entry point. It looks up `url-form`/`url-input`
+  itself, so there is no seam. Verified: `npx vite build`, `test:settings:dom` (192 ids),
+  `test:mcp:surface` 35/35.
 
 - **Wrap panel state extracted** - `settings-wrap-store.ts` now owns `wrappers` and
   `selectedId`; the 17 references in the entry point read `wrapState`. This is the enabling step
