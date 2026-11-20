@@ -13,11 +13,16 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,443 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 349 files |
+| Duplicates | **604 duplicated lines / 51,450 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 350 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer zoom controls extracted** - `renderer/main.ts` 1728 -> 1693, `zoom-controls.ts` 51.
+  Acyclic: the block owns `currentZoom` and looks up the three buttons itself; the entry point only
+  calls `renderZoom` and `setZoomPinned`. Verified: `npx vite build`, `test:settings:dom`
+  (192 ids).
 
 - **Wrap secrets form extracted** - `renderer/main.ts` 1909 -> 1728,
   `settings-wrap-secrets.ts` 264. This was the block that resisted four range-based attempts:
