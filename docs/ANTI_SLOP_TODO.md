@@ -13,12 +13,16 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **20 violations** across **11 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **1,135 duplicated lines / 49,364 (2.3%)** | threshold is 3%; 27 files with clones |
+| Duplicates | **1,106 duplicated lines / 49,372 (2.2%)** | threshold is 3%; 27 files with clones |
 | Import cycles | **0** | 5 layer rules pass across 236 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
+- **Tool ordering deduplicated** - `shared/tool-settings.ts` now owns `compareByRank` (saved rank, then a
+  caller fallback) and `collectActionInstructions` (normalise saved per-action text through a caller
+  filter). `main/tools/state.ts` and `mcp/browser-mcp.ts` had three copies of the rank comparator and
+  two of the action-instruction walk. Verified: `test:mcp:contract`, `test:mcp:surface` 35/35.
 - **LLM surface split** - `llm/llm-surface.ts` 637 -> 232: `llm-types.ts` (published shapes),
   `llm-net.ts` (session fetch, accept headers, content-type rules, `coded`), `llm-probe.ts`
   (`LlmProbe`: origin/page probes, alternate ranking, `recommend`) and `llm-read.ts` (paging +
