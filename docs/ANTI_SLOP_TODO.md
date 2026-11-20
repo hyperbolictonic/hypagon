@@ -13,11 +13,17 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **622 duplicated lines / 51,164 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 338 files |
+| Duplicates | **604 duplicated lines / 51,177 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 339 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer Shadow Walk tab extracted** - `renderer/main.ts` 2470 -> 2314,
+  `settings-shadow.ts` 170. Elements, helpers and the three handlers moved together; only
+  `loadShadowWalkSettings` is exported. Isolating the tab exposed a clone between its save and
+  reset handlers, now one `shadowResultText` reporter: duplicates 622 -> 604. Verified:
+  `npx vite build`, `test:settings:dom` (192 ids), `test:mcp:surface` 35/35.
 
 - **Renderer research tab extracted** - `renderer/main.ts` 2567 -> 2470,
   `settings-research.ts` 108. The settings modal groups its elements at the top and scatters its
