@@ -13,11 +13,15 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,490 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 355 files |
+| Duplicates | **604 duplicated lines / 51,496 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 356 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer harvest button extracted** - `renderer/main.ts` 1404 -> 1386, `harvest-button.ts` 39.
+  The button and its handler moved; `switchTab` stays in the entry point and is injected through
+  `setHarvestTabSink`. Verified: `npx vite build`, `test:settings:dom` (192 ids).
 
 - **Renderer address bar extracted** - `renderer/main.ts` 1428 -> 1404, `url-bar.ts` 39.
   The submit handler and the back/forward/reload buttons moved; the three buttons are exported
