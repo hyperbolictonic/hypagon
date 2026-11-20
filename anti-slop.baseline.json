@@ -159,8 +159,8 @@
       "main/tools/settings.ts": 8,
       "main/tools/state.ts": 11,
       "main/tray/tray-manager.ts": 14,
-      "main/wrap/anyapi/executor.ts": 71,
-      "main/wrap/executor.ts": 70,
+      "main/wrap/anyapi/executor.ts": 49,
+      "main/wrap/executor.ts": 48,
       "main/wrap/interpolate.ts": 30,
       "main/wrap/store.ts": 12,
       "main/wrap/token.ts": 13,
@@ -176,7 +176,7 @@
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 2250
+    "totalDuplicatedLines": 2206
   },
   "modularity": {
     "files": {

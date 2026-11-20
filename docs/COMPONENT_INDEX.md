@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 145 files, 630 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 147 files, 635 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (569)
+## Types (574)
 
 | File | Export | When to use |
 |---|---|---|
@@ -195,8 +195,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/media/updater.ts` | `jitter` | ±10% jitter so a fleet of installs does not hit GitHub on the same second. |
 | `main/media/updater.ts` | `MediaUpdater` | - |
 | `main/media/updater.ts` | `MediaUpdaterOptions` *(type)* | - |
-| `main/menu/context-menu.ts` | `attachContextMenu` | - |
-| `main/menu/context-menu.ts` | `ContextMenuOptions` *(type)* | - |
+| `main/menu/context-menu.ts` | `attachContextMenu` | When to use: attach the right-click menu to a browsing tab's WebContents. Builds the |
+| `main/menu/context-menu.ts` | `ContextMenuOptions` *(type)* | When to use: attachContextMenu options — the window the menu pops over, plus the new-tab and log hooks. |
 | `main/migrate-user-data.ts` | `migrateLegacyUserData` | Import a previous release's Electron `userData` into the current one. |
 | `main/migrate-user-data.ts` | `UserDataMigration` *(type)* | - |
 | `main/navigation-error.ts` | `classifyNavigationFailure` | - |
@@ -456,6 +456,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/interpolate.ts` | `interpolateValue` | - |
 | `main/wrap/interpolate.ts` | `BuildRequestError` | - |
 | `main/wrap/interpolate.ts` | `BuiltRequest` *(type)* | - |
+| `main/wrap/limits.ts` | `resolveWrapLimits` | When to use: constructing an executor core. Resolves the shared transport |
+| `main/wrap/limits.ts` | `WrapTransportOptions` *(type)* | Options every executor core accepts for transport safety. |
+| `main/wrap/limits.ts` | `WrapLimits` *(type)* | Resolved transport limits: every value present, environment defaults applied. |
 | `main/wrap/render.ts` | `renderPayload` | Recipe rendering for one payload, with the legacy fallbacks. |
 | `main/wrap/render.ts` | `safeHost` | - |
 | `main/wrap/render.ts` | `previewUrl` | The preview URL for a plan. |
@@ -470,6 +473,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/render.ts` | `isPlainObject` | - |
 | `main/wrap/render.ts` | `clampInt` | - |
 | `main/wrap/render.ts` | `Rendered` *(type)* | - |
+| `main/wrap/resolve.ts` | `resolveWrapper` | When to use: `run` / `preview` / `test` on either executor core — resolve the |
+| `main/wrap/resolve.ts` | `WrapperResolution` *(type)* | When to use: the result of resolving an id-or-inline wrapper — the wrapper, or the code and message to return. |
 | `main/wrap/secrets.ts` | `SecretStore` | - |
 | `main/wrap/secrets.ts` | `WrapSecretKind` *(type)* | - |
 | `main/wrap/secrets.ts` | `WrapOAuthMetadata` *(type)* | - |

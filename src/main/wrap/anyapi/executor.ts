@@ -26,7 +26,8 @@ import { wrapDryRun, wrapFailure, wrapSuccess } from './result.ts';
 import { createSecretAdapter } from './secrets.ts';
 import { clampInt, failure, previewUrl, redactDeep, redactText, renderPayload, secretVariants } from '../render.ts';
 import { resolveHosts } from '../security.ts';
-import { validateWrapper } from '../validate-wrapper.ts';
+import { resolveWrapLimits } from '../limits.ts';
+import { resolveWrapper } from '../resolve.ts';
 import type { WrapExecutor } from '../executor.ts';
 import type { ExecutorOptions } from '../executor.ts';
 import type { WrapFormat, WrapPreview, WrapRunResult, WrapWrapper } from '../types.ts';
@@ -133,14 +134,15 @@ export class AnyApiWrapExecutor {
   constructor(store: WrapStore, options: AnyApiExecutorOptions) {
     this.store = store;
     this.legacy = options.legacy;
-    this.fetchImpl = options.fetchImpl || globalThis.fetch.bind(globalThis);
-    this.resolveHost = options.resolveHost ?? resolveHosts;
-    this.allowPrivateHosts = options.allowPrivateHosts ?? (process.env.HB_WRAP_ALLOW_PRIVATE ?? process.env.KUANG_WRAP_ALLOW_PRIVATE) === '1';
-    this.allowHttp = options.allowHttp ?? (process.env.HB_WRAP_ALLOW_HTTP ?? process.env.KUANG_WRAP_ALLOW_HTTP) === '1';
-    this.maxRedirects = clampInt(options.maxRedirects ?? 5, 0, 10);
-    this.maxResponseBytes = clampInt(options.maxResponseBytes ?? 5_000_000, 1_000, 10_000_000);
-    this.maxResultChars = clampInt(options.maxResultChars ?? 50_000, 1_000, 200_000);
-    this.defaultTimeoutMs = clampInt(options.defaultTimeoutMs ?? 15_000, 1_000, 60_000);
+    const limits = resolveWrapLimits(options);
+    this.fetchImpl = limits.fetchImpl;
+    this.resolveHost = limits.resolveHost ?? resolveHosts;
+    this.allowPrivateHosts = limits.allowPrivateHosts;
+    this.allowHttp = limits.allowHttp;
+    this.maxRedirects = limits.maxRedirects;
+    this.maxResponseBytes = limits.maxResponseBytes;
+    this.maxResultChars = limits.maxResultChars;
+    this.defaultTimeoutMs = limits.defaultTimeoutMs;
     this.secretSource = options.secretSource;
     this.audit = options.audit;
   }
@@ -352,18 +354,7 @@ export class AnyApiWrapExecutor {
     id: string | undefined,
     wrapper: unknown,
   ): { wrapper?: WrapWrapper; code: string; message: string } {
-    if (wrapper !== undefined) {
-      const validation = validateWrapper(wrapper);
-      if (!validation.ok || !validation.wrapper) {
-        return { code: 'INVALID_WRAPPER', message: validation.errors.join('; ') };
-      }
-      return { wrapper: validation.wrapper, code: '', message: '' };
-    }
-
-    if (!id) return { code: 'WRAPPER_REQUIRED', message: 'Provide either id or wrapper.' };
-    const stored = this.store.get(id);
-    if (!stored) return { code: 'WRAPPER_NOT_FOUND', message: `No wrapper named "${id}".` };
-    return { wrapper: stored, code: '', message: '' };
+    return resolveWrapper(this.store, id, wrapper);
   }
 }
 
