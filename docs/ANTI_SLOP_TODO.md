@@ -13,11 +13,18 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **649 duplicated lines / 51,053 (1.3%)** | threshold is 3%; 28 files with clones (relocated clones, unchanged total) |
-| Import cycles | **0** | 5 layer rules pass across 332 files |
+| Duplicates | **649 duplicated lines / 51,064 (1.3%)** | threshold is 3%; 29 files with clones (relocated clones, unchanged total) |
+| Import cycles | **0** | 5 layer rules pass across 333 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer connect panel extracted** - `renderer/main.ts` 3676 -> 3399, `connect-panel.ts` 289.
+  The block was fully isolated (zero external references, nothing declared inside leaked out), so it
+  moved as one unit; the only seam needed was exporting `loadConnectPanel` for the settings tab. Its
+  20-line internal client-template clone was already accepted inside `main.ts`, so the duplicate
+  total is unchanged at 649 (relocated, not grown). Verified: `npx vite build`,
+  `test:settings:dom` (192 ids), `test:mcp:surface` 35/35.
 
 - **Renderer about + Cortex extracted** - `renderer/main.ts` 3968 -> 3676. `about-modal.ts` (20 lines)
   wires the version dialog at import; `cortex-panel.ts` (300) owns the recall/history/bookmark panel.
