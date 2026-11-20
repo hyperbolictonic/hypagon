@@ -13,11 +13,18 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,545 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 364 files |
+| Duplicates | **604 duplicated lines / 51,552 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 365 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer HUD element registry** - `hud-dom.ts` (61) exports the 18 non-null HUD handles
+  (`viewportUrlDisplay`, `activeActionText`, `viewportLoadingSpinner`, `agentStatusBadge`, the stat
+  counters and friends); the entry point imports them. Nullable handles stay in main because
+  imported bindings lose the closure narrowing that `updateState`'s callbacks rely on. This is the
+  prerequisite for extracting `updateState` (67 lines). Verified: `npx vite build`,
+  `test:settings:dom` (192 ids).
 
 - **Renderer canvas trail extracted** - `renderer/main.ts` 716 -> 669, `canvas-trail.ts` 63.
   The canvas, `resizeCanvas` and `renderTrail` moved; the trail points come from the shared
