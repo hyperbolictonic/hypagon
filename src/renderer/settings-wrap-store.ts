@@ -9,7 +9,8 @@
 export const wrapSecretNames: string[] = [];
 
 /** When to use: reading or replacing the saved wrapper list and the current selection. */
-export const wrapState: { wrappers: any[]; selectedId: string | null } = {
+export const wrapState: { wrappers: any[]; selectedId: string | null; idTouched: boolean } = {
   wrappers: [],
   selectedId: null,
+  idTouched: false,
 };

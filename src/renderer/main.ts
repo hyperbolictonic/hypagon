@@ -20,6 +20,17 @@ import { loadJevSettings } from './settings-jev';
 import { resetSettingsResult, showSettingsResult } from './settings-feedback';
 import { loadDecisionSettings, setDecisionBadgeVisible, setDecisionTabSink } from './settings-decision';
 import { wrapSecretNames, wrapState } from './settings-wrap-store';
+import { wrapUi } from './settings-wrap-ui';
+import { loadWrapWrappers, newWrapWrapper, populateAuthOptions, renderWrapWrappers, selectWrapWrapper, showWrapperResult } from './settings-wrap-list';
+import { openWrapWrapperModal, setWrapperForm } from './settings-wrap-modal';
+
+Object.assign(wrapUi, {
+  refreshList: renderWrapWrappers,
+  refreshAuthOptions: populateAuthOptions,
+  showResult: showWrapperResult,
+  openModal: openWrapWrapperModal,
+  fillForm: setWrapperForm,
+});
 import {
   beginEditSecret,
   loadWrapSettings,
@@ -724,257 +735,28 @@ if (settingsBtn && settingsModal) {
 
 
 
-  function selectedWrapMethods(): string[] {
-    return Array.from(wrapFieldMethodEl.selectedOptions).map((option) => option.value);
-  }
 
-  function setWrapMethods(methods: string[]): void {
-    const wanted = new Set(methods.length ? methods : ['GET']);
-    for (const option of Array.from(wrapFieldMethodEl.options)) {
-      option.selected = wanted.has(option.value);
-    }
-  }
 
-  function wrapperMethods(wrapper: any): string[] {
-    const methods = Array.isArray(wrapper?.request?.methods) ? wrapper.request.methods : [];
-    if (methods.length) return methods.map((method: string) => String(method).toUpperCase());
-    return [String(wrapper?.request?.method || 'GET').toUpperCase()];
-  }
 
-  let wrapperIdTouched = false;
 
-  const DEFAULT_INPUT_SCHEMA = {
-    type: 'object',
-    properties: {},
-    additionalProperties: false,
-  };
 
 
   /** Show the OAuth2 fields only when that credential type is selected. */
 
-  const showWrapperResult = (kind: 'success' | 'error' | 'info', text: string) => {
-    wrapWrapperResultEl.className = `alert alert-${kind} alert-sm font-mono text-xs mt-2`;
-    wrapWrapperResultEl.textContent = text;
-    wrapWrapperResultEl.classList.remove('hidden');
-  };
 
-  function renderWrapWrappers(): void {
-    wrapWrapperListEl.replaceChildren();
-    const query = wrapWrapperFilterEl.value.trim().toLowerCase();
-    const visible = query
-      ? wrapState.wrappers.filter((wrapper) =>
-          `${wrapper.id} ${wrapper.name} ${safeHostLabel(wrapper.request?.url)}`.toLowerCase().includes(query),
-        )
-      : wrapState.wrappers;
 
-    if (!visible.length) {
-      const empty = document.createElement('li');
-      empty.className = 'font-mono text-[11px] text-base-content/50 px-1 py-2';
-      empty.textContent = wrapState.wrappers.length
-        ? 'No wrappers match that filter.'
-        : 'No wrappers saved. Press NEW or ask an agent to create one.';
-      wrapWrapperListEl.append(empty);
-      return;
-    }
 
-    for (const wrapper of visible) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className =
-        'w-full text-left rounded-box border px-3 py-2 transition-colors ' +
-        (wrapper.id === wrapState.selectedId
-          ? 'border-primary bg-primary/10'
-          : 'border-base-100 bg-base-200/60 hover:bg-base-200');
-      const id = document.createElement('div');
-      id.className = 'font-mono text-xs text-base-content truncate';
-      id.textContent = wrapper.id;
-      const meta = document.createElement('div');
-      meta.className = 'font-mono text-[10px] text-base-content/50 truncate';
-      meta.textContent = `${wrapper.name} · ${wrapperMethods(wrapper).join('/')} ${safeHostLabel(wrapper.request?.url)}`;
-      button.append(id, meta);
-      button.addEventListener('click', () => selectWrapWrapper(wrapper.id));
-      wrapWrapperListEl.append(button);
-    }
-  }
 
-  setAuthOptionsSink(populateAuthOptions);
-  setWrapperListSink(renderWrapWrappers);
 
-  function safeHostLabel(url: unknown): string {
-    try {
-      return new URL(String(url || '')).host;
-    } catch {
-      return String(url || '');
-    }
-  }
 
-  function openWrapWrapperModal(): void {
-    if (!wrapWrapperModalEl.open) wrapWrapperModalEl.showModal();
-  }
 
-  function slugifyWrapperId(name: string): string {
-    return name
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9._-]+/g, '-')
-      .replace(/^[^a-z]+/, '')
-      .replace(/[._-]{2,}/g, '-')
-      .replace(/[._-]+$/g, '')
-      .slice(0, 80);
-  }
 
-  function hostFromUrl(url: string): string {
-    try {
-      return new URL(url).hostname;
-    } catch {
-      return '';
-    }
-  }
 
-  function prettyJson(value: unknown): string {
-    return value === undefined ? '' : JSON.stringify(value, null, 2);
-  }
 
-  function populateAuthOptions(selected?: string): void {
-    const current = selected !== undefined ? selected : wrapFieldAuthEl.value;
-    const names = [...wrapSecretNames];
-    if (current && current !== '__new__' && !names.includes(current)) names.unshift(current);
 
-    wrapFieldAuthEl.replaceChildren();
-    const none = document.createElement('option');
-    none.value = '';
-    none.textContent = 'No credential';
-    wrapFieldAuthEl.append(none);
 
-    for (const name of names) {
-      const option = document.createElement('option');
-      option.value = name;
-      option.textContent = wrapSecretNames.includes(name) ? name : `${name} (missing)`;
-      wrapFieldAuthEl.append(option);
-    }
 
-    const add = document.createElement('option');
-    add.value = '__new__';
-    add.textContent = '+ New credential…';
-    wrapFieldAuthEl.append(add);
 
-    wrapFieldAuthEl.value =
-      current === '__new__' || current === '' || names.includes(current) ? current : '';
-    updateCredentialPanel();
-  }
-
-  function updateCredentialPanel(): void {
-    const isNew = wrapFieldAuthEl.value === '__new__';
-    wrapCredentialPanelEl.classList.toggle('hidden', !isNew);
-    if (isNew && !wrapCredentialHostsEl.value) {
-      const host = hostFromUrl(wrapFieldUrlEl.value);
-      if (host) wrapCredentialHostsEl.value = host;
-    }
-  }
-
-  function resetCredentialPanel(): void {
-    wrapCredentialNameEl.value = '';
-    wrapCredentialValueEl.value = '';
-    wrapCredentialHostsEl.value = '';
-    wrapCredentialHeaderEl.value = 'Authorization';
-    wrapCredentialPrefixEl.value = 'Bearer ';
-  }
-
-  function setWrapperForm(wrapper: any | null): void {
-    wrapWrapperResultEl.classList.add('hidden');
-    resetCredentialPanel();
-
-    if (wrapper) {
-      wrapState.selectedId = wrapper.id;
-      wrapWrapperHeadingEl.textContent = 'EDIT WRAPPER';
-      wrapWrapperTitleEl.textContent = wrapper.id;
-      const bits = [wrapperMethods(wrapper).join('/')];
-      if (wrapper.mutating) bits.push('mutating');
-      if (wrapper.request?.auth) bits.push(`secret: ${wrapper.request.auth}`);
-      wrapWrapperBadgeEl.textContent = bits.join(' · ');
-      wrapWrapperBadgeEl.className = 'badge badge-ghost badge-xs font-mono';
-
-      wrapFieldNameEl.value = wrapper.name || '';
-      wrapFieldIdEl.value = wrapper.id || '';
-      wrapFieldIdEl.disabled = true;
-      wrapperIdTouched = true;
-      wrapFieldDescriptionEl.value = wrapper.description || '';
-      setWrapMethods(wrapperMethods(wrapper));
-      wrapFieldUrlEl.value = wrapper.request?.url || '';
-      wrapFieldMutatingEl.checked = Boolean(wrapper.mutating);
-      wrapFieldInputSchemaEl.value = prettyJson(wrapper.inputSchema || DEFAULT_INPUT_SCHEMA);
-      wrapFieldQueryEl.value = prettyJson(wrapper.request?.query);
-      wrapFieldHeadersEl.value = prettyJson(wrapper.request?.headers);
-      wrapFieldBodyEl.value = prettyJson(wrapper.request?.body);
-      wrapFieldBodyFormatEl.value = wrapper.request?.bodyFormat || '';
-      wrapFieldResponseEl.value = prettyJson(wrapper.response);
-      wrapFieldNotesEl.value = wrapper.notes || '';
-      wrapWrapperDeleteEl.disabled = false;
-      populateAuthOptions(wrapper.request?.auth || '');
-    } else {
-      wrapState.selectedId = null;
-      wrapWrapperHeadingEl.textContent = 'NEW WRAPPER';
-      wrapWrapperTitleEl.textContent = 'Not saved';
-      wrapWrapperBadgeEl.className = 'badge badge-ghost badge-xs font-mono hidden';
-      wrapFieldNameEl.value = '';
-      wrapFieldIdEl.value = '';
-      wrapFieldIdEl.disabled = false;
-      wrapperIdTouched = false;
-      wrapFieldDescriptionEl.value = '';
-      setWrapMethods(['GET']);
-      wrapFieldUrlEl.value = '';
-      wrapFieldMutatingEl.checked = false;
-      wrapFieldInputSchemaEl.value = prettyJson(DEFAULT_INPUT_SCHEMA);
-      wrapFieldQueryEl.value = '';
-      wrapFieldHeadersEl.value = '';
-      wrapFieldBodyEl.value = '';
-      wrapFieldBodyFormatEl.value = '';
-      wrapFieldResponseEl.value = '';
-      wrapFieldNotesEl.value = '';
-      wrapWrapperDeleteEl.disabled = true;
-      populateAuthOptions('');
-    }
-
-    wrapWrapperSaveEl.disabled = false;
-    renderWrapWrappers();
-  }
-
-  function selectWrapWrapper(id: string, open = true): void {
-    const wrapper = wrapState.wrappers.find((entry) => entry.id === id);
-    if (!wrapper) return;
-    setWrapperForm(wrapper);
-    if (open) openWrapWrapperModal();
-  }
-
-  function newWrapWrapper(): void {
-    setWrapperForm(null);
-    openWrapWrapperModal();
-    wrapFieldNameEl.focus();
-  }
-
-  async function loadWrapWrappers(selectId?: string, open = true): Promise<void> {
-    try {
-      const wrappers = await window.electronAPI?.listWrapWrappers();
-      if (!Array.isArray(wrappers)) return;
-      wrapState.wrappers = wrappers;
-      const wanted = selectId ?? wrapState.selectedId;
-      const next = wanted ? wrappers.find((wrapper) => wrapper.id === wanted) : undefined;
-      if (next) {
-        selectWrapWrapper(next.id, open);
-      } else {
-        wrapState.selectedId = null;
-        wrapWrapperHeadingEl.textContent = 'NEW WRAPPER';
-        wrapWrapperTitleEl.textContent = 'Not saved';
-        wrapWrapperBadgeEl.className = 'badge badge-ghost badge-xs font-mono hidden';
-        wrapWrapperDeleteEl.disabled = true;
-        wrapWrapperSaveEl.disabled = true;
-        if (wrapWrapperModalEl.open) wrapWrapperModalEl.close();
-        renderWrapWrappers();
-      }
-    } catch (err: any) {
-      showWrapperResult('error', `Could not load wrappers: ${err?.message || err}`);
-    }
-  }
 
 
 
@@ -999,216 +781,22 @@ if (settingsBtn && settingsModal) {
 
 
 
-  wrapWrapperRefreshEl.addEventListener('click', () => {
-    void loadWrapWrappers(undefined, false);
-  });
 
-  wrapWrapperNewEl.addEventListener('click', newWrapWrapper);
 
-  wrapFieldNameEl.addEventListener('input', () => {
-    if (!wrapperIdTouched) wrapFieldIdEl.value = slugifyWrapperId(wrapFieldNameEl.value);
-  });
 
-  wrapFieldIdEl.addEventListener('input', () => {
-    wrapperIdTouched = wrapFieldIdEl.value.trim().length > 0;
-  });
 
-  wrapFieldMethodEl.addEventListener('change', () => {
-    const methods = selectedWrapMethods();
-    wrapFieldMutatingEl.checked = methods.some((method) => !['GET', 'HEAD'].includes(method));
-  });
 
-  wrapFieldAuthEl.addEventListener('change', updateCredentialPanel);
-
-  const prefillCredentialHost = () => {
-    if (wrapFieldAuthEl.value === '__new__' && !wrapCredentialHostsEl.value.trim()) {
-      const host = hostFromUrl(wrapFieldUrlEl.value);
-      if (host) wrapCredentialHostsEl.value = host;
-    }
-  };
-  wrapFieldUrlEl.addEventListener('input', prefillCredentialHost);
-  wrapFieldUrlEl.addEventListener('blur', prefillCredentialHost);
-
-  wrapCredentialHeaderEl.addEventListener('change', () => {
-    if (
-      wrapCredentialHeaderEl.value.trim().toLowerCase() !== 'authorization' &&
-      wrapCredentialPrefixEl.value === 'Bearer '
-    ) {
-      wrapCredentialPrefixEl.value = '';
-    }
-  });
-
-  function readJsonField(
-    element: HTMLTextAreaElement,
-    label: string,
-    fallback?: unknown,
-  ): { ok: true; value: unknown } | { ok: false; error: string } {
-    const text = element.value.trim();
-    if (!text) return { ok: true, value: fallback };
-    try {
-      return { ok: true, value: JSON.parse(text) };
-    } catch (err: any) {
-      return { ok: false, error: `${label}: ${err?.message || err}` };
-    }
-  }
 
   /** When to use: the save handler's first step — read the form and report every field error at once. */
-  function readWrapperForm() {
-    const name = wrapFieldNameEl.value.trim();
-    const id = wrapFieldIdEl.value.trim();
-    const url = wrapFieldUrlEl.value.trim();
-    const methods = selectedWrapMethods();
-    const description = wrapFieldDescriptionEl.value.trim();
-
-    const errors: string[] = [];
-    if (!name) errors.push('Name is required.');
-    if (!id) errors.push('ID is required.');
-    if (!url) errors.push('URL is required.');
-    if (methods.length === 0) errors.push('Select at least one HTTP method.');
-
-    const inputSchemaResult = readJsonField(wrapFieldInputSchemaEl, 'Input schema', DEFAULT_INPUT_SCHEMA);
-    const queryResult = readJsonField(wrapFieldQueryEl, 'Query template');
-    const headersResult = readJsonField(wrapFieldHeadersEl, 'Headers');
-    const bodyResult = readJsonField(wrapFieldBodyEl, 'Body template');
-    const responseResult = readJsonField(wrapFieldResponseEl, 'Response recipe');
-
-    for (const result of [inputSchemaResult, queryResult, headersResult, bodyResult, responseResult]) {
-      if (!result.ok) errors.push(result.error);
-    }
-
-    const original = wrapState.selectedId ? wrapState.wrappers.find((wrapper) => wrapper.id === wrapState.selectedId) : undefined;
-    const preferred = original?.request?.method;
-    const primaryMethod =
-      typeof preferred === 'string' && methods.includes(preferred.toUpperCase())
-        ? preferred.toUpperCase()
-        : methods[0];
-    const orderedMethods = [primaryMethod, ...methods.filter((method) => method !== primaryMethod)];
-
-    return {
-      name,
-      id,
-      url,
-      methods,
-      description,
-      errors,
-      original,
-      primaryMethod,
-      orderedMethods,
-      inputSchemaValue: inputSchemaResult.ok ? inputSchemaResult.value : DEFAULT_INPUT_SCHEMA,
-      queryValue: queryResult.ok ? queryResult.value : undefined,
-      headersValue: headersResult.ok ? headersResult.value : undefined,
-      bodyValue: bodyResult.ok ? bodyResult.value : undefined,
-      responseValue: responseResult.ok ? responseResult.value : undefined,
-    };
-  }
 
   /**
    * When to use: the save handler's credential step — a saved name passes through, and the
    * inline "new credential" form is written and selected. Returns null when the panel refused.
    */
-  async function resolveWrapperAuth(auth: string, url: string): Promise<string | null> {
-    if (auth !== '__new__') return auth;
-
-    const credentialName = wrapCredentialNameEl.value.trim();
-    const credentialValue = wrapCredentialValueEl.value;
-    const allowedHosts = wrapCredentialHostsEl.value.trim() || hostFromUrl(url);
-    if (!credentialName || !credentialValue || !allowedHosts) {
-      showWrapperResult('error', 'New credential needs a name, value, and allowed host.');
-      return null;
-    }
-
-    const header = wrapCredentialHeaderEl.value.trim() || 'Authorization';
-    const prefix =
-      header.toLowerCase() !== 'authorization' && wrapCredentialPrefixEl.value === 'Bearer '
-        ? ''
-        : wrapCredentialPrefixEl.value;
-    const credential = await window.electronAPI?.setWrapSecret({
-      name: credentialName,
-      value: credentialValue,
-      allowedHosts,
-      header,
-      prefix,
-    });
-    if (!credential?.ok) {
-      showWrapperResult('error', `Credential rejected: ${(credential?.errors || []).join('; ') || 'unknown error'}`);
-      return null;
-    }
-
-    await loadWrapSettings();
-    wrapFieldAuthEl.value = credentialName;
-    updateCredentialPanel();
-    return credentialName;
-  }
 
   /** When to use: the save handler's last step — the wrapper object sent to the main process. */
-  function buildWrapperPayload(form: ReturnType<typeof readWrapperForm>, auth: string): Record<string, unknown> {
-    const request: Record<string, unknown> = { method: form.primaryMethod, url: form.url };
-    if (form.orderedMethods.length > 1) request.methods = form.orderedMethods;
-    if (auth && auth !== '__new__') request.auth = auth;
-    if (form.queryValue !== undefined) request.query = form.queryValue;
-    if (form.headersValue !== undefined) request.headers = form.headersValue;
-    if (form.bodyValue !== undefined) request.body = form.bodyValue;
-    if (wrapFieldBodyFormatEl.value) request.bodyFormat = wrapFieldBodyFormatEl.value;
-    if (form.original?.request?.timeoutMs) request.timeoutMs = form.original.request.timeoutMs;
 
-    const wrapper: Record<string, unknown> = {
-      schemaVersion: 1,
-      id: form.id,
-      name: form.name,
-      request,
-      inputSchema: form.inputSchemaValue,
-      mutating: wrapFieldMutatingEl.checked,
-    };
-    if (form.description) wrapper.description = form.description;
-    if (form.responseValue !== undefined) wrapper.response = form.responseValue;
-    if (wrapFieldNotesEl.value.trim()) wrapper.notes = wrapFieldNotesEl.value.trim();
-    if (form.original?.exposeAsTool !== undefined) wrapper.exposeAsTool = form.original.exposeAsTool;
-    if (form.original?.lastVerified !== undefined) wrapper.lastVerified = form.original.lastVerified;
-    return wrapper;
-  }
 
-  wrapWrapperFormEl.addEventListener('submit', async (event) => {
-    event.preventDefault();
-
-    const form = readWrapperForm();
-    if (form.errors.length) {
-      showWrapperResult('error', form.errors.join(' '));
-      return;
-    }
-
-    wrapWrapperSaveEl.disabled = true;
-    wrapWrapperSaveEl.classList.add('loading');
-    try {
-      const auth = await resolveWrapperAuth(wrapFieldAuthEl.value, form.url);
-      if (auth === null) return;
-
-      const result = await window.electronAPI?.saveWrapWrapper(buildWrapperPayload(form, auth));
-      if (result?.ok) {
-        const savedId = result.wrapper?.id || form.id;
-        await loadWrapWrappers(savedId, false);
-        wrapWrapperModalEl.close();
-      } else {
-        showWrapperResult('error', (result?.errors || []).join('; ') || 'Save failed.');
-      }
-    } catch (err: any) {
-      showWrapperResult('error', `Save failed: ${err?.message || err}`);
-    } finally {
-      wrapWrapperSaveEl.disabled = false;
-      wrapWrapperSaveEl.classList.remove('loading');
-    }
-  });
-
-  wrapWrapperDeleteEl.addEventListener('click', async () => {
-    if (!wrapState.selectedId) return;
-    if (!window.confirm(`Delete wrapper "${wrapState.selectedId}"? Credentials are kept.`)) return;
-    const result = await window.electronAPI?.deleteWrapWrapper(wrapState.selectedId);
-    if (result?.ok) {
-      await loadWrapWrappers(undefined, false);
-      wrapWrapperModalEl.close();
-    } else {
-      showWrapperResult('error', (result?.errors || []).join('; ') || 'Delete failed.');
-    }
-  });
 
   const showSettingsTab = (tab: string) => {
     for (const button of settingsTabs) {
