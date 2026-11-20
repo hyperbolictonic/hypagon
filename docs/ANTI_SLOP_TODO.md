@@ -13,11 +13,18 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,211 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 342 files |
+| Duplicates | **604 duplicated lines / 51,243 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 343 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer decision-model tab extracted** - `renderer/main.ts` 2184 -> 2104,
+  `settings-decision.ts` 112. Elements (including the status badge), `showStatus` and the
+  form/test handlers moved together. Two seams replaced the closure: `loadDecisionSettings()` for
+  the modal-open path and `setDecisionBadgeVisible()` for the tab switcher; a `setDecisionTabSink`
+  setter lets the module report a saved config without importing the entry point. Verified:
+  `npx vite build`, `test:settings:dom` (192 ids), `test:mcp:surface` 35/35.
 
 - **Shared settings result writer extracted** - `settings-feedback.ts` (20) now owns the
   `settings-test-result` element, `showSettingsResult(kind, text)` and `resetSettingsResult()`.
