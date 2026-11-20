@@ -12,7 +12,8 @@ import type { Recipe, RenderMeta, RenderedDocument } from '../../../packages/rec
 import { validateArgs } from './input-schema.ts';
 import { buildRequest, redactHeaders, BuildRequestError } from './interpolate.ts';
 import { assertSafeUrl, WrapSecurityError } from './security.ts';
-import { validateWrapper } from './validate-wrapper.ts';
+import { resolveTransportOptions, resolveWrapperInput } from './executor-options.ts';
+import type { TransportOptionInput } from './executor-options.ts';
 import {
   clampInt,
   clip,
@@ -44,15 +45,7 @@ export interface WrapIndexContext {
 }
 
 /** When to use: constructing a WrapExecutor (store, secrets, fetch, limits). */
-export interface ExecutorOptions {
-  fetchImpl?: typeof fetch;
-  resolveHost?: (hostname: string) => Promise<string[]>;
-  allowPrivateHosts?: boolean;
-  allowHttp?: boolean;
-  maxRedirects?: number;
-  maxResponseBytes?: number;
-  maxResultChars?: number;
-  defaultTimeoutMs?: number;
+export interface ExecutorOptions extends TransportOptionInput {
   /** Maximum pages followed when a recipe declares pagination. Default 10, capped at 25. */
   maxPages?: number;
   /** Overall item cap for a paginated run when the recipe has no `limits.maxItems`. Default 50. */
@@ -141,14 +134,15 @@ export class WrapExecutor {
 
   constructor(store: WrapStore, options: ExecutorOptions = {}) {
     this.store = store;
-    this.fetchImpl = options.fetchImpl || globalThis.fetch.bind(globalThis);
-    this.resolveHost = options.resolveHost;
-    this.allowPrivateHosts = options.allowPrivateHosts ?? (process.env.HB_WRAP_ALLOW_PRIVATE ?? process.env.KUANG_WRAP_ALLOW_PRIVATE) === '1';
-    this.allowHttp = options.allowHttp ?? (process.env.HB_WRAP_ALLOW_HTTP ?? process.env.KUANG_WRAP_ALLOW_HTTP) === '1';
-    this.maxRedirects = clampInt(options.maxRedirects ?? 5, 0, 10);
-    this.maxResponseBytes = clampInt(options.maxResponseBytes ?? 5_000_000, 1_000, 10_000_000);
-    this.maxResultChars = clampInt(options.maxResultChars ?? 50_000, 1_000, 200_000);
-    this.defaultTimeoutMs = clampInt(options.defaultTimeoutMs ?? 15_000, 1_000, 60_000);
+    const transport = resolveTransportOptions(options);
+    this.fetchImpl = transport.fetchImpl;
+    this.resolveHost = transport.resolveHost;
+    this.allowPrivateHosts = transport.allowPrivateHosts;
+    this.allowHttp = transport.allowHttp;
+    this.maxRedirects = transport.maxRedirects;
+    this.maxResponseBytes = transport.maxResponseBytes;
+    this.maxResultChars = transport.maxResultChars;
+    this.defaultTimeoutMs = transport.defaultTimeoutMs;
     this.maxPages = clampInt(options.maxPages ?? 10, 1, 25);
     this.defaultMaxItems = clampInt(options.maxItems ?? DEFAULT_MAX_ITEMS, 1, 5_000);
     this.indexDocuments = options.indexDocuments;
@@ -753,23 +747,10 @@ export class WrapExecutor {
     };
   }
 
-  private resolve(
-    id: string | undefined,
-    wrapper: unknown,
-  ): { wrapper?: WrapWrapper; code: string; message: string } {
-    if (wrapper !== undefined) {
-      const validation = validateWrapper(wrapper);
-      if (!validation.ok || !validation.wrapper) {
-        return { code: 'INVALID_WRAPPER', message: validation.errors.join('; ') };
-      }
-      return { wrapper: validation.wrapper, code: '', message: '' };
-    }
-
-    if (!id) return { code: 'WRAPPER_REQUIRED', message: 'Provide either id or wrapper.' };
-    const stored = this.store.get(id);
-    if (!stored) return { code: 'WRAPPER_NOT_FOUND', message: `No wrapper named "${id}".` };
-    return { wrapper: stored, code: '', message: '' };
+  private resolve(id: string | undefined, wrapper: unknown): { wrapper?: WrapWrapper; code: string; message: string } {
+    return resolveWrapperInput(this.store, id, wrapper);
   }
+
 }
 
 function isRedirect(status: number): boolean {

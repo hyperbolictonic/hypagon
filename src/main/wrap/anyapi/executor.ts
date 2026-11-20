@@ -14,100 +14,28 @@
  */
 
 import { projectLegacy } from 'anyapi-to-mcp/map';
-import type { MapDocument, Operation } from 'anyapi-to-mcp/map';
-import { bytesOf, handleFor } from 'anyapi-to-mcp/store';
-import type { PayloadStore, PutOptions, StoredPayload, StoreError } from 'anyapi-to-mcp/store';
+import type { MapDocument } from 'anyapi-to-mcp/map';
 import { executeStored, planOperation } from 'anyapi-to-mcp/runtime';
 import type { AuditEvent, BindingTable, DryRunPlan, RunOptions, SecretProvider } from 'anyapi-to-mcp/runtime';
-import type { Result } from 'anyapi-to-mcp';
 
 import { validateArgs } from '../input-schema.ts';
 import { wrapDryRun, wrapFailure, wrapSuccess } from './result.ts';
 import { createSecretAdapter } from './secrets.ts';
-import { clampInt, failure, previewUrl, redactDeep, redactText, renderPayload, secretVariants } from '../render.ts';
+import { clampInt, failure, redactDeep, redactText, renderPayload, secretVariants } from '../render.ts';
 import { resolveHosts } from '../security.ts';
-import { validateWrapper } from '../validate-wrapper.ts';
+
 import type { WrapExecutor } from '../executor.ts';
 import type { ExecutorOptions } from '../executor.ts';
 import type { WrapFormat, WrapPreview, WrapRunResult, WrapWrapper } from '../types.ts';
 import type { SecretStore } from '../secrets.ts';
 import type { WrapStore } from '../store.ts';
+import { resolveTransportOptions, resolveWrapperInput } from '../executor-options.ts';
 
-/** When to use: reading a gate verdict (allowed, or the refusal reason). */
-export type CoreGate = { readonly ok: true } | { readonly ok: false; readonly reason: string };
+import { coreGate, operationOf, optionalPathArguments, withWrapperRequired, type CoreGate } from './gate.ts';
+import { pickDeclared, previewFromPlan } from './plan.ts';
+import { EphemeralStore } from './payload-store.ts';
 
-/** Features the core cannot reproduce yet, and therefore stay on the legacy executor. */
-export function coreGate(wrapper: WrapWrapper): CoreGate {
-  const request = wrapper.request;
-
-  if (request.methods && request.methods.length > 1) {
-    return { ok: false, reason: 'wrappers that accept more than one method' };
-  }
-
-  const bodyFormat = request.bodyFormat ?? 'json';
-  if (request.body !== undefined && bodyFormat !== 'json') {
-    return { ok: false, reason: `bodyFormat "${bodyFormat}"` };
-  }
-
-  const pagination = wrapper.response?.pagination;
-  if (pagination && (pagination.type ?? 'none') !== 'none') {
-    return { ok: false, reason: 'recipe pagination' };
-  }
-
-  if (wrapper.response?.index === 'cortex') {
-    return { ok: false, reason: 'Cortex indexing' };
-  }
-
-  if (request.url.includes('|raw')) {
-    return { ok: false, reason: 'raw path segments ({{name|raw}})' };
-  }
-
-  // A templated header the core cannot fill would be sent literally, while the
-  // legacy executor drops it.
-  const required = new Set(wrapper.inputSchema?.required ?? []);
-  for (const value of Object.values(request.headers ?? {})) {
-    for (const match of value.matchAll(/\{\{([^}|]+)(?:\|[^}]*)?\}\}/g)) {
-      const name = match[1]!;
-      if (!required.has(name)) return { ok: false, reason: `optional header argument "${name}"` };
-    }
-  }
-
-  if ((request.method === 'GET' || request.method === 'HEAD') && request.body !== undefined) {
-    return { ok: false, reason: 'a body on a GET/HEAD request' };
-  }
-
-  // Projection drops an array or object query value, so those wrappers keep the
-  // legacy executor rather than silently losing a parameter.
-  for (const [key, value] of Object.entries(request.query ?? {})) {
-    if (typeof value === 'object' && value !== null) {
-      return { ok: false, reason: `query value "${key}" is not scalar` };
-    }
-  }
-
-  // The core's input contract is scalar only. An array or object argument would
-  // be coerced to a string there, so the wrapper stays on the legacy executor.
-  for (const [name, property] of Object.entries(wrapper.inputSchema?.properties ?? {})) {
-    const type = Array.isArray(property.type) ? property.type.join('|') : property.type;
-    if (type !== undefined && type !== 'string' && type !== 'integer' && type !== 'number' && type !== 'boolean') {
-      return { ok: false, reason: `input property "${name}" is ${type}` };
-    }
-  }
-
-  return { ok: true };
-}
-
-/** Map a projected operation's required list back to the wrapper's own schema. */
-function withWrapperRequired(operation: Operation, wrapper: WrapWrapper): Operation {
-  if (!operation.input) return operation;
-  return { ...operation, input: { ...operation.input, required: wrapper.inputSchema?.required ?? [] } };
-}
-
-/** Placeholders in a path the wrapper does not declare as required. */
-function optionalPathArguments(operation: Operation, wrapper: WrapWrapper): string[] {
-  const required = new Set(wrapper.inputSchema?.required ?? []);
-  const names = [...operation.request.path.matchAll(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g)].map((match) => match[1]!);
-  return names.filter((name) => !required.has(name));
-}
+export { coreGate, optionalPathArguments, withWrapperRequired, operationOf, type CoreGate } from './gate.ts';
 
 /** When to use: constructing the anyapi executor (store, secrets, limits). */
 export interface AnyApiExecutorOptions extends ExecutorOptions {
@@ -136,14 +64,15 @@ export class AnyApiWrapExecutor {
   constructor(store: WrapStore, options: AnyApiExecutorOptions) {
     this.store = store;
     this.legacy = options.legacy;
-    this.fetchImpl = options.fetchImpl || globalThis.fetch.bind(globalThis);
-    this.resolveHost = options.resolveHost ?? resolveHosts;
-    this.allowPrivateHosts = options.allowPrivateHosts ?? (process.env.HB_WRAP_ALLOW_PRIVATE ?? process.env.KUANG_WRAP_ALLOW_PRIVATE) === '1';
-    this.allowHttp = options.allowHttp ?? (process.env.HB_WRAP_ALLOW_HTTP ?? process.env.KUANG_WRAP_ALLOW_HTTP) === '1';
-    this.maxRedirects = clampInt(options.maxRedirects ?? 5, 0, 10);
-    this.maxResponseBytes = clampInt(options.maxResponseBytes ?? 5_000_000, 1_000, 10_000_000);
-    this.maxResultChars = clampInt(options.maxResultChars ?? 50_000, 1_000, 200_000);
-    this.defaultTimeoutMs = clampInt(options.defaultTimeoutMs ?? 15_000, 1_000, 60_000);
+    const transport = resolveTransportOptions(options);
+    this.fetchImpl = transport.fetchImpl;
+    this.resolveHost = transport.resolveHost ?? resolveHosts;
+    this.allowPrivateHosts = transport.allowPrivateHosts;
+    this.allowHttp = transport.allowHttp;
+    this.maxRedirects = transport.maxRedirects;
+    this.maxResponseBytes = transport.maxResponseBytes;
+    this.maxResultChars = transport.maxResultChars;
+    this.defaultTimeoutMs = transport.defaultTimeoutMs;
     this.secretSource = options.secretSource;
     this.audit = options.audit;
   }
@@ -288,7 +217,8 @@ export class AnyApiWrapExecutor {
       ...(secrets === undefined
         ? {}
         : { secrets: secrets.provider as SecretProvider, bindings: bindings as BindingTable }),
-      ...(this.resolveHost === undefined ? {} : { lookup: this.resolveHost }),      ...(this.audit === undefined ? {} : { audit: this.auditSink(wrapper) }),
+      ...(this.resolveHost === undefined ? {} : { lookup: this.resolveHost }),
+      ...(this.audit === undefined ? {} : { audit: this.auditSink(wrapper) }),
       store: this.payloadStore,
     };
 
@@ -351,85 +281,7 @@ export class AnyApiWrapExecutor {
     };
   }
 
-  private resolve(
-    id: string | undefined,
-    wrapper: unknown,
-  ): { wrapper?: WrapWrapper; code: string; message: string } {
-    if (wrapper !== undefined) {
-      const validation = validateWrapper(wrapper);
-      if (!validation.ok || !validation.wrapper) {
-        return { code: 'INVALID_WRAPPER', message: validation.errors.join('; ') };
-      }
-      return { wrapper: validation.wrapper, code: '', message: '' };
-    }
-
-    if (!id) return { code: 'WRAPPER_REQUIRED', message: 'Provide either id or wrapper.' };
-    const stored = this.store.get(id);
-    if (!stored) return { code: 'WRAPPER_NOT_FOUND', message: `No wrapper named "${id}".` };
-    return { wrapper: stored, code: '', message: '' };
+  private resolve(id: string | undefined, wrapper: unknown): { wrapper?: WrapWrapper; code: string; message: string } {
+    return resolveWrapperInput(this.store, id, wrapper);
   }
-}
-
-/**
- * A payload store that keeps nothing.
- *
- * The core stores every response behind a handle, but the wrapper surface never
- * exposes handles: `executeStored` also returns the payload, and the result is
- * rendered immediately. Retaining the payload would keep every response of the
- * process in memory for a day, so this store hands back the same deterministic
- * handle and drops the body.
- */
-class EphemeralStore implements PayloadStore {
-  async put(payload: unknown, options: PutOptions = {}): Promise<StoredPayload> {
-    return {
-      handle: handleFor(payload),
-      payload,
-      meta: {
-        bytes: bytesOf(payload),
-        createdAt: new Date().toISOString(),
-        fetches: 1,
-        ...(options.operation === undefined ? {} : { operation: options.operation }),
-        ...(options.view === undefined || options.view === null ? {} : { view: options.view }),
-        ...(options.url === undefined ? {} : { url: options.url }),
-        ...(options.host === undefined ? {} : { host: options.host }),
-        ...(options.status === undefined ? {} : { status: options.status }),
-        ...(options.kind === undefined ? {} : { kind: options.kind }),
-      },
-    };
-  }
-
-  async get(handle: string): Promise<Result<StoredPayload, StoreError>> {
-    return { ok: false, error: { code: 'handle_not_found', message: `this run did not retain ${handle}` } };
-  }
-
-  async prune(): Promise<number> {
-    return 0;
-  }
-}
-
-function operationOf(map: MapDocument, wrapper: WrapWrapper): Operation | undefined {
-  return map.operations.find((operation) => operation.id === wrapper.id) ?? map.operations[0];
-}
-
-function pickDeclared(value: Record<string, unknown>, operation: Operation): Record<string, unknown> {
-  const properties = operation.input?.properties;
-  if (!properties) return {};
-  const declared = new Set(Object.keys(properties));
-  const out: Record<string, unknown> = {};
-  for (const [key, entry] of Object.entries(value)) {
-    if (declared.has(key)) out[key] = entry;
-  }
-  return out;
-}
-
-/** A preview from the core's plan: header names only, every value redacted. */
-function previewFromPlan(plan: DryRunPlan): WrapPreview {
-  const headers: Record<string, string> = {};
-  for (const name of plan.headers) headers[name] = '<redacted>';
-  return {
-    method: plan.method as WrapPreview['method'],
-    url: previewUrl(plan.url, plan.query),
-    headers,
-    ...(plan.body === undefined ? {} : { body: plan.body }),
-  };
 }
