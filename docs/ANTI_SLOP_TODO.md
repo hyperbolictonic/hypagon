@@ -11,14 +11,22 @@ is introduced.
 
 | Gate | Baseline | Notes |
 | --- | --- | --- |
-| Modularity | **18 violations** across **10 files** | file/function/class size budgets (300 / 80 / 10) |
+| Modularity | **17 violations** across **9 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **936 duplicated lines / 49,504 (1.9%)** | threshold is 3%; 25 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 242 files |
+| Duplicates | **919 duplicated lines / 49,791 (1.8%)** | threshold is 3%; 25 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 250 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
 
+- **Wrap executor split** - `wrap/executor.ts` 773 -> 170, and its 273-line `execute()` is gone:
+  `execute.ts` (the entry point and the one error boundary), `execute-prepare.ts` (validation,
+  request building, credential resolution), `execute-fetch.ts` (pagination loop, audit, one OAuth2
+  re-mint), `execute-compose.ts` (render, Cortex indexing, AUTH_REQUIRED vs HTTP_ERROR), plus
+  `pagination.ts` (`pagePlan`/`itemsOf`/`nextPageToken`/`mergePages`/`documentsToIndex`),
+  `response.ts` (redirects, host policy, byte cap, `WrapTransportError`) and `execution-types.ts`.
+  Verified: `test:wrap` 55/55 (including the refresh-once retry, static-credential no-retry and
+  `lastVerified` cases), `test:anyapi` 17/17, `test:wrap:mcp` 15/15.
 - **Wrap server split** - `mcp/wrap-server.ts` 728 -> 77 (and both its violations are gone):
   `wrap-config.ts` (bridge URL/timeout/token, the generated-tool cap, `callBridge`), `wrap-log.ts`
   (file-first diagnostics + shutdown), `wrap-format.ts` (result/preview/manifest/secret text and the
