@@ -13,11 +13,18 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **604 duplicated lines / 51,520 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 360 files |
+| Duplicates | **604 duplicated lines / 51,530 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 361 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer decisions feed extracted** - `renderer/main.ts` 976 -> 885,
+  `decision-feed.ts` 126. The brace-depth span helper (blanking strings/comments before counting
+  braces) fixed the range bug that had truncated the block to 14 lines. `setDecisionTabVisible` and
+  `refreshDecisionTab` moved with the feed, and `switchTab` is injected through
+  `setDecisionSwitchSink`, so the module has no back-reference into the entry point. Verified:
+  `npx vite build`, `test:settings:dom` (192 ids), `test:mcp:surface` 35/35.
 
 - **Renderer wrapper panel split** - `renderer/main.ts` 1386 -> 976, plus
   `settings-wrap-modal.ts` (288), `settings-wrap-list.ts` (161), `settings-wrap-actions.ts` (124)
