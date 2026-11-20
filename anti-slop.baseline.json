@@ -19,8 +19,8 @@
       "main/shadow-walk/settings.ts": 5,
       "main/shadow-walk/tab-walk.ts": 23,
       "main/telemetry/input-simulator.ts": 34,
-      "main/wrap/anyapi/executor.ts": 49,
-      "main/wrap/executor.ts": 48,
+      "main/wrap/anyapi/executor.ts": 41,
+      "main/wrap/executor.ts": 39,
       "main/wrap/store.ts": 12,
       "mcp/bridge-server.ts": 18,
       "mcp/browser-mcp.ts": 18,
@@ -29,7 +29,7 @@
       "preload/index.ts": 34,
       "renderer/main.ts": 93
     },
-    "totalDuplicatedLines": 936
+    "totalDuplicatedLines": 919
   },
   "imports": {
     "cycles": []
@@ -55,9 +55,6 @@
         "file": 1
       },
       "main/telemetry/input-simulator.ts": {
-        "file": 1
-      },
-      "main/wrap/executor.ts": {
         "file": 1
       },
       "mcp/browser-mcp.ts": {
