@@ -1,0 +1,269 @@
+{
+  "_comment": "Ratchet baseline: gates fail only on violations newer than this snapshot. Shrink it after cleanup with <gate> --update-baseline; do not grow it to absorb new debt.",
+  "docs": {
+    "files": {
+      "main/browser-chassis.ts": 1,
+      "main/browser/frame-eval.ts": 2,
+      "main/browser/frame-marks.ts": 2,
+      "main/browser/frame-tree.ts": 3,
+      "main/browser/frames.ts": 2,
+      "main/collaboration/overlay.ts": 2,
+      "main/collaboration/service.ts": 1,
+      "main/collaboration/store.ts": 2,
+      "main/cortex/chunker.ts": 2,
+      "main/cortex/cortex-db.ts": 10,
+      "main/cortex/embedder.ts": 2,
+      "main/crawl/crawler.ts": 6,
+      "main/data-paths.ts": 2,
+      "main/decide/decision-client.ts": 6,
+      "main/decide/decision-guard.ts": 3,
+      "main/decide/sensitive-gate.ts": 1,
+      "main/diagnostics/main-log.ts": 2,
+      "main/downloads/download-manager.ts": 2,
+      "main/drive/driver.ts": 4,
+      "main/harvester/markdown.ts": 2,
+      "main/hil/hil-manager.ts": 4,
+      "main/http-bridge.ts": 2,
+      "main/input/human-activity.ts": 1,
+      "main/jev/engine.ts": 4,
+      "main/jev/policy.ts": 4,
+      "main/llm/llm-surface.ts": 6,
+      "main/marks/marks-overlay.ts": 2,
+      "main/media/binaries.ts": 6,
+      "main/media/cookies.ts": 1,
+      "main/media/exec.ts": 2,
+      "main/media/ffmpeg.ts": 6,
+      "main/media/jobs.ts": 9,
+      "main/media/platform.ts": 2,
+      "main/media/service.ts": 10,
+      "main/media/settings.ts": 3,
+      "main/media/transcript.ts": 2,
+      "main/media/updater.ts": 2,
+      "main/menu/context-menu.ts": 2,
+      "main/metrics.ts": 3,
+      "main/migrate-user-data.ts": 1,
+      "main/navigation-error.ts": 1,
+      "main/network/impersonate.ts": 4,
+      "main/network/network-interceptor.ts": 5,
+      "main/prerender/prerender-engine.ts": 3,
+      "main/primitives/control-facts.ts": 3,
+      "main/primitives/dom-targeting.ts": 2,
+      "main/primitives/primitives.ts": 11,
+      "main/primitives/text-target.ts": 4,
+      "main/recipes/compile.ts": 2,
+      "main/recipes/recipe-store.ts": 8,
+      "main/recipes/replay.ts": 4,
+      "main/recording/recording-service.ts": 11,
+      "main/remote/oauth-client.ts": 5,
+      "main/remote/service.ts": 1,
+      "main/remote/settings.ts": 3,
+      "main/remote/token.ts": 1,
+      "main/research/anchor-store.ts": 2,
+      "main/research/anchors.ts": 5,
+      "main/research/researcher.ts": 5,
+      "main/research/settings.ts": 7,
+      "main/scripts/script-vault.ts": 2,
+      "main/search/search-engine.ts": 5,
+      "main/session/session-vault.ts": 2,
+      "main/settings/jev.ts": 3,
+      "main/shadow-walk/ax-controls.ts": 5,
+      "main/shadow-walk/component-signature.ts": 2,
+      "main/shadow-walk/force-open.ts": 3,
+      "main/shadow-walk/part-highlight-css.ts": 1,
+      "main/shadow-walk/part-highlight.ts": 2,
+      "main/shadow-walk/sealed-targets.ts": 2,
+      "main/shadow-walk/settings.ts": 13,
+      "main/shadow-walk/tab-walk.ts": 3,
+      "main/shield/shield-breaker.ts": 2,
+      "main/snapshots/rendered-snapshot.ts": 3,
+      "main/tabs/tab-manager.ts": 3,
+      "main/tabs/window-open-policy.ts": 1,
+      "main/telemetry/action-ledger.ts": 6,
+      "main/telemetry/chaos-kinematics.ts": 2,
+      "main/telemetry/host-fingerprint.ts": 1,
+      "main/telemetry/input-profile.ts": 2,
+      "main/telemetry/input-simulator.ts": 2,
+      "main/tools/settings.ts": 3,
+      "main/tools/state.ts": 2,
+      "main/tray/tray-manager.ts": 2,
+      "main/updates/updater.ts": 3,
+      "main/utils/json-navigator.ts": 2,
+      "main/viewport/controller.ts": 3,
+      "main/viewport/profiles.ts": 1,
+      "main/wrap/anyapi/executor.ts": 3,
+      "main/wrap/anyapi/maps.ts": 1,
+      "main/wrap/anyapi/result.ts": 4,
+      "main/wrap/anyapi/secrets.ts": 4,
+      "main/wrap/audit.ts": 2,
+      "main/wrap/auth.ts": 2,
+      "main/wrap/core.ts": 3,
+      "main/wrap/executor.ts": 4,
+      "main/wrap/factory.ts": 3,
+      "main/wrap/input-schema.ts": 3,
+      "main/wrap/interpolate.ts": 5,
+      "main/wrap/render.ts": 12,
+      "main/wrap/secrets.ts": 11,
+      "main/wrap/security.ts": 4,
+      "main/wrap/store.ts": 2,
+      "main/wrap/token.ts": 3,
+      "main/wrap/types.ts": 10,
+      "main/wrap/validate-wrapper.ts": 3,
+      "mcp/browser-mcp.ts": 3,
+      "mcp/tool-groups.ts": 6,
+      "mcp/tools-catalog.ts": 3,
+      "mcp/wrap-server.ts": 1,
+      "preload/index.ts": 1,
+      "renderer/menu-popup.ts": 1,
+      "renderer/recording.ts": 4,
+      "renderer/research-panel.ts": 1,
+      "renderer/tools-panel.ts": 2,
+      "renderer/viewport-controls.ts": 1,
+      "shared/collaboration.ts": 8,
+      "shared/experimental.ts": 2,
+      "shared/media.ts": 3,
+      "shared/menu.ts": 1,
+      "shared/remote.ts": 4,
+      "shared/research-events.ts": 3,
+      "shared/tool-settings.ts": 4,
+      "shared/types.ts": 6,
+      "shared/viewport.ts": 15,
+      "shared/zoom.ts": 6
+    }
+  },
+  "duplicates": {
+    "files": {
+      "main/browser-chassis.ts": 265,
+      "main/cortex/cortex-db.ts": 22,
+      "main/decide/decision-client.ts": 7,
+      "main/decide/decision-guard.ts": 7,
+      "main/hil/hil-manager.ts": 68,
+      "main/http-bridge.ts": 366,
+      "main/index.ts": 83,
+      "main/media/ffmpeg.ts": 24,
+      "main/media/service.ts": 34,
+      "main/media/settings.ts": 9,
+      "main/media/transcript.ts": 5,
+      "main/primitives/primitives.ts": 66,
+      "main/recipes/recipe-store.ts": 10,
+      "main/remote/token.ts": 14,
+      "main/research/anchor-store.ts": 9,
+      "main/research/settings.ts": 20,
+      "main/scripts/script-vault.ts": 9,
+      "main/settings/experimental.ts": 11,
+      "main/settings/jev.ts": 11,
+      "main/shadow-walk/ax-controls.ts": 25,
+      "main/shadow-walk/sealed-targets.ts": 10,
+      "main/shadow-walk/settings.ts": 19,
+      "main/shadow-walk/tab-walk.ts": 55,
+      "main/tabs/tab-manager.ts": 30,
+      "main/telemetry/input-simulator.ts": 34,
+      "main/tools/settings.ts": 8,
+      "main/tools/state.ts": 11,
+      "main/tray/tray-manager.ts": 14,
+      "main/wrap/anyapi/executor.ts": 71,
+      "main/wrap/executor.ts": 70,
+      "main/wrap/interpolate.ts": 30,
+      "main/wrap/store.ts": 12,
+      "main/wrap/token.ts": 13,
+      "main/zoom/settings.ts": 11,
+      "mcp/bridge-server.ts": 39,
+      "mcp/browser-mcp.ts": 36,
+      "mcp/format-mark.ts": 7,
+      "mcp/tool-groups.ts": 135,
+      "mcp/tools-catalog.ts": 255,
+      "mcp/wrap-server.ts": 153,
+      "preload/index.ts": 52,
+      "renderer/main.ts": 111,
+      "renderer/research-panel.ts": 5,
+      "renderer/viewport-controls.ts": 4
+    },
+    "totalDuplicatedLines": 2250
+  },
+  "modularity": {
+    "files": {
+      "main/browser-chassis.ts": {
+        "class": 1,
+        "file": 1,
+        "function": 3
+      },
+      "main/collaboration/overlay.ts": {
+        "file": 1
+      },
+      "main/cortex/cortex-db.ts": {
+        "file": 1
+      },
+      "main/harvester/markdown.ts": {
+        "function": 1
+      },
+      "main/http-bridge.ts": {
+        "file": 1,
+        "function": 2
+      },
+      "main/index.ts": {
+        "file": 1,
+        "function": 1
+      },
+      "main/llm/llm-surface.ts": {
+        "file": 1
+      },
+      "main/marks/marks-overlay.ts": {
+        "file": 1
+      },
+      "main/media/jobs.ts": {
+        "file": 1
+      },
+      "main/media/service.ts": {
+        "file": 1
+      },
+      "main/menu/context-menu.ts": {
+        "function": 1
+      },
+      "main/network/network-interceptor.ts": {
+        "function": 1
+      },
+      "main/primitives/primitives.ts": {
+        "file": 1
+      },
+      "main/remote/service.ts": {
+        "file": 1
+      },
+      "main/shadow-walk/ax-controls.ts": {
+        "file": 1
+      },
+      "main/tabs/tab-manager.ts": {
+        "file": 1
+      },
+      "main/telemetry/input-simulator.ts": {
+        "file": 1
+      },
+      "main/wrap/executor.ts": {
+        "file": 1
+      },
+      "main/wrap/secrets.ts": {
+        "file": 1
+      },
+      "mcp/browser-mcp.ts": {
+        "file": 1,
+        "function": 2
+      },
+      "mcp/tools-catalog.ts": {
+        "file": 1
+      },
+      "mcp/wrap-server.ts": {
+        "file": 1,
+        "function": 1
+      },
+      "preload/index.ts": {
+        "file": 1
+      },
+      "renderer/main.ts": {
+        "file": 1,
+        "function": 1
+      },
+      "renderer/research-panel.ts": {
+        "file": 1,
+        "function": 1
+      }
+    }
+  }
+}

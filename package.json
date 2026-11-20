@@ -95,7 +95,10 @@
     "dev:isolated": "node scripts/dev-isolated.mjs",
     "fetch:media": "node scripts/fetch-media.mjs",
     "test:media": "node --test scripts/test-media-unit.mjs",
-    "test:media:mcp": "node scripts/test-media-mcp.mjs"
+    "test:media:mcp": "node scripts/test-media-mcp.mjs",
+    "anti-slop:check": "node scripts/anti-slop/check-modularity.mjs && node scripts/anti-slop/check-imports.mjs && node scripts/anti-slop/check-docs.mjs && node scripts/anti-slop/check-duplicates.mjs",
+    "anti-slop:index": "node scripts/anti-slop/generate-component-index.mjs",
+    "anti-slop:dupes": "node scripts/anti-slop/check-duplicates.mjs"
   },
   "keywords": [
     "mcp",
