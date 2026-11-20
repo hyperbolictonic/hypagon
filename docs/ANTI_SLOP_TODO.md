@@ -13,11 +13,18 @@ is introduced.
 | --- | --- | --- |
 | Modularity | **3 violations** across **2 files** | file/function/class size budgets (300 / 80 / 10) |
 | Docs | **0 undocumented exports** across **0 files** | empty baseline — every export carries `/** When to use ... */` |
-| Duplicates | **622 duplicated lines / 51,153 (1.2%)** | threshold is 3%; 29 files with clones |
-| Import cycles | **0** | 5 layer rules pass across 337 files |
+| Duplicates | **622 duplicated lines / 51,164 (1.2%)** | threshold is 3%; 29 files with clones |
+| Import cycles | **0** | 5 layer rules pass across 338 files |
 | Component index | refreshed with `npm run anti-slop:index` | see `docs/COMPONENT_INDEX.md` |
 
 ## Progress
+
+- **Renderer research tab extracted** - `renderer/main.ts` 2567 -> 2470,
+  `settings-research.ts` 108. The settings modal groups its elements at the top and scatters its
+  handlers below, so the tab was assembled from three ranges (elements 1189-1206, helpers
+  1368-1396, handlers 1398-1448). It touches no shell element, so the only seam is exporting
+  `loadResearchSettings` for the tab switcher. Verified: `npx vite build`, `test:settings:dom`
+  (192 ids), `test:mcp:surface` 35/35.
 
 - **Renderer recording panel extracted** - `renderer/main.ts` 2805 -> 2567,
   `settings-recording.ts` 252. The recorder was split across two regions (state/helpers, then
