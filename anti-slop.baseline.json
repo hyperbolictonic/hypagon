@@ -18,7 +18,19 @@
       "main/wrap/anyapi/executor.ts": 41,
       "main/wrap/executor.ts": 39,
       "main/wrap/store.ts": 12,
-      "mcp/tools-catalog.ts": 197,
+      "mcp/catalog/hil.ts": 14,
+      "mcp/catalog/interaction-1.ts": 6,
+      "mcp/catalog/marks.ts": 4,
+      "mcp/catalog/memory.ts": 21,
+      "mcp/catalog/primitives-1.ts": 10,
+      "mcp/catalog/primitives-2.ts": 20,
+      "mcp/catalog/primitives-3.ts": 16,
+      "mcp/catalog/primitives-4.ts": 17,
+      "mcp/catalog/scripts.ts": 29,
+      "mcp/catalog/sessions.ts": 20,
+      "mcp/catalog/shared.ts": 7,
+      "mcp/catalog/streams.ts": 26,
+      "mcp/catalog/tabs.ts": 7,
       "preload/index.ts": 34,
       "renderer/main.ts": 93
     },
@@ -33,9 +45,6 @@
         "class": 1,
         "file": 1,
         "function": 3
-      },
-      "mcp/tools-catalog.ts": {
-        "file": 1
       },
       "renderer/main.ts": {
         "file": 1,

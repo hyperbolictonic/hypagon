@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CATALOG_PATH = path.join(ROOT, 'src', 'mcp', 'tools-catalog.ts');
+const CATALOG_DIR = path.join(ROOT, 'src', 'mcp', 'catalog');
 const BRIDGE_PATH = path.join(ROOT, 'src', 'main', 'http-bridge.ts');
 const ROUTES_DIR = path.join(ROOT, 'src', 'main', 'bridge', 'routes');
 
@@ -87,7 +88,15 @@ function parseRouteModules(dir, routes, byPath) {
 }
 
 function main() {
-  const catalogSrc = fs.readFileSync(CATALOG_PATH, 'utf8');
+  // The entries live in `catalog/` by family; the tier map and legacy aliases stay in the
+  // assembly module. Read them all so the parsers below see one catalog.
+  const catalogFiles = [
+    CATALOG_PATH,
+    ...(fs.existsSync(CATALOG_DIR)
+      ? fs.readdirSync(CATALOG_DIR).filter((name) => name.endsWith('.ts')).map((name) => path.join(CATALOG_DIR, name))
+      : []),
+  ];
+  const catalogSrc = catalogFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
   const catalog = parseCatalog(catalogSrc);
   const { routes, byPath } = parseBridge(fs.readFileSync(BRIDGE_PATH, 'utf8'));
   parseRouteModules(ROUTES_DIR, routes, byPath);

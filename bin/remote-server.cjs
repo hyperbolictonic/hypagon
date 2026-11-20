@@ -39768,25 +39768,7 @@ function formatMark(m) {
   return `[#${m.id}] <${m.tag}${attrs}> "${m.text || ""}"${extras.length ? ` {${extras.join(", ")}}` : ""}`;
 }
 
-// src/shared/brand.ts
-var BRAND = {
-  /** The desktop product. */
-  product: "Hypagon Gateway",
-  /** Window caption and installer shortcut. `// Cyberdeck` is the in-app harness name. */
-  windowTitle: "Hypagon Gateway // Cyberdeck",
-  /** The browser MCP server and the thing that actually drives Chromium. */
-  browser: "Hypagon Browser",
-  /** The REST wrapper MCP server. */
-  rest: "Hypagon REST",
-  /** Harness name used inside the desktop app (HUD, tray, HAR creator). */
-  deck: "Hypagon Gateway Cyberdeck",
-  /** Stable machine key for `/health` and package metadata. */
-  appKey: "hypagon-gateway",
-  repoOwner: "hyperbolictonic",
-  repoName: "hypagon"
-};
-
-// src/mcp/tools-catalog.ts
+// src/mcp/catalog/shared.ts
 function normalizeDestination(args) {
   let targetUrl = args?.url || args?.destination || args?.target || args?.link || args?.href || args?.address || "";
   if (typeof targetUrl === "string" && targetUrl) {
@@ -39803,8 +39785,9 @@ function formatMarks(data) {
   return Array.isArray(data.marks) ? data.marks.map((m) => formatMark(m)).join("\n") : JSON.stringify(data);
 }
 var jsonPretty = (data) => JSON.stringify(data, null, 2);
-var TOOLS_CATALOG = [
-  // 1. Navigation
+
+// src/mcp/catalog/navigation.ts
+var NAVIGATION_TOOLS = [
   {
     name: "navigate_to",
     description: "Navigates the real, visible Chromium browser window to a destination URL. Automatically dismisses GDPR/cookie consent overlays by default.",
@@ -39831,8 +39814,11 @@ var TOOLS_CATALOG = [
       return { url: normalizeDestination(args) };
     },
     format: (data) => data.result || "Navigation complete"
-  },
-  // 2. Interaction
+  }
+];
+
+// src/mcp/catalog/interaction-1.ts
+var INTERACTION_1_TOOLS = [
   {
     name: "click_element",
     hidden: true,
@@ -40050,7 +40036,11 @@ ${folded}` : ""}`;
     endpoint: "/history",
     payload: (args) => ({ action: args.direction }),
     format: (data, args) => data.result || `Navigated ${args.direction}`
-  },
+  }
+];
+
+// src/mcp/catalog/interaction-2.ts
+var INTERACTION_2_TOOLS = [
   {
     name: "get_console_logs",
     description: "Returns the recent console logs (log, warn, error, info) emitted by the active web page.",
@@ -40079,8 +40069,11 @@ ${lines.join("\n")}`;
     endpoint: "/fingerprint",
     method: "GET",
     format: (data) => JSON.stringify(data.profile, null, 2)
-  },
-  // 4. Tab Management
+  }
+];
+
+// src/mcp/catalog/tabs.ts
+var TABS_TOOLS = [
   {
     name: "new_tab",
     description: "Opens a new isolated browser tab in the Cyberdeck window and navigates to the given URL (default: about:blank).",
@@ -40195,8 +40188,11 @@ CSS viewport ${css.width || 0}x${css.height || 0} | physical ${physical.width ||
       const spec = viewport.spec || {};
       return `Viewport ${spec.width}x${spec.height} @${spec.deviceScaleFactor}x (${viewport.orientation})${spec.mobile ? " mobile" : ""}${spec.touch ? " touch" : ""} \xB7 scale ${viewport.scale}`;
     }
-  },
-  // 5. Memory & Cortex (LanceDB)
+  }
+];
+
+// src/mcp/catalog/memory.ts
+var MEMORY_TOOLS = [
   {
     name: "recall_memory",
     description: "Performs semantic vector and full-text hybrid search across all previously visited and harvested web pages in the persistent Cortex.",
@@ -40292,8 +40288,11 @@ ${lines.join("\n")}`;
     endpoint: "/bookmarks/delete",
     payload: (args) => ({ urlOrId: args.url_or_id }),
     format: (data, args) => data.deleted ? `Bookmark deleted: ${args.url_or_id}` : `Bookmark not found: ${args.url_or_id}`
-  },
-  // 6. Shield & Forms
+  }
+];
+
+// src/mcp/catalog/shield.ts
+var SHIELD_TOOLS = [
   {
     name: "dismiss_consent",
     description: "Answer a cookie/GDPR consent wall by choosing the least invasive real control (reject/only-necessary before accept, per KUANG_CONSENT_POLICY=essential|accept|reject). Set force_remove=true only as a last resort when no control exists \u2014 that hides the overlay without answering it.",
@@ -40323,8 +40322,11 @@ ${lines.join("\n")}`;
     endpoint: "/form/fill",
     payload: (args) => ({ fields: args.fields, submitSelector: args.submit_selector }),
     format: (data) => JSON.stringify(data.result, null, 2)
-  },
-  // 7. Downloads
+  }
+];
+
+// src/mcp/catalog/downloads.ts
+var DOWNLOADS_TOOLS = [
   {
     name: "list_downloads",
     description: "Returns a list of all files downloaded into data/downloads/, including size and status.",
@@ -40398,7 +40400,6 @@ ${lines.join("\n")}`;
     payload: (args) => ({ filename: args.filename }),
     format: (data) => data.content || JSON.stringify(data, null, 2)
   },
-  // 7b. Timelapse recording
   {
     name: "record_start",
     description: "Starts a timelapse recording of the Cyberdeck window itself and returns once the capture stream is live. Frames are captured every few hundred milliseconds and played back faster than real time, so a long browsing/scrolling session becomes a short video. Stop with record_stop, which returns the absolute file path \u2014 ready to type into a file-upload field. Use list_recordings to find previous files.",
@@ -40441,8 +40442,11 @@ ${mb} MB \xB7 ${rec.frames} frames \xB7 ${rec.videoSeconds}s of video \xB7 ${rec
       return `### Timelapses (${items.length})
 ${lines.join("\n")}`;
     }
-  },
-  // 8. Sessions & Cookies
+  }
+];
+
+// src/mcp/catalog/sessions.ts
+var SESSIONS_TOOLS = [
   {
     name: "save_session",
     hidden: true,
@@ -40486,8 +40490,11 @@ ${lines.join("\n")}`;
       return `### Vault Sessions (${sess.length})
 ${lines.join("\n")}`;
     }
-  },
-  // 9. Network & API Interception
+  }
+];
+
+// src/mcp/catalog/network.ts
+var NETWORK_TOOLS = [
   {
     name: "get_network_traffic",
     description: "Inspects captured HTTP network requests and responses made by the active browser tab.",
@@ -40628,8 +40635,11 @@ Subsequent navigate_to() calls targeting these URLs will load with 0ms perceived
 
 ${lines.join("\n")}`;
     }
-  },
-  // 10. Set-of-Marks (SoM) Grounding
+  }
+];
+
+// src/mcp/catalog/marks.ts
+var MARKS_TOOLS = [
   {
     name: "take_annotated_screenshot",
     hidden: true,
@@ -40708,8 +40718,11 @@ ${lines.join("\n")}`;
       return { markId: Number(rawId), text, clearFirst };
     },
     format: (data, args) => `Typed into mark #${args?.mark_id ?? args?.markId ?? args?.mark ?? args?.id ?? args?.badge ?? args?.index ?? args?.num ?? args?.number}`
-  },
-  // 11. Script Vault & Macro Engine
+  }
+];
+
+// src/mcp/catalog/scripts.ts
+var SCRIPTS_TOOLS = [
   {
     name: "save_script",
     description: "Saves a reusable browser JavaScript automation script into the persistent vault and Cortex vector index.",
@@ -40771,8 +40784,11 @@ ${lines.join("\n")}`;
     endpoint: "/scripts/delete",
     payload: (args) => ({ name: args.name }),
     format: (data, args) => data.deleted ? `Deleted script "${args.name}"` : `Script "${args.name}" not found`
-  },
-  // 12. WebSocket & SSE Streams
+  }
+];
+
+// src/mcp/catalog/streams.ts
+var STREAMS_TOOLS = [
   {
     name: "list_realtime_streams",
     description: "Returns all active and recent WebSockets (wss://) and Server-Sent Events (SSE) connections.",
@@ -40842,8 +40858,11 @@ ${lines.join("\n")}`;
     endpoint: "/capture/clear",
     payload: (args) => ({ scope: args?.scope || "all" }),
     format: (data) => data.message || "Capture buffers cleared"
-  },
-  // 13. System Tray & Window Visibility
+  }
+];
+
+// src/mcp/catalog/system.ts
+var SYSTEM_TOOLS = [
   {
     name: "set_window_visibility",
     description: "Shows/restores or hides the Cyberdeck desktop window. Showing (the default) also brings the window to the foreground and focuses it \u2014 use this to make the window visible to a human (HIL); pass focus=false to show without stealing focus. Synthetic agent input is focus-independent, so this is not needed for normal driving.",
@@ -40867,8 +40886,29 @@ ${lines.join("\n")}`;
     endpoint: "/window/tray",
     payload: (args) => ({ closeToTray: args?.close_to_tray }),
     format: (data) => JSON.stringify({ close_to_tray: data.closeToTray }, null, 2)
-  },
-  // 14. Human-In-The-Loop (HIL) Intervention & Desktop Notifications
+  }
+];
+
+// src/shared/brand.ts
+var BRAND = {
+  /** The desktop product. */
+  product: "Hypagon Gateway",
+  /** Window caption and installer shortcut. `// Cyberdeck` is the in-app harness name. */
+  windowTitle: "Hypagon Gateway // Cyberdeck",
+  /** The browser MCP server and the thing that actually drives Chromium. */
+  browser: "Hypagon Browser",
+  /** The REST wrapper MCP server. */
+  rest: "Hypagon REST",
+  /** Harness name used inside the desktop app (HUD, tray, HAR creator). */
+  deck: "Hypagon Gateway Cyberdeck",
+  /** Stable machine key for `/health` and package metadata. */
+  appKey: "hypagon-gateway",
+  repoOwner: "hyperbolictonic",
+  repoName: "hypagon"
+};
+
+// src/mcp/catalog/hil.ts
+var HIL_TOOLS = [
   {
     name: "request_human_intervention",
     description: "PROACTIVELY call this whenever encountering CAPTCHAs, Cloudflare Turnstile, login/2FA prompts, payment checkouts, or unexpected roadblocks. Halts agent execution, raises a critical toast and flashes the taskbar, and swaps the Command Deck into its hand-off panel. It does NOT steal focus: the window is unhidden but the person switches to it when ready. Clicking the toast itself does focus the window.",
@@ -40948,11 +40988,11 @@ ${lines.join("\n")}`;
       return { title, message, urgency: args?.urgency || "critical", sound: args?.sound ?? true };
     },
     format: (data, args) => JSON.stringify({ success: data.sent, title: args?.title || `${BRAND.browser}: Human Intervention Required`, message: args?.message || "Notification sent" })
-  },
-  // ---------------------------------------------------------------------------
-  // 14. Primitives Layer — one observe / act / wait / extract model.
-  // These complement the procedural verbs above; nothing is replaced.
-  // ---------------------------------------------------------------------------
+  }
+];
+
+// src/mcp/catalog/primitives-1.ts
+var PRIMITIVES_1_TOOLS = [
   {
     name: "drive",
     description: 'OPTIONAL goal-driven UI loop (absent unless a decision model is configured). Repeats observe(as:"components") \u2192 decide \u2192 act until the goal is reached or a stop condition fires, with one decision call per step instead of an agent turn per step. Text is never generated: pass `values` keyed by field name (or component id); if the next step needs a value you have not supplied, it stops with status "needs_input", names the field, and you call again with the value. Stops on: done \xB7 blocked (no deterministic gate matched, so YOU decide) \xB7 human_required (age/CAPTCHA; the hand-off is raised) \xB7 needs_agent (no acceptable action, or a contradiction the guard rejected) \xB7 failed \xB7 max_steps. Every step is in `steps` (operation, target, chars typed, warning). Use dry_run to see the first planned step without acting. Prefer this over hand-scripting long forms; use `decide` directly when you want to choose each step yourself.',
@@ -41142,7 +41182,11 @@ ${facts.join(" \xB7 ")}
 
 ${data.text || "(no content)"}`;
     }
-  },
+  }
+];
+
+// src/mcp/catalog/primitives-2.ts
+var PRIMITIVES_2_TOOLS = [
   {
     name: "extract",
     description: 'Structured, read-only extraction (no page JS injection). kind="list" finds the repeating item container and returns deduped rows {text, href, aria, mark}. kind="table" returns {headers, rows, records} from one <table> or ARIA grid; kind="tables" returns EVERY table on the page. kind="schema_org" parses <script type="application/ld+json"> into typed items (flattens @graph; pass `type` to keep just e.g. "Recipe"/"Product"/"FAQPage"/"HowTo"). kind="app_data" returns embedded JSON from __NEXT_DATA__ / JSON-LD / inline state blobs. kind="collect" scrolls a lazy/virtualized list to the end and returns every distinct row.',
@@ -41323,7 +41367,11 @@ ${data.notes || ""}`.trim();
       return `### Search "${data.query}" \u2014 ${results.length} results (${data.engine})
 ${lines.join("\n")}`;
     }
-  },
+  }
+];
+
+// src/mcp/catalog/primitives-3.ts
+var PRIMITIVES_3_TOOLS = [
   {
     name: "deep_crawl",
     description: 'Breadth-first crawl from a seed URL: follows same-origin links up to max_depth / max_pages, distills every page to Markdown, and indexes it into LanceDB Cortex. Each page takes the cheap path first \u2014 content-negotiated Markdown/Text when the site advertises it, otherwise a detached render (your active tab is not disturbed). Use match_patterns (glob "\u2026/docs/*" or /regex/) to scope, and same_origin=false to allow cross-site hops. Returns a per-page summary.',
@@ -41529,7 +41577,11 @@ ${rows.join("\n")}`;
       if (Array.isArray(data.images) && data.images.length) lines.push(`${data.images.length} frame image(s) attached.`);
       return lines.join("\n");
     }
-  },
+  }
+];
+
+// src/mcp/catalog/primitives-4.ts
+var PRIMITIVES_4_TOOLS = [
   {
     name: "find",
     description: "Semantic element search. Returns Set-of-Marks refs (mark ids) for the light/open DOM, and with sealed:true also returns controls inside closed shadow roots as coordinates (no mark id) \u2014 feed those to act(x, y). Filter by role, accessible/text name, regex, tag or CSS selector.",
@@ -41719,7 +41771,11 @@ ${lines.join("\n")}`;
     endpoint: "/network/har",
     payload: (args) => ({ pattern: args?.pattern, limit: args?.limit, save: args?.save === true }),
     format: (data) => data.filePath ? `HAR written to ${data.filePath} (${data.entries} entries)` : JSON.stringify(data.har)
-  },
+  }
+];
+
+// src/mcp/catalog/primitives-5.ts
+var PRIMITIVES_5_TOOLS = [
   {
     name: "context_save",
     description: "Saves the current browsing context (cookies + storage) under a name \u2014 the profile abstraction for authenticated sessions.",
@@ -41752,6 +41808,29 @@ ${lines.join("\n")}`;
     payload: (args) => ({ name: args?.name }),
     format: (data) => JSON.stringify({ deleted: data.deleted })
   }
+];
+
+// src/mcp/tools-catalog.ts
+var TOOLS_CATALOG = [
+  ...NAVIGATION_TOOLS,
+  ...INTERACTION_1_TOOLS,
+  ...INTERACTION_2_TOOLS,
+  ...TABS_TOOLS,
+  ...MEMORY_TOOLS,
+  ...SHIELD_TOOLS,
+  ...DOWNLOADS_TOOLS,
+  ...SESSIONS_TOOLS,
+  ...NETWORK_TOOLS,
+  ...MARKS_TOOLS,
+  ...SCRIPTS_TOOLS,
+  ...STREAMS_TOOLS,
+  ...SYSTEM_TOOLS,
+  ...HIL_TOOLS,
+  ...PRIMITIVES_1_TOOLS,
+  ...PRIMITIVES_2_TOOLS,
+  ...PRIMITIVES_3_TOOLS,
+  ...PRIMITIVES_4_TOOLS,
+  ...PRIMITIVES_5_TOOLS
 ];
 var LEGACY_ALIASES = [
   ["get_history", "browsing_history"],
