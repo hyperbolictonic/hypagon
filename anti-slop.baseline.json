@@ -163,11 +163,11 @@
       "mcp/tools-catalog.ts": 217,
       "mcp/wrap-server.ts": 66,
       "preload/index.ts": 32,
-      "renderer/main.ts": 111,
+      "renderer/main.ts": 72,
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 1130
+    "totalDuplicatedLines": 1091
   },
   "modularity": {
     "files": {

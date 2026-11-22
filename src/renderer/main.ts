@@ -3365,50 +3365,26 @@ remoteEnabledEl?.addEventListener('change', async () => {
 remoteAuthModeEl?.addEventListener('change', async () => {
   if (!remoteAuthModeEl) return;
   const mode = remoteAuthModeEl.value === 'oauth' ? 'oauth' : 'bearer';
-  remoteAuthModeEl.disabled = true;
-  try {
-    const result = await window.electronAPI?.setRemoteAuthMode(mode);
-    if (!result?.ok) showRemoteResult('error', result?.error || 'Could not change authentication mode.');
-    else showRemoteResult('success', mode === 'oauth' ? 'OAuth 2.0 mode enabled. Use the client credentials in your OAuth-capable MCP client.' : 'Bearer-token mode enabled.');
-  } catch (err: any) {
-    showRemoteResult('error', `Could not change authentication mode: ${err?.message || err}`);
-  } finally {
-    remoteAuthModeEl.disabled = false;
-    await loadRemotePanel();
-  }
+  await withRemoteButton(remoteAuthModeEl, () => window.electronAPI?.setRemoteAuthMode(mode), {
+    failure: 'Could not change authentication mode.',
+    success: mode === 'oauth'
+      ? 'OAuth 2.0 mode enabled. Use the client credentials in your OAuth-capable MCP client.'
+      : 'Bearer-token mode enabled.',
+  });
 });
 
-remoteCopyOAuthIdEl?.addEventListener('click', async () => {
-  await window.electronAPI?.copyToClipboard(remoteOAuthClientIdEl?.value || '');
-  remoteCopyOAuthIdEl.textContent = 'COPIED';
-  window.setTimeout(() => (remoteCopyOAuthIdEl.textContent = 'COPY'), 1500);
-});
+bindCopyButton(remoteCopyOAuthIdEl, () => remoteOAuthClientIdEl?.value || '', 'COPY');
 
-remoteCopyOAuthSecretEl?.addEventListener('click', async () => {
-  await window.electronAPI?.copyToClipboard(remoteOAuthClientSecretEl?.value || '');
-  remoteCopyOAuthSecretEl.textContent = 'COPIED';
-  window.setTimeout(() => (remoteCopyOAuthSecretEl.textContent = 'COPY'), 1500);
-});
+bindCopyButton(remoteCopyOAuthSecretEl, () => remoteOAuthClientSecretEl?.value || '', 'COPY');
 
-remoteCopyOAuthConfigEl?.addEventListener('click', async () => {
-  await window.electronAPI?.copyToClipboard(remoteOAuthConfigEl?.value || '');
-  remoteCopyOAuthConfigEl.textContent = 'COPIED';
-  window.setTimeout(() => (remoteCopyOAuthConfigEl.textContent = 'COPY CONFIG'), 1500);
-});
+bindCopyButton(remoteCopyOAuthConfigEl, () => remoteOAuthConfigEl?.value || '', 'COPY CONFIG');
 
 remoteRotateOAuthEl?.addEventListener('click', async () => {
   if (!window.confirm('Rotate the OAuth client? Existing OAuth authorizations will stop working.')) return;
-  remoteRotateOAuthEl.disabled = true;
-  try {
-    const result = await window.electronAPI?.rotateOAuthClient();
-    if (!result?.ok) showRemoteResult('error', result?.error || 'Could not rotate the OAuth client.');
-    else showRemoteResult('success', 'OAuth client rotated. Update connected OAuth clients with the new credentials.');
-  } catch (err: any) {
-    showRemoteResult('error', `Could not rotate the OAuth client: ${err?.message || err}`);
-  } finally {
-    remoteRotateOAuthEl.disabled = false;
-    await loadRemotePanel();
-  }
+  await withRemoteButton(remoteRotateOAuthEl, () => window.electronAPI?.rotateOAuthClient(), {
+    failure: 'Could not rotate the OAuth client.',
+    success: 'OAuth client rotated. Update connected OAuth clients with the new credentials.',
+  });
 });
 
 remoteTunnelEnabledEl?.addEventListener('change', async () => {
@@ -3468,18 +3444,13 @@ remoteTunnelSaveEl?.addEventListener('click', async () => {
 });
 
 remoteCloudflaredModeEl?.addEventListener('change', async () => {
-  const mode = remoteCloudflaredModeEl.value === 'automatic' ? 'automatic' : 'manual';
-  remoteCloudflaredModeEl.disabled = true;
-  try {
-    const result = await window.electronAPI?.setCloudflaredMode(mode);
-    if (!result?.ok) showRemoteResult('error', result?.error || 'Could not save the update mode.');
-    else showRemoteResult('success', mode === 'automatic' ? 'Managed cloudflared updates will be checked at app startup.' : 'Managed cloudflared updates are manual.');
-  } catch (err: any) {
-    showRemoteResult('error', `Could not save the update mode: ${err?.message || err}`);
-  } finally {
-    remoteCloudflaredModeEl.disabled = false;
-    await loadRemotePanel();
-  }
+  const mode = remoteCloudflaredModeEl?.value === 'automatic' ? 'automatic' : 'manual';
+  await withRemoteButton(remoteCloudflaredModeEl, () => window.electronAPI?.setCloudflaredMode(mode), {
+    failure: 'Could not save the update mode.',
+    success: mode === 'automatic'
+      ? 'Managed cloudflared updates will be checked at app startup.'
+      : 'Managed cloudflared updates are manual.',
+  });
 });
 
 remoteCloudflaredCheckEl?.addEventListener('click', async () => {
@@ -3504,75 +3475,72 @@ remoteCloudflaredCheckEl?.addEventListener('click', async () => {
 
 remoteCloudflaredInstallEl?.addEventListener('click', async () => {
   if (!window.confirm('Download and install the official cloudflared binary from Cloudflare GitHub releases?')) return;
-  remoteCloudflaredInstallEl.disabled = true;
   if (remoteCloudflaredResultEl) remoteCloudflaredResultEl.textContent = 'downloading…';
   showRemoteResult('info', 'Downloading and verifying cloudflared…');
+  await withRemoteButton(remoteCloudflaredInstallEl, () => window.electronAPI?.installCloudflared(), {
+    failure: 'Could not install cloudflared.',
+    success: 'cloudflared is installed and verified.',
+  });
+});
+
+/**
+ * One remote-panel action envelope: disable the control, call, report the
+ * outcome, and reload the panel. The mutation buttons differed only in the
+ * call and the two messages.
+ */
+async function withRemoteButton(
+  button: HTMLButtonElement | HTMLSelectElement | null,
+  call: () => Promise<any>,
+  messages: { failure: string; success: string | ((result: any) => string) },
+): Promise<void> {
+  if (button) button.disabled = true;
   try {
-    const result = await window.electronAPI?.installCloudflared();
-    if (!result?.ok) {
-      showRemoteResult('error', result?.error || 'Could not install cloudflared.');
-    } else {
-      showRemoteResult('success', 'cloudflared is installed and verified.');
-    }
+    const result = await call();
+    if (!result?.ok) showRemoteResult('error', result?.error || messages.failure);
+    else showRemoteResult('success', typeof messages.success === 'function' ? messages.success(result) : messages.success);
   } catch (err: any) {
-    showRemoteResult('error', `Could not install cloudflared: ${err?.message || err}`);
+    showRemoteResult('error', `${messages.failure}: ${err?.message || err}`);
   } finally {
-    remoteCloudflaredInstallEl.disabled = false;
+    if (button) button.disabled = false;
     await loadRemotePanel();
   }
-});
+}
+
+/** Copy a field to the clipboard and flash the button label. */
+function bindCopyButton(
+  button: HTMLElement | null | undefined,
+  read: () => string,
+  idle: string,
+  copied = 'COPIED',
+): void {
+  button?.addEventListener('click', async () => {
+    const value = read();
+    if (!value) return;
+    await window.electronAPI?.copyToClipboard(value);
+    button.textContent = copied;
+    window.setTimeout(() => (button.textContent = idle), 1500);
+  });
+}
 
 remoteRefreshEl?.addEventListener('click', () => void loadRemotePanel());
 
-remoteCopyTokenEl?.addEventListener('click', async () => {
-  const token = remoteTokenEl?.value || '';
-  if (!token) return;
-  await window.electronAPI?.copyToClipboard(token);
-  remoteCopyTokenEl.textContent = 'COPIED';
-  window.setTimeout(() => (remoteCopyTokenEl.textContent = 'COPY'), 1500);
-});
+bindCopyButton(remoteCopyTokenEl, () => remoteTokenEl?.value || '', 'COPY');
 
-remoteCopyConfigEl?.addEventListener('click', async () => {
-  const config = remoteConfigEl?.value || '';
-  if (!config) return;
-  await window.electronAPI?.copyToClipboard(config);
-  remoteCopyConfigEl.textContent = 'COPIED';
-  window.setTimeout(() => (remoteCopyConfigEl.textContent = 'COPY CONFIG'), 1500);
-});
+bindCopyButton(remoteCopyConfigEl, () => remoteConfigEl?.value || '', 'COPY CONFIG');
 
 remoteRotateEl?.addEventListener('click', async () => {
   if (!window.confirm('Rotate the remote token? Existing remote clients will stop working.')) return;
-  remoteRotateEl.disabled = true;
-  try {
-    const result = await window.electronAPI?.rotateRemoteToken();
-    if (!result?.ok) {
-      showRemoteResult('error', result?.error || 'Could not rotate the token.');
-    } else {
-      showRemoteResult('success', 'Remote token rotated. Update any configured clients.');
-    }
-  } catch (err: any) {
-    showRemoteResult('error', `Could not rotate the token: ${err?.message || err}`);
-  } finally {
-    remoteRotateEl.disabled = false;
-    await loadRemotePanel();
-  }
+  await withRemoteButton(remoteRotateEl, () => window.electronAPI?.rotateRemoteToken(), {
+    failure: 'Could not rotate the token.',
+    success: 'Remote token rotated. Update any configured clients.',
+  });
 });
 
 remoteDisconnectEl?.addEventListener('click', async () => {
-  remoteDisconnectEl.disabled = true;
-  try {
-    const result = await window.electronAPI?.disconnectRemoteSessions();
-    if (!result?.ok) {
-      showRemoteResult('error', result?.error || 'Could not disconnect sessions.');
-    } else {
-      showRemoteResult('success', 'Remote sessions disconnected. The gateway is ready for a new client.');
-    }
-  } catch (err: any) {
-    showRemoteResult('error', `Could not disconnect sessions: ${err?.message || err}`);
-  } finally {
-    remoteDisconnectEl.disabled = false;
-    await loadRemotePanel();
-  }
+  await withRemoteButton(remoteDisconnectEl, () => window.electronAPI?.disconnectRemoteSessions(), {
+    failure: 'Could not disconnect sessions.',
+    success: 'Remote sessions disconnected. The gateway is ready for a new client.',
+  });
 });
 
 // ---- Auto-update banner (packaged builds only; the main process disables it elsewhere) ------
