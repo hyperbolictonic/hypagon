@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 168 files, 672 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 169 files, 674 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (595)
+## Types (597)
 
 | File | Export | When to use |
 |---|---|---|
@@ -527,6 +527,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/validate-wrapper.ts` | `validateWrapper` | - |
 | `main/wrap/validate-wrapper.ts` | `isPlainObject` | - |
 | `main/wrap/validate-wrapper.ts` | `WrapperValidation` *(type)* | - |
+| `main/zoom/controller.ts` | `ZoomController` | - |
+| `main/zoom/controller.ts` | `ZoomControllerDeps` *(type)* | When to use: building the chassis — everything zoom reads through. |
 | `mcp/process-guard.ts` | `installProcessGuards` | When to use: at the top of a stdio MCP server entrypoint, before connecting |
 | `mcp/process-guard.ts` | `ProcessGuardOptions` *(type)* | Process resilience shared by the stdio MCP entrypoints. |
 | `mcp/tool-groups.ts` | `groupAction` | - |

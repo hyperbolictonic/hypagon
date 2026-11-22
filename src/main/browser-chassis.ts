@@ -7,13 +7,8 @@ import type { AgentStatus, ChassisState, HarvestedConstruct, TelemetryEvent, Tab
 import type { ViewportState } from '../shared/viewport.js';
 import { DeviceProfileStore } from './viewport/profiles.js';
 import { ViewportController } from './viewport/controller.js';
-import {
-  clampZoomFactor,
-  nextZoomStep,
-  type ZoomMode,
-  type ZoomSettings,
-  type ZoomState,
-} from '../shared/zoom.js';
+import type { ZoomMode, ZoomSettings, ZoomState } from '../shared/zoom.js';
+import { ZoomController } from './zoom/controller.js';
 import { HumanizedInputSimulator } from './telemetry/input-simulator.js';
 import { loadInputProfile, saveInputProfile, type InputProfile } from './telemetry/input-profile.js';
 import { HumanActivityMonitor, humanListenerScript, type HumanActivity } from './input/human-activity.js';
@@ -221,9 +216,7 @@ export class BrowserChassis {
   private revision = 0;
   private onCollaborationNote?: (input: { target: CollaborationTarget; text: string; tags: string[] }) => void;
   /** Page zoom policy: fit the page to the OS display scale, or honour Windows scale. */
-  private zoomMode: ZoomMode = 'compensate';
   /** Explicit zoom from the toolbar or an agent; null means use the policy base. */
-  private zoomOverride: number | null = null;
   /** Global display/power listeners must be installed once, not per window. */
   private systemViewportListenersBound = false;
   /** Last proof that the HUD renderer is alive and painting. */
@@ -1509,15 +1502,25 @@ export class BrowserChassis {
   }
 
   /** Install the persisted page-zoom policy (compensate vs Windows scale). */
+  // ---- Page zoom ----------------------------------------------------------------------
+  // Mode, override and the display-scale base factor live in ZoomController; these
+  // delegations keep the chassis's public surface unchanged.
+
+  private readonly zoomController = new ZoomController({
+    displayScale: () => this.getDisplayScale(),
+    viewportState: () => this.viewportController?.state() ?? null,
+    isEmulated: (wc) => Boolean(this.viewportController?.isEmulated(wc as any)),
+    bounds: () => this.getViewportBounds(),
+    webContentsList: () => (this.tabManager?.allTabs() ?? []).map((tab) => ({ webContents: tab.view.webContents })),
+    onChanged: () => this.broadcastState(),
+  });
+
   public setZoomSettings(settings: ZoomSettings): void {
-    this.zoomMode = settings.mode === 'native' ? 'native' : 'compensate';
-    this.zoomOverride = null;
-    this.applyZoomToAllTabs();
-    this.broadcastState();
+    this.zoomController.setSettings(settings);
   }
 
   public getZoomMode(): ZoomMode {
-    return this.zoomMode;
+    return this.zoomController.getMode();
   }
 
   /** Scale factor of the display containing the main window. */
@@ -1537,81 +1540,18 @@ export class BrowserChassis {
     }
   }
 
-  private getZoomBaseFactor(): number {
-    const scale = this.getDisplayScale();
-    return this.zoomMode === 'compensate' && scale > 0 ? 1 / scale : 1;
-  }
-
-  private getEffectiveZoomFactor(): number {
-    return clampZoomFactor(this.zoomOverride ?? this.getZoomBaseFactor());
-  }
-
-  /** Report the policy plus the CSS/physical proportions the page is rendered at. */
   public getZoomState(): ZoomState {
-    const displayScale = this.getDisplayScale();
-    const responsive = this.viewportController?.state();
-    if (responsive?.active && responsive.spec) {
-      // Device emulation defines the page's CSS world; report those proportions so screenshots,
-      // marks and act coordinates still line up.
-      const spec = responsive.spec;
-      return {
-        mode: this.zoomMode,
-        displayScale,
-        baseFactor: 1,
-        factor: 1,
-        custom: true,
-        devicePixelRatio: spec.deviceScaleFactor,
-        viewport: {
-          css: { width: spec.width, height: spec.height },
-          physical: {
-            width: Math.round(spec.width * responsive.scale * displayScale),
-            height: Math.round(spec.height * responsive.scale * displayScale),
-          },
-        },
-      };
-    }
-
-    const baseFactor = this.getZoomBaseFactor();
-    const factor = this.getEffectiveZoomFactor();
-    let bounds = { width: 0, height: 0 };
-    try {
-      bounds = this.getViewportBounds();
-    } catch {
-      // A hidden settings surface can leave the bounds temporarily unavailable.
-    }
-    const cssWidth = factor > 0 ? bounds.width / factor : bounds.width;
-    const cssHeight = factor > 0 ? bounds.height / factor : bounds.height;
-    return {
-      mode: this.zoomMode,
-      displayScale,
-      baseFactor,
-      factor,
-      custom: this.zoomOverride !== null,
-      devicePixelRatio: displayScale * factor,
-      viewport: {
-        css: { width: Math.round(cssWidth), height: Math.round(cssHeight) },
-        physical: {
-          width: Math.round(bounds.width * displayScale),
-          height: Math.round(bounds.height * displayScale),
-        },
-      },
-    };
+    return this.zoomController.getState();
   }
 
   private applyZoom(wc: WebContents): void {
-    try {
-      if (this.viewportController?.isEmulated(wc)) return;
-      if (!wc.isDestroyed()) wc.setZoomFactor(this.getEffectiveZoomFactor());
-    } catch {
-      // A tab can be destroyed between the event and this call.
-    }
+    this.zoomController.applyTo(wc);
   }
 
   public applyZoomToAllTabs(): void {
-    for (const tab of this.tabManager?.allTabs() ?? []) this.applyZoom(tab.view.webContents);
+    this.zoomController.applyToAllTabs();
   }
 
-  /** Responsive device state for the active tab (HUD toolbar, IPC and the agent tool). */
   public getViewportState(): ViewportState {
     if (this.viewportController) return this.viewportController.state();
     const available = this.getViewportBounds();
@@ -1687,26 +1627,7 @@ export class BrowserChassis {
     factor?: number;
     mode?: ZoomMode;
   } = {}): ZoomState {
-    // Device emulation pins the page to 100%: page zoom would change CSS widths inside the
-    // emulated viewport. Keep the zoom controls inert until the device is reset.
-    if (this.viewportController?.state().active) return this.getZoomState();
-
-    if (input.mode === 'compensate' || input.mode === 'native') {
-      this.zoomMode = input.mode;
-      this.zoomOverride = null;
-    }
-
-    if (input.factor !== undefined) {
-      this.zoomOverride = clampZoomFactor(input.factor);
-    } else if (input.action === 'reset') {
-      this.zoomOverride = null;
-    } else if (input.action === 'in' || input.action === 'out') {
-      this.zoomOverride = clampZoomFactor(nextZoomStep(this.getEffectiveZoomFactor(), input.action));
-    }
-
-    this.applyZoomToAllTabs();
-    this.broadcastState();
-    return this.getZoomState();
+    return this.zoomController.setZoom(input);
   }
 
   private registerIpcHandlers() {
