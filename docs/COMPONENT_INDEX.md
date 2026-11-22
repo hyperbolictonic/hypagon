@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 191 files, 709 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 192 files, 712 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (609)
+## Types (612)
 
 | File | Export | When to use |
 |---|---|---|
@@ -24,6 +24,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/browser/frame-tree.ts` | `discoverFrames` | - |
 | `main/browser/frame-tree.ts` | `FrameHandle` *(type)* | - |
 | `main/browser/frame-tree.ts` | `FrameContext` *(type)* | - |
+| `main/browser/frames-inventory.ts` | `inventoryFrames` | When to use: the chassis frames route — walk the frame tree, attach control facts and per-frame screenshots. |
+| `main/browser/frames-inventory.ts` | `FrameInventoryResult` *(type)* | When to use: the frames result — one row per frame, with controls and screenshots attached. |
+| `main/browser/frames-inventory.ts` | `FramesInventoryDeps` *(type)* | When to use: the inventory reads through these two collaborators. |
 | `main/browser/frames.ts` | `listFrames` | List the main frame and its children with top-level content-box rects. |
 | `main/browser/frames.ts` | `FrameRect` *(type)* | - |
 | `main/browser/frames.ts` | `FrameInfo` *(type)* | - |
