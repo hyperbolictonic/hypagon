@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 192 files, 712 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 193 files, 715 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (612)
+## Types (615)
 
 | File | Export | When to use |
 |---|---|---|
@@ -134,6 +134,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/input/human-activity.ts` | `HUMAN_CONSOLE_PREFIX` | Console prefix the page uses; anything else is ignored. |
 | `main/input/human-activity.ts` | `HumanActivityMonitor` | - |
 | `main/input/human-activity.ts` | `HumanActivity` *(type)* | Human takeover detection. |
+| `main/input-actions.ts` | `InputActionsController` | When to use: the chassis — own how input actions are performed over the active tab. |
+| `main/input-actions.ts` | `InputActionsStatus` *(type)* | When to use: building the chassis — the state surface the actions report through. |
+| `main/input-actions.ts` | `InputActionsDeps` *(type)* | When to use: building the chassis — everything an input action reads through. |
 | `main/jev/controller.ts` | `JevController` | When to use: the chassis — own the JEV gate, funnel, loop breaker, stats and depth store. |
 | `main/jev/controller.ts` | `JevControllerDeps` *(type)* | When to use: building the chassis — the collaborators JEV reads through. |
 | `main/jev/controller.ts` | `JevPolicy` *(type)* | When to use: declaring the optional JEV gate; wired by index.ts to the settings store + decision status. |
