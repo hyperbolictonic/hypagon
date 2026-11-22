@@ -2801,6 +2801,67 @@ export class BrowserChassis {
     });
   }
 
+  /**
+   * Encode a captured page, save it with retention, emit harvest telemetry and
+   * build the response shape both screenshot paths (live viewport and annotated
+   * marks) share. `details` receives the post-encode facts for the telemetry
+   * message.
+   */
+  private persistScreenshot(args: {
+    image: Electron.NativeImage;
+    jpeg: boolean;
+    quality: number;
+    prefix: string;
+    details: (facts: { width: number; height: number; mimeType: string; filePath: string; bytes: number }) => string;
+    zoom: ZoomState;
+    nativeSize: { width: number; height: number };
+  }): {
+    base64Image: string;
+    filePath: string;
+    width: number;
+    height: number;
+    mimeType: string;
+    zoom: ZoomState;
+    nativeWidth: number;
+    nativeHeight: number;
+    coordinateScale: number;
+  } {
+    const size = args.image.getSize();
+    const mimeType = args.jpeg ? 'image/jpeg' : 'image/png';
+    const buffer = args.jpeg ? args.image.toJPEG(args.quality) : args.image.toPNG();
+    const base64Image = `data:${mimeType};base64,${buffer.toString('base64')}`;
+
+    // Save image to disk & run retention cleanup
+    const screenshotsDir = this.getScreenshotsDir();
+    const filePath = path.join(screenshotsDir, `${args.prefix}${Date.now()}.${args.jpeg ? 'jpg' : 'png'}`);
+    fs.writeFileSync(filePath, buffer);
+    this.cleanupScreenshots(50);
+
+    this.emitTelemetry({
+      type: 'harvest',
+      timestamp: Date.now(),
+      details: args.details({
+        width: size.width,
+        height: size.height,
+        mimeType,
+        filePath,
+        bytes: buffer.length,
+      }),
+    });
+
+    return {
+      base64Image,
+      filePath,
+      width: size.width,
+      height: size.height,
+      mimeType,
+      zoom: args.zoom,
+      nativeWidth: args.nativeSize.width,
+      nativeHeight: args.nativeSize.height,
+      coordinateScale: args.zoom.viewport.css.width > 0 ? size.width / args.zoom.viewport.css.width : 1,
+    };
+  }
+
   public async takeScreenshot(opts: {
     maxWidth?: number;
     format?: 'jpeg' | 'png';
@@ -2833,36 +2894,16 @@ export class BrowserChassis {
       outImage = rawImage.resize({ width: maxWidth, quality: 'good' });
     }
 
-    const size = outImage.getSize();
-    const isJpeg = format === 'jpeg';
-    const mimeType = isJpeg ? 'image/jpeg' : 'image/png';
-    const buffer = isJpeg ? outImage.toJPEG(quality) : outImage.toPNG();
-    const base64Image = `data:${mimeType};base64,${buffer.toString('base64')}`;
-
-    // Save image to disk & run retention cleanup
-    const screenshotsDir = this.getScreenshotsDir();
-    const filename = `screenshot_${Date.now()}.${isJpeg ? 'jpg' : 'png'}`;
-    const filePath = path.join(screenshotsDir, filename);
-    fs.writeFileSync(filePath, buffer);
-    this.cleanupScreenshots(50);
-
-    this.emitTelemetry({
-      type: 'harvest',
-      timestamp: Date.now(),
-      details: `Captured live viewport screenshot: ${size.width}x${size.height}px (${mimeType}, ${(buffer.length / 1024).toFixed(1)} KB), saved to ${filePath}`,
-    });
-
-    return {
-      base64Image,
-      filePath,
-      width: size.width,
-      height: size.height,
-      mimeType,
+    return this.persistScreenshot({
+      image: outImage,
+      jpeg: format === 'jpeg',
+      quality,
+      prefix: 'screenshot_',
+      details: (facts) =>
+        `Captured live viewport screenshot: ${facts.width}x${facts.height}px (${facts.mimeType}, ${(facts.bytes / 1024).toFixed(1)} KB), saved to ${facts.filePath}`,
       zoom,
-      nativeWidth: nativeSize.width,
-      nativeHeight: nativeSize.height,
-      coordinateScale: zoom.viewport.css.width > 0 ? size.width / zoom.viewport.css.width : 1,
-    };
+      nativeSize,
+    });
   }
 
   public async harvestMarkdown(opts: { includeMarks?: boolean; includeOffscreen?: boolean } = {}): Promise<HarvestedConstruct> {
@@ -4479,36 +4520,19 @@ export class BrowserChassis {
     if (economy && image.getSize().width > ECONOMY_MAX_WIDTH) {
       outImage = image.resize({ width: ECONOMY_MAX_WIDTH, quality: 'good' });
     }
-    const size = outImage.getSize();
-    const mimeType = economy ? 'image/jpeg' : 'image/png';
-    const buffer = economy ? outImage.toJPEG(45) : outImage.toPNG();
-    const base64Image = `data:${mimeType};base64,${buffer.toString('base64')}`;
 
-    // 4. Save to disk & run retention cleanup
-    const screenshotsDir = this.getScreenshotsDir();
-    const filename = `annotated_${economy ? 'eco_' : ''}${Date.now()}.${economy ? 'jpg' : 'png'}`;
-    const filePath = path.join(screenshotsDir, filename);
-    fs.writeFileSync(filePath, buffer);
-    this.cleanupScreenshots(50);
-
-    this.emitTelemetry({
-      type: 'harvest',
-      timestamp: Date.now(),
-      details: `Set-of-Marks: Tagged ${marks.length} interactive targets, saved to ${filePath}`,
+    const screenshot = this.persistScreenshot({
+      image: outImage,
+      jpeg: economy,
+      quality: 45,
+      prefix: `annotated_${economy ? 'eco_' : ''}`,
+      details: (facts) => `Set-of-Marks: Tagged ${marks.length} interactive targets, saved to ${facts.filePath}`,
+      zoom,
+      nativeSize,
     });
 
     return {
-      screenshot: {
-        base64Image,
-        filePath,
-        width: size.width,
-        height: size.height,
-        mimeType,
-        zoom,
-        nativeWidth: nativeSize.width,
-        nativeHeight: nativeSize.height,
-        coordinateScale: zoom.viewport.css.width > 0 ? size.width / zoom.viewport.css.width : 1,
-      },
+      screenshot,
       marks,
     };
   }
