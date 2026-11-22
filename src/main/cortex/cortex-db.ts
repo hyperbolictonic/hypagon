@@ -153,6 +153,24 @@ export class CortexDB {
     this.storageDir = customStorageDir || dataPath('cortex');
   }
 
+  /**
+   * The history table's seed row: the manual page an agent can always recall.
+   * `content` is what agents read; `embedding` is what the vector matches on
+   * (the two intentionally differ for the full manual copy).
+   */
+  private async seedHistoryRow(content: string, embedding: string): Promise<PageHistoryRow> {
+    return {
+      id: 'seed_manual_0',
+      url: 'mark-eleven://manual',
+      domain: 'internal',
+      title: 'Cyberdeck Manual',
+      chunk_index: 0,
+      content,
+      visited_at: new Date().toISOString(),
+      vector: await embedText(embedding),
+    };
+  }
+
   public async initialize(): Promise<void> {
     if (this.isInitialized) return;
     if (this.initPromise) return this.initPromise;
@@ -168,16 +186,12 @@ export class CortexDB {
 
       // Initialize page_history table
       if (!tables.includes('page_history')) {
-        const seedHistory: PageHistoryRow[] = [{
-          id: 'seed_manual_0',
-          url: 'mark-eleven://manual',
-          domain: 'internal',
-          title: 'Cyberdeck Manual',
-          chunk_index: 0,
-          content: 'Kuang Grade Mark Eleven Cyberdeck Manual - Chromium MCP Navigator with Bézier Kinematics and Multi-Tab support.',
-          visited_at: new Date().toISOString(),
-          vector: await embedText('Cyberdeck Manual Kuang Grade Mark Eleven Chromium MCP Navigator')
-        }];
+        const seedHistory: PageHistoryRow[] = [
+          await this.seedHistoryRow(
+            'Kuang Grade Mark Eleven Cyberdeck Manual - Chromium MCP Navigator with Bézier Kinematics and Multi-Tab support.',
+            'Cyberdeck Manual Kuang Grade Mark Eleven Chromium MCP Navigator',
+          ),
+        ];
         this.historyTable = await this.db.createTable('page_history', seedHistory);
         try {
           await this.historyTable.createIndex('content', { config: lancedb.Index.fts() });
@@ -524,16 +538,9 @@ export class CortexDB {
 
     if (!olderThan || olderThan === 'all') {
       await this.db.dropTable('page_history');
-      const seedHistory: PageHistoryRow[] = [{
-        id: 'seed_manual_0',
-        url: 'mark-eleven://manual',
-        domain: 'internal',
-        title: 'Cyberdeck Manual',
-        chunk_index: 0,
-        content: 'Kuang Grade Mark Eleven Cyberdeck Manual',
-        visited_at: new Date().toISOString(),
-        vector: await embedText('Cyberdeck Manual')
-      }];
+      const seedHistory: PageHistoryRow[] = [
+        await this.seedHistoryRow('Kuang Grade Mark Eleven Cyberdeck Manual', 'Kuang Grade Mark Eleven Cyberdeck Manual'),
+      ];
       this.historyTable = await this.db.createTable('page_history', seedHistory);
     } else {
       await this.historyTable.delete(`visited_at < '${olderThan}'`);

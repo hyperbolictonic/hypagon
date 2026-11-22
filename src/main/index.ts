@@ -20,6 +20,7 @@ import type { WebPageState } from '../shared/web-state.js';
 import { initUpdater, checkForUpdates, installUpdate, updaterState } from './updates/updater.js';
 import { RemoteService } from './remote/service.js';
 import { registerRemoteIpc } from './remote/ipc.js';
+import { brandIconPath } from './brand-icon.js';
 import { ToolSettingsStore } from './tools/settings.js';
 import { registerToolSettingsIpc } from './tools/ipc.js';
 import { CollaborationStore } from './collaboration/store.js';
@@ -525,11 +526,7 @@ onRecordingStatus((state) => {
  * The packaged app reads it from inside the asar; development reads the repo copy.
  */
 function resolveBrandIcon(): string | undefined {
-  const candidates = [
-    path.join(app.getAppPath(), 'public/assets/brand/hypagon-gateway-primary.png'),
-    path.join(app.getAppPath(), 'dist/assets/brand/hypagon-gateway-primary.png'),
-  ];
-  return candidates.find((candidate) => fs.existsSync(candidate));
+  return brandIconPath();
 }
 
 const brandIcon = resolveBrandIcon();

@@ -1,4 +1,5 @@
-import { app, BrowserWindow, Menu, Tray, nativeImage, Notification } from 'electron';
+import { app, BrowserWindow, Menu, Tray, Notification } from 'electron';
+import { brandIcon } from '../brand-icon.js';
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -38,26 +39,7 @@ export class TrayManager {
   }
 
   private resolveIcon(): Electron.NativeImage {
-    const candidates = [
-      path.join(app.getAppPath(), 'public/assets/brand/hypagon-gateway-primary.png'),
-      path.join(app.getAppPath(), 'dist/assets/brand/hypagon-gateway-primary.png'),
-    ];
-
-    for (const p of candidates) {
-      if (fs.existsSync(p)) {
-        try {
-          const img = nativeImage.createFromPath(p);
-          if (!img.isEmpty()) {
-            return img.resize({ width: 16, height: 16 });
-          }
-        } catch {
-          // Continue to next candidate
-        }
-      }
-    }
-
-    // Fallback: 16x16 RGBA buffer
-    return nativeImage.createEmpty();
+    return brandIcon(16);
   }
 
   private initTray(): void {
