@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 186 files, 704 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 191 files, 709 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -628,7 +628,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (92)
+## Modules (97)
 
 | File | Export | When to use |
 |---|---|---|
@@ -703,11 +703,16 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/tool-groups.ts` | `CONSOLIDATED_GROUPED_TOOLS` | - |
 | `mcp/tool-groups.ts` | `CONSOLIDATED_HIDDEN_TOOLS` | `collect_all` is folded into `extract`; old callers can still use it by name. |
 | `mcp/tool-schema.ts` | `withGuaranteedToolSchema` | When to use: mapping a tool entry for tools/list or a transport send — |
-| `mcp/tools-catalog-memory.ts` | `MEMORY_TOOLS` | When to use: the memory/cortex, shield & forms, downloads, recording and session entries. |
-| `mcp/tools-catalog-navigation.ts` | `NAVIGATION_TOOLS` | When to use: the navigation, interaction and tab-management entries of the catalog. |
-| `mcp/tools-catalog-primitives.ts` | `PRIMITIVES_TOOLS` | When to use: the observe/act primitives core plus the page-state and context entries. |
-| `mcp/tools-catalog-research.ts` | `RESEARCH_TOOLS` | When to use: the LLM surface, research, citation and frame-actuation entries. |
-| `mcp/tools-catalog-system.ts` | `SYSTEM_TOOLS` | When to use: the network, marks, script vault, streams, tray and HIL entries. |
+| `mcp/tools-catalog-actuate.ts` | `ACTUATE_TOOLS` | When to use: the catalog segment fronting input actuation primitives: clicks, typing, keys, forms, waits and shadow walks. |
+| `mcp/tools-catalog-capture.ts` | `CAPTURE_TOOLS` | When to use: the catalog segment fronting network capture: traffic, payloads, JSON queries, realtime streams and HAR export. |
+| `mcp/tools-catalog-desktop.ts` | `DESKTOP_TOOLS` | When to use: the catalog segment fronting human-in-the-loop, notifications, window visibility and the system tray. |
+| `mcp/tools-catalog-marks.ts` | `MARKS_TOOLS` | When to use: the catalog segment fronting Set-of-Marks grounding: screenshots, the mark registry and mark actuation. |
+| `mcp/tools-catalog-memory.ts` | `MEMORY_TOOLS` | When to use: the catalog segment fronting local Cortex memory: semantic recall, browsing history and bookmarks. |
+| `mcp/tools-catalog-navigate.ts` | `NAVIGATE_TOOLS` | When to use: the catalog segment fronting page navigation, history, page status and devtools checks. |
+| `mcp/tools-catalog-observe.ts` | `OBSERVE_TOOLS` | When to use: the catalog segment fronting reading and harvesting the page, the JEV compaction surface and the decision-model loop. |
+| `mcp/tools-catalog-order.ts` | `CATALOG_ORDER` | The pinned visible order of the catalog. |
+| `mcp/tools-catalog-research.ts` | `RESEARCH_TOOLS` | When to use: the catalog segment fronting URL-to-Markdown, multi-engine search, crawling and cited topic research. |
+| `mcp/tools-catalog-workspace.ts` | `WORKSPACE_TOOLS` | When to use: the catalog segment fronting the stateful workspace: tabs, zoom, viewport, downloads, contexts, recordings and the script vault. |
 | `mcp/tools-catalog.ts` | `TOOLS_CATALOG` | - |
 | `mcp/tools-catalog.ts` | `TIER_LABELS` | Discoverability tiers (docs/TOOL_CATALOG_REVIEW.md §3, Phase 4). |
 | `mcp/tools-catalog.ts` | `TOOL_TIERS` | - |

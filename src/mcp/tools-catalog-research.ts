@@ -1,12 +1,9 @@
 import { z } from 'zod';
 import type { ToolCatalogItem } from './tools-catalog-types.js';
-import { formatMark } from './format-mark.js';
-import { normaliseUrl, requireUrl } from './tool-args.js';
-import { BRAND } from '../shared/brand.js';
 
-/** When to use: the LLM surface, research, citation and frame-actuation entries. */
+/** When to use: the catalog segment fronting URL-to-Markdown, multi-engine search, crawling and cited topic research. */
 export const RESEARCH_TOOLS: ToolCatalogItem[] = [
-  {
+{
     name: 'llm_surface',
     description:
       'Checks whether a site publishes an LLM-friendly representation — a `/llms.txt` / `/llms-full.txt` index, a `/sitemap.xml`, a page-level Markdown/Text alternate (a declared `<link rel="alternate">`, or a real `<a href="….md">` link on the page), or Markdown content negotiation — so you can read it as text instead of rendering. ' +
@@ -39,7 +36,7 @@ export const RESEARCH_TOOLS: ToolCatalogItem[] = [
       return lines.join('\n');
     },
   },
-  {
+{
     name: 'llm_fetch',
     description:
       'Fetches a site-provided Markdown/Text representation that `llm_surface` found — an `/llms.txt` index, a page-level Markdown/Text alternate, or a negotiated Markdown body. ' +
@@ -55,7 +52,7 @@ export const RESEARCH_TOOLS: ToolCatalogItem[] = [
       return `### llm_fetch ${data.as} · ${data.url} (${data.contentType || 'unknown'}, ${data.bytes} bytes, ${data.scope} scope, via ${data.via})${warn}\n\n${data.content || ''}`;
     },
   },
-  {
+{
     name: 'read_url',
     description:
       'Reads a URL as Markdown in ONE call — the composite front door. Reads the site\'s own LLM-friendly representation when one covers the URL you asked for (a page-level Markdown/Text alternate for a page); otherwise it renders the URL in a DETACHED view (your active tab is never hijacked) and distils it to Markdown. ' +
@@ -87,7 +84,7 @@ export const RESEARCH_TOOLS: ToolCatalogItem[] = [
       return `${head.join('\n')}\n\n${data.content || ''}`;
     },
   },
-  {
+{
     name: 'search_web',
     description:
       'Runs a web search and returns ranked results {rank, title, url, snippet}. Each engine loads in a detached view (your active tab is NOT disturbed) and the hub falls back across engines when one returns nothing (bot-check/consent wall). ' +
@@ -119,7 +116,7 @@ export const RESEARCH_TOOLS: ToolCatalogItem[] = [
       return `### Search "${data.query}" — ${results.length} results (${data.engine})\n${lines.join('\n')}`;
     },
   },
-  {
+{
     name: 'deep_crawl',
     description:
       'Breadth-first crawl from a seed URL: follows same-origin links up to max_depth / max_pages, distills every page to Markdown, and indexes it into LanceDB Cortex. ' +
@@ -161,7 +158,7 @@ export const RESEARCH_TOOLS: ToolCatalogItem[] = [
       return `${head}\n${rows.join('\n')}${notes}`;
     },
   },
-  {
+{
     name: 'research_topic',
     description:
       'Autonomous research mode: searches the web, gathers the top sources (content-negotiated Markdown/Text when advertised, else a detached render), distills each to Markdown, and indexes them into LanceDB Cortex. ' +
@@ -200,7 +197,7 @@ export const RESEARCH_TOOLS: ToolCatalogItem[] = [
       return `${head}\n${body}${notes}`;
     },
   },
-  {
+{
     name: 'relocate_citation',
     description:
       'Revalidates a citation anchor captured by research_topic/deep_crawl (`source.anchors[].fingerprint`). Renders the URL, relocates the fingerprint, and returns whether it was found, the match score, the current path/text and the top candidates. Use this before trusting a saved quote after a site redesign.',
@@ -226,7 +223,7 @@ export const RESEARCH_TOOLS: ToolCatalogItem[] = [
       return `### Citation found (${data.score}%)\n- ${data.path}\n\n${data.text}`;
     },
   },
-  {
+{
     name: 'revalidate_citations',
     description:
       'Revalidates saved citation anchors against the live pages and updates their health scores. Anchors are captured automatically by research_topic/deep_crawl when a query is anchored, and stored in <userData>/research-anchors.json. Omit url to check the most recent stored URLs.',
@@ -245,7 +242,7 @@ export const RESEARCH_TOOLS: ToolCatalogItem[] = [
       return `${head}\n${rows.join('\n')}`;
     },
   },
-  {
+{
     name: 'collect_all',
     description:
       'Scroll a virtualized/lazy list to the bottom and collect every distinct row (deduped by text+href) in ONE call. The abstraction that replaces a manual scroll-and-harvest sweep. ' +
@@ -275,216 +272,29 @@ export const RESEARCH_TOOLS: ToolCatalogItem[] = [
       return `# collect_all — ${data.count} distinct rows after ${data.scrolls} scrolls\n${rows.join('\n')}`;
     },
   },
-  {
-    name: 'frames',
-    description:
-      'Lists the page\'s iframes as first-class content instead of blank boxes: each frame\'s top-level rect, URL, and the controls inside it with coordinates ALREADY offset into the page viewport. ' +
-      'Pass screenshots=true to get one image per visible frame, which is how a cross-origin widget, embedded checkout or consent wall becomes something the model can actually look at. ' +
-      'Feed the returned control x/y to act(x, y). Marks/find remain main-frame by default, so this is the tool for anything inside an iframe.',
+{
+    name: 'prerender_links',
+    description: 'Speculative Pre-rendering Engine. Pre-executes, hydrates, and caches candidate links in background views so subsequent navigation is 0ms instantaneous. Automatically distills and indexes content into LanceDB Cortex memory.',
     parameters: {
-      include_controls: z.coerce.boolean().optional().default(true).describe('Describe the controls inside each frame (default: true)'),
-      screenshots: z.coerce.boolean().optional().default(false).describe('Return one cropped image per visible frame (default: false; opt-in because it costs a capture)'),
-      selector: z.string().optional().describe('Restrict the in-frame control scan to this CSS selector'),
-      max_frames: z.coerce.number().optional().default(6).describe('Frame budget, breadth-first (default: 6, max: 16)'),
-      max_controls: z.coerce.number().optional().default(40).describe('Max controls to describe per frame (default: 40, max: 200)'),
-      include_offscreen: z.coerce.boolean().optional().default(false).describe('Also include frames/controls outside the viewport (default: false)'),
-      max_side: z.coerce.number().optional().default(1024).describe('Longest side of a frame screenshot in px (default: 1024)'),
+      urls: z.array(z.string()).optional().describe('Specific candidate URLs to prerender. If omitted, uses selector or page link heuristics'),
+      selector: z.string().optional().describe('CSS selector to pick candidate links from the active page (e.g. "a.search-result", ".docs-nav a")'),
+      max_pages: z.coerce.number().optional().default(3).describe('Maximum candidate pages to prerender in background pool (max: 3)'),
+      harvest_to_cortex: z.coerce.boolean().optional().default(true).describe('Whether to automatically distill and index pre-rendered pages into LanceDB Cortex memory for instant recall_memory'),
+      wait_until_idle_ms: z.coerce.number().optional().default(500).describe('Hydration wait time per candidate view'),
     },
-    endpoint: '/frames',
+    endpoint: '/prerender/links',
     payload: (args) => ({
-      include_controls: args?.include_controls,
-      screenshots: args?.screenshots === true,
+      urls: args?.urls,
       selector: args?.selector,
-      max_frames: args?.max_frames,
-      max_controls: args?.max_controls,
-      include_offscreen: args?.include_offscreen === true,
-      max_side: args?.max_side,
+      maxPages: args?.max_pages !== undefined ? Number(args.max_pages) : 3,
+      harvestToCortex: args?.harvest_to_cortex !== undefined ? Boolean(args.harvest_to_cortex) : true,
+      waitUntilIdleMs: args?.wait_until_idle_ms !== undefined ? Number(args.wait_until_idle_ms) : 500,
     }),
     format: (data) => {
-      const frames = Array.isArray(data.frames) ? data.frames : [];
-      const vp = data.viewport || {};
-      const lines = [`# frames — ${Math.max(0, frames.length - 1)} child frame(s), viewport ${vp.width || '?'}x${vp.height || '?'}`];
-      for (const frame of frames) {
-        const where = frame.depth === 0 ? 'main' : frame.rect ? `${frame.rect.width}x${frame.rect.height} @ (${frame.rect.x}, ${frame.rect.y})` : 'no geometry';
-        const origin = frame.crossOrigin ? 'cross-origin' : frame.depth === 0 ? 'top document' : 'same-origin';
-        lines.push(`[${frame.depth}] ${where} — ${frame.url || '(blank)'}${frame.name ? ` "${frame.name}"` : ''} — ${origin}${frame.error ? ` — ${frame.error}` : ''}`);
-        for (const control of frame.controls || []) {
-          const name = control.name || control.value || '';
-          const actions = (control.actions || []).join('/');
-          const flags = [control.occluded ? 'occluded' : '', control.visible ? '' : 'hidden', control.disabled ? 'disabled' : ''].filter(Boolean);
-          lines.push(`    <${control.tag}> "${name}" @ (${control.rect.x}, ${control.rect.y})${actions ? ` {${actions}}` : ''}${flags.length ? ` [${flags.join(', ')}]` : ''}`);
-        }
-        if (frame.controlsTotal !== undefined && frame.controlsTotal > (frame.controls || []).length) {
-          lines.push(`    … ${frame.controlsTotal - (frame.controls || []).length} more control(s) not shown`);
-        }
-      }
-      for (const note of data.notes || []) lines.push(`note: ${note}`);
-      if (Array.isArray(data.images) && data.images.length) lines.push(`${data.images.length} frame image(s) attached.`);
-      return lines.join('\n');
-    },
-  },
-  {
-    name: 'find',
-    description:
-      'Semantic element search. Returns Set-of-Marks refs (mark ids) for the light/open DOM, and with sealed:true also returns controls inside closed shadow roots as coordinates (no mark id) — feed those to act(x, y). Filter by role, accessible/text name, regex, tag or CSS selector.',
-    parameters: {
-      role: z.string().optional().describe('ARIA role or implied role (e.g. "button", "link", "combobox")'),
-      name: z.string().optional().describe('Accessible-name substring (case-insensitive)'),
-      contains: z.string().optional().describe('Text/value substring'),
-      regex: z.string().optional().describe('Regex over text/value'),
-      tag: z.string().optional().describe('Element tag, e.g. "A" or "BUTTON"'),
-      selector: z.string().optional().describe('CSS selector the element must match (light/open DOM only)'),
-      limit: z.coerce.number().optional().default(25).describe('Max refs to return'),
-      include_offscreen: z.coerce.boolean().optional().default(true).describe('Also search below/above the fold (default: true)'),
-      sealed: z.coerce.boolean().optional().default(false).describe('Also search inside closed shadow roots (opt-in; cached and rate-limited)'),
-      include_frames: z.coerce.boolean().optional().default(false).describe('Also search child frames; returns 100+ mark ids usable with act(mark_id)'),
-      refresh: z.coerce.boolean().optional().default(false).describe('Force a fresh sealed scan instead of the short identity cache'),
-    },
-    endpoint: '/find',
-    payload: (args) => ({
-      role: args?.role,
-      name: args?.name,
-      contains: args?.contains,
-      regex: args?.regex,
-      tag: args?.tag,
-      selector: args?.selector,
-      limit: args?.limit,
-      include_offscreen: args?.include_offscreen,
-      sealed: args?.sealed,
-      include_frames: args?.include_frames,
-      refresh: args?.refresh,
-    }),
-    format: (data) => {
-      const rows = (data.marks || []).map((m: any) => formatMark(m));
-      const sealedRows = (data.sealed || []).map((c: any) => {
-        const cx = Math.round(c.rect.x + c.rect.width / 2);
-        const cy = Math.round(c.rect.y + c.rect.height / 2);
-        const flags = [c.inViewport === false ? 'offscreen' : '', c.disabled ? 'disabled' : ''].filter(Boolean);
-        const token = c.token ? ` token=${c.token}` : '';
-        return `[sealed] <${c.role}> "${c.name}" @ (${cx}, ${cy})${flags.length ? ` {${flags.join(', ')}}` : ''}${token}`;
-      });
-      const sealedNote = data.sealedTotal !== undefined
-        ? `\nsealed: ${(data.sealed || []).length} of ${data.sealedTotal}${data.sealedCached ? ' (cached)' : ''}`
-        : '';
-      return `# find — ${data.count} of ${data.total} match(es)${sealedNote}\n${rows.concat(sealedRows).join('\n')}`;
-    },
-  },
-  {
-    name: 'expect',
-    description: 'Immediate assertion (no polling) over the same condition vocabulary as wait_for. Returns pass/fail plus per-condition evidence, so an agent can self-check before proceeding instead of guessing.',
-    parameters: {
-      conditions: z.array(z.record(z.string(), z.any())).describe('Conditions to assert immediately, e.g. [{"type":"text","text":"GBP"},{"type":"url","pattern":"/flights"}]'),
-    },
-    endpoint: '/expect',
-    payload: (args) => ({ conditions: args?.conditions || (args?.condition ? [args.condition] : []) }),
-    format: (data) => {
-      const lines = (data.results || []).map((r: any) => `${r.ok ? '✓' : '✗'} ${r.type}${r.evidence ? ` — ${r.evidence}` : ''}`);
-      return `${data.ok ? 'PASS' : 'FAIL'} (${data.results.filter((r: any) => r.ok).length}/${data.results.length} conditions)\n${lines.join('\n')}`;
-    },
-  },
-  {
-    name: 'focus_walk',
-    description:
-      'Enter a closed shadow root like a keyboard user: focus the host, then send trusted Tab (or Shift+Tab) steps and read the accessibility tree to confirm which inner control actually has focus. Stops when focus leaves the host, the step budget is spent, or focus is lost. Use act(action:"press", text:"Enter") to activate the landed control.',
-    parameters: {
-      selector: z.string().optional().describe('Light-DOM host selector to start from'),
-      x: z.coerce.number().optional().describe('Viewport x of the host (when there is no stable selector)'),
-      y: z.coerce.number().optional().describe('Viewport y of the host'),
-      direction: z.enum(['forward', 'backward']).optional().default('forward').describe('Tab or Shift+Tab'),
-      max_steps: z.coerce.number().optional().default(8).describe('Maximum key presses (1-12)'),
-      restore: z.coerce.boolean().optional().default(true).describe('Return focus to the host if the walk fails'),
-    },
-    endpoint: '/focus_walk',
-    payload: (args) => ({
-      selector: args?.selector,
-      x: args?.x,
-      y: args?.y,
-      direction: args?.direction,
-      max_steps: args?.max_steps,
-      restore: args?.restore,
-    }),
-    format: (data) => {
-      const steps = Array.isArray(data.steps) ? data.steps : [];
-      const rows = steps.map((s: any) => {
-        const label = s.index === 0 ? 'initial' : `#${s.index}`;
-        const cx = Math.round(s.rect.x + s.rect.width / 2);
-        const cy = Math.round(s.rect.y + s.rect.height / 2);
-        return `${label} <${s.role}> "${s.name}" @ (${cx}, ${cy})`;
-      });
-      const median = data.medianStepGapMs !== undefined ? ` median=${data.medianStepGapMs}ms` : '';
-      return `focus_walk — landed=${data.landed} reason=${data.reason} steps=${steps.length}${median}\n${rows.join('\n')}`;
-    },
-  },
-  {
-    name: 'act',
-    description:
-      'Click, focus, hover, type into, or press on one page target. Address the target by: mark_id (preferred - a Set-of-Marks badge, resilient to layout shifts), a CSS selector, x/y viewport coordinates, or target_text for controls with no semantics (React cards: a div with a handler three levels up, no role/href/onclick). ' +
-      'Selectors resolve through open shadow roots and, for a custom-element host, to the control a mouse would actually hit — so `#email` or `my-text-input` reaches the real <input>, not the host wrapper. ' +
-      'Returns a before/after delta; pass await_conditions to do "act then wait" in one round trip, and dry_run=true to resolve the target without acting. secret=true redacts typed text from logs. For action="type", pass clear_first=true on a pre-filled field so the value is REPLACED (select-all + delete) rather than appended to. action="press" needs no target. ' +
-      'Typing is VERIFIED: the control\'s value is read before and after, and if nothing changed the result is ok:false with error.code "TYPE_NO_EFFECT", a `typing` evidence object (key counts, value lengths — never the text) and a hint that distinguishes "input never arrived" (focus/window) from "the control rejects synthetic input" (one-time-code/OTP → request_human_intervention). ' +
-      'Use action="fill" with a fields map to fill several controls in one call. NOT for navigation (use navigate_to) or scrolling (use scroll_page). ' +
-      'HUMAN_IN_PROGRESS means a person just used the browser: synthetic input is paused for a short quiet window. Do not retry in a loop — poll /human/status, wait for idle, then re-observe. ' +
-      'Choosing the target is a separate job: when a decision model is configured AND two or more controls plausibly match, prefer observe(as:"components") -> decide -> act(mark_id); when exactly one control matches, find/act is faster and deterministic.',
-    parameters: {
-      mark_id: z.coerce.number().optional().describe('Target Set-of-Marks badge id from observe/find/take_screenshot (preferred)'),
-      selector: z.coerce.string().optional().describe('CSS selector of the target, when you have no mark id (e.g. "button.submit", "#search-input")'),
-      x: z.coerce.number().optional().describe('Viewport X for coordinate targeting (pair with y)'),
-      y: z.coerce.number().optional().describe('Viewport Y for coordinate targeting (pair with x)'),
-      target_text: z.string().optional().describe('Anchor by visible text when the control has no semantics (React card divs, handler-only elements). Resolves the deepest visible element containing the text; refuses when more than one match is ambiguous'),
-      sealed_token: z.string().optional().describe('Opaque token from find(sealed:true); scrolls/re-measures the sealed control before acting'),
-      action: z.enum(['click', 'focus', 'hover', 'type', 'press', 'fill']).default('click').describe('Action to perform (default: "click")'),
-      text: z.string().optional().describe('Text for action="type"; key name for action="press" (e.g. "Enter")'),
-      fields: z.record(z.string(), z.union([z.string(), z.boolean(), z.number()])).optional().describe('For action="fill": map of CSS selectors to values'),
-      submit_selector: z.string().optional().describe('For action="fill": optional submit button selector'),
-      secret: z.coerce.boolean().optional().default(false).describe('Redact typed text from logs'),
-      clear_first: z.coerce.boolean().optional().default(false).describe('For action="type": clear the field first (select-all + delete) so an existing value is REPLACED, not appended to - use it on pre-filled inputs and comboboxes'),
-      await_conditions: z.array(z.record(z.string(), z.any())).optional().describe('wait_for conditions evaluated right after the action'),
-      timeout_ms: z.coerce.number().optional().default(15000).describe('Timeout for await_conditions'),
-      dry_run: z.coerce.boolean().optional().default(false).describe('Resolve the target but do not act'),
-    },
-    endpoint: '/act',
-    endpointFor: (args) => (args?.action === 'fill' ? '/form/fill' : '/act'),
-    endpoints: ['/act', '/form/fill'],
-    payload: (args) => args?.action === 'fill'
-      ? { fields: args?.fields, submitSelector: args?.submit_selector }
-      : {
-          mark_id: args?.mark_id,
-          selector: args?.selector,
-          target_text: args?.target_text,
-          sealed_token: args?.sealed_token,
-          x: args?.x,
-          y: args?.y,
-          action: args?.action || 'click',
-          text: args?.text !== undefined ? String(args.text) : undefined,
-          secret: args?.secret === true,
-          clear_first: args?.clear_first === true,
-          await: args?.await_conditions,
-          timeout_ms: args?.timeout_ms,
-          dry_run: args?.dry_run === true,
-        },
-    format: (data, args) => {
-      if (args?.action === 'fill') return JSON.stringify(data.result ?? data, null, 2);
-      const t = data.target || {};
-      const where =
-        t.id !== undefined
-          ? `[#${t.id}] <${t.tag}> "${t.text}"`
-          : t.selector
-            ? `${t.tag ? `<${t.tag}> ` : ''}${t.selector}${t.text ? ` "${t.text}"` : ''}`
-            : t.center
-              ? `(${t.center.x}, ${t.center.y})`
-              : '(nothing)';
-      if (data.dryRun) return `DRY RUN — would ${data.action} ${where}${data.wouldType ? ` typing "${data.wouldType}"` : ''}`;
-      if (data.action === 'press') return `press "${args?.text || 'Enter'}"`;
-      const d = data.delta || {};
-      const parts = [
-        `${data.action} ${where}`,
-        d.urlChanged ? `url: ${d.beforeUrl} -> ${d.afterUrl}` : 'url unchanged',
-        `revision ${d.revisionBefore}->${d.revisionAfter}`,
-        `marks ${d.marksBefore}->${d.marksAfter}`,
-      ];
-      if (data.awaited) parts.push(`await: ${data.awaited.ok ? 'READY' : 'TIMED OUT'} in ${data.awaited.waitedMs}ms${data.awaited.hint ? ` [${data.awaited.hint}]` : ''}`);
-      return parts.join(' · ');
+      const list = Array.isArray(data.prerendered) ? data.prerendered : [];
+      if (list.length === 0) return 'No candidate links were pre-rendered.';
+      const lines = list.map((u: string) => `- [0ms READY] ${u}`);
+      return `### Speculative Pre-rendered Pool (${list.length} pages warm & indexed to Cortex)\nSubsequent navigate_to() calls targeting these URLs will load with 0ms perceived latency.\n\n${lines.join('\n')}`;
     },
   },
 ];
-

@@ -154,18 +154,21 @@
       "main/wrap/store.ts": 12,
       "mcp/browser-mcp.ts": 18,
       "mcp/tool-groups-data.ts": 135,
-      "mcp/tools-catalog-memory.ts": 41,
-      "mcp/tools-catalog-navigation.ts": 6,
-      "mcp/tools-catalog-primitives.ts": 16,
-      "mcp/tools-catalog-research.ts": 47,
-      "mcp/tools-catalog-system.ts": 107,
+      "mcp/tools-catalog-actuate.ts": 33,
+      "mcp/tools-catalog-capture.ts": 26,
+      "mcp/tools-catalog-desktop.ts": 14,
+      "mcp/tools-catalog-marks.ts": 32,
+      "mcp/tools-catalog-memory.ts": 21,
+      "mcp/tools-catalog-observe.ts": 6,
+      "mcp/tools-catalog-research.ts": 30,
+      "mcp/tools-catalog-workspace.ts": 21,
       "mcp/wrap-server.ts": 66,
       "preload/index.ts": 32,
       "renderer/main.ts": 54,
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 996
+    "totalDuplicatedLines": 962
   },
   "modularity": {
     "files": {

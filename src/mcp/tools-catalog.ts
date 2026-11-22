@@ -1,28 +1,43 @@
 import { z } from 'zod';
 import type { ToolCatalogItem } from './tools-catalog-types.js';
-import { NAVIGATION_TOOLS } from './tools-catalog-navigation.js';
+import { NAVIGATE_TOOLS } from './tools-catalog-navigate.js';
+import { OBSERVE_TOOLS } from './tools-catalog-observe.js';
+import { MARKS_TOOLS } from './tools-catalog-marks.js';
+import { ACTUATE_TOOLS } from './tools-catalog-actuate.js';
 import { MEMORY_TOOLS } from './tools-catalog-memory.js';
-import { SYSTEM_TOOLS } from './tools-catalog-system.js';
-import { PRIMITIVES_TOOLS } from './tools-catalog-primitives.js';
 import { RESEARCH_TOOLS } from './tools-catalog-research.js';
+import { WORKSPACE_TOOLS } from './tools-catalog-workspace.js';
+import { CAPTURE_TOOLS } from './tools-catalog-capture.js';
+import { DESKTOP_TOOLS } from './tools-catalog-desktop.js';
+import { CATALOG_ORDER } from './tools-catalog-order.js';
 
 export type { ToolCatalogItem } from './tools-catalog-types.js';
 
-export const TOOLS_CATALOG: ToolCatalogItem[] = [
-  ...NAVIGATION_TOOLS,
+const SEGMENTS = [
+  ...NAVIGATE_TOOLS,
+  ...OBSERVE_TOOLS,
+  ...MARKS_TOOLS,
+  ...ACTUATE_TOOLS,
   ...MEMORY_TOOLS,
-  ...SYSTEM_TOOLS,
-  ...PRIMITIVES_TOOLS,
   ...RESEARCH_TOOLS,
+  ...WORKSPACE_TOOLS,
+  ...CAPTURE_TOOLS,
+  ...DESKTOP_TOOLS,
 ];
 
+const byName = new Map(SEGMENTS.map((tool) => [tool.name, tool]));
+const pinned = new Set(CATALOG_ORDER);
 
-/**
- * Renamed tools: the canonical name is visible, the old name stays callable by
- * name (hidden from `tools/list`) for one release. Each legacy entry is cloned
- * from its canonical entry so the two can never drift out of sync.
- * Decision: docs/TOOL_CATALOG_REVIEW.md §6.
- */
+export const TOOLS_CATALOG: ToolCatalogItem[] = CATALOG_ORDER.map((name) => {
+  const tool = byName.get(name);
+  if (!tool) throw new Error(`Catalog order names an unknown tool: ${name}`);
+  return tool;
+});
+// Entries a future segment adds without pinning keep their segment order.
+for (const tool of SEGMENTS) {
+  if (!pinned.has(tool.name)) TOOLS_CATALOG.push(tool);
+}
+
 const LEGACY_ALIASES: Array<[legacy: string, canonical: string]> = [
   ['get_history', 'browsing_history'],
   ['clear_history', 'browsing_history_clear'],
