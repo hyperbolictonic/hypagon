@@ -70,6 +70,7 @@ import type { ScriptItem } from './cortex/cortex-db.js';
 import { TrayManager } from './tray/tray-manager.js';
 import { looksLikeChallenge, type ResearchSettings } from './research/settings.js';
 import { researchError, ResearchSessionController } from './research/session-controller.js';
+import { DetachedViewController } from './research/detached-view.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import { HilManager, type HilRequest, type HilResolution, type NotificationOptions } from './hil/hil-manager.js';
@@ -127,7 +128,6 @@ export class BrowserChassis {
   private researcher: Researcher;
   private actionLedger: ActionLedger;
   /** Reused off-screen view for detached reads (SERPs, Markdown alternates, crawls). */
-  private utilView: WebContentsView | null = null;
   /** Origins a human has authenticated; skip the anonymous static tier for them. */
   private warmOrigins = new Set<string>();
   /** Only one human hand-off at a time (the shared research view is serialized). */
@@ -179,7 +179,6 @@ export class BrowserChassis {
   private orbEdge: 'left' | 'right' = 'right';
   /** False while a full-window settings/dialog surface is open. */
   private sidebarOverlayVisible = true;
-  private utilQueue: Promise<void> = Promise.resolve();
   /** Monotonic page revision: bumped on navigation and every mutating action. */
   private revision = 0;
   private onCollaborationNote?: (input: { target: CollaborationTarget; text: string; tags: string[] }) => void;
@@ -2872,13 +2871,17 @@ export class BrowserChassis {
    * `loadDetached` already serializes its own work; this extends the same queue to the human
    * hand-off and anchor capture, which otherwise let a concurrent detached read steal the view.
    */
+  // ---- Detached research view ---------------------------------------------------------
+  // One reusable off-screen view and its operation queue live in
+  // DetachedViewController; these delegations keep the chassis's public surface unchanged.
+
+  private readonly detachedView = new DetachedViewController({
+    userAgent: this.hostProfile.userAgent,
+    activate: (wc) => this.activateResearchView(wc),
+  });
+
   private async withUtilView<T>(task: () => Promise<T>): Promise<T> {
-    const p = this.utilQueue.then(task, task);
-    this.utilQueue = p.then(
-      () => undefined,
-      () => undefined,
-    );
-    return await p;
+    return this.detachedView.withView(task);
   }
 
   private async loadDetached<T = any>(
@@ -2886,116 +2889,11 @@ export class BrowserChassis {
     script: string,
     opts: { timeoutMs?: number; settleMs?: number; readyScript?: string; readyMs?: number; after?: (wc: WebContents) => Promise<any> } = {},
   ): Promise<{ result: T | null; after: any; status: number; contentType: string | null }> {
-    // Serialize every detached operation through ONE reusable, off-screen view. Creating and
-    // destroying a WebContentsView per call churns renderer processes (Electron 44 has no reliable
-    // public destroy), which made repeated crawls/searches flaky.
-    const run = (): Promise<{ result: T | null; after: any; status: number; contentType: string | null }> =>
-      new Promise((resolve) => {
-        const wc = this.getUtilView().webContents;
-        let settled = false;
-        let status = 0;
-        let timer: ReturnType<typeof setTimeout> | undefined;
-
-        const finish = async () => {
-          if (settled) return;
-          settled = true;
-          if (timer) clearTimeout(timer);
-          let result: T | null = null;
-          let after: any = null;
-          let contentType: string | null = null;
-          try {
-            contentType = await wc.executeJavaScript('document.contentType || ""').catch(() => '');
-            result = (await wc.executeJavaScript(script).catch(() => null)) as T | null;
-            if (opts.after) after = await opts.after(wc).catch(() => null);
-          } catch {
-            /* navigation may have replaced the frame */
-          }
-          resolve({ result, after, status, contentType: contentType || null });
-        };
-
-        const deadlineMs = opts.timeoutMs ?? 12000;
-        timer = setTimeout(() => void finish(), deadlineMs);
-
-        const onNav = (_e: unknown, _u: string, code?: number) => {
-          status = code || status;
-        };
-        wc.on('did-navigate', onNav as any);
-
-        void (async () => {
-          // `loadURL` resolves when the navigation *it* started finishes — unlike a bare
-          // `did-finish-load` listener, which the initial about:blank document also triggers.
-          try {
-            await this.activateResearchView(wc);
-            await wc.loadURL(url);
-          } catch {
-            /* load error: read whatever committed */
-          }
-          wc.removeListener('did-navigate', onNav as any);
-
-          // Bounded readiness poll: the committed document must be complete and non-empty, and
-          // `readyScript` (if any) must be truthy.
-          const deadline = Date.now() + Math.min(opts.readyMs ?? 4000, deadlineMs);
-          while (!settled && Date.now() < deadline) {
-            const st = await wc
-              .executeJavaScript('(() => ({ href: location.href, ready: document.readyState, len: document.body ? document.body.innerHTML.length : 0 }))()')
-              .catch(() => null);
-            if (st && /^https?:/i.test(st.href) && st.ready === 'complete' && st.len > 0) {
-              if (!opts.readyScript) break;
-              const extra = await wc.executeJavaScript(opts.readyScript).catch(() => false);
-              if (extra) break;
-            }
-            await new Promise((r) => setTimeout(r, 150));
-          }
-
-          if (settled) return;
-          if (opts.settleMs) await new Promise((r) => setTimeout(r, opts.settleMs));
-          void finish();
-        })();
-      });
-
-    const p = this.utilQueue.then(run, run);
-    this.utilQueue = p.then(
-      () => undefined,
-      () => undefined,
-    );
-    return await p;
+    return this.detachedView.load<T>(url, script, opts);
   }
 
-  /** Lazily created, reused off-screen view for detached reads (SERPs, alternates, crawls). */
-  private getUtilView(): WebContentsView {
-    if (!this.utilView) {
-      const view = new WebContentsView({
-        webPreferences: {
-          nodeIntegration: false,
-          contextIsolation: true,
-          sandbox: true,
-          backgroundThrottling: false,
-          partition: 'persist:hypagon-research',
-        },
-      });
-      try {
-        view.webContents.setUserAgent(this.hostProfile.userAgent);
-      } catch {
-        /* profile optional */
-      }
-      view.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-      this.utilView = view;
-    }
-    return this.utilView;
-  }
-
-  /**
-   * Loads a URL as a *real document navigation* in a detached view and returns its text.
-   * Used for advertised per-page Markdown/Text alternates so the request carries the full
-   * Chromium header + renderer fingerprint (rather than a synthetic fetch profile).
-   */
   public async navigateForText(url: string): Promise<{ body: string | null; contentType: string | null; status: number }> {
-    const r = await this.loadDetached<{ contentType: string; text: string }>(
-      url,
-      '(() => { const b = document.body; const t = b ? b.innerText : (document.documentElement ? document.documentElement.innerText : ""); return { contentType: document.contentType || "", text: t }; })()',
-      { timeoutMs: 10000 },
-    );
-    return { body: r.result?.text ?? null, contentType: r.result?.contentType ?? null, status: r.status };
+    return this.detachedView.navigateForText(url);
   }
 
   /**
@@ -3309,7 +3207,7 @@ export class BrowserChassis {
 
     this.handoffSkipReason = null;
     this.hilActive = true;
-    const view = this.getUtilView();
+    const view = this.detachedView.getView();
     const wc = view.webContents;
     let attached = false;
     let humanMs = 0;
