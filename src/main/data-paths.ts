@@ -98,3 +98,16 @@ export function dataRoot(): string {
 export function dataPath(...segments: string[]): string {
   return path.join(dataRoot(), ...segments);
 }
+
+/**
+ * When to use: persisting a JSON settings/state file — mkdir, write to a temp
+ * file, then rename, so a crash never leaves a half-written store. Seven
+ * settings stores carried this skeleton; a failed write is left to the caller,
+ * which keeps its in-memory value and retries on the next save.
+ */
+export function writeJsonAtomic(file: string, value: unknown): void {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const temp = `${file}.${process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(temp, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+  fs.renameSync(temp, file);
+}

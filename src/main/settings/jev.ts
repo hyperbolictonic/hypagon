@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { writeJsonAtomic } from '../data-paths.ts';
 
 export type JevMode = 'prefer' | 'enforce';
 
@@ -47,10 +48,7 @@ export class JevSettingsStore {
 
   private save(): void {
     try {
-      fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      const temp = `${this.file}.${process.pid}.${Date.now()}.tmp`;
-      fs.writeFileSync(temp, `${JSON.stringify(this.settings, null, 2)}\n`, 'utf8');
-      fs.renameSync(temp, this.file);
+      writeJsonAtomic(this.file, this.settings);
     } catch {
       // Keep the in-memory value; the next save retries.
     }

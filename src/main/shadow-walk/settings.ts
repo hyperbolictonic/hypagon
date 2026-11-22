@@ -17,7 +17,8 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { dataPath } from '../data-paths.js';
+import { dataPath } from '../data-paths.ts';
+import { writeJsonAtomic } from '../data-paths.ts';
 
 export const SHADOW_WALK_SETTINGS_FILE = dataPath('shadow-walk.json');
 
@@ -200,10 +201,7 @@ export class ShadowWalkSettingsStore {
     const normalized = normalizeShadowWalkSettings(input);
     if (!normalized.ok) return normalized;
     try {
-      fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      const temp = `${this.file}.${process.pid}.${Date.now()}.tmp`;
-      fs.writeFileSync(temp, `${JSON.stringify(normalized.settings, null, 2)}\n`, 'utf8');
-      fs.renameSync(temp, this.file);
+      writeJsonAtomic(this.file, normalized.settings);
       return normalized;
     } catch (err: any) {
       return { ...normalized, ok: false, errors: [`Could not save Shadow Walk settings: ${err?.message || err}`] };
