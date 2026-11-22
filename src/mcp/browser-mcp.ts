@@ -11,6 +11,7 @@ import {
   type ToolGroupDefinition,
 } from './tool-groups.js';
 import { formatMark } from './format-mark.js';
+import { clampText, renderMediaPreview, renderFrames, renderImageTool, renderComponentsTable } from './tool-renderers.js';
 import { APP_VERSION } from '../shared/version.js';
 import { BRAND } from '../shared/brand.js';
 import { decisionStatus } from '../main/decide/decision-client.js';
@@ -124,14 +125,7 @@ export function logMcp(message: string, level: LogLevel = 'call'): void {
   }
 }
 
-// Hard ceiling on any single text tool response so one oversized payload
-// (e.g. a multi-MB get_api_payload / query_json_data slice) can neither flood the
-// client context nor wedge the stdio transport.
-const MAX_TEXT_CHARS = 60000;
-function clampText(text: string): string {
-  if (typeof text !== 'string' || text.length <= MAX_TEXT_CHARS) return text;
-  return `${text.slice(0, MAX_TEXT_CHARS)}\n\n... [Hypagon Browser MCP: response truncated at ${MAX_TEXT_CHARS} chars to protect the agent context. Narrow the query (e.g. query_json_data path/projection) for a smaller result.]`;
-}
+// (clampText moved to tool-renderers; both the renderers and this dispatcher use it.)
 
 // Ceiling on any single bridge round-trip. Generous enough for HIL waits and
 // long navigations, but guarantees a wedged Cyberdeck cannot hang a tool forever.
@@ -262,10 +256,6 @@ async function versionNoteOnce(): Promise<string | null> {
   return versionNote;
 }
 
-function extractCleanBase64(data: any): string {  const raw = data?.screenshot?.base64Image || data?.base64Image || data?.image || '';
-  return typeof raw === 'string' ? raw.replace(/^data:image\/[a-z]+;base64,/, '') : '';
-}
-
 /** Names gated by Settings → Recording → "Let agents use the recording tools". */
 const RECORDING_TOOL_NAMES = new Set(['record_start', 'record_stop', 'list_recordings']);
 
@@ -300,73 +290,23 @@ async function executeCatalogTool(tool: ToolCatalogItem, args: any) {
     // Frame inventory: text summary plus one image per visible frame. Handled before the
     // single-image branch because an iframe result is inherently multi-image.
     if (tool.name === 'media_preview') {
-      const text = clampText(tool.format ? tool.format(data, args) : JSON.stringify(data, null, 2));
-      const content: any[] = [{ type: 'text', text }];
-      const images = Array.isArray(data?.images) ? data.images : [];
-      for (const image of images) {
-        if (typeof image?.base64 !== 'string' || image.base64 === '') continue;
-        content.push({ type: 'image', data: image.base64, mimeType: image.mimeType || 'image/jpeg' });
-      }
-      logMcp(`[Tool Success] "media_preview" returning text + ${images.length} image(s)`);
-      return { content };
+      const rendered = renderMediaPreview(tool, data, args);
+      logMcp(`[Tool Success] "media_preview" returning text + ${(Array.isArray(data?.images) ? data.images : []).length} image(s)`);
+      return rendered;
     }
 
     if (tool.name === 'frames') {
-      const images = Array.isArray(data?.images) ? data.images : [];
-      const text = clampText(tool.format ? tool.format(data, args) : JSON.stringify(data, null, 2));
-      const content: any[] = [{ type: 'text', text }];
-      for (const image of images) {
-        const raw = typeof image?.base64Image === 'string' ? image.base64Image.replace(/^data:image\/[a-z]+;base64,/, '') : '';
-        if (!raw) continue;
-        content.push({
-          type: 'text',
-          text: `Frame image — ${image.name ? `"${image.name}" ` : ''}${image.url || image.frameId} (${image.width}x${image.height})`,
-        });
-        content.push({ type: 'image', data: raw, mimeType: image.mimeType || 'image/jpeg' });
-      }
-      logMcp(`[Tool Success] "frames" returning text + ${images.length} frame image(s)`);
-      return { content };
+      const rendered = renderFrames(tool, data, args);
+      logMcp(`[Tool Success] "frames" returning text + ${(Array.isArray(data?.images) ? data.images : []).length} frame image(s)`);
+      return rendered;
     }
 
     // Image-bearing tools: plain viewport screenshots and Set-of-Marks scans.
-    // After the Phase-3 merge these funnel through take_screenshot (legacy
-    // names remain as hidden aliases), so branch on the target, not the name.
     if (IMAGE_TOOLS.has(tool.name)) {
-      const rawBase64 = extractCleanBase64(data);
-      const screenshot = data.screenshot || data;
-      const filePath = screenshot.filePath || '';
-      const w = screenshot.width || 0;
-      const h = screenshot.height || 0;
+      const rendered = renderImageTool(tool, data, args);
       const marks = Array.isArray(data.marks) ? data.marks : [];
-      const withMarks = tool.name !== 'take_screenshot' || args?.marks === true;
-      const zoom = screenshot.zoom;
-      const zoomNote = zoom
-        ? ` Page zoom ${Math.round((zoom.factor || 1) * 100)}% (${zoom.custom ? 'custom' : zoom.mode}); CSS viewport ${zoom.viewport?.css?.width || 0}x${zoom.viewport?.css?.height || 0}; image/CSS scale ${Number(screenshot.coordinateScale || 1).toFixed(3)}.`
-        : '';
-
-      let text: string;
-      if (withMarks) {
-        const marksTable = marks.map((m: any) => formatMark(m)).join('\n');
-        const header = filePath
-          ? `Set-of-Marks Screenshot saved to ${filePath} (${w}x${h}px). ${marks.length} interactive elements detected.${zoomNote}`
-          : `Set-of-Marks text scan (viewport ${w}x${h}px, no image). ${marks.length} interactive elements detected.${zoomNote}`;
-        text = clampText(`${header}\n\nInteractive Elements:\n${marksTable}\n\nActuate via act(mark_id, action) — action defaults to "click"; "type" for inputs (text=...), "hover" for menus, "press" for keys.`);
-      } else {
-        text = filePath
-          ? `Screenshot captured and saved to ${filePath} (${w}x${h}px).${zoomNote}`
-          : `Screenshot captured (${w}x${h}px).${zoomNote}`;
-      }
-
-      const content: any[] = [{ type: 'text', text }];
-      if (rawBase64) {
-        content.push({
-          type: 'image',
-          data: rawBase64,
-          mimeType: screenshot.mimeType || (filePath.endsWith('.png') ? 'image/png' : 'image/jpeg'),
-        });
-      }
-      logMcp(`[Tool Success] "${tool.name}" returning text${rawBase64 ? ' + image part' : ' only'} (${rawBase64.length} chars base64, ${marks.length} marks, path: ${filePath})`);
-      return { content };
+      logMcp(`[Tool Success] "${tool.name}" rendered with ${marks.length} marks`);
+      return rendered;
     }
 
     const rawText = tool.format
@@ -389,15 +329,7 @@ async function executeCatalogTool(tool: ToolCatalogItem, args: any) {
     // table too — decide(state: <this>, guard:{components: [ids]}) can consume it verbatim
     // instead of the agent re-typing ids out of the prose projection.
     if (tool.name === 'observe' && data?.as === 'components' && Array.isArray(data.components)) {
-      const components = data.components.slice(0, 120).map((c: any) => ({
-        id: c.id, role: c.role, name: c.name, actions: c.actions,
-      }));
-      return {
-        content: [
-          { type: 'text', text },
-          { type: 'text', text: JSON.stringify({ components }) },
-        ],
-      };
+      return renderComponentsTable(text, data);
     }
 
     return { content: [{ type: 'text', text: outputText }] };

@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 195 files, 721 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 196 files, 727 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (620)
+## Types (626)
 
 | File | Export | When to use |
 |---|---|---|
@@ -566,6 +566,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/tool-groups-data.ts` | `ToolArgs` *(type)* | When to use: the arguments a group action maps from. |
 | `mcp/tool-groups-data.ts` | `ToolGroupAction` *(type)* | When to use: describing one action inside a consolidated group tool. |
 | `mcp/tool-groups-data.ts` | `ToolGroupDefinition` *(type)* | When to use: a tool registration that dispatches actions within one advertised group. |
+| `mcp/tool-renderers.ts` | `clampText` | When to use: the dispatcher or a renderer — cap a tool's text so one payload cannot flood the agent context. |
+| `mcp/tool-renderers.ts` | `renderImageTool` | The image-bearing tools (viewport screenshots and Set-of-Marks scans). |
+| `mcp/tool-renderers.ts` | `renderComponentsTable` | observe(as:"components"): the prose projection plus the machine table decide() consumes. |
+| `mcp/tool-renderers.ts` | `renderMediaPreview` | media_preview: text summary plus one image per visible frame. |
+| `mcp/tool-renderers.ts` | `renderFrames` | frames: text summary plus one cropped image per child frame. |
+| `mcp/tool-renderers.ts` | `ToolRenderer` *(type)* | When to use: the dispatcher — render a tool result, or null to take the default text path. |
 | `mcp/tools-catalog-types.ts` | `ToolCatalogItem` *(type)* | When to use: any surface that registers or inspects a catalog entry — the one item shape for the whole catalog. |
 | `preload/index.ts` | `ElectronAPI` *(type)* | When to use: the preload bridge surface — every renderer call goes through `window.electronAPI`. |
 | `renderer/recording.ts` | `isRecording` | - |
