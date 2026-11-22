@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 169 files, 674 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 170 files, 677 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (597)
+## Types (600)
 
 | File | Export | When to use |
 |---|---|---|
@@ -328,6 +328,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/researcher.ts` | `ResearchSource` *(type)* | - |
 | `main/research/researcher.ts` | `ResearchOutcome` *(type)* | - |
 | `main/research/researcher.ts` | `ResearcherDeps` *(type)* | - |
+| `main/research/session-controller.ts` | `researchError` | When to use: declaring the error contract shared by the research surfaces. |
+| `main/research/session-controller.ts` | `ResearchSessionController` | - |
+| `main/research/session-controller.ts` | `ResearchSessionDeps` *(type)* | When to use: building the chassis — the collaborators the research session reads through. |
 | `main/research/settings.ts` | `normalizeResearchSettings` | - |
 | `main/research/settings.ts` | `looksLikeChallenge` | - |
 | `main/research/settings.ts` | `RESEARCH_ENGINES` | - |

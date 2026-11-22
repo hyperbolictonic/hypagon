@@ -67,11 +67,8 @@ import { Primitives } from './primitives/primitives.js';
 import { ScriptVault } from './scripts/script-vault.js';
 import type { ScriptItem } from './cortex/cortex-db.js';
 import { TrayManager } from './tray/tray-manager.js';
-import {
-  DEFAULT_RESEARCH_SETTINGS,
-  looksLikeChallenge,
-  type ResearchSettings,
-} from './research/settings.js';
+import { looksLikeChallenge, type ResearchSettings } from './research/settings.js';
+import { researchError, ResearchSessionController } from './research/session-controller.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import { HilManager, type HilRequest, type HilResolution, type NotificationOptions } from './hil/hil-manager.js';
@@ -153,13 +150,6 @@ export class BrowserChassis {
   private actionLedger: ActionLedger;
   /** Reused off-screen view for detached reads (SERPs, Markdown alternates, crawls). */
   private utilView: WebContentsView | null = null;
-  private researchSettings: ResearchSettings = {
-    ...DEFAULT_RESEARCH_SETTINGS,
-    engineChain: [...DEFAULT_RESEARCH_SETTINGS.engineChain],
-  };
-  private researchCooldowns = new Map<string, number>();
-  private researchSessionConfigured = false;
-  private researchSessionMigrated = false;
   /** Origins a human has authenticated; skip the anonymous static tier for them. */
   private warmOrigins = new Set<string>();
   /** Only one human hand-off at a time (the shared research view is serialized). */
@@ -533,7 +523,6 @@ export class BrowserChassis {
     this.setupTabManager();
     this.registerIpcHandlers();
     this.setupSidebarView();
-    void this.configureResearchSession();
   }
 
   /**
@@ -1230,170 +1219,58 @@ export class BrowserChassis {
     else this.sidebarView.setBounds(bounds);
   }
 
+  // ---- Research session ---------------------------------------------------------------
+  // The stealth research session (own cookie jar, UA headers, proxy), the settings
+  // that configure it and the per-host cooldown live in ResearchSessionController.
+
+  private readonly researchSessionController = new ResearchSessionController({
+    hostProfile: this.hostProfile,
+    log: (level, message) => this.addLog(level, message),
+  });
+
   public async setResearchSettings(settings: ResearchSettings): Promise<void> {
-    this.researchSettings = {
-      ...settings,
-      engineChain: [...settings.engineChain],
-    };
-    await this.configureResearchSession();
+    await this.researchSessionController.setSettings(settings);
   }
 
   public getResearchSettings(): ResearchSettings {
-    return {
-      ...this.researchSettings,
-      engineChain: [...this.researchSettings.engineChain],
-    };
+    return this.researchSessionController.getSettings();
+  }
+
+  /** The live research settings, as read by the search/crawl/research components. */
+  private get researchSettings(): ResearchSettings {
+    return this.researchSessionController.getSettings();
   }
 
   public async resetResearchSession(): Promise<void> {
-    const researchSession = this.getResearchSession();
-    await researchSession.clearStorageData().catch(() => undefined);
-    await researchSession.clearCache().catch(() => undefined);
-    this.researchCooldowns.clear();
-    this.addLog('info', 'Research session cookies/cache cleared.');
+    await this.researchSessionController.reset();
   }
 
   private getResearchSession(): Session {
-    // Legacy partition name; the app is branded Hypagon now. Cookies are migrated once in
-    // configureResearchSession so existing research logins survive the rename.
-    return session.fromPartition('persist:hypagon-research');
-  }
-
-  /** One-time cookie carry-over from the pre-rename research partition. */
-  private async migrateLegacyResearchSession(): Promise<void> {
-    if (this.researchSessionMigrated) return;
-    this.researchSessionMigrated = true;
-    try {
-      const current = this.getResearchSession();
-      const existing = await current.cookies.get({});
-      if (existing.length > 0) return;
-
-      const legacy = session.fromPartition('persist:kuang-research');
-      const legacyCookies = await legacy.cookies.get({});
-      for (const cookie of legacyCookies) {
-        const host = (cookie.domain || '').replace(/^\./, '');
-        if (!host) continue;
-        const cookiePath = cookie.path || '/';
-        await current.cookies
-          .set({
-            url: `${cookie.secure ? 'https' : 'http'}://${host}${cookiePath}`,
-            name: cookie.name,
-            value: cookie.value,
-            domain: cookie.domain,
-            path: cookiePath,
-            secure: cookie.secure,
-            httpOnly: cookie.httpOnly,
-            expirationDate: cookie.expirationDate,
-            sameSite: cookie.sameSite,
-          })
-          .catch(() => undefined);
-      }
-      if (legacyCookies.length > 0) {
-        this.addLog('info', `Migrated ${legacyCookies.length} research cookie(s) to the Hypagon partition.`);
-      }
-    } catch {
-      /* best effort; a fresh research session is acceptable */
-    }
-  }
-
-  private async configureResearchSession(): Promise<void> {
-    await this.migrateLegacyResearchSession();
-    const researchSession = this.getResearchSession();
-    try {
-      researchSession.setUserAgent(this.hostProfile.userAgent);
-    } catch {
-      /* profile optional */
-    }
-
-    try {
-      await researchSession.setProxy(
-        this.researchSettings.proxyUrl ? { proxyRules: this.researchSettings.proxyUrl } : { mode: 'direct' },
-      );
-    } catch (err: any) {
-      this.addLog('warn', `Research proxy could not be applied: ${err?.message || err}`);
-    }
-
-    if (!this.researchSessionConfigured) {
-      this.researchSessionConfigured = true;
-      researchSession.webRequest.onBeforeSendHeaders((details, callback) => {
-        details.requestHeaders['User-Agent'] = this.hostProfile.userAgent;
-        details.requestHeaders['sec-ch-ua'] = this.hostProfile.secChUa;
-        details.requestHeaders['sec-ch-ua-platform'] = this.hostProfile.secChUaPlatform;
-        callback({ requestHeaders: details.requestHeaders });
-      });
-    }
+    return this.researchSessionController.getSessionForComponents();
   }
 
   private async activateResearchView(wc: WebContents): Promise<void> {
-    if (!this.researchSettings.enabled || !this.researchSettings.activateView) return;
-    try {
-      if (!wc.debugger.isAttached()) wc.debugger.attach('1.3');
-      await wc.debugger.sendCommand('Page.enable').catch(() => undefined);
-      await wc.debugger.sendCommand('Page.setWebLifecycleState', { state: 'active' }).catch(() => undefined);
-      await wc.debugger.sendCommand('Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => undefined);
-      await wc.debugger.sendCommand('Emulation.setDeviceMetricsOverride', {
-        width: 1280,
-        height: 900,
-        deviceScaleFactor: 1,
-        mobile: false,
-      }).catch(() => undefined);
-    } catch {
-      // The page can still be read without the CDP activation.
-    }
+    await this.researchSessionController.activateView(wc);
   }
 
   private engineHost(engine: string): string {
-    if (engine === 'custom' && this.researchSettings.urlTemplate) {
-      try {
-        return new URL(this.researchSettings.urlTemplate.replace('{query}', 'test')).hostname;
-      } catch {
-        return '';
-      }
-    }
-    return (
-      {
-        google: 'www.google.com',
-        duckduckgo: 'html.duckduckgo.com',
-        bing: 'www.bing.com',
-        brave: 'search.brave.com',
-        startpage: 'www.startpage.com',
-      } as Record<string, string>
-    )[engine] || '';
+    return this.researchSessionController.engineHost(engine);
   }
 
   private isResearchCooling(host: string): boolean {
-    if (!host) return false;
-    return (this.researchCooldowns.get(host) || 0) > Date.now();
+    return this.researchSessionController.isCooling(host);
   }
 
   private markResearchCooldown(host: string, reason: string): void {
-    if (!host || !this.researchSettings.enabled) return;
-    const until = Date.now() + this.researchSettings.domainCooldownSec * 1000;
-    this.researchCooldowns.set(host, until);
-    this.addLog(
-      'warn',
-      `Research cooldown: ${host} paused for ${this.researchSettings.domainCooldownSec}s after ${reason}.`,
-    );
+    this.researchSessionController.markCooldown(host, reason);
   }
 
   private assertResearchCooldown(url: string): void {
-    if (!this.researchSettings.enabled) return;
-    try {
-      const host = new URL(url).hostname;
-      const until = this.researchCooldowns.get(host) || 0;
-      if (until > Date.now()) {
-        const seconds = Math.ceil((until - Date.now()) / 1000);
-        throw this.researchError('RESEARCH_COOLDOWN', `${host} is cooling down after a WAF/challenge; try again in ${seconds}s.`);
-      }
-    } catch (err: any) {
-      if (err?.code === 'RESEARCH_COOLDOWN') throw err;
-    }
+    this.researchSessionController.assertNotCooling(url);
   }
 
-  private researchError(code: string, message: string): Error {
-    const error = new Error(message) as Error & { code: string };
-    error.code = code;
-    return error;
+  private researchError(code: string, message: string): Error & { code: string } {
+    return researchError(code, message);
   }
 
   private setSidebarOverlayVisible(visible: boolean): void {
@@ -3496,14 +3373,7 @@ export class BrowserChassis {
   private applyResearchEnginePolicy<T extends { engine?: string; engines?: string[]; urlTemplate?: string }>(
     effective: T,
   ): void {
-    if (!effective.engine && (!effective.engines || effective.engines.length === 0)) {
-      effective.engines = this.researchSettings.urlTemplate
-        ? ['custom', ...this.researchSettings.engineChain]
-        : [...this.researchSettings.engineChain];
-    }
-    if (this.researchSettings.urlTemplate && !effective.urlTemplate) {
-      effective.urlTemplate = this.researchSettings.urlTemplate;
-    }
+    this.researchSessionController.applyEnginePolicy(effective);
   }
 
   public async searchWeb(
