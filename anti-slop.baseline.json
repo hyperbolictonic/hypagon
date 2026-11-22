@@ -3,7 +3,7 @@
   "docs": {
     "files": {
       "main/browser-chassis.ts": 1,
-      "main/browser/frame-eval.ts": 2,
+      "main/browser/frame-eval.ts": 3,
       "main/browser/frame-marks.ts": 2,
       "main/browser/frame-tree.ts": 3,
       "main/browser/frames.ts": 2,
@@ -108,7 +108,7 @@
       "main/wrap/types.ts": 10,
       "main/wrap/validate-wrapper.ts": 3,
       "mcp/browser-mcp.ts": 3,
-      "mcp/tool-groups.ts": 6,
+      "mcp/tool-groups.ts": 3,
       "mcp/tools-catalog.ts": 3,
       "mcp/wrap-server.ts": 1,
       "renderer/menu-popup.ts": 1,
@@ -153,7 +153,7 @@
       "main/wrap/interpolate.ts": 30,
       "main/wrap/store.ts": 12,
       "mcp/browser-mcp.ts": 18,
-      "mcp/tool-groups.ts": 135,
+      "mcp/tool-groups-data.ts": 135,
       "mcp/tools-catalog.ts": 217,
       "mcp/wrap-server.ts": 66,
       "preload/index.ts": 32,

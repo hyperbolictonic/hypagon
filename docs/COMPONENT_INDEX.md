@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 179 files, 699 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 180 files, 699 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (617)
+## Types (613)
 
 | File | Export | When to use |
 |---|---|---|
@@ -551,14 +551,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/zoom/controller.ts` | `ZoomControllerDeps` *(type)* | When to use: building the chassis — everything zoom reads through. |
 | `mcp/process-guard.ts` | `installProcessGuards` | When to use: at the top of a stdio MCP server entrypoint, before connecting |
 | `mcp/process-guard.ts` | `ProcessGuardOptions` *(type)* | Process resilience shared by the stdio MCP entrypoints. |
-| `mcp/tool-groups.ts` | `groupAction` | - |
-| `mcp/tool-groups.ts` | `TOOL_GROUPS` | - |
-| `mcp/tool-groups.ts` | `META_TOOL_NAMES` | - |
-| `mcp/tool-groups.ts` | `CONSOLIDATED_GROUPED_TOOLS` | - |
-| `mcp/tool-groups.ts` | `CONSOLIDATED_HIDDEN_TOOLS` | `collect_all` is folded into `extract`; old callers can still use it by name. |
-| `mcp/tool-groups.ts` | `ToolArgs` *(type)* | Consolidated MCP surface. |
-| `mcp/tool-groups.ts` | `ToolGroupAction` *(type)* | - |
-| `mcp/tool-groups.ts` | `ToolGroupDefinition` *(type)* | - |
+| `mcp/tool-groups-data.ts` | `TOOL_GROUPS` | When to use: reading or extending the consolidated surface — the group table itself. |
+| `mcp/tool-groups-data.ts` | `ToolArgs` *(type)* | When to use: the arguments a group action maps from. |
+| `mcp/tool-groups-data.ts` | `ToolGroupAction` *(type)* | When to use: describing one action inside a consolidated group tool. |
+| `mcp/tool-groups-data.ts` | `ToolGroupDefinition` *(type)* | When to use: a tool registration that dispatches actions within one advertised group. |
 | `mcp/tools-catalog.ts` | `TOOLS_CATALOG` | - |
 | `mcp/tools-catalog.ts` | `TIER_LABELS` | Discoverability tiers (docs/TOOL_CATALOG_REVIEW.md §3, Phase 4). |
 | `mcp/tools-catalog.ts` | `TOOL_TIERS` | - |
@@ -636,7 +632,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (79)
+## Modules (83)
 
 | File | Export | When to use |
 |---|---|---|
@@ -706,6 +702,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/browser-mcp.ts` | `normalizeIncomingParams` | - |
 | `mcp/tool-args.ts` | `normaliseUrl` | When to use: a navigation tool payload — normalise the URL aliases and add a |
 | `mcp/tool-args.ts` | `requireUrl` | When to use: a navigation tool that cannot work without a URL — normalise the |
+| `mcp/tool-groups.ts` | `groupAction` | - |
+| `mcp/tool-groups.ts` | `META_TOOL_NAMES` | - |
+| `mcp/tool-groups.ts` | `CONSOLIDATED_GROUPED_TOOLS` | - |
+| `mcp/tool-groups.ts` | `CONSOLIDATED_HIDDEN_TOOLS` | `collect_all` is folded into `extract`; old callers can still use it by name. |
 | `mcp/tool-schema.ts` | `withGuaranteedToolSchema` | When to use: mapping a tool entry for tools/list or a transport send — |
 | `mcp/wrap-server.ts` | `createWrapMcpServer` | - |
 | `mcp/wrap-tool-schema.ts` | `wrapInputToZodShape` | Convert a wrapper input schema into a Zod raw shape (one entry per property). |

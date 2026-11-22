@@ -1,0 +1,245 @@
+/**
+ * The consolidated-tool-group table.
+ *
+ * Data only: each group is one advertised tool with a small action enum, and
+ * the underlying catalog tools stay registered and callable by name but hidden
+ * from tools/list. The derived sets and the lookup live in `tool-groups.ts`;
+ * this file is the table so the two views of the surface (behaviour and data)
+ * have separate homes.
+ */
+
+/** When to use: the arguments a group action maps from. */
+export type ToolArgs = Record<string, any>;
+
+/** When to use: describing one action inside a consolidated group tool. */
+export interface ToolGroupAction {
+  action: string;
+  tool?: string;
+  endpoint?: string;
+  method?: 'GET' | 'POST';
+  description: string;
+  map?: (args: ToolArgs) => ToolArgs;
+}
+
+/** When to use: a tool registration that dispatches actions within one advertised group. */
+export interface ToolGroupDefinition {
+  name: string;
+  description: string;
+  tier: 1 | 2 | 3 | null;
+  actions: ToolGroupAction[];
+}
+
+/** When to use: reading or extending the consolidated surface — the group table itself. */
+export const TOOL_GROUPS: ToolGroupDefinition[] = [
+  {
+    name: 'navigate',
+    description: 'Navigate the visible browser: open a URL, move through history, dismiss a consent wall, or scroll.',
+    tier: 1,
+    actions: [
+      { action: 'open', tool: 'navigate_to', description: 'Open a URL.' },
+      { action: 'back', tool: 'navigate_history', description: 'Go back.', map: () => ({ direction: 'back' }) },
+      { action: 'forward', tool: 'navigate_history', description: 'Go forward.', map: () => ({ direction: 'forward' }) },
+      { action: 'reload', tool: 'navigate_history', description: 'Reload.', map: () => ({ direction: 'reload' }) },
+      { action: 'consent', tool: 'dismiss_consent', description: 'Dismiss a cookie/GDPR wall.', map: () => ({}) },
+      { action: 'scroll', tool: 'scroll_page', description: 'Scroll the viewport.' },
+      {
+        action: 'recipe',
+        tool: 'recipe',
+        description: 'Save/list/replay/delete a zero-model navigation path.',
+        map: (args) => ({
+          action: args.recipe_action || 'list',
+          id: args.id,
+          url: args.url,
+          name: args.name,
+          path: args.path,
+          steps: args.steps,
+          expect_timeout_ms: args.expect_timeout_ms,
+        }),
+      },
+    ],
+  },
+  {
+    name: 'capture',
+    description: 'Capture the active page as a viewport/Set-of-Marks screenshot or a rendered post-hydration snapshot.',
+    tier: 2,
+    actions: [
+      { action: 'screenshot', tool: 'take_screenshot', description: 'Viewport or Set-of-Marks image.' },
+      { action: 'rendered', tool: 'snapshot_rendered_page', description: 'Rendered AX/Markdown/HTML snapshot.' },
+    ],
+  },
+  {
+    name: 'devtools',
+    description: 'Read-only deep-browser console: page state, diff, console, network, streams, HAR, JSON payloads, fingerprint and health.',
+    tier: null,
+    actions: [
+      { action: 'state', tool: 'page_state', description: 'Cheap page-state signature.', map: () => ({}) },
+      { action: 'diff', tool: 'diff', description: 'Diff against a revision.' },
+      { action: 'console', tool: 'get_console_logs', description: 'Recent console logs.' },
+      { action: 'fingerprint', tool: 'get_fingerprint_profile', description: 'Current fingerprint profile.', map: () => ({}) },
+      { action: 'health', tool: 'bridge_health', description: 'Bridge/app health.', map: () => ({}) },
+      { action: 'traffic', tool: 'get_network_traffic', description: 'Captured HTTP traffic.' },
+      { action: 'query', tool: 'query_json_data', description: 'Query captured JSON payloads.' },
+      { action: 'streams', tool: 'list_realtime_streams', description: 'Active WebSocket/SSE streams.' },
+      { action: 'clear', tool: 'clear_capture', description: 'Clear capture buffers.' },
+      { action: 'har', tool: 'export_har', description: 'Export captured traffic as HAR.' },
+    ],
+  },
+  {
+    name: 'human_in_loop',
+    description: 'Human hand-off and desktop controls: request/status/resolve HIL, inspect/resume explicit human control, notify, show/hide or configure the tray.',
+    tier: null,
+    actions: [
+      { action: 'request', tool: 'request_human_intervention', description: 'Ask the human for help.' },
+      { action: 'status', tool: 'get_human_intervention_status', description: 'Pending HIL request.', map: () => ({}) },
+      { action: 'resolve', tool: 'resolve_human_intervention', description: 'Resolve a HIL request.' },
+      { action: 'activity', tool: 'get_human_activity', description: 'Explicit human-control status.', map: () => ({}) },
+      { action: 'notify', tool: 'send_notification', description: 'Desktop notification.' },
+      { action: 'show', tool: 'set_window_visibility', description: 'Show/focus the app.', map: (args) => ({ visible: true, focus: args.focus ?? true }) },
+      { action: 'hide', tool: 'set_window_visibility', description: 'Hide to tray.', map: () => ({ visible: false, focus: false }) },
+      { action: 'tray', tool: 'configure_system_tray', description: 'Configure close-to-tray.' },
+    ],
+  },
+  {
+    name: 'collaborate',
+    description: 'Talk to a human about page objects: highlight an element, ask a question with choices, read replies, or resolve the thread.',
+    tier: null,
+    actions: [
+      { action: 'highlight', endpoint: '/collaboration/highlight', description: 'Highlight a target with a note.' },
+      { action: 'ask', endpoint: '/collaboration/ask', description: 'Ask a question on a target, with optional choices.' },
+      { action: 'read', endpoint: '/collaboration/threads', method: 'GET', description: 'Read one thread by id.', map: (args) => ({ queryParams: args.id ? { id: args.id } : {} }) },
+      { action: 'list', endpoint: '/collaboration/threads', method: 'GET', description: 'List threads for the current page.', map: (args) => {
+        const queryParams: Record<string, string> = {};
+        if (args.url) queryParams.url = args.url;
+        if (args.status) queryParams.status = args.status;
+        if (args.limit !== undefined) queryParams.limit = String(args.limit);
+        return { queryParams };
+      } },
+      { action: 'reply', endpoint: '/collaboration/reply', description: 'Add an agent reply.' },
+      { action: 'resolve', endpoint: '/collaboration/resolve', description: 'Resolve a thread.' },
+    ],
+  },
+  {
+    name: 'media',
+    description: 'Media download integration: preview a video, queue a download, poll its progress, cancel it, and list what has been saved. Downloads run in the app and are polled with the jobs action.',
+    tier: null,
+    actions: [
+      {
+        action: 'status',
+        endpoint: '/media/status',
+        method: 'GET',
+        description: 'Downloader binary and runtime status, capabilities, and how many jobs are queued or running.',
+        map: () => ({}),
+      },
+      {
+        action: 'info',
+        endpoint: '/media/info',
+        description: 'Metadata for a video or audio URL: title, duration, formats, subtitle languages. Does not download.',
+      },
+      {
+        action: 'preview',
+        tool: 'media_preview',
+        description: 'Title, duration, a transcript excerpt and the poster image, without downloading. Use this before committing to a download.',
+      },
+      {
+        action: 'transcript',
+        endpoint: '/media/transcript',
+        description: 'Captions as plain text (lang, max_chars, cursor) without downloading the media. Indexed into Cortex by default so memory recall can answer from it; pass index:false to skip.',
+      },
+      {
+        action: 'download',
+        endpoint: '/media/download',
+        description: 'Queue a download (kind: video|audio, quality: best|1080|720|480|worst). Returns a job id immediately; poll it with jobs.',
+      },
+      {
+        action: 'jobs',
+        endpoint: '/media/jobs',
+        method: 'GET',
+        description: 'All download jobs with state, progress, bytes, speed, ETA and output files.',
+        map: () => ({}),
+      },
+      {
+        action: 'cancel',
+        endpoint: '/media/cancel',
+        description: 'Cancel a queued or running job by id. Removes its partial output.',
+      },
+      {
+        action: 'list',
+        endpoint: '/media/library',
+        method: 'GET',
+        description: 'Completed downloads with their files and sizes.',
+        map: () => ({}),
+      },
+    ],
+  },
+  {
+    name: 'browser_workspace',
+    description: 'Stateful browser workspace: tabs, page zoom and pixel proportions, downloads, context profiles, recordings and the script vault.',
+    tier: null,
+    actions: [
+      { action: 'tabs.list', tool: 'list_tabs', description: 'List tabs.', map: () => ({}) },
+      { action: 'tabs.new', tool: 'new_tab', description: 'Open a tab.' },
+      { action: 'tabs.switch', tool: 'switch_tab', description: 'Switch tab.' },
+      { action: 'tabs.close', tool: 'close_tab', description: 'Close tab.' },
+      { action: 'zoom.status', tool: 'browser_zoom', description: 'Report zoom, display scale, CSS viewport and physical viewport.', map: () => ({ action: 'status' }) },
+      { action: 'zoom.in', tool: 'browser_zoom', description: 'Step page zoom in.', map: () => ({ action: 'in' }) },
+      { action: 'zoom.out', tool: 'browser_zoom', description: 'Step page zoom out.', map: () => ({ action: 'out' }) },
+      { action: 'zoom.reset', tool: 'browser_zoom', description: 'Reset to the fitted/Windows policy base.', map: () => ({ action: 'reset' }) },
+      { action: 'zoom.set', tool: 'browser_zoom', description: 'Set an exact zoom factor (0.25-5); re-observe after changing geometry.', map: (args) => ({ action: 'set', factor: args.factor }) },
+      { action: 'viewport.status', tool: 'browser_viewport', description: 'Report the emulated device viewport.', map: () => ({ action: 'status' }) },
+      { action: 'viewport.set', tool: 'browser_viewport', description: 'Emulate a device preset or custom width/height.', map: (args) => ({ action: 'set', preset: args.preset, width: args.width, height: args.height, device_scale_factor: args.device_scale_factor, mobile: args.mobile, touch: args.touch }) },
+      { action: 'viewport.reset', tool: 'browser_viewport', description: 'Return to the full browser area.', map: () => ({ action: 'reset' }) },
+      { action: 'viewport.rotate', tool: 'browser_viewport', description: 'Swap width and height.', map: () => ({ action: 'rotate' }) },
+      { action: 'downloads.list', tool: 'list_downloads', description: 'List downloads.', map: () => ({}) },
+      { action: 'downloads.read', tool: 'read_download', description: 'Read a downloaded document.' },
+      { action: 'contexts.save', tool: 'context_save', description: 'Save cookies/storage.' },
+      { action: 'contexts.open', tool: 'context_open', description: 'Open a saved context.' },
+      { action: 'contexts.list', tool: 'context_list', description: 'List contexts.', map: () => ({}) },
+      { action: 'contexts.delete', tool: 'context_delete', description: 'Delete a context.' },
+      { action: 'record.start', tool: 'record_start', description: 'Start a timelapse.' },
+      { action: 'record.stop', tool: 'record_stop', description: 'Stop and save a timelapse.', map: () => ({}) },
+      { action: 'record.list', tool: 'list_recordings', description: 'List recordings.' },
+      { action: 'scripts.save', tool: 'save_script', description: 'Save a script.' },
+      { action: 'scripts.run', tool: 'run_script', description: 'Run a saved script.' },
+      { action: 'scripts.list', tool: 'list_scripts', description: 'List/search scripts.' },
+      { action: 'scripts.delete', tool: 'delete_script', description: 'Delete a script.' },
+    ],
+  },
+  {
+    name: 'shadow_iframes',
+    description: 'Shadow DOM and iframe access: list frame controls and walk into closed shadow roots with trusted Tab steps.',
+    tier: null,
+    actions: [
+      { action: 'frames', tool: 'frames', description: 'List iframes and their controls.' },
+      { action: 'focus_walk', tool: 'focus_walk', description: 'Tab into a closed shadow root.' },
+    ],
+  },
+  {
+    name: 'research',
+    description: 'Read, search and crawl: URL-to-Markdown, multi-engine search, LLM surfaces, BFS crawl and cited topic research.',
+    tier: null,
+    actions: [
+      { action: 'read', tool: 'read_url', description: 'Read a URL as Markdown.' },
+      { action: 'search', tool: 'search_web', description: 'Multi-engine web search.' },
+      { action: 'surface', tool: 'llm_surface', description: 'Check for an LLM-friendly surface.' },
+      { action: 'fetch', tool: 'llm_fetch', description: 'Fetch the advertised surface.' },
+      { action: 'crawl', tool: 'deep_crawl', description: 'Breadth-first crawl.' },
+      { action: 'topic', tool: 'research_topic', description: 'Search, gather and cite sources.' },
+      { action: 'relocate', tool: 'relocate_citation', description: 'Revalidate a saved citation anchor after a redesign.' },
+      { action: 'revalidate', tool: 'revalidate_citations', description: 'Revalidate every saved citation anchor and update scores.' },
+      { action: 'prerender', tool: 'prerender_links', description: 'Pre-render candidate links.' },
+    ],
+  },
+  {
+    name: 'memory',
+    description: 'Local Cortex memory: recall, browsing history and bookmarks.',
+    tier: null,
+    actions: [
+      { action: 'recall', tool: 'recall_memory', description: 'Hybrid semantic recall.' },
+      { action: 'history', tool: 'browsing_history', description: 'Chronological history.' },
+      { action: 'history_clear', tool: 'browsing_history_clear', description: 'Prune history.' },
+      { action: 'bookmark_add', tool: 'add_bookmark', description: 'Save a bookmark.' },
+      { action: 'bookmark_list', tool: 'list_bookmarks', description: 'List/search bookmarks.' },
+      { action: 'bookmark_delete', tool: 'delete_bookmark', description: 'Delete a bookmark.' },
+    ],
+  },
+];
