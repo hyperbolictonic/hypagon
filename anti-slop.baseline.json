@@ -136,7 +136,6 @@
       "main/decide/decision-guard.ts": 7,
       "main/hil/hil-manager.ts": 68,
       "main/http-bridge.ts": 130,
-      "main/index.ts": 83,
       "main/media/ffmpeg.ts": 24,
       "main/media/service.ts": 34,
       "main/media/settings.ts": 9,
@@ -175,7 +174,7 @@
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 1869
+    "totalDuplicatedLines": 1786
   },
   "modularity": {
     "files": {

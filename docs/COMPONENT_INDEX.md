@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 164 files, 661 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 165 files, 662 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -606,7 +606,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (71)
+## Modules (72)
 
 | File | Export | When to use |
 |---|---|---|
@@ -640,6 +640,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/metrics.ts` | `summary` | Grouped summary for `bridge_health` — three numbers instead of a wall of keys. |
 | `main/metrics.ts` | `resetMetrics` | - |
 | `main/remote/cloudflared.ts` | `findCloudflared` | Find cloudflared without installing or downloading it. |
+| `main/remote/ipc.ts` | `registerRemoteIpc` | When to use: main-process startup — register every `remote:*` channel. The |
 | `main/remote/token.ts` | `remoteTokenFile` | - |
 | `main/remote/token.ts` | `createRemoteToken` | Create a remote-gateway capability token. The caller owns the directory. |
 | `main/remote/token.ts` | `readRemoteToken` | Read and validate a token file. A missing, malformed or empty file returns undefined. |

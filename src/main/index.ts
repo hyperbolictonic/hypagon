@@ -19,6 +19,7 @@ import { attachContextMenu } from './menu/context-menu.js';
 import type { WebPageState } from '../shared/web-state.js';
 import { initUpdater, checkForUpdates, installUpdate, updaterState } from './updates/updater.js';
 import { RemoteService } from './remote/service.js';
+import { registerRemoteIpc } from './remote/ipc.js';
 import { ToolSettingsStore } from './tools/settings.js';
 import { registerToolSettingsIpc } from './tools/ipc.js';
 import { CollaborationStore } from './collaboration/store.js';
@@ -405,10 +406,6 @@ ipcMain.handle('app:connect-info', () => {
   };
 });
 
-function remoteFailure(message: string) {
-  return { ok: false, error: message };
-}
-
 /** Experimental feature flags (Settings → Experimental). Persisted; default off. */
 let experimentalStore: ExperimentalSettingsStore | null = null;
 function experimentalSettings(): ExperimentalSettingsStore {
@@ -516,104 +513,7 @@ ipcMain.handle('chassis:web-state', async () => {
   }
 });
 
-ipcMain.handle('remote:info', () => {
-  if (!activeRemoteService) return remoteFailure('Remote access is not ready yet.');
-  try {
-    return { ok: true, ...activeRemoteService.getInfo() };
-  } catch (err: any) {
-    return remoteFailure(err?.message || String(err));
-  }
-});
-
-ipcMain.handle('remote:set-enabled', async (_event, enabled: boolean) => {
-  if (!activeRemoteService) return remoteFailure('Remote access is not ready yet.');
-  try {
-    return { ok: true, status: await activeRemoteService.setEnabled(Boolean(enabled)) };
-  } catch (err: any) {
-    return remoteFailure(err?.message || String(err));
-  }
-});
-
-ipcMain.handle('remote:rotate-token', async () => {
-  if (!activeRemoteService) return remoteFailure('Remote access is not ready yet.');
-  try {
-    return { ok: true, status: await activeRemoteService.rotateToken() };
-  } catch (err: any) {
-    return remoteFailure(err?.message || String(err));
-  }
-});
-
-ipcMain.handle('remote:disconnect-sessions', async () => {
-  if (!activeRemoteService) return remoteFailure('Remote access is not ready yet.');
-  try {
-    return { ok: true, status: await activeRemoteService.disconnectSessions() };
-  } catch (err: any) {
-    return remoteFailure(err?.message || String(err));
-  }
-});
-
-ipcMain.handle('remote:set-tunnel-enabled', async (_event, enabled: boolean) => {
-  if (!activeRemoteService) return remoteFailure('Remote access is not ready yet.');
-  try {
-    return { ok: true, status: await activeRemoteService.setTunnelEnabled(Boolean(enabled)) };
-  } catch (err: any) {
-    return remoteFailure(err?.message || String(err));
-  }
-});
-
-ipcMain.handle('remote:set-tunnel-config', async (_event, hostname: string, token?: string) => {
-  if (!activeRemoteService) return remoteFailure('Remote access is not ready yet.');
-  try {
-    return { ok: true, status: await activeRemoteService.setTunnelConfig(String(hostname || ''), token ? String(token) : undefined) };
-  } catch (err: any) {
-    return remoteFailure(err?.message || String(err));
-  }
-});
-
-ipcMain.handle('remote:set-cloudflared-mode', async (_event, mode: 'manual' | 'automatic') => {
-  if (!activeRemoteService) return remoteFailure('Remote access is not ready yet.');
-  try {
-    return { ok: true, status: await activeRemoteService.setCloudflaredUpdateMode(mode) };
-  } catch (err: any) {
-    return remoteFailure(err?.message || String(err));
-  }
-});
-
-ipcMain.handle('remote:check-cloudflared', async () => {
-  if (!activeRemoteService) return remoteFailure('Remote access is not ready yet.');
-  try {
-    return { ok: true, status: await activeRemoteService.checkCloudflared() };
-  } catch (err: any) {
-    return remoteFailure(err?.message || String(err));
-  }
-});
-
-ipcMain.handle('remote:install-cloudflared', async () => {
-  if (!activeRemoteService) return remoteFailure('Remote access is not ready yet.');
-  try {
-    return { ok: true, status: await activeRemoteService.installCloudflared() };
-  } catch (err: any) {
-    return remoteFailure(err?.message || String(err));
-  }
-});
-
-ipcMain.handle('remote:set-auth-mode', async (_event, mode: 'bearer' | 'oauth') => {
-  if (!activeRemoteService) return remoteFailure('Remote access is not ready yet.');
-  try {
-    return { ok: true, status: await activeRemoteService.setAuthMode(mode) };
-  } catch (err: any) {
-    return remoteFailure(err?.message || String(err));
-  }
-});
-
-ipcMain.handle('remote:rotate-oauth-client', async () => {
-  if (!activeRemoteService) return remoteFailure('Remote access is not ready yet.');
-  try {
-    return { ok: true, status: await activeRemoteService.rotateOAuthClient() };
-  } catch (err: any) {
-    return remoteFailure(err?.message || String(err));
-  }
-});
+registerRemoteIpc(() => activeRemoteService);
 
 onRecordingStatus((state) => {
   chassis.broadcast('recording:status', state);
