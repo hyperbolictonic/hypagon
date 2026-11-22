@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 159 files, 655 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 163 files, 660 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (585)
+## Types (587)
 
 | File | Export | When to use |
 |---|---|---|
@@ -109,6 +109,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/http/collaboration-routes.ts` | `CollaborationRouteContext` *(type)* | When to use: building the collaboration dispatcher — the service plus the page context it reads. |
 | `main/http/media-routes.ts` | `handleMediaRoutes` | When to use: the bridge request handler — dispatch `/media/*` before the |
 | `main/http/media-routes.ts` | `MediaRouteContext` *(type)* | When to use: building the media dispatcher — the media service, or undefined when the feature is off. |
+| `main/http/network-routes.ts` | `handleNetworkRoutes` | When to use: the bridge request handler — dispatch `/network/*`. Returns |
+| `main/http/network-routes.ts` | `NetworkRouteContext` *(type)* | When to use: building the network dispatcher — the bridge supplies the moving timestamp. |
 | `main/http/route-table.ts` | `dispatchRoute` | When to use: the end of every family handler — look up the entry for this |
 | `main/http/route-table.ts` | `RouteTableContext` *(type)* | When to use: a family handler needs the request facts and the bridge's JSON sender. |
 | `main/http/route-table.ts` | `ChassisRouteContext` *(type)* | When to use: a family whose only dependency is the browser chassis — tabs, |
@@ -604,7 +606,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (67)
+## Modules (70)
 
 | File | Export | When to use |
 |---|---|---|
@@ -619,8 +621,11 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/diagnostics/main-log.ts` | `logMainEvent` | - |
 | `main/http/bookmarks-routes.ts` | `handleBookmarkRoutes` | When to use: the bridge request handler — dispatch `/bookmarks`. Returns |
 | `main/http/hil-routes.ts` | `handleHumanInterventionRoutes` | When to use: the bridge request handler — dispatch `/hil/*`. Returns false |
+| `main/http/jev-routes.ts` | `handleJevRoutes` | When to use: the bridge request handler — dispatch `/jev/*`. Returns false |
 | `main/http/marks-routes.ts` | `handleMarkRoutes` | When to use: the bridge request handler — dispatch `/marks/*`. Returns false |
+| `main/http/recording-routes.ts` | `handleRecordingRoutes` | When to use: the bridge request handler — dispatch `/recording/*`. Returns |
 | `main/http/scripts-routes.ts` | `handleScriptRoutes` | When to use: the bridge request handler — dispatch `/scripts/*`. Returns |
+| `main/http/session-routes.ts` | `handleSessionRoutes` | When to use: the bridge request handler — dispatch `/session/*` and the |
 | `main/http/tabs-routes.ts` | `handleTabRoutes` | When to use: the bridge request handler — dispatch `/tabs/*`. Returns false |
 | `main/http/window-routes.ts` | `handleWindowRoutes` | When to use: the bridge request handler — dispatch `/window/*`. Returns |
 | `main/http-bridge.ts` | `startHttpBridge` | - |

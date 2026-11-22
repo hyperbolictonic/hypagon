@@ -13,13 +13,6 @@ import { loadRecipes, recipesFor, saveRecipe, deleteRecipe, recordResult, retire
 import { replayRecipe, type RecipeRunner } from './recipes/replay.js';
 import { compileDriveSteps } from './recipes/compile.js';
 import { summary, snapshot, resetMetrics } from './metrics.js';
-import {
-  getRecordingConfig,
-  getRecordingStatus,
-  listRecordings,
-  startRecording,
-  stopRecording,
-} from './recording/recording-service.js';
 import { DEFAULT_TOOL_SETTINGS, type ToolSettingsStore } from './tools/settings.js';
 import type { CollaborationService } from './collaboration/service.js';
 import type { MediaService } from './media/service.js';
@@ -32,6 +25,10 @@ import { handleHumanInterventionRoutes } from './http/hil-routes.js';
 import { handleWindowRoutes } from './http/window-routes.js';
 import { handleMarkRoutes } from './http/marks-routes.js';
 import { handleBookmarkRoutes } from './http/bookmarks-routes.js';
+import { handleJevRoutes } from './http/jev-routes.js';
+import { handleRecordingRoutes } from './http/recording-routes.js';
+import { handleSessionRoutes } from './http/session-routes.js';
+import { handleNetworkRoutes } from './http/network-routes.js';
 
 export type { WrapBridge };
 
@@ -390,29 +387,7 @@ export function startHttpBridge(
         return;
       }
 
-      if (req.method === 'GET' && pathname === '/jev/stats') {
-        sendJson({ success: true, ...chassis.getJevStats(), status: chassis.getJevStatus() });
-        return;
-      }
-
-      // JEV (Just-Enough-View) page compaction. Requires a decision model and the
-      // optional JEV toggle; otherwise each route returns a clear error.
-      if (req.method === 'GET' && pathname === '/jev/index') {
-        sendJson(await chassis.jevIndex());
-        return;
-      }
-      if (req.method === 'POST' && pathname === '/jev/read') {
-        const body = await readBody();
-        const sectionId = String(body.section_id ?? body.sectionId ?? '');
-        const includeChildren = body.include_children === true || body.includeChildren === true;
-        sendJson(chassis.jevReadSection(sectionId, includeChildren));
-        return;
-      }
-      if (req.method === 'POST' && pathname === '/jev/search') {
-        const body = await readBody();
-        sendJson(chassis.jevSearch(String(body.query ?? '')));
-        return;
-      }
+      if (await handleJevRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson })) return;
 
       if (req.method === 'GET' && pathname === '/screenshot') {
         const maxWidthParam = url.searchParams.get('max_width');
@@ -518,131 +493,11 @@ export function startHttpBridge(
       }
 
       // ---- timelapse recording --------------------------------------------------------------
-      if (req.method === 'GET' && pathname === '/recording/status') {
-        sendJson({ success: true, ...getRecordingStatus() });
-        return;
-      }
+      if (await handleRecordingRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson })) return;
 
-      if (req.method === 'POST' && pathname === '/recording/start') {
-        if (getRecordingConfig().toolsEnabled === false) {
-          sendJson(
-            {
-              success: false,
-              error: 'Recording tools are disabled in Settings → Recording (human-only switch).',
-              code: 'RECORDING_TOOLS_DISABLED',
-            },
-            403
-          );
-          return;
-        }
-        const body = await readBody();
-        try {
-          const started = await startRecording(typeof body?.name === 'string' ? body.name : undefined);
-          sendJson({ success: true, ...started, status: getRecordingStatus() });
-        } catch (err: any) {
-          sendJson({ success: false, error: String(err?.message || err), code: 'RECORDING_FAILED' }, 400);
-        }
-        return;
-      }
+      if (await handleSessionRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson })) return;
 
-      if (req.method === 'POST' && pathname === '/recording/stop') {
-        if (getRecordingConfig().toolsEnabled === false) {
-          sendJson(
-            {
-              success: false,
-              error: 'Recording tools are disabled in Settings → Recording (human-only switch).',
-              code: 'RECORDING_TOOLS_DISABLED',
-            },
-            403
-          );
-          return;
-        }
-        try {
-          const result = await stopRecording();
-          sendJson({ success: true, recording: result, ...result });
-        } catch (err: any) {
-          sendJson({ success: false, error: String(err?.message || err), code: 'RECORDING_FAILED' }, 400);
-        }
-        return;
-      }
-
-      if (req.method === 'GET' && pathname === '/recording/list') {
-        if (getRecordingConfig().toolsEnabled === false) {
-          sendJson(
-            {
-              success: false,
-              error: 'Recording tools are disabled in Settings → Recording (human-only switch).',
-              code: 'RECORDING_TOOLS_DISABLED',
-            },
-            403
-          );
-          return;
-        }
-        const limit = Number(url.searchParams.get('limit')) || 20;
-        const config = getRecordingConfig();
-        sendJson({
-          success: true,
-          enabled: config.enabled,
-          toolsEnabled: config.toolsEnabled,
-          outputDir: config.outputDir,
-          recording: getRecordingStatus().recording,
-          recordings: listRecordings(limit),
-        });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/session/save') {
-        const body = await readBody();
-        const result = await chassis.saveSession(body.name);
-        sendJson({ success: true, result });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/session/restore') {
-        const body = await readBody();
-        const result = await chassis.restoreSession(body.name);
-        sendJson({ success: true, result });
-        return;
-      }
-
-      if (req.method === 'GET' && pathname === '/session/list') {
-        const sessions = chassis.listSessions();
-        sendJson({ success: true, sessions });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/session/delete') {
-        const body = await readBody();
-        const deleted = chassis.deleteSession(body.name);
-        sendJson({ success: true, deleted });
-        return;
-      }
-
-      if ((req.method === 'GET' || req.method === 'POST') && pathname === '/network/traffic') {
-        const filter = req.method === 'POST' ? await readBody() : undefined;
-        let traffic = chassis.getNetworkTraffic(filter);
-        if (filter) {
-          const since = filter.since === 'last_action' ? lastActionAt : Number(filter.since);
-          if (since && !isNaN(since)) {
-            traffic = traffic.filter((r) => (r.requestTime || 0) >= since);
-          }
-        }
-        sendJson({ success: true, count: traffic.length, traffic });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/network/payload') {
-        const body = await readBody();
-        const payload = chassis.getApiPayload(body.requestId);
-        sendJson({ success: true, payload });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/network/clear') {
-        chassis.clearNetworkTraffic();
-        sendJson({ success: true, message: 'Network traffic buffer cleared' });
-        return;
-      }
+      if (await handleNetworkRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson, lastActionAt: () => lastActionAt })) return;
 
       if (req.method === 'POST' && pathname === '/json/query') {
         const body = await readBody();
@@ -1333,23 +1188,7 @@ export function startHttpBridge(
         return;
       }
 
-      if (req.method === 'POST' && pathname === '/network/har') {
-        const body = await readBody();
-        const har = chassis.getPrimitives().exportHar({
-          limit: body?.limit !== undefined ? Number(body.limit) : undefined,
-          pattern: body?.pattern,
-        });
-        if (body?.save) {
-          const dir = dataPath('har');
-          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-          const file = path.join(dir, `har_${Date.now()}.har`);
-          fs.writeFileSync(file, JSON.stringify(har, null, 2));
-          sendJson({ success: true, entries: har.log.entries.length, filePath: file });
-          return;
-        }
-        sendJson({ success: true, entries: har.log.entries.length, har });
-        return;
-      }
+      if (await handleNetworkRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson, lastActionAt: () => lastActionAt })) return;
 
       // Named contexts (cookie/storage profiles) — thin aliases over the session vault.
       if (req.method === 'POST' && pathname === '/context/save') {
