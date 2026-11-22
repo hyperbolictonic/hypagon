@@ -35,6 +35,15 @@ function routeSources() {
   return [BRIDGE_PATH, ...families];
 }
 
+/** Every file that can declare a catalog entry: the composer plus its segment files. */
+function catalogSources() {
+  const segments = fs
+    .readdirSync(path.join(ROOT, 'src', 'mcp'))
+    .filter((name) => /^tools-catalog(-\w+)?\.ts$/.test(name))
+    .map((name) => path.join(ROOT, 'src', 'mcp', name));
+  return segments;
+}
+
 /** Parse the MCP catalog into [{ name, method, endpoint }]. */
 function parseCatalog(src) {
   const tools = [];
@@ -105,7 +114,7 @@ function parseRoutes(sources) {
 }
 
 function main() {
-  const catalogSrc = fs.readFileSync(CATALOG_PATH, 'utf8');
+  const catalogSrc = catalogSources().map((file) => fs.readFileSync(file, 'utf8')).join('\n');
   const catalog = parseCatalog(catalogSrc);
   const { routes, byPath } = parseRoutes(routeSources().map((file) => fs.readFileSync(file, 'utf8')));
 

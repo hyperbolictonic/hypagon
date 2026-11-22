@@ -109,7 +109,7 @@
       "main/wrap/validate-wrapper.ts": 3,
       "mcp/browser-mcp.ts": 3,
       "mcp/tool-groups.ts": 3,
-      "mcp/tools-catalog.ts": 3,
+      "mcp/tools-catalog.ts": 2,
       "mcp/wrap-server.ts": 1,
       "renderer/menu-popup.ts": 1,
       "renderer/recording.ts": 4,
@@ -154,7 +154,11 @@
       "main/wrap/store.ts": 12,
       "mcp/browser-mcp.ts": 18,
       "mcp/tool-groups-data.ts": 135,
-      "mcp/tools-catalog.ts": 217,
+      "mcp/tools-catalog-memory.ts": 41,
+      "mcp/tools-catalog-navigation.ts": 6,
+      "mcp/tools-catalog-primitives.ts": 16,
+      "mcp/tools-catalog-research.ts": 47,
+      "mcp/tools-catalog-system.ts": 107,
       "mcp/wrap-server.ts": 66,
       "preload/index.ts": 32,
       "renderer/main.ts": 72,
@@ -226,9 +230,6 @@
       "mcp/browser-mcp.ts": {
         "file": 1,
         "function": 2
-      },
-      "mcp/tools-catalog.ts": {
-        "file": 1
       },
       "mcp/wrap-server.ts": {
         "file": 1,
