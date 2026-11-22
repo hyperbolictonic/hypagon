@@ -72,6 +72,22 @@ function keyDescriptor(ch: string): { key: string; code: string; vk: number } {
   return { key: ch, code: '', vk: 0 };
 }
 
+/** The CDP `Input.dispatchKeyEvent` payload for a descriptor; `phase` picks down or up. */
+function keyEventParams(
+  d: { key: string; code: string; vk: number },
+  phase: 'down' | 'up',
+  extra: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    type: phase === 'down' ? 'keyDown' : 'keyUp',
+    key: d.key,
+    code: d.code,
+    windowsVirtualKeyCode: d.vk,
+    nativeVirtualKeyCode: d.vk,
+    ...extra,
+  };
+}
+
 export class HumanizedInputSimulator {
   private currentCursor: Point = { x: 100, y: 100 };
 
@@ -570,11 +586,7 @@ export class HumanizedInputSimulator {
       const d = keyDescriptor(char);
 
       const viaCdp = await this.cdp(webContents, 'Input.dispatchKeyEvent', {
-        type: 'keyDown',
-        key: d.key,
-        code: d.code,
-        windowsVirtualKeyCode: d.vk,
-        nativeVirtualKeyCode: d.vk,
+        ...keyEventParams(d, 'down'),
         text: char,
         unmodifiedText: char,
       });
@@ -595,13 +607,7 @@ export class HumanizedInputSimulator {
         });
       }
 
-      await this.cdp(webContents, 'Input.dispatchKeyEvent', {
-        type: 'keyUp',
-        key: d.key,
-        code: d.code,
-        windowsVirtualKeyCode: d.vk,
-        nativeVirtualKeyCode: d.vk,
-      });
+      await this.cdp(webContents, 'Input.dispatchKeyEvent', keyEventParams(d, 'up'));
       if (!viaCdp) {
         // Send keyUp
         webContents.sendInputEvent({
@@ -639,15 +645,11 @@ export class HumanizedInputSimulator {
     // Enter/Space need their text payload for Chromium to run the default action (activate a
     // focused button, submit a form); a bare keyDown only updates focus/scroll state.
     const text = d.key === 'Enter' ? '\r' : d.key === ' ' ? ' ' : undefined;
-    const downViaCdp = await this.cdp(webContents, 'Input.dispatchKeyEvent', {
-      type: 'keyDown',
-      key: d.key,
-      code: d.code,
-      windowsVirtualKeyCode: d.vk,
-      nativeVirtualKeyCode: d.vk,
-      modifiers,
-      ...(text !== undefined ? { text, unmodifiedText: text } : {}),
-    });
+    const downViaCdp = await this.cdp(
+      webContents,
+      'Input.dispatchKeyEvent',
+      keyEventParams(d, 'down', { modifiers, ...(text !== undefined ? { text, unmodifiedText: text } : {}) }),
+    );
     this.lastInputTransport = downViaCdp ? 'cdp' : 'native';
     if (!downViaCdp) {
       webContents.sendInputEvent({
@@ -657,14 +659,7 @@ export class HumanizedInputSimulator {
       });
     }
     await sleep(40 + Math.random() * 30);
-    await this.cdp(webContents, 'Input.dispatchKeyEvent', {
-      type: 'keyUp',
-      key: d.key,
-      code: d.code,
-      windowsVirtualKeyCode: d.vk,
-      nativeVirtualKeyCode: d.vk,
-      modifiers,
-    });
+    await this.cdp(webContents, 'Input.dispatchKeyEvent', keyEventParams(d, 'up', { modifiers }));
     if (!downViaCdp) {
       webContents.sendInputEvent({
         type: 'keyUp',
@@ -684,27 +679,21 @@ export class HumanizedInputSimulator {
    */
   public async clearFocusedField(webContents: WebContents): Promise<void> {
     this.ensureInputTarget(webContents);
-    const downViaCdp = await this.cdp(webContents, 'Input.dispatchKeyEvent', {
-      type: 'rawKeyDown',
-      key: 'a',
-      code: 'KeyA',
-      windowsVirtualKeyCode: 65,
-      nativeVirtualKeyCode: 65,
-      modifiers: 2, // Ctrl
-    });
+    const downViaCdp = await this.cdp(
+      webContents,
+      'Input.dispatchKeyEvent',
+      keyEventParams({ key: 'a', code: 'KeyA', vk: 65 }, 'down', { type: 'rawKeyDown', modifiers: 2 }),
+    );
     this.lastInputTransport = downViaCdp ? 'cdp' : 'native';
     if (!downViaCdp) {
       webContents.sendInputEvent({ type: 'keyDown', keyCode: 'A', modifiers: ['control'] });
     }
     await sleep(30 + Math.random() * 30);
-    await this.cdp(webContents, 'Input.dispatchKeyEvent', {
-      type: 'keyUp',
-      key: 'a',
-      code: 'KeyA',
-      windowsVirtualKeyCode: 65,
-      nativeVirtualKeyCode: 65,
-      modifiers: 2,
-    });
+    await this.cdp(
+      webContents,
+      'Input.dispatchKeyEvent',
+      keyEventParams({ key: 'a', code: 'KeyA', vk: 65 }, 'up', { modifiers: 2 }),
+    );
     if (!downViaCdp) {
       webContents.sendInputEvent({ type: 'keyUp', keyCode: 'A', modifiers: ['control'] });
     }
