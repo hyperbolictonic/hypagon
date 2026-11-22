@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 175 files, 692 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 176 files, 694 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (615)
+## Types (617)
 
 | File | Export | When to use |
 |---|---|---|
@@ -403,6 +403,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/tab-walk.ts` | `TabWalkOptions` *(type)* | - |
 | `main/shadow-walk/tab-walk.ts` | `TabWalkStep` *(type)* | - |
 | `main/shadow-walk/tab-walk.ts` | `TabWalkResult` *(type)* | - |
+| `main/shield/consent-controller.ts` | `ConsentController` | When to use: the chassis — own the consent sweep: answered-origins memory, timed attempts and the explicit dismiss. |
+| `main/shield/consent-controller.ts` | `ConsentControllerDeps` *(type)* | When to use: building the chassis — the wall breaker, the policy and the log/telemetry come from it. |
 | `main/shield/shield-breaker.ts` | `ShieldBreaker` | - |
 | `main/shield/shield-breaker.ts` | `ShieldDismissResult` *(type)* | - |
 | `main/shield/shield-breaker.ts` | `ConsentPolicy` *(type)* | How to answer a consent wall. This is a *preference*, not a licence to click anything that says |

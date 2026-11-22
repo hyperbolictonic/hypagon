@@ -38,6 +38,7 @@ import { TabManager, type TabInstance } from './tabs/tab-manager.js';
 import { cortex, CortexDB } from './cortex/cortex-db.js';
 import { DownloadManager, type DownloadRecord } from './downloads/download-manager.js';
 import { ShieldBreaker, type ShieldDismissResult, type ConsentPolicy } from './shield/shield-breaker.js';
+import { ConsentController } from './shield/consent-controller.js';
 import { evaluateInFrames, type FrameEvalOptions, type FrameEvalResult } from './browser/frame-eval.js';
 import { listFrames, type FrameInfo } from './browser/frames.js';
 import { clearFrameMarks, registerFrameMarks, resolveFrameMark } from './browser/frame-marks.js';
@@ -126,8 +127,6 @@ export class BrowserChassis {
 
   private sidebarView: WebContentsView | null = null;
   private sidebarMode: 'docked' | 'floating' | 'collapsed' = 'floating';
-  /** Origins whose consent wall has already been answered (or deliberately left) this session. */
-  private consentAnsweredOrigins = new Set<string>();
   /** Human takeover is explicit: page input alone never pauses the agent. */
   private humanMonitor = new HumanActivityMonitor();
   /** True while a person has explicitly taken control from the HUD. */
@@ -1642,86 +1641,29 @@ export class BrowserChassis {
     return `Navigated to ${formattedUrl}`;
   }
 
-  private consentSweepTimers: NodeJS.Timeout[] = [];
+
+  // ---- Consent sweep ------------------------------------------------------------------
+  // The answered-origins memory, the timed sweep and the explicit dismiss live in
+  // ConsentController.
+
+  private readonly consentController = new ConsentController({
+    activeWebContents: () => this.getActiveWebContents(),
+    shieldBreaker: () => this.shieldBreaker,
+    policy: () => this.consentPolicy,
+    log: (level, message) => this.addLog(level, message),
+    telemetry: (event) => this.emitTelemetry(event),
+  });
 
   private clearConsentSweep(): void {
-    for (const timer of this.consentSweepTimers) clearTimeout(timer);
-    this.consentSweepTimers = [];
+    this.consentController.clearSweep();
   }
 
-  /** Schedule late consent attempts after a navigation; replaces any sweep already pending. */
   private scheduleConsentSweep(delays: number[] = [900, 2600, 6000]): void {
-    this.clearConsentSweep();
-    for (const delay of delays) {
-      const timer = setTimeout(() => {
-        void this.sweepConsent();
-      }, delay);
-      timer.unref?.();
-      this.consentSweepTimers.push(timer);
-    }
+    this.consentController.scheduleSweep(delays);
   }
 
-  /**
-   * Answer a consent wall the way a person would, once per origin, and stop.
-   *
-   * Deliberately narrower than the old three-pass sweep: a repeated click on a CMP that re-renders
-   * is what made the banner flicker on/off, and auto-removing it is not a human behaviour. So:
-   *  - one attempt after the page settles,
-   *  - the least invasive real option (reject/only-necessary before accept),
-   *  - if it reappears, remember the origin and leave it alone,
-   *  - never strip the DOM from here (`forceRemove` is only for an explicit dismiss_consent call).
-   */
-  private async sweepConsent(): Promise<void> {
-    let wc: WebContents;
-    try {
-      wc = this.getActiveWebContents();
-    } catch {
-      return;
-    }
-    if (!wc || wc.isDestroyed()) return;
-
-    let origin = '';
-    try {
-      origin = new URL(wc.getURL()).origin;
-    } catch {
-      return;
-    }
-    if (origin && this.consentAnsweredOrigins.has(origin)) return;
-
-    const result = await this.dismissConsent({ policy: this.consentPolicy, forceRemove: false }).catch(() => null);
-    if (!result) return;
-
-    if (result.dismissed) {
-      if (origin) this.consentAnsweredOrigins.add(origin);
-      this.addLog('info', `Consent handled once (${result.intent || 'accept'} via ${result.framework || 'generic'}): ${result.message}`);
-      return;
-    }
-    if (result.blocked) {
-      // A wall we cannot answer is a human's call, not ours. Remember it so we stop re-scanning,
-      // and leave the overlay exactly where it is.
-      if (origin) this.consentAnsweredOrigins.add(origin);
-      this.addLog('warn', 'Consent wall present but no reject/accept control matched — left for the human (no auto-removal).');
-    }
-  }
-
-  public async dismissConsent(options: { policy?: ConsentPolicy; forceRemove?: boolean } = {}): Promise<ShieldDismissResult> {    const wc = this.getActiveWebContents();
-    this.addLog('action', 'Shield Directive: dismiss_consent()');
-    // An explicit call is allowed the last-resort removal; the background sweep is not.
-    const result = await this.shieldBreaker.dismissConsent(wc, {
-      policy: options.policy || this.consentPolicy,
-      forceRemove: options.forceRemove === true,
-    });
-    if (result.dismissed) {
-      this.addLog('info', `Shield Breaker: ${result.message}`);
-      this.emitTelemetry({
-        type: 'click',
-        x: result.coordinates?.x,
-        y: result.coordinates?.y,
-        timestamp: Date.now(),
-        details: `Shield Breaker: answered ${result.framework} consent wall (${result.intent || 'accept'})`,
-      });
-    }
-    return result;
+  public async dismissConsent(options: { policy?: ConsentPolicy; forceRemove?: boolean } = {}): Promise<ShieldDismissResult> {
+    return this.consentController.dismiss(options);
   }
 
   public async clickElement(selector?: string, coordinates?: { x: number; y: number }): Promise<string> {
