@@ -78,6 +78,23 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
  * Evaluate `expression` in the main frame and up to `maxFrames` child frames.
  * Never throws: a frame that fails (detached, sandboxed, timed out) is reported with `ok:false`.
  */
+/** One result row: the frame facts plus the ok/error-or-value outcome. */
+function frameResult(
+  frame: { frameId: string; url: string; name: string; depth: number; oopif: boolean },
+  outcome: { ok: boolean; error?: string; value?: unknown },
+): FrameEvalResult {
+  return {
+    frameId: frame.frameId,
+    url: frame.url,
+    name: frame.name,
+    depth: frame.depth,
+    oopif: frame.oopif,
+    ok: outcome.ok,
+    ...(outcome.error !== undefined ? { error: outcome.error } : {}),
+    ...(outcome.value !== undefined ? { value: outcome.value } : {}),
+  };
+}
+
 export async function evaluateInFrames(
   wc: WebContents,
   expression: string,
@@ -105,7 +122,7 @@ export async function evaluateInFrames(
     for (const [index, frame] of ctx.frames.entries()) {
       const blank = !frame.url || frame.url === 'about:blank' || frame.url === 'about:srcdoc';
       if (blank && !includeBlank) {
-        results.push({ frameId: frame.frameId, url: frame.url, name: frame.name, depth: frame.depth, oopif: frame.oopif, ok: false, error: 'blank frame skipped' });
+        results.push(frameResult(frame, { ok: false, error: 'blank frame skipped' }));
         continue;
       }
 
@@ -151,38 +168,17 @@ export async function evaluateInFrames(
 
         if (evaluated?.exceptionDetails) {
           const detail = evaluated.exceptionDetails;
-          results.push({
-            frameId: frame.frameId,
-            url: frame.url,
-            name: frame.name,
-            depth: frame.depth,
-            oopif: frame.oopif,
+          results.push(frameResult(frame, {
             ok: false,
             error: detail?.exception?.description || detail?.text || 'frame exception',
-          });
+          }));
           continue;
         }
-        results.push({
-          frameId: frame.frameId,
-          url: frame.url,
-          name: frame.name,
-          depth: frame.depth,
-          oopif: frame.oopif,
-          ok: true,
-          value: evaluated?.result?.value,
-        });
+        results.push(frameResult(frame, { ok: true, value: evaluated?.result?.value }));
       } catch (err: any) {
         // A stale context is normal after a frame swaps document; drop it so the next call re-creates.
         cache.delete(frame.frameId);
-        results.push({
-          frameId: frame.frameId,
-          url: frame.url,
-          name: frame.name,
-          depth: frame.depth,
-          oopif: frame.oopif,
-          ok: false,
-          error: String(err?.message || err),
-        });
+        results.push(frameResult(frame, { ok: false, error: String(err?.message || err) }));
       }
     }
     return results;

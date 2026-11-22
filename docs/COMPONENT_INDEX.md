@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 179 files, 698 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 179 files, 699 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -18,7 +18,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 
 | File | Export | When to use |
 |---|---|---|
-| `main/browser/frame-eval.ts` | `evaluateInFrames` | Evaluate `expression` in the main frame and up to `maxFrames` child frames. |
+| `main/browser/frame-eval.ts` | `evaluateInFrames` | - |
 | `main/browser/frame-eval.ts` | `FrameEvalOptions` *(type)* | - |
 | `main/browser/frame-eval.ts` | `FrameEvalResult` *(type)* | - |
 | `main/browser/frame-tree.ts` | `discoverFrames` | - |
@@ -636,7 +636,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (78)
+## Modules (79)
 
 | File | Export | When to use |
 |---|---|---|
@@ -649,6 +649,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/collaboration/service.ts` | `CollaborationService` | - |
 | `main/data-paths.ts` | `dataRoot` | - |
 | `main/data-paths.ts` | `dataPath` | - |
+| `main/data-paths.ts` | `writeJsonAtomic` | When to use: persisting a JSON settings/state file — mkdir, write to a temp |
 | `main/diagnostics/main-log.ts` | `mainLogFile` | - |
 | `main/diagnostics/main-log.ts` | `logMainEvent` | - |
 | `main/http/bookmarks-routes.ts` | `handleBookmarkRoutes` | When to use: the bridge request handler — dispatch `/bookmarks`. Returns |
