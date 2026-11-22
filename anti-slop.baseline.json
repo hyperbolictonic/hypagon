@@ -135,7 +135,7 @@
       "main/decide/decision-guard.ts": 7,
       "main/http-bridge.ts": 41,
       "main/media/ffmpeg.ts": 24,
-      "main/media/service.ts": 34,
+      "main/media/service.ts": 20,
       "main/media/transcript.ts": 5,
       "main/primitives/primitives.ts": 38,
       "main/recipes/recipe-store.ts": 10,
@@ -161,11 +161,11 @@
       "mcp/tools-catalog-system.ts": 107,
       "mcp/wrap-server.ts": 66,
       "preload/index.ts": 32,
-      "renderer/main.ts": 72,
+      "renderer/main.ts": 54,
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 1028
+    "totalDuplicatedLines": 996
   },
   "modularity": {
     "files": {

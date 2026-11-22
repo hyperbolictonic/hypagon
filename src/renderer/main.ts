@@ -1655,7 +1655,11 @@ const researchHilTimeoutEl = document.getElementById('settings-research-hil-time
   const shadowResultEl = document.getElementById('settings-shadow-result') as HTMLElement;
   let shadowLoaded: any = null;
 
-  const showShadowResult = (kind: 'success' | 'error' | 'info', text: string) => {
+  /** The message a failed settings call reports: the validation errors, or the fallback. */
+const validationMessage = (result: any, fallback = 'Save failed.'): string =>
+  (result?.errors || []).join('; ') || fallback;
+
+const showShadowResult = (kind: 'success' | 'error' | 'info', text: string) => {
     shadowResultEl.className = `alert alert-${kind} alert-sm font-mono text-xs`;
     shadowResultEl.textContent = text;
     shadowResultEl.classList.remove('hidden');
@@ -1742,7 +1746,7 @@ const researchHilTimeoutEl = document.getElementById('settings-research-hil-time
         refreshShadowPatchChip(result.settings);
         showShadowResult('success', 'Shadow Walk settings saved. They apply to the next MCP call.');
       } else {
-        showShadowResult('error', (result?.errors || []).join('; ') || 'Save failed.');
+        showShadowResult('error', validationMessage(result));
       }
     } catch (err: any) {
       showShadowResult('error', `Save failed: ${err?.message || err}`);
@@ -1762,7 +1766,7 @@ const researchHilTimeoutEl = document.getElementById('settings-research-hil-time
         refreshShadowPatchChip(result.settings);
         showShadowResult('success', 'Shadow Walk defaults restored.');
       } else {
-        showShadowResult('error', (result?.errors || []).join('; ') || 'Reset failed.');
+        showShadowResult('error', validationMessage(result, 'Reset failed.'));
       }
     } catch (err: any) {
       showShadowResult('error', `Reset failed: ${err?.message || err}`);
@@ -1849,7 +1853,7 @@ const researchHilTimeoutEl = document.getElementById('settings-research-hil-time
         showResearchResult('success', 'Research stealth settings saved. They apply to the next search/crawl.');
         await loadResearchSettings();
       } else {
-        showResearchResult('error', (result?.errors || []).join('; ') || 'Save failed.');
+        showResearchResult('error', validationMessage(result));
       }
     } catch (err: any) {
       showResearchResult('error', `Save failed: ${err?.message || err}`);
@@ -2373,7 +2377,7 @@ const researchHilTimeoutEl = document.getElementById('settings-research-hil-time
         showWrapResult('success', `Saved ${name}. Agents can reference it by name; the value stays here.`);
         await loadWrapSettings();
       } else {
-        showWrapResult('error', (result?.errors || []).join('; ') || 'Save failed.');
+        showWrapResult('error', validationMessage(result));
       }
     } catch (err: any) {
       showWrapResult('error', `Save failed: ${err?.message || err}`);
@@ -2559,7 +2563,7 @@ const researchHilTimeoutEl = document.getElementById('settings-research-hil-time
         await loadWrapWrappers(savedId, false);
         wrapWrapperModalEl.close();
       } else {
-        showWrapperResult('error', (result?.errors || []).join('; ') || 'Save failed.');
+        showWrapperResult('error', validationMessage(result));
       }
     } catch (err: any) {
       showWrapperResult('error', `Save failed: ${err?.message || err}`);
@@ -2685,7 +2689,7 @@ const researchHilTimeoutEl = document.getElementById('settings-research-hil-time
         applyInputProfile(result.profile);
         showInputResult('success', 'Applied — the next click and keystroke use the new pacing.');
       } else {
-        showInputResult('error', (result?.errors || []).join('; ') || 'Save failed.');
+        showInputResult('error', validationMessage(result));
       }
     } catch (err: any) {
       showInputResult('error', `Save failed: ${err?.message || err}`);

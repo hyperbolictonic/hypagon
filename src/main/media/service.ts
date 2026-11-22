@@ -340,6 +340,20 @@ export class MediaService {
     }
   }
 
+  /**
+   * Resolve the downloader binary, or the failure response when it is unusable.
+   * The download, preview and artifacts paths all begin with the same guard.
+   */
+  private async binaryOrFailure(): Promise<
+    | { readonly ok: true; readonly binary: MediaBinary }
+    | { readonly ok: false; readonly code: string; readonly error: string }
+  > {
+    const binary = await this.resolveBinary();
+    return isMediaBinary(binary)
+      ? { ok: true, binary }
+      : { ok: false, code: binary.code, error: binary.error };
+  }
+
   private async artifactsFor(
     url: string,
     lang: string,
@@ -348,8 +362,8 @@ export class MediaService {
     | { readonly ok: true; readonly artifacts: SubtitleArtifacts; readonly images: MediaPreviewImage[] }
     | { readonly ok: false; readonly code: string; readonly error: string }
   > {
-    const binary = await this.resolveBinary();
-    if (!isMediaBinary(binary)) return { ok: false, code: binary.code, error: binary.error };
+    const resolved = await this.binaryOrFailure();
+    if (!resolved.ok) return resolved;
 
     const cookies = await this.cookieFileFor(url);
     const dir = path.join(
@@ -359,7 +373,7 @@ export class MediaService {
     );
 
     try {
-      const result = await fetchArtifacts(binary, url, dir, {
+      const result = await fetchArtifacts(resolved.binary, url, dir, {
         lang,
         includeThumbnail,
         ...(cookies === null ? {} : { cookiesPath: cookies.path }),
@@ -505,8 +519,8 @@ export class MediaService {
       return { ok: false, code: 'INVALID_URL', error: error instanceof Error ? error.message : String(error) };
     }
 
-    const binary = await this.resolveBinary();
-    if (!isMediaBinary(binary)) return { ok: false, code: binary.code, error: binary.error };
+    const resolved = await this.binaryOrFailure();
+    if (!resolved.ok) return resolved;
 
     const kind = MEDIA_KINDS.includes(input.kind as MediaKind) ? (input.kind as MediaKind) : 'video';
     const quality = MEDIA_QUALITIES.includes(input.quality as MediaQuality)
@@ -540,8 +554,8 @@ export class MediaService {
       return { ok: false, code: 'INVALID_URL', error: error instanceof Error ? error.message : String(error) };
     }
 
-    const binary = await this.resolveBinary();
-    if (!isMediaBinary(binary)) return { ok: false, code: binary.code, error: binary.error };
+    const resolved = await this.binaryOrFailure();
+    if (!resolved.ok) return resolved;
 
     const runtime = ytdlpRuntimeOptions();
     const cookies = await this.cookieFileFor(url);
@@ -560,7 +574,7 @@ export class MediaService {
     ];
 
     try {
-      const result = await runYtDlpProcess(binary.path, args, {
+      const result = await runYtDlpProcess(resolved.binary.path, args, {
         timeoutMs: INFO_TIMEOUT_MS,
         maxStdoutBytes: INFO_MAX_STDOUT_BYTES,
         env: runtime.env,
