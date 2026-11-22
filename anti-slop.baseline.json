@@ -57,7 +57,6 @@
       "main/remote/oauth-client.ts": 5,
       "main/remote/service.ts": 1,
       "main/remote/settings.ts": 3,
-      "main/remote/token.ts": 1,
       "main/research/anchor-store.ts": 2,
       "main/research/anchors.ts": 5,
       "main/research/researcher.ts": 5,
@@ -140,9 +139,8 @@
       "main/media/service.ts": 34,
       "main/media/settings.ts": 9,
       "main/media/transcript.ts": 5,
-      "main/primitives/primitives.ts": 44,
+      "main/primitives/primitives.ts": 38,
       "main/recipes/recipe-store.ts": 10,
-      "main/remote/token.ts": 14,
       "main/research/anchor-store.ts": 9,
       "main/research/settings.ts": 20,
       "main/scripts/script-vault.ts": 9,
@@ -160,11 +158,8 @@
       "main/wrap/executor.ts": 48,
       "main/wrap/interpolate.ts": 30,
       "main/wrap/store.ts": 12,
-      "main/wrap/token.ts": 13,
       "main/zoom/settings.ts": 11,
-      "mcp/bridge-server.ts": 18,
-      "mcp/browser-mcp.ts": 36,
-      "mcp/format-mark.ts": 7,
+      "mcp/browser-mcp.ts": 18,
       "mcp/tool-groups.ts": 135,
       "mcp/tools-catalog.ts": 217,
       "mcp/wrap-server.ts": 131,
@@ -173,7 +168,7 @@
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 1454
+    "totalDuplicatedLines": 1378
   },
   "modularity": {
     "files": {

@@ -3,6 +3,7 @@ import type { HarvestedConstruct } from '../../shared/types.js';
 import { APP_VERSION } from '../../shared/version.js';
 import { BRAND } from '../../shared/brand.js';
 import type { MarkItem } from '../marks/marks-overlay.js';
+import { formatMark } from '../marks/format-mark.js';
 import type { TransitionRecord, FieldFacts, TypingOutcome, TypingChannel } from '../telemetry/action-ledger.js';
 import type {
   GuardPageReadInput,
@@ -1750,11 +1751,8 @@ export class Primitives {
     return lines.join('\n');
   }
 
-  private markLine(m: MarkItem): string {    const attrs = `${m.type ? ` type="${m.type}"` : ''}${m.role ? ` role=${m.role}` : ''}`;
-    const extras: string[] = [];
-    if (m.value) extras.push(`value="${m.value}"`);
-    if (m.state) extras.push(m.state.replace(/,/g, ', '));
-    return `[#${m.id}] <${m.tag}${attrs}> "${m.text || ''}"${extras.length ? ` {${extras.join(', ')}}` : ''}`;
+  private markLine(m: MarkItem): string {
+    return formatMark(m);
   }
 
   // ---- network -------------------------------------------------------------

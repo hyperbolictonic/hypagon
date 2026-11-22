@@ -1,6 +1,7 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createBridgeMcpServer, normalizeIncomingParams, logMcp, flushLogSync } from './browser-mcp.js';
 import { installProcessGuards } from './process-guard.js';
+import { withGuaranteedToolSchema } from './tool-schema.js';
 
 installProcessGuards({ log: logMcp, flush: flushLogSync });
 
@@ -16,23 +17,7 @@ async function start() {
   if (typeof prevSend === 'function') {
     (transport as any).send = (msg: any) => {
       if (msg?.result?.tools && Array.isArray(msg.result.tools)) {
-        msg.result.tools = msg.result.tools.map((t: any) => {
-          const rawSchema = t.inputSchema || t.parameters || t.input_schema || {};
-          const schema = {
-            ...rawSchema,
-            type: 'object',
-            properties: rawSchema.properties || {},
-            required: Array.isArray(rawSchema.required) ? rawSchema.required : [],
-            additionalProperties: true,
-          };
-          return {
-            ...t,
-            inputSchema: schema,
-            parameters: schema,     // Guaranteed for OpenAI / Vercel AI SDK adapters
-            input_schema: schema,   // Guaranteed for Anthropic Claude adapters
-            schema: schema,         // Guaranteed for generic JSON-RPC adapters
-          };
-        });
+        msg.result.tools = msg.result.tools.map((t: any) => withGuaranteedToolSchema(t, t.inputSchema || t.parameters || t.input_schema));
       }
       return prevSend.call(transport, msg);
     };

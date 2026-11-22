@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { withGuaranteedToolSchema } from './tool-schema.js';
 import { DEFAULT_TOOL_ORDER, TOOLS_CATALOG, TOOL_TIERS, TIER_LABELS } from './tools-catalog.js';
 import type { ToolCatalogItem } from './tools-catalog.js';
 import {
@@ -878,23 +879,7 @@ Rules of thumb:
             }
             return a.name.localeCompare(b.name);
           });
-        result.tools = visible.map((t: any) => {
-          const rawSchema = t.inputSchema || {};
-          const schema = {
-            ...rawSchema,
-            type: 'object',
-            properties: rawSchema.properties || {},
-            required: Array.isArray(rawSchema.required) ? rawSchema.required : [],
-            additionalProperties: true,
-          };
-          return {
-            ...t,
-            inputSchema: schema,
-            parameters: schema,     // Required by OpenAI, Vercel AI SDK, and generic agent adapters
-            input_schema: schema,   // Required by Anthropic Claude and Python MCP adapters
-            schema: schema,         // Required by JSON-RPC standard schema adapters
-          };
-        });
+        result.tools = visible.map((t: any) => withGuaranteedToolSchema(t));
       }
       return result;
     });

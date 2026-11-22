@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 176 files, 694 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 179 files, 698 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -636,7 +636,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (74)
+## Modules (78)
 
 | File | Export | When to use |
 |---|---|---|
@@ -662,6 +662,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/http/tabs-routes.ts` | `handleTabRoutes` | When to use: the bridge request handler — dispatch `/tabs/*`. Returns false |
 | `main/http/window-routes.ts` | `handleWindowRoutes` | When to use: the bridge request handler — dispatch `/window/*`. Returns |
 | `main/http-bridge.ts` | `startHttpBridge` | - |
+| `main/marks/format-mark.ts` | `formatMark` | Renders one Set-of-Marks entry as a compact, accessibility-aware line: |
 | `main/media/auth.ts` | `needsLogin` | Does yt-dlp's output say the site wants a signed-in session? |
 | `main/media/cookie-format.ts` | `toNetscape` | Netscape cookie-file text for yt-dlp's `--cookies`. |
 | `main/media/settings.ts` | `normalizeMediaSettings` | - |
@@ -673,9 +674,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/metrics.ts` | `resetMetrics` | - |
 | `main/remote/cloudflared.ts` | `findCloudflared` | Find cloudflared without installing or downloading it. |
 | `main/remote/ipc.ts` | `registerRemoteIpc` | When to use: main-process startup — register every `remote:*` channel. The |
-| `main/remote/token.ts` | `remoteTokenFile` | - |
-| `main/remote/token.ts` | `createRemoteToken` | Create a remote-gateway capability token. The caller owns the directory. |
-| `main/remote/token.ts` | `readRemoteToken` | Read and validate a token file. A missing, malformed or empty file returns undefined. |
+| `main/remote/token.ts` | `remoteTokenFile` | When to use: a surface that needs the token file path itself (the gateway status UI). |
+| `main/remote/token.ts` | `createRemoteToken` | When to use: first start or rotation — create the gateway token and return it. |
+| `main/remote/token.ts` | `readRemoteToken` | When to use: a bearer authorizer — read the gateway token from disk, or undefined when absent. |
+| `main/security/capability-token.ts` | `tokenPathIn` | The token file path inside a capability directory. |
+| `main/security/capability-token.ts` | `createCapabilityToken` | Create (or rotate) the token in `dir`. The caller owns the directory. |
+| `main/security/capability-token.ts` | `readCapabilityToken` | Read and validate a token file. A missing, malformed or empty file returns undefined. |
 | `main/settings/experimental.ts` | `ExperimentalSettingsStore` | Experimental feature flags persisted next to the other user settings. |
 | `main/shadow-walk/part-highlight.ts` | `injectPartHighlight` | - |
 | `main/shadow-walk/part-highlight.ts` | `removePartHighlight` | - |
@@ -691,17 +695,17 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/viewport/profiles.ts` | `DeviceProfileStore` | - |
 | `main/wrap/auth.ts` | `tokenFromHeaders` | - |
 | `main/wrap/auth.ts` | `isWrapAuthorized` | - |
+| `main/wrap/token.ts` | `readWrapToken` | - |
 | `main/wrap/token.ts` | `tokenFile` | - |
 | `main/wrap/token.ts` | `createWrapToken` | - |
-| `main/wrap/token.ts` | `readWrapToken` | - |
 | `main/zoom/settings.ts` | `ZoomSettingsStore` | The browser zoom policy lives next to the other human settings. The HTTP |
 | `mcp/browser-mcp.ts` | `flushLogSync` | Synchronous drain used only on shutdown paths, where async I/O cannot run. |
 | `mcp/browser-mcp.ts` | `logMcp` | - |
 | `mcp/browser-mcp.ts` | `createBridgeMcpServer` | - |
 | `mcp/browser-mcp.ts` | `normalizeIncomingParams` | - |
-| `mcp/format-mark.ts` | `formatMark` | Renders one Set-of-Marks entry as a compact, accessibility-aware line: |
 | `mcp/tool-args.ts` | `normaliseUrl` | When to use: a navigation tool payload — normalise the URL aliases and add a |
 | `mcp/tool-args.ts` | `requireUrl` | When to use: a navigation tool that cannot work without a URL — normalise the |
+| `mcp/tool-schema.ts` | `withGuaranteedToolSchema` | When to use: mapping a tool entry for tools/list or a transport send — |
 | `mcp/wrap-server.ts` | `createWrapMcpServer` | - |
 | `mcp/wrap-tool-schema.ts` | `wrapInputToZodShape` | Convert a wrapper input schema into a Zod raw shape (one entry per property). |
 | `mcp/wrap-tool-schema.ts` | `generatedToolName` | Deterministic MCP-safe name for a wrapper: `wrap_` + id with every character outside |
