@@ -8,6 +8,7 @@
  */
 import type { BrowserChassis } from '../browser-chassis.js';
 import type { CollaborationService } from '../collaboration/service.js';
+import { dispatchRoute } from './route-table.js';
 
 /** When to use: building the collaboration dispatcher — request facts, page context and bridge helpers. */
 export interface CollaborationRouteContext {
@@ -124,15 +125,15 @@ async function createThread(
  */
 export async function handleCollaborationRoutes(ctx: CollaborationRouteContext): Promise<boolean> {
   if (!ctx.pathname.startsWith('/collaboration')) return false;
-  if (!ctx.collaboration) {
+  const service = ctx.collaboration;
+  if (!service) {
     ctx.sendJson({ success: false, error: 'Collaboration is not initialised.', code: 'COLLAB_UNAVAILABLE' }, 503);
     return true;
   }
-  const handler = ROUTES[`${ctx.method} ${ctx.pathname}`];
-  if (!handler) {
-    ctx.sendJson({ success: false, error: 'Collaboration endpoint not found.', code: 'NOT_FOUND' }, 404);
-    return true;
-  }
-  await handler(ctx.collaboration, ctx);
-  return true;
+  return dispatchRoute(
+    ROUTES,
+    ctx,
+    (handler) => handler(service, ctx),
+    { error: 'Collaboration endpoint not found.', code: 'NOT_FOUND' },
+  );
 }

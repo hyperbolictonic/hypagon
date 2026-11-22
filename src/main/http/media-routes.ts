@@ -9,6 +9,7 @@
  */
 import type { MediaService } from '../media/service.js';
 import type { MediaQuality } from '../media/jobs.js';
+import { dispatchRoute } from './route-table.js';
 
 /** When to use: building the media dispatcher — the request facts and the two bridge helpers. */
 export interface MediaRouteContext {
@@ -107,12 +108,12 @@ const ROUTES: Record<string, MediaHandler> = {
  * generic routes. Returns false when the method+path pair is not a media route.
  */
 export async function handleMediaRoutes(ctx: MediaRouteContext): Promise<boolean> {
-  const handler = ROUTES[`${ctx.method} ${ctx.pathname}`];
-  if (!handler) return false;
-  if (!ctx.media) {
-    ctx.sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
-    return true;
-  }
-  await handler(ctx.media, ctx);
-  return true;
+  const service = ctx.media;
+  return dispatchRoute(ROUTES, ctx, (handler) => {
+    if (!service) {
+      ctx.sendJson({ success: false, error: 'Media is not initialised.', code: 'MEDIA_UNAVAILABLE' }, 503);
+      return;
+    }
+    return handler(service, ctx);
+  });
 }

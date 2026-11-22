@@ -20,26 +20,14 @@ import {
   startRecording,
   stopRecording,
 } from './recording/recording-service.js';
-import type { WrapCore } from './wrap/core.js';
-import type { WrapStore } from './wrap/store.js';
-import type { SecretStore } from './wrap/secrets.js';
-import type { WrapAuditLog } from './wrap/audit.js';
-import { isWrapAuthorized, tokenFromHeaders } from './wrap/auth.js';
 import { DEFAULT_TOOL_SETTINGS, type ToolSettingsStore } from './tools/settings.js';
 import type { CollaborationService } from './collaboration/service.js';
-import { handleCollaborationRoutes } from './http/collaboration-routes.js';
 import type { MediaService } from './media/service.js';
+import { handleCollaborationRoutes } from './http/collaboration-routes.js';
 import { handleMediaRoutes } from './http/media-routes.js';
-import { deriveRecipe } from '../../packages/recipe/src/index.ts';
+import { handleWrapRoutes, type WrapBridge } from './http/wrap-routes.js';
 
-export interface WrapBridge {
-  store: WrapStore;
-  executor: WrapCore;
-  secrets: SecretStore;
-  audit: WrapAuditLog;
-  /** Rotated on each app start; the MCP side reads it from `HB_WRAP_TOKEN_FILE` (legacy `KUANG_WRAP_TOKEN_FILE`). */
-  token: string;
-}
+export type { WrapBridge };
 
 function logBridge(message: string, isError = false) {
   const timestamp = new Date().toISOString();
@@ -1603,191 +1591,18 @@ export function startHttpBridge(
       }
 
       // ---- Hypagon REST ------------------------------------------------------------------
-      if (pathname.startsWith('/wrap/')) {
-        if (!wrap) {
-          sendJson({ success: false, error: 'Hypagon REST is not initialised.', code: 'WRAP_UNAVAILABLE' }, 503);
-          return;
-        }
-
-        if (!isWrapAuthorized(tokenFromHeaders(req.headers), wrap.token)) {
-          sendJson(
-            {
-              success: false,
-              error: 'Unauthorized. Set HB_WRAP_TOKEN_FILE (or KUANG_WRAP_TOKEN_FILE) to the app-generated token file.',
-              code: 'UNAUTHORIZED',
-            },
-            401
-          );
-          return;
-        }
-
-        if (req.method === 'GET' && pathname === '/wrap/status') {
-          sendJson({ success: true, ...wrap.executor.status() });
-          return;
-        }
-
-        if (req.method === 'GET' && pathname === '/wrap/manifest') {
-          sendJson({ success: true, wrappers: wrap.store.manifest() });
-          return;
-        }
-
-        if (req.method === 'GET' && pathname === '/wrap/wrapper') {
-          const id = url.searchParams.get('id') || '';
-          const wrapper = wrap.store.get(id);
-          if (!wrapper) {
-            sendJson({ success: false, error: `No wrapper named "${id}".`, code: 'WRAPPER_NOT_FOUND' }, 404);
-            return;
-          }
-          sendJson({ success: true, wrapper });
-          return;
-        }
-
-        if (req.method === 'GET' && pathname === '/wrap/secrets') {
-          // Names, hosts, and header names only. Values are never serialised here.
-          sendJson({
-            success: true,
-            available: wrap.secrets.available(),
-            warning: wrap.secrets.warning(),
-            secrets: wrap.secrets.list(),
-          });
-          return;
-        }
-
-        if (req.method === 'GET' && pathname === '/wrap/audit') {
-          const limit = Number(url.searchParams.get('limit')) || 50;
-          sendJson({ success: true, entries: wrap.audit.list(limit) });
-          return;
-        }
-
-        if (req.method === 'POST' && pathname === '/wrap/run') {
-          const body = await readBody();
-          if (typeof body?.id !== 'string' || !body.id) {
-            sendJson({ success: false, error: 'id is required', code: 'BAD_REQUEST' }, 400);
-            return;
-          }
-          const result = await wrap.executor.run(body.id, body.args ?? {}, {
-            format: body.format,
-            includeRaw: Boolean(body.includeRaw),
-            maxPages: body.maxPages !== undefined ? Number(body.maxPages) : undefined,
-          });
-          // A wrapper error is still a successful bridge round-trip; the MCP
-          // layer turns result.ok into the isError flag.
-          sendJson(result);
-          return;
-        }
-
-        if (req.method === 'POST' && pathname === '/wrap/test') {
-          const body = await readBody();
-          const result = await wrap.executor.test({
-            id: typeof body?.id === 'string' ? body.id : undefined,
-            wrapper: body?.wrapper,
-            args: body?.args,
-            sample: body?.sample,
-            dryRun: body?.dryRun,
-            format: body?.format,
-            maxPages: body?.maxPages !== undefined ? Number(body.maxPages) : undefined,
-          });
-          sendJson(result);
-          return;
-        }
-
-        if (req.method === 'POST' && pathname === '/wrap/derive') {
-          const body = await readBody();
-          let sample: unknown = body?.sample;
-          let source: 'sample' | 'url' = 'sample';
-
-          // A URL is fetched through the executor, so the same outbound policy applies.
-          if ((sample === undefined || sample === null) && typeof body?.url === 'string' && body.url) {
-            const fetched = await wrap.executor.test({
-              wrapper: {
-                schemaVersion: 1,
-                id: 'derive.sample',
-                name: 'derive sample',
-                request: { method: 'GET', url: body.url },
-              },
-              args: {},
-              dryRun: false,
-              includeRaw: true,
-              maxPages: 1,
-            });
-            if (fetched.ok !== true) {
-              sendJson(
-                {
-                  success: false,
-                  error: fetched.error?.message || `Could not fetch ${body.url}`,
-                  code: fetched.error?.code || 'FETCH_FAILED',
-                },
-                400,
-              );
-              return;
-            }
-            sample = fetched.response?.json;
-            source = 'url';
-          }
-
-          if (typeof sample === 'string') {
-            try {
-              sample = JSON.parse(sample);
-            } catch {
-              sendJson({ success: false, error: 'sample is not valid JSON', code: 'BAD_REQUEST' }, 400);
-              return;
-            }
-          }
-
-          if (sample === undefined || sample === null) {
-            sendJson({ success: false, error: 'Provide a JSON sample or a url to fetch.', code: 'BAD_REQUEST' }, 400);
-            return;
-          }
-
-          const maxFields = body?.max_fields ?? body?.maxFields;
-          const recipe = deriveRecipe(sample, undefined, {
-            id: typeof body?.id === 'string' ? body.id : undefined,
-            name: typeof body?.name === 'string' ? body.name : undefined,
-            description: typeof body?.description === 'string' ? body.description : undefined,
-            maxFields: maxFields !== undefined ? Number(maxFields) : undefined,
-          });
-          sendJson({ success: true, source, recipe });
-          return;
-        }
-
-        if (req.method === 'POST' && pathname === '/wrap/wrappers') {
-          const body = await readBody();
-          const action = String(body?.action || '').toLowerCase();
-
-          if (action === 'create' || action === 'update') {
-            const result = action === 'create' ? wrap.store.create(body?.wrapper) : wrap.store.update(body?.wrapper);
-            sendJson({ success: result.ok, wrapper: result.wrapper, errors: result.errors }, result.ok ? 200 : 400);
-            return;
-          }
-
-          if (action === 'delete') {
-            const deleted = wrap.store.delete(String(body?.id || ''));
-            sendJson(
-              deleted
-                ? { success: true, deleted }
-                : { success: false, deleted, error: `No wrapper named "${body?.id || ''}".`, code: 'WRAPPER_NOT_FOUND' },
-              deleted ? 200 : 404
-            );
-            return;
-          }
-
-          if (action === 'get') {
-            const wrapper = wrap.store.get(String(body?.id || ''));
-            if (!wrapper) {
-              sendJson({ success: false, error: `No wrapper named "${body?.id || ''}".`, code: 'WRAPPER_NOT_FOUND' }, 404);
-              return;
-            }
-            sendJson({ success: true, wrapper });
-            return;
-          }
-
-          sendJson({ success: false, error: 'action must be create, update, delete, or get', code: 'BAD_REQUEST' }, 400);
-          return;
-        }
-
-        sendJson({ success: false, error: 'Wrap endpoint not found', code: 'NOT_FOUND' }, 404);
+      if (
+        await handleWrapRoutes({
+          wrap,
+          method: req.method,
+          pathname,
+          url,
+          headers: req.headers,
+          readBody,
+          sendJson,
+        })
+      )
         return;
-      }
 
       sendJson({ error: 'Endpoint not found' }, 404);
     } catch (err: any) {

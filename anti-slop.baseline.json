@@ -23,7 +23,7 @@
       "main/drive/driver.ts": 4,
       "main/harvester/markdown.ts": 2,
       "main/hil/hil-manager.ts": 4,
-      "main/http-bridge.ts": 2,
+      "main/http-bridge.ts": 1,
       "main/input/human-activity.ts": 1,
       "main/jev/engine.ts": 4,
       "main/jev/policy.ts": 4,
@@ -135,7 +135,7 @@
       "main/decide/decision-client.ts": 7,
       "main/decide/decision-guard.ts": 7,
       "main/hil/hil-manager.ts": 68,
-      "main/http-bridge.ts": 253,
+      "main/http-bridge.ts": 235,
       "main/index.ts": 83,
       "main/media/ffmpeg.ts": 24,
       "main/media/service.ts": 34,
@@ -175,7 +175,7 @@
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 1992
+    "totalDuplicatedLines": 1974
   },
   "modularity": {
     "files": {
