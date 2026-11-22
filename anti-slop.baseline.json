@@ -130,7 +130,6 @@
   },
   "duplicates": {
     "files": {
-      "main/browser-chassis.ts": 5,
       "main/decide/decision-client.ts": 7,
       "main/decide/decision-guard.ts": 7,
       "main/http-bridge.ts": 41,
@@ -145,7 +144,7 @@
       "main/shadow-walk/sealed-targets.ts": 10,
       "main/shadow-walk/settings.ts": 17,
       "main/shadow-walk/tab-walk.ts": 15,
-      "main/tabs/tab-manager.ts": 30,
+      "main/tabs/tab-manager.ts": 25,
       "main/telemetry/input-simulator.ts": 34,
       "main/tools/state.ts": 11,
       "main/wrap/anyapi/executor.ts": 49,
@@ -168,7 +167,7 @@
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 962
+    "totalDuplicatedLines": 952
   },
   "modularity": {
     "files": {

@@ -8,6 +8,7 @@ import {
   type WindowOpenHandlerResponse,
 } from 'electron';
 import path from 'node:path';
+import { isTakeoverShortcut } from '../takeover-key.js';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { HostBrowserProfile } from '../telemetry/host-fingerprint.js';
@@ -132,13 +133,7 @@ export class TabManager {
     // this the app has no zoom path for a human, because Electron does not add
     // Chrome's default menu accelerators.
     wc.on('before-input-event', (event, input) => {
-      if (input.type !== 'keyDown' || input.alt) return;
-      const mod = process.platform === 'darwin' ? input.meta : input.control;
-      if (!mod) return;
-      const takeoverKey =
-        input.shift &&
-        (input.key === ' ' || input.key === 'Space' || input.code === 'Space' || input.key.toLowerCase() === 'h');
-      if (takeoverKey) {
+      if (isTakeoverShortcut(input, process.platform)) {
         event.preventDefault();
         this.options.onTakeoverShortcut?.();
         return;

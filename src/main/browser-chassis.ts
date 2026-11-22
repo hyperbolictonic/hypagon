@@ -47,7 +47,7 @@ import { inventoryFrames, type FrameInventoryResult } from './browser/frames-inv
 import { findSealedControls, type SealedFindOptions, type SealedFindResult } from './shadow-walk/ax-controls.js';
 import { runTabWalk, type TabWalkOptions, type TabWalkResult } from './shadow-walk/tab-walk.js';
 import { resolveSealedToken as resolveSealedTarget } from './shadow-walk/sealed-targets.js';
-import { ScreenshotStore } from './harvest/screenshots.js';
+import { ScreenshotStore, type ScreenshotPayload } from './harvest/screenshots.js';
 import { loadShadowWalkSettings, shadowWalkRefusal, type ShadowWalkSurface } from './shadow-walk/settings.js';
 import {
   syncForceOpen,
@@ -85,16 +85,27 @@ import {
 import { JsonNavigator, type JsonQueryOptions, type JsonQueryResult } from './utils/json-navigator.js';
 import { RenderedSnapshotEngine, type RenderedSnapshotOptions, type RenderedSnapshotResult } from './snapshots/rendered-snapshot.js';
 import { PrerenderEngine, type PrerenderOptions } from './prerender/prerender-engine.js';
+import { isTakeoverShortcut } from './takeover-key.js';
 import { LlmSurface, type LlmSurfaceReport, type LlmSurfaceKind, type LlmFetchResult, type ReadUrlResult } from './llm/llm-surface.js';
 import { SearchHub, type SearchOutcome } from './search/search-engine.js';
 import { Crawler, type CrawlOptions, type CrawlOutcome, type HumanAssistInfo } from './crawl/crawler.js';
 import { type CitationAnchor, type CitationRelocation } from './research/anchors.js';
 import { CitationController, type HumanHandoffResult, type RevalidationSummary } from './research/citation-controller.js';
+import { CrawlOrchestrator, type RenderCrawlOptions, type RenderCrawlResult } from './research/crawl-orchestrator.js';
 import { Researcher, type ResearchOptions, type ResearchOutcome } from './research/researcher.js';
+
+/** The viewport profile endpoints' shared result shape. */
+type ViewportProfileResult = {
+  ok: boolean;
+  profiles: ReturnType<ViewportController['profiles']>;
+};
 
 
 export class BrowserChassis {
   private mainWindow: BrowserWindow | null = null;
+  /** Shared controller hooks: every controller config wires the same log and telemetry. */
+  private readonly controllerLog = (level: 'info' | 'warn' | 'action', message: string): void => this.addLog(level, message);
+  private readonly controllerTelemetry = (event: TelemetryEvent): void => this.emitTelemetry(event);
   /** Recent decision-model calls, mirrored to the HUD (newest last, capped at 50). */
   private decisionLog: DecisionEvent[] = [];
   /** Throttle for gate-triggered human hand-offs (one per URL per few minutes). */
@@ -199,23 +210,11 @@ export class BrowserChassis {
     this.simulator = new HumanizedInputSimulator({
       onMouseMove: (point, velocity) => {
         this.state.cursor = point;
-        this.emitTelemetry({
-          type: 'mouse_move',
-          x: point.x,
-          y: point.y,
-          timestamp: Date.now(),
-          details: `Velocity: ${velocity.toFixed(2)} px/ms`,
-        });
+        this.emitPointEvent('mouse_move', point, `Velocity: ${velocity.toFixed(2)} px/ms`);
       },
       onClick: (point) => {
         this.state.stats.totalInteractions++;
-        this.emitTelemetry({
-          type: 'click',
-          x: point.x,
-          y: point.y,
-          timestamp: Date.now(),
-          details: 'Physical mouse switch actuated',
-        });
+        this.emitPointEvent('click', point, 'Physical mouse switch actuated');
       },
       onKey: (char, delay) => {
         this.state.stats.totalInteractions++;
@@ -228,11 +227,7 @@ export class BrowserChassis {
         });
       },
       onScroll: (deltaY) => {
-        this.emitTelemetry({
-          type: 'scroll',
-          timestamp: Date.now(),
-          details: `Mousewheel impulse: ${deltaY}px`,
-        });
+        this.emitSimpleEvent('scroll', `Mousewheel impulse: ${deltaY}px`);
       },
     });
 
@@ -341,17 +336,13 @@ export class BrowserChassis {
           return null;
         }
       },
-      navigateForText: (url) => this.navigateForText(url),
+      ...this.llmSurfaceBase(),
       renderPage: (url) => this.readUrlRender(url),
-      userAgent: this.hostProfile.userAgent,
-      log: (level, msg) => this.addLog(level, msg),
     });
 
     this.researchLlmSurface = new LlmSurface({
       getSession: () => this.getResearchSession(),
-      navigateForText: (url) => this.navigateForText(url),
-      userAgent: this.hostProfile.userAgent,
-      log: (level, msg) => this.addLog(level, msg),
+      ...this.llmSurfaceBase(),
     });
 
     // Multi-engine web search (TODO_RESEARCH_CRAWL.md §5, Feature 5).
@@ -428,6 +419,22 @@ export class BrowserChassis {
       events: (event) => this.broadcast('research:event', event),
     });
 
+    this.crawlOrchestrator = new CrawlOrchestrator({
+      settings: () => this.researchSettings,
+      session: this.researchSessionController,
+      citation: this.citationController,
+      detachedView: this.detachedView,
+      crawler: this.crawler,
+      researcher: this.researcher,
+      broadcast: (channel, payload) => this.broadcast(channel, payload),
+      applyDelayFloor: (effective, opts) => {
+        if (this.researchSettings.enabled) {
+          effective.delayMs = Math.max(Number(opts.delayMs ?? 0), this.researchSettings.delayMs);
+        }
+      },
+      log: (level, message) => this.addLog(level, message),
+    });
+
     setInterval(() => {
       this.state.stats.uptimeSeconds++;
       this.broadcastState();
@@ -446,12 +453,7 @@ export class BrowserChassis {
     if (!this.hudShortcutBound) {
       this.hudShortcutBound = true;
       win.webContents.on('before-input-event', (event, input) => {
-        if (input.type !== 'keyDown' || input.alt) return;
-        const mod = process.platform === 'darwin' ? input.meta : input.control;
-        const takeoverKey =
-          input.shift &&
-          (input.key === ' ' || input.key === 'Space' || input.code === 'Space' || input.key.toLowerCase() === 'h');
-        if (mod && takeoverKey) {
+        if (isTakeoverShortcut(input, process.platform)) {
           event.preventDefault();
           this.toggleHumanControl();
         }
@@ -464,11 +466,7 @@ export class BrowserChassis {
     this.downloadManager.attachToSession(win.webContents.session);
     this.downloadManager.onDownloadComplete((record) => {
       this.addLog('info', `Download Complete: "${record.filename}" (${record.totalBytes} bytes) saved to data/downloads/`);
-      this.emitTelemetry({
-        type: 'harvest',
-        timestamp: Date.now(),
-        details: `File Download Complete: ${record.filename}`,
-      });
+      this.emitSimpleEvent('harvest', `File Download Complete: ${record.filename}`);
     });
     this.setupTabManager();
     this.registerIpcHandlers();
@@ -546,7 +544,16 @@ export class BrowserChassis {
     this.reassertViewport();
   }
 
-  private setupTabManager() {
+/** The deps both LlmSurface instances share: navigation, fingerprint UA and the log. */
+  private llmSurfaceBase() {
+    return {
+      navigateForText: (url: string) => this.navigateForText(url),
+      userAgent: this.hostProfile.userAgent,
+      log: (level: 'info' | 'warn' | 'action', msg: string) => this.addLog(level, msg),
+    };
+  }
+
+    private setupTabManager() {
     if (!this.mainWindow) return;
 
     this.viewportController = new ViewportController({
@@ -602,10 +609,10 @@ export class BrowserChassis {
           if (!tab.isLoading) this.bumpRevision();
 
           // Re-arm the takeover listener after every document (listeners die with the page).
-          if (!tab.isLoading && tab.url && !tab.url.startsWith('mark-eleven:') && tab.url !== 'about:blank') {
+          if (this.tabReadyForBackgroundWork(tab)) {
             void tab.view.webContents.executeJavaScript(humanListenerScript()).catch(() => null);
           }
-          if (!tab.isLoading && tab.url && !tab.url.startsWith('mark-eleven:') && tab.url !== 'about:blank') {
+          if (this.tabReadyForBackgroundWork(tab)) {
             this.indexTabQuietly(tab);
           }
         }
@@ -734,11 +741,7 @@ export class BrowserChassis {
     pageUrl: () => this.getPageInfo().url,
     log: (level, message) => this.addLog(level, message),
     onModeChanged: () => this.tabManager?.updateActiveTabBounds(),
-    sendToShell: (channel, payload) => {
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        this.mainWindow.webContents.send(channel, payload);
-      }
-    },
+    sendToShell: (channel, payload) => this.sendToShellWindow(channel, payload),
     onPanelLoaded: () => this.deckController.sendToPanel('chassis:decision-status', decisionStatus()),
     stopSelection: () => this.stopCollaborationSelection(),
   });
@@ -851,10 +854,14 @@ export class BrowserChassis {
     this.deckController.toggleMode();
   }
 
-  private sendToSurfaces(channel: string, payload: unknown): void {
-    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+/** Send to the shell window only (the deck panel receives through DeckController). */
+  private sendToShellWindow(channel: string, payload: unknown): void {    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send(channel, payload);
     }
+  }
+
+  private sendToSurfaces(channel: string, payload: unknown): void {
+    this.sendToShellWindow(channel, payload);
     const panel = this.deckController.getView()?.webContents;
     if (panel && !panel.isDestroyed()) panel.send(channel, payload);
   }
@@ -981,9 +988,30 @@ export class BrowserChassis {
     return researchError(code, message);
   }
 
-  public getActiveWebContents(): Electron.WebContents {
+  /**
+   * The tab manager, or the standard uninitialized failure. Every tab operation
+   * begins with this check; the message is the contract agents retry on.
+   */
+/** A loaded, real-URL tab is ready for background work (listener re-arm, quiet indexing). */
+  private tabReadyForBackgroundWork(tab: { isLoading: boolean; url?: string }): boolean {
+    return !tab.isLoading && Boolean(tab.url) && !tab.url!.startsWith('mark-eleven:') && tab.url !== 'about:blank';
+  }
+
+    /** The tab-op prologue: the manager, the directive log and the JEV purge. */
+  private beginTabOperation(directive: string): NonNullable<BrowserChassis['tabManager']> {
+    const tabManager = this.requireTabManager();
+    this.addLog('action', directive);
+    this.purgeJevDepthStore();
+    return tabManager;
+  }
+
+  private requireTabManager(): NonNullable<BrowserChassis['tabManager']> {
     if (!this.tabManager) throw new Error('Browser Chassis uninitialized');
-    const wc = this.tabManager.getActiveTab().view.webContents;
+    return this.tabManager;
+  }
+
+  public getActiveWebContents(): Electron.WebContents {
+    const wc = this.requireTabManager().getActiveTab().view.webContents;
     this.networkInterceptor.attach(wc);
     return wc;
   }
@@ -991,9 +1019,8 @@ export class BrowserChassis {
   // Tab Operations
   public createTab(url?: string): TabSummary {
     this.purgeJevDepthStore();
-    if (!this.tabManager) throw new Error('Browser Chassis uninitialized');
+    const tab = this.requireTabManager().createTab(url);
     this.addLog('action', `MCP Directive: new_tab(${url || 'about:blank'})`);
-    const tab = this.tabManager.createTab(url);
     // A tab opened directly at a URL is a navigation too: arm the same late-consent sweep, or a
     // cookie wall on a freshly opened tab would never be dismissed.
     if (url && /^https?:/i.test(url)) this.scheduleConsentSweep();
@@ -1007,18 +1034,14 @@ export class BrowserChassis {
   }
 
   public switchTab(tabId: string): void {
-    if (!this.tabManager) throw new Error('Browser Chassis uninitialized');
-    this.addLog('action', `MCP Directive: switch_tab(${tabId})`);
-    this.purgeJevDepthStore();
-    this.tabManager.switchTab(tabId);
+    const tabManager = this.beginTabOperation(`MCP Directive: switch_tab(${tabId})`);
+    tabManager.switchTab(tabId);
     void this.viewportController?.refreshActive();
   }
 
   public closeTab(tabId?: string): void {
-    if (!this.tabManager) throw new Error('Browser Chassis uninitialized');
-    this.addLog('action', `MCP Directive: close_tab(${tabId || 'active'})`);
-    this.purgeJevDepthStore();
-    this.tabManager.closeTab(tabId);
+    const tabManager = this.beginTabOperation(`MCP Directive: close_tab(${tabId || 'active'})`);
+    tabManager.closeTab(tabId);
   }
 
   public getTabsSummary(): TabSummary[] {
@@ -1109,18 +1132,12 @@ export class BrowserChassis {
     return await this.viewportController.reset();
   }
 
-  public saveDeviceProfile(input: { name?: unknown; spec?: unknown }): {
-    ok: boolean;
-    profiles: ReturnType<ViewportController['profiles']>;
-  } {
+  public saveDeviceProfile(input: { name?: unknown; spec?: unknown }): ViewportProfileResult {
     if (!this.viewportController) return { ok: false, profiles: [] };
     return this.viewportController.saveProfile(input);
   }
 
-  public deleteDeviceProfile(id: unknown): {
-    ok: boolean;
-    profiles: ReturnType<ViewportController['profiles']>;
-  } {
+  public deleteDeviceProfile(id: unknown): ViewportProfileResult {
     if (!this.viewportController) return { ok: false, profiles: [] };
     return this.viewportController.deleteProfile(id);
   }
@@ -1562,8 +1579,33 @@ export class BrowserChassis {
     this.broadcastState();
   }
 
-  private emitTelemetry(event: TelemetryEvent) {
+/** The telemetry events that carry only a type and a details string. */
+  private emitSimpleEvent(type: TelemetryEvent['type'], details: string): void {
+    this.emitTelemetry({ type, timestamp: Date.now(), details });
+  }
+
+    private emitTelemetry(event: TelemetryEvent) {
     this.sendToSurfaces('chassis:telemetry', event);
+  }
+
+  /** The point-shaped events (mouse_move, click) the simulator reports. */
+  private emitPointEvent(type: 'mouse_move' | 'click', point: { x: number; y: number }, details: string): void {
+    this.emitTelemetry({
+      type,
+      x: point.x,
+      y: point.y,
+      timestamp: Date.now(),
+      details,
+    });
+  }
+
+  /** The harvest-shaped events (session save/restore and the construct path). */
+  private emitHarvestDetails(details: string): void {
+    this.emitTelemetry({
+      type: 'harvest',
+      timestamp: Date.now(),
+      details,
+    });
   }
 
   public addLog(level: 'info' | 'warn' | 'action', message: string) {
@@ -1652,8 +1694,8 @@ export class BrowserChassis {
     activeWebContents: () => this.getActiveWebContents(),
     shieldBreaker: () => this.shieldBreaker,
     policy: () => this.consentPolicy,
-    log: (level, message) => this.addLog(level, message),
-    telemetry: (event) => this.emitTelemetry(event),
+    log: this.controllerLog,
+    telemetry: this.controllerTelemetry,
   });
 
   private clearConsentSweep(): void {
@@ -1713,8 +1755,8 @@ export class BrowserChassis {
   // telemetry tail live in ScreenshotStore.
 
   private readonly screenshotStore = new ScreenshotStore({
-    log: (level, message) => this.addLog(level, message),
-    telemetry: (event) => this.emitTelemetry(event),
+    log: this.controllerLog,
+    telemetry: this.controllerTelemetry,
   });
 
   public getScreenshotsDir(): string {
@@ -1805,11 +1847,7 @@ export class BrowserChassis {
     this.state.stats.tokensHarvested += construct.estimatedTokens;
     this.reportIdle();
 
-    this.emitTelemetry({
-      type: 'harvest',
-      timestamp: Date.now(),
-      details: `Construct extracted: ${construct.estimatedTokens} tokens (${construct.markdownLength} bytes)`,
-    });
+    this.emitSimpleEvent('harvest', `Construct extracted: ${construct.estimatedTokens} tokens (${construct.markdownLength} bytes)`);
 
     this.addLog('info', `Construct harvested: ${construct.title} (~${construct.estimatedTokens} tokens)`);
     cortex.indexPage(url, construct.title, construct.content).catch(() => {});
@@ -1974,29 +2012,27 @@ export class BrowserChassis {
   }
 
   public async goBack(): Promise<string> {
-    const wc = this.getActiveWebContents();
-    await this.syncForceOpenFor(wc);
-    if (wc.navigationHistory.canGoBack()) {
-      this.purgeJevDepthStore();
-      wc.navigationHistory.goBack();
-      this.bumpRevision();
-      this.broadcastState();
-      return 'Navigated back in history';
-    }
-    return 'Cannot navigate back; at start of history';
+    return this.historyStep('back');
   }
 
   public async goForward(): Promise<string> {
+    return this.historyStep('forward');
+  }
+
+  /** The shared history step: both directions check, purge the JEV store and report the same messages. */
+  private async historyStep(direction: 'back' | 'forward'): Promise<string> {
     const wc = this.getActiveWebContents();
     await this.syncForceOpenFor(wc);
-    if (wc.navigationHistory.canGoForward()) {
-      this.purgeJevDepthStore();
-      wc.navigationHistory.goForward();
-      this.bumpRevision();
-      this.broadcastState();
-      return 'Navigated forward in history';
-    }
-    return 'Cannot navigate forward; at end of history';
+    const can = direction === 'back'
+      ? wc.navigationHistory.canGoBack()
+      : wc.navigationHistory.canGoForward();
+    if (!can) return `Cannot navigate ${direction}; at ${direction === 'back' ? 'start' : 'end'} of history`;
+    this.purgeJevDepthStore();
+    if (direction === 'back') wc.navigationHistory.goBack();
+    else wc.navigationHistory.goForward();
+    this.bumpRevision();
+    this.broadcastState();
+    return `Navigated ${direction} in history`;
   }
 
   public async reload(): Promise<string> {
@@ -2057,13 +2093,8 @@ export class BrowserChassis {
 
   public async saveSession(name?: string) {
     this.addLog('action', `MCP Directive: save_session("${name || 'auto'}")`);
-    const wc = this.getActiveWebContents();
-    const result = await this.sessionVault.saveSession(wc.session, wc, name);
-    this.emitTelemetry({
-      type: 'harvest',
-      timestamp: Date.now(),
-      details: `Saved session "${result.name}" with ${result.cookiesCount} cookies`,
-    });
+    const result = await this.sessionVault.saveSession(this.getActiveWebContents().session, this.getActiveWebContents(), name);
+    this.emitHarvestDetails(`Saved session "${result.name}" with ${result.cookiesCount} cookies`);
     return result;
   }
 
@@ -2071,11 +2102,7 @@ export class BrowserChassis {
     this.addLog('action', `MCP Directive: restore_session("${name}")`);
     const wc = this.getActiveWebContents();
     const result = await this.sessionVault.restoreSession(wc.session, wc, name);
-    this.emitTelemetry({
-      type: 'harvest',
-      timestamp: Date.now(),
-      details: `Restored session "${result.name}" (${result.cookiesRestored} cookies)`,
-    });
+    this.emitHarvestDetails(`Restored session "${result.name}" (${result.cookiesRestored} cookies)`);
     return result;
   }
 
@@ -2450,234 +2477,28 @@ export class BrowserChassis {
   }
 
   /** Renders a page in a detached view and returns its Markdown + outgoing links (for deep_crawl). */
-  public async crawlRenderPage(
-    url: string,
-    opts: {
-      selector?: string;
-      waitUntilIdleMs?: number;
-      onHuman?: (info: HumanAssistInfo) => void;
-      anchorsFor?: string;
-    } = {},
-  ): Promise<{
-    title: string;
-    markdown: string;
-    links: string[];
-    status: number;
-    humanAssisted?: boolean;
-    humanMs?: number;
-    anchors?: CitationAnchor[];
-  }> {
-    this.assertResearchCooldown(url);
-    const sel = opts.selector ? JSON.stringify(opts.selector) : "'a[href]'";
-    const script = `(() => {
-      const out = new Set();
-      for (const a of document.querySelectorAll(${sel})) {
-        const href = a.href;
-        if (!href || !/^https?:/i.test(href)) continue;
-        out.add(href.split('#')[0]);
-      }
-      return { title: document.title || '', links: Array.from(out).slice(0, 400) };
-    })()`;
-    const r = await this.loadDetached<{ title: string; links: string[] }>(url, script, {
-      timeoutMs: 25000,
-      after: async (wc) => {
-        const markdown = (
-          await RenderedSnapshotEngine.capture(wc, { format: 'markdown', waitUntilIdleMs: opts.waitUntilIdleMs ?? 400 })
-        ).content;
-        // Read the document in the same queued slot as the render. Capturing it later would race
-        // another detached read and could anchor the wrong page.
-        const html = opts.anchorsFor
-          ? await wc.executeJavaScript('document.documentElement.outerHTML').catch(() => '')
-          : '';
-        return { markdown, html };
-      },
-    });
-    const rendered =
-      r.after && typeof r.after === 'object'
-        ? (r.after as { markdown?: string; html?: string })
-        : { markdown: typeof r.after === 'string' ? r.after : '', html: '' };
-    const markdown = rendered.markdown || '';
+  // ---- Crawl & research runs ----------------------------------------------------------
+  // The render-with-escalation pipeline, the BFS crawl and its research-workspace
+  // event mirror, and the topic run live in CrawlOrchestrator.
 
-    // A challenge must always stop the pipeline — otherwise the interstitial is returned and
-    // indexed as if it were the page. Human hand-off is attempted before failing.
-    if (looksLikeChallenge(r.status, markdown)) {
-      let host = '';
-      try {
-        host = new URL(url).hostname;
-      } catch {
-        /* ignore */
-      }
+  private readonly crawlOrchestrator: CrawlOrchestrator;
 
-      // Give the human a chance to clear the challenge in the same session.
-      const handoff = await this.attemptHumanHandoff(url, opts.onHuman, opts.anchorsFor);
-      if (handoff) return handoff;
-
-      const skip = this.citationController.skipReason ? ` — ${this.citationController.skipReason}` : '';
-      this.markResearchCooldown(host, 'WAF/challenge page');
-      throw this.researchError(
-        'WAF_CHALLENGE',
-        `${host || url} returned a WAF/challenge page${skip}.`,
-      );
-    }
-
-    const anchors = opts.anchorsFor && rendered.html
-      ? await this.citationController.anchorFromHtml(url, rendered.html, opts.anchorsFor)
-      : undefined;
-
-    return {
-      title: r.result?.title || url,
-      links: r.result?.links || [],
-      markdown,
-      status: r.status,
-      anchors,
-    };
+  public async crawlRenderPage(url: string, opts: RenderCrawlOptions = {}): Promise<RenderCrawlResult> {
+    return this.crawlOrchestrator.crawlRenderPage(url, opts);
   }
 
   /** Depth/page-budgeted BFS crawl that indexes each page into Cortex (Feature 1). */
   public async deepCrawl(opts: CrawlOptions): Promise<CrawlOutcome> {
-    const effective: CrawlOptions = {
-      ...opts,
-      maxPages: opts.maxPages ?? this.researchSettings.defaultMaxPages,
-      preferLlm: opts.preferLlm ?? this.researchSettings.preferLlm,
-      preferStatic: opts.preferStatic ?? this.researchSettings.preferStatic,
-      concurrency: opts.concurrency ?? this.researchSettings.crawlConcurrency,
-    };
-    if (this.researchSettings.enabled) {
-      effective.delayMs = Math.max(Number(opts.delayMs ?? 0), this.researchSettings.delayMs);
-    }
-    this.addLog(
-      'action',
-      `MCP Directive: deep_crawl(${effective.startUrl}, depth=${effective.maxDepth ?? 2}, pages=${effective.maxPages ?? 5}, concurrency=${effective.concurrency ?? 1}${this.researchSettings.enabled ? ', stealth' : ''})`,
-    );
-
-    // Mirror the crawl into the research workspace, which otherwise only sees `research_topic`.
-    // The panel opens on run-start and fills its source table as each page finishes.
-    const runId = randomUUID();
-    const startedAt = Date.now();
-    const maxPages = effective.maxPages ?? 5;
-    const tiers: Record<'llm' | 'static' | 'render', number> = { llm: 0, static: 0, render: 0 };
-    let sources = 0;
-    let indexed = 0;
-    let bytes = 0;
-    let humans = 0;
-    let anchors = 0;
-    let escalations = 0;
-    let rank = 0;
-
-    this.broadcast('research:event', {
-      type: 'run-start',
-      runId,
-      query: `Crawl ${effective.startUrl}`,
-      maxSources: maxPages,
-      at: startedAt,
-    });
-
-    try {
-      const outcome = await this.crawler.crawl({
-        ...effective,
-        onPage: (page) => {
-          rank += 1;
-          sources += 1;
-          bytes += page.bytes;
-          tiers[page.via] += 1;
-          if (page.indexed) indexed += 1;
-          if (page.humanAssisted) humans += 1;
-          if (page.anchors?.length) anchors += page.anchors.length;
-          if (page.escalation) escalations += 1;
-
-          const title = page.title || page.url;
-          this.broadcast('research:event', {
-            type: 'source-start',
-            runId,
-            rank,
-            url: page.url,
-            title,
-            at: Date.now(),
-          });
-          this.broadcast('research:event', {
-            type: 'source-done',
-            runId,
-            rank,
-            url: page.url,
-            title,
-            via: page.via,
-            bytes: page.bytes,
-            ms: page.ms ?? 0,
-            highlights: 0,
-            indexed: page.indexed,
-            humanAssisted: page.humanAssisted,
-            humanMs: page.humanMs,
-            anchors: page.anchors?.length ?? 0,
-            anchorDetails: (page.anchors ?? []).map((anchor) => ({
-              text: anchor.text,
-              path: anchor.path,
-              fingerprint: anchor.fingerprint as unknown as Record<string, unknown>,
-            })),
-            escalation: page.escalation,
-            error: page.error,
-            at: Date.now(),
-          });
-        },
-      });
-
-      this.broadcast('research:event', {
-        type: 'run-done',
-        runId,
-        sources,
-        indexed,
-        bytes,
-        tiers,
-        humans,
-        anchors,
-        elapsedMs: Date.now() - startedAt,
-        escalations,
-        notes: [...outcome.notes],
-        at: Date.now(),
-      });
-      return outcome;
-    } catch (error: any) {
-      this.broadcast('research:event', {
-        type: 'run-error',
-        runId,
-        message: error?.message || String(error),
-        at: Date.now(),
-      });
-      throw error;
-    }
+    return this.crawlOrchestrator.deepCrawl(opts);
   }
 
   /** search → gather top sources → distill → index; returns cited extractive evidence (Feature 3). */
   public async researchTopic(opts: ResearchOptions): Promise<ResearchOutcome> {
-    const effective: ResearchOptions = {
-      ...opts,
-      maxSources: opts.maxSources ?? this.researchSettings.defaultMaxSources,
-      preferLlm: opts.preferLlm ?? this.researchSettings.preferLlm,
-      preferStatic: opts.preferStatic ?? this.researchSettings.preferStatic,
-    };
-    // Research must honour the configured engine chain; otherwise the hub's default decides.
-    this.applyResearchEnginePolicy(effective);
-    if (this.researchSettings.enabled) {
-      effective.delayMs = Math.max(Number(opts.delayMs ?? 0), this.researchSettings.delayMs);
-    }
-    this.addLog(
-      'action',
-      `MCP Directive: research_topic("${effective.query}", maxSources=${effective.maxSources ?? 5}${this.researchSettings.enabled ? ', stealth' : ''})`,
-    );
-    return await this.researcher.research(effective);
+    return this.crawlOrchestrator.researchTopic(opts);
   }
 
   public async takeAnnotatedScreenshot(opts: { economy?: boolean; textOnly?: boolean; includeOffscreen?: boolean } = {}): Promise<{
-    screenshot: {
-      base64Image: string;
-      filePath: string;
-      width: number;
-      height: number;
-      mimeType: string;
-      zoom: ZoomState;
-      nativeWidth: number;
-      nativeHeight: number;
-      coordinateScale: number;
-    };
+    screenshot: ScreenshotPayload;
     marks: MarkItem[];
   }> {
     const wc = this.getActiveWebContents();
@@ -2761,24 +2582,26 @@ export class BrowserChassis {
     return target;
   }
 
+  /**
+   * Focus a mark: resolve it, report the agent as acting, click its centre and
+   * (optionally) settle — the shared prologue of click and type.
+   */
+  private async focusMark(wc: WebContents, markId: number, settleMs = 0) {
+    const target = await this.resolveMarkTarget(wc, markId);
+    this.reportActing();
+    await this.simulator.clickAt(wc, target.currentCenter);
+    if (settleMs) await new Promise((r) => setTimeout(r, settleMs));
+    return target;
+  }
+
   public async clickMark(markId: number): Promise<string> {
     const wc = this.getActiveWebContents();
     this.addLog('action', `MCP Directive: click_mark(#${markId})`);
-    const target = await this.resolveMarkTarget(wc, markId);
-
-    this.reportActing();
-
-    await this.simulator.clickAt(wc, target.currentCenter);
+    const target = await this.focusMark(wc, markId);
 
     this.reportIdle();
 
-    this.emitTelemetry({
-      type: 'click',
-      x: target.currentCenter.x,
-      y: target.currentCenter.y,
-      timestamp: Date.now(),
-      details: `Set-of-Marks: Clicked mark #${markId} [${target.mark.tag}: "${target.mark.text}"]`,
-    });
+    this.emitPointEvent('click', target.currentCenter, `Set-of-Marks: Clicked mark #${markId} [${target.mark.tag}: "${target.mark.text}"]`);
 
     this.bumpRevision();
     return `Clicked mark #${markId} (${target.mark.tag}: "${target.mark.text}")`;
@@ -2788,12 +2611,7 @@ export class BrowserChassis {
     const wc = this.getActiveWebContents();
     const shown = opts.secret ? `[REDACTED ${String(text).length} chars]` : `"${text}"`;
     this.addLog('action', `MCP Directive: type_mark(#${markId}, ${shown}${opts.clearFirst ? ', clear_first' : ''})`);
-    const target = await this.resolveMarkTarget(wc, markId);
-
-    this.reportActing();
-
-    await this.simulator.clickAt(wc, target.currentCenter);
-    await new Promise((r) => setTimeout(r, 100));
+    const target = await this.focusMark(wc, markId, 100);
 
     // A stray or occluded click silently sends keystrokes nowhere (sticky headers,
     // lazy re-renders, a hidden window). Verify the target actually took focus and,
@@ -2849,11 +2667,7 @@ export class BrowserChassis {
   }): Promise<ScriptItem> {
     this.addLog('action', `MCP Directive: save_script("${data.name}")`);
     const saved = await this.scriptVault.saveScript(data);
-    this.emitTelemetry({
-      type: 'harvest',
-      timestamp: Date.now(),
-      details: `Saved & indexed script "${saved.name}" in Cortex Vault`,
-    });
+    this.emitSimpleEvent('harvest', `Saved & indexed script "${saved.name}" in Cortex Vault`);
     return saved;
   }
 
@@ -2870,11 +2684,7 @@ export class BrowserChassis {
     try {
       const res = await this.scriptVault.runScript(wc, name, args);
       this.reportIdle();
-      this.emitTelemetry({
-        type: 'harvest',
-        timestamp: Date.now(),
-        details: `Executed macro "${name}" in ${res.executionDurationMs}ms`,
-      });
+      this.emitSimpleEvent('harvest', `Executed macro "${name}" in ${res.executionDurationMs}ms`);
       return res;
     } catch (err: any) {
       this.reportIdle();
@@ -2940,11 +2750,7 @@ export class BrowserChassis {
     options?: { url?: string; timeoutSeconds?: number; bringToFront?: boolean }
   ): Promise<HilResolution> {
     this.addLog('warn', `⚠️ Human Intervention Requested: ${reason}`);
-    this.emitTelemetry({
-      type: 'navigation',
-      timestamp: Date.now(),
-      details: `HIL Intervention: ${reason}`,
-    });
+    this.emitSimpleEvent('navigation', `HIL Intervention: ${reason}`);
     return this.hilManager.requestIntervention({
       reason,
       url: options?.url,

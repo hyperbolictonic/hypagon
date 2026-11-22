@@ -20,6 +20,19 @@ export interface ScreenshotStoreDeps {
   telemetry: (event: TelemetryEvent) => void;
 }
 
+/** The screenshot payload both capture paths (live viewport and annotated marks) return. */
+export interface ScreenshotPayload {
+  base64Image: string;
+  filePath: string;
+  width: number;
+  height: number;
+  mimeType: string;
+  zoom: ZoomState;
+  nativeWidth: number;
+  nativeHeight: number;
+  coordinateScale: number;
+}
+
 /** When to use: the chassis — own screenshot persistence: directory, retention, capture retry and the encode/save tail. */
 export class ScreenshotStore {
   private readonly deps: ScreenshotStoreDeps;
@@ -133,17 +146,7 @@ export class ScreenshotStore {
     details: (facts: { width: number; height: number; mimeType: string; filePath: string; bytes: number }) => string;
     zoom: ZoomState;
     nativeSize: { width: number; height: number };
-  }): {
-    base64Image: string;
-    filePath: string;
-    width: number;
-    height: number;
-    mimeType: string;
-    zoom: ZoomState;
-    nativeWidth: number;
-    nativeHeight: number;
-    coordinateScale: number;
-  } {
+  }): ScreenshotPayload {
     const size = args.image.getSize();
     const mimeType = args.jpeg ? 'image/jpeg' : 'image/png';
     const buffer = args.jpeg ? args.image.toJPEG(args.quality) : args.image.toPNG();

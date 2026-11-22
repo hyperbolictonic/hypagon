@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 193 files, 715 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 195 files, 721 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (615)
+## Types (620)
 
 | File | Export | When to use |
 |---|---|---|
@@ -106,6 +106,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/drive/driver.ts` | `DriveOptions` *(type)* | - |
 | `main/harvest/screenshots.ts` | `ScreenshotStore` | When to use: the chassis — own screenshot persistence: directory, retention, capture retry and the encode/save tail. |
 | `main/harvest/screenshots.ts` | `ScreenshotStoreDeps` *(type)* | When to use: building the chassis — log and telemetry come from the chassis. |
+| `main/harvest/screenshots.ts` | `ScreenshotPayload` *(type)* | The screenshot payload both capture paths (live viewport and annotated marks) return. |
 | `main/harvester/dom-serializer.ts` | `captureComposedDom` | Serialise the active page's composed DOM (light + open shadow roots). |
 | `main/harvester/dom-serializer.ts` | `COMPOSE_DOM_SCRIPT` | JS evaluated in the page. Must stay self-contained: no imports, no template |
 | `main/harvester/dom-serializer.ts` | `ComposedDom` *(type)* | Composed-DOM serialisation for the Markdown harvester. |
@@ -339,6 +340,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/citation-controller.ts` | `HumanHandoffResult` *(type)* | The result of a human-handoff read, or null when no human took over. |
 | `main/research/citation-controller.ts` | `CitationControllerDeps` *(type)* | When to use: building the chassis — everything the citation pipeline reads through. |
 | `main/research/citation-controller.ts` | `RevalidationSummary` *(type)* | The outcome of revalidating stored anchors across URLs. |
+| `main/research/crawl-orchestrator.ts` | `CrawlOrchestrator` | When to use: the chassis — own how crawl and topic research runs are orchestrated. |
+| `main/research/crawl-orchestrator.ts` | `CrawlOrchestratorDeps` *(type)* | When to use: building the chassis — the five collaborators a run composes. |
+| `main/research/crawl-orchestrator.ts` | `RenderCrawlOptions` *(type)* | The options a crawl page render accepts. |
+| `main/research/crawl-orchestrator.ts` | `RenderCrawlResult` *(type)* | The result of rendering one crawl page: markdown, links, status, optional hand-off facts. |
 | `main/research/detached-view.ts` | `DetachedViewController` | When to use: the chassis — own the shared off-screen research view and its serialized queue. |
 | `main/research/detached-view.ts` | `DetachedLoadOptions` *(type)* | When to use: a detached load — wait bounds, a readiness probe and a post-load hook. |
 | `main/research/detached-view.ts` | `DetachedLoadResult` *(type)* | When to use: reading a detached load's outcome — the script result, post-load hook output, HTTP status and content type. |
@@ -634,7 +639,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (97)
+## Modules (98)
 
 | File | Export | When to use |
 |---|---|---|
@@ -686,6 +691,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/sealed-targets.ts` | `clearSealedTokens` | - |
 | `main/shadow-walk/sealed-targets.ts` | `issueSealedToken` | - |
 | `main/shadow-walk/sealed-targets.ts` | `resolveSealedToken` | Resolve a sealed token to a live top-level viewport centre, scrolling the real node into view. |
+| `main/takeover-key.ts` | `isTakeoverShortcut` | When to use: a `before-input-event` handler that must fire the takeover toggle. |
 | `main/telemetry/bezier.ts` | `generateOrganicTrajectory` | Generates an organic, human-like trajectory between two coordinates. |
 | `main/tools/ipc.ts` | `registerToolSettingsIpc` | Human-only writes over IPC. The bridge exposes a read-only config route to MCP processes. |
 | `main/tools/state.ts` | `sanitizeToolSettings` | - |
