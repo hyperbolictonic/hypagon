@@ -130,7 +130,7 @@
   },
   "duplicates": {
     "files": {
-      "main/browser-chassis.ts": 210,
+      "main/browser-chassis.ts": 27,
       "main/cortex/cortex-db.ts": 22,
       "main/decide/decision-client.ts": 7,
       "main/decide/decision-guard.ts": 7,
@@ -174,7 +174,7 @@
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 1731
+    "totalDuplicatedLines": 1548
   },
   "modularity": {
     "files": {

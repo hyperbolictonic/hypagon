@@ -117,6 +117,17 @@ const TOOLBAR_BAR_WIDTH = 248;
 /** Sidebar transition duration, shared by the native bounds animation and the panel's CSS reveal. */
 const SIDEBAR_TRANSITION_MS = 240;
 
+/** The result of a human-handoff read, or null when no human took over. */
+type HumanHandoffResult = {
+  title: string;
+  markdown: string;
+  links: string[];
+  status: number;
+  humanAssisted?: boolean;
+  humanMs?: number;
+  anchors?: CitationAnchor[];
+} | null;
+
 export class BrowserChassis {
   private mainWindow: BrowserWindow | null = null;
   /** Recent decision-model calls, mirrored to the HUD (newest last, capped at 50). */
@@ -974,24 +985,34 @@ export class BrowserChassis {
     }
   }
 
+  /**
+   * The JEV precondition shared by read and search: the feature must be on, and
+   * the folded depth store must not be from a page other than the active one.
+   * Returns the standard refusal when disabled; otherwise purges and returns
+   * undefined so the caller proceeds.
+   */
+  private requireJevFresh(): { ok: false; error: string } | undefined {
+    if (!this.isJevEnabled()) {
+      return { ok: false, error: 'JEV is disabled. Enable it in Settings → Decision Model.' };
+    }
+    if (this.jev.current && this.getPageInfo().url !== this.jev.current.url) this.jev.purge();
+    return undefined;
+  }
+
   /** Fetch one section body from the depth store on demand. */
   public jevReadSection(
     sectionId: string,
     includeChildren = false,
   ): { ok: boolean; section_id?: string; tokens?: number; content?: string; folded?: string[]; error?: string } {
-    if (!this.isJevEnabled()) {
-      return { ok: false, error: 'JEV is disabled. Enable it in Settings → Decision Model.' };
-    }
-    if (this.jev.current && this.getPageInfo().url !== this.jev.current.url) this.jev.purge();
+    const blocked = this.requireJevFresh();
+    if (blocked) return blocked;
     return this.jev.readSection(sectionId, includeChildren);
   }
 
   /** Keyword/regex query over the folded depth store. */
   public jevSearch(query: string): { ok: boolean; hits?: Array<{ section_id: string; heading: string; matches: number; snippet: string }>; error?: string } {
-    if (!this.isJevEnabled()) {
-      return { ok: false, error: 'JEV is disabled. Enable it in Settings → Decision Model.' };
-    }
-    if (this.jev.current && this.getPageInfo().url !== this.jev.current.url) this.jev.purge();
+    const blocked = this.requireJevFresh();
+    if (blocked) return blocked;
     return this.jev.search(query);
   }
 
@@ -2298,6 +2319,21 @@ export class BrowserChassis {
     this.sendToSurfaces('chassis:state-updated', this.state);
   }
 
+  /**
+   * The two states an agent-driven input action moves through. Every action
+   * begins acting and ends idle; the trailing per-action work (bumpRevision,
+   * telemetry, the returned summary) stays at the call site.
+   */
+  private reportActing(): void {
+    this.state.agentStatus = 'SIMULATING_INPUT';
+    this.broadcastState();
+  }
+
+  private reportIdle(): void {
+    this.state.agentStatus = 'IDLE';
+    this.broadcastState();
+  }
+
   private emitTelemetry(event: TelemetryEvent) {
     this.sendToSurfaces('chassis:telemetry', event);
   }
@@ -2517,8 +2553,7 @@ export class BrowserChassis {
         activeTag?: string;
       } | null;
     }
-    this.state.agentStatus = 'IDLE';
-    this.broadcastState();
+    this.reportIdle();
     this.bumpRevision();
 
     if (focusReport && focusReport.focused === false && focusReport.tag) {
@@ -2546,8 +2581,7 @@ export class BrowserChassis {
     }
 
     await this.simulator.typeText(wc, text);
-    this.state.agentStatus = 'IDLE';
-    this.broadcastState();
+    this.reportIdle();
     this.bumpRevision();
     return `Typed text (${text.length} chars) with variable human cadence`;
   }
@@ -2647,8 +2681,7 @@ export class BrowserChassis {
       }
     }
 
-    this.state.agentStatus = 'IDLE';
-    this.broadcastState();
+    this.reportIdle();
 
     this.bumpRevision();
     return {
@@ -2705,8 +2738,7 @@ export class BrowserChassis {
       this.addLog('info', `scroll_page fell back to the real scroller: ${fallback || 'unknown'}`);
     }
 
-    this.state.agentStatus = 'IDLE';
-    this.broadcastState();
+    this.reportIdle();
     this.bumpRevision();
     return `Scrolled ${direction} by ${amount}px${usedFallback ? ' (wheel was swallowed — scrolled the active scroll container instead)' : ''}`;
   }
@@ -2928,8 +2960,7 @@ export class BrowserChassis {
     this.sendToSurfaces('chassis:construct-harvested', construct);
 
     this.state.stats.tokensHarvested += construct.estimatedTokens;
-    this.state.agentStatus = 'IDLE';
-    this.broadcastState();
+    this.reportIdle();
 
     this.emitTelemetry({
       type: 'harvest',
@@ -3491,20 +3522,29 @@ export class BrowserChassis {
     return await this.llmSurface.probe(url);
   }
 
-  public async fetchLlmSurface(opts: { url?: string; as?: LlmSurfaceKind } = {}): Promise<LlmFetchResult> {
-    this.addLog('action', `MCP Directive: llm_fetch(${opts.url || 'active tab'}, as=${opts.as || 'auto'})`);
+  /**
+   * Run a research tool with the activity events the research feed expects: a
+   * start broadcast, then a done broadcast carrying `ok`, duration and the
+   * caller-computed success summary (the failure summary is the start summary).
+   * Errors propagate after the failed broadcast.
+   */
+  private async withResearchActivity<T>(
+    tool: string,
+    summary: string,
+    describe: (result: T) => string,
+    run: () => Promise<T>,
+  ): Promise<T> {
     const runId = randomUUID();
     const startedAt = Date.now();
-    const summary = opts.url || 'active tab';
-    this.broadcast('research:event', { type: 'activity', runId, tool: 'llm_fetch', status: 'start', summary, at: startedAt });
+    this.broadcast('research:event', { type: 'activity', runId, tool, status: 'start', summary, at: startedAt });
     try {
-      const result = await this.llmSurface.fetch(opts);
+      const result = await run();
       this.broadcast('research:event', {
         type: 'activity',
         runId,
-        tool: 'llm_fetch',
+        tool,
         status: 'done',
-        summary,
+        summary: describe(result),
         ok: true,
         ms: Date.now() - startedAt,
         at: Date.now(),
@@ -3514,7 +3554,7 @@ export class BrowserChassis {
       this.broadcast('research:event', {
         type: 'activity',
         runId,
-        tool: 'llm_fetch',
+        tool,
         status: 'done',
         summary,
         ok: false,
@@ -3523,6 +3563,12 @@ export class BrowserChassis {
       });
       throw error;
     }
+  }
+
+  public async fetchLlmSurface(opts: { url?: string; as?: LlmSurfaceKind } = {}): Promise<LlmFetchResult> {
+    this.addLog('action', `MCP Directive: llm_fetch(${opts.url || 'active tab'}, as=${opts.as || 'auto'})`);
+    const summary = opts.url || 'active tab';
+    return this.withResearchActivity('llm_fetch', summary, () => summary, () => this.llmSurface.fetch(opts));
   }
 
   /**
@@ -3536,36 +3582,8 @@ export class BrowserChassis {
       'action',
       `MCP Directive: read_url(${opts.url || 'active tab'}${opts.maxChars ? `, max_chars=${opts.maxChars}` : ''}${opts.cursor ? `, cursor=${opts.cursor}` : ''})`,
     );
-    const runId = randomUUID();
-    const startedAt = Date.now();
     const summary = opts.url || 'active tab';
-    this.broadcast('research:event', { type: 'activity', runId, tool: 'read_url', status: 'start', summary, at: startedAt });
-    try {
-      const result = await this.llmSurface.readUrl(opts);
-      this.broadcast('research:event', {
-        type: 'activity',
-        runId,
-        tool: 'read_url',
-        status: 'done',
-        summary,
-        ok: true,
-        ms: Date.now() - startedAt,
-        at: Date.now(),
-      });
-      return result;
-    } catch (error: any) {
-      this.broadcast('research:event', {
-        type: 'activity',
-        runId,
-        tool: 'read_url',
-        status: 'done',
-        summary,
-        ok: false,
-        ms: Date.now() - startedAt,
-        at: Date.now(),
-      });
-      throw error;
-    }
+    return this.withResearchActivity('read_url', summary, () => summary, () => this.llmSurface.readUrl(opts));
   }
 
   /**
@@ -3729,6 +3747,20 @@ export class BrowserChassis {
    * Each engine is loaded in a detached view; if it yields nothing (bot-check/consent) the hub
    * falls back to the next. Results are plain URLs for `navigate_to` / `collect_all`.
    */
+  /** The Settings engine chain and custom template, applied unless the call overrides them. */
+  private applyResearchEnginePolicy<T extends { engine?: string; engines?: string[]; urlTemplate?: string }>(
+    effective: T,
+  ): void {
+    if (!effective.engine && (!effective.engines || effective.engines.length === 0)) {
+      effective.engines = this.researchSettings.urlTemplate
+        ? ['custom', ...this.researchSettings.engineChain]
+        : [...this.researchSettings.engineChain];
+    }
+    if (this.researchSettings.urlTemplate && !effective.urlTemplate) {
+      effective.urlTemplate = this.researchSettings.urlTemplate;
+    }
+  }
+
   public async searchWeb(
     query: string,
     opts: { engine?: string; engines?: string[]; urlTemplate?: string; max?: number } = {},
@@ -3736,14 +3768,7 @@ export class BrowserChassis {
     const effective = { ...opts };
     if (effective.max === undefined) effective.max = this.researchSettings.searchMaxResults;
     if (this.researchSettings.enabled) {
-      if (!effective.engine && (!effective.engines || effective.engines.length === 0)) {
-        effective.engines = this.researchSettings.urlTemplate
-          ? ['custom', ...this.researchSettings.engineChain]
-          : [...this.researchSettings.engineChain];
-      }
-      if (this.researchSettings.urlTemplate && !effective.urlTemplate) {
-        effective.urlTemplate = this.researchSettings.urlTemplate;
-      }
+      this.applyResearchEnginePolicy(effective);
 
       const chain = effective.engines || (effective.engine ? [effective.engine] : []);
       if (chain.length > 0) {
@@ -3763,40 +3788,21 @@ export class BrowserChassis {
       'action',
       `MCP Directive: search_web("${query}", engine=${effective.engine || (effective.engines ? effective.engines.join('>') : 'auto')}${this.researchSettings.enabled ? ', stealth' : ''})`,
     );
-    const runId = randomUUID();
-    const startedAt = Date.now();
-    this.broadcast('research:event', { type: 'activity', runId, tool: 'search_web', status: 'start', summary: query, at: startedAt });
-    try {
-      const outcome = await this.searchHub.search(query, effective);
-      if (this.researchSettings.enabled && outcome.blocked) {
-        for (const attempt of outcome.attempts) {
-          if (attempt.blocked) this.markResearchCooldown(this.engineHost(attempt.engine), 'bot-check/consent');
+    return this.withResearchActivity(
+      'search_web',
+      query,
+      (outcome) =>
+        `${outcome.results?.length ?? 0} result(s)${outcome.engine ? ` via ${outcome.engine}` : ''}${outcome.blocked ? ' (provider blocked)' : ''}`,
+      async () => {
+        const outcome = await this.searchHub.search(query, effective);
+        if (this.researchSettings.enabled && outcome.blocked) {
+          for (const attempt of outcome.attempts) {
+            if (attempt.blocked) this.markResearchCooldown(this.engineHost(attempt.engine), 'bot-check/consent');
+          }
         }
-      }
-      this.broadcast('research:event', {
-        type: 'activity',
-        runId,
-        tool: 'search_web',
-        status: 'done',
-        summary: `${outcome.results?.length ?? 0} result(s)${outcome.engine ? ` via ${outcome.engine}` : ''}${outcome.blocked ? ' (provider blocked)' : ''}`,
-        ok: true,
-        ms: Date.now() - startedAt,
-        at: Date.now(),
-      });
-      return outcome;
-    } catch (error: any) {
-      this.broadcast('research:event', {
-        type: 'activity',
-        runId,
-        tool: 'search_web',
-        status: 'done',
-        summary: query,
-        ok: false,
-        ms: Date.now() - startedAt,
-        at: Date.now(),
-      });
-      throw error;
-    }
+        return outcome;
+      },
+    );
   }
 
   /** Bounds of the browser viewport as actually laid out in the HUD (zoom-aware). */
@@ -4035,15 +4041,7 @@ export class BrowserChassis {
     url: string,
     onHuman?: (info: HumanAssistInfo) => void,
     anchorsFor?: string,
-  ): Promise<{
-    title: string;
-    markdown: string;
-    links: string[];
-    status: number;
-    humanAssisted?: boolean;
-    humanMs?: number;
-    anchors?: CitationAnchor[];
-  } | null> {
+  ): Promise<HumanHandoffResult> {
     // The util view is shared with every detached read. Hold its queue for the whole hand-off so a
     // concurrent search/crawl cannot navigate the challenge out from under the human.
     return this.withUtilView(() => this.attemptHumanHandoffExclusive(url, onHuman, anchorsFor));
@@ -4053,15 +4051,7 @@ export class BrowserChassis {
     url: string,
     onHuman?: (info: HumanAssistInfo) => void,
     anchorsFor?: string,
-  ): Promise<{
-    title: string;
-    markdown: string;
-    links: string[];
-    status: number;
-    humanAssisted?: boolean;
-    humanMs?: number;
-    anchors?: CitationAnchor[];
-  } | null> {
+  ): Promise<HumanHandoffResult> {
     const win = this.mainWindow;
     if (!win || win.isDestroyed()) return null;
     if (process.env.HYPAGON_HIL === '0') return null;
@@ -4439,14 +4429,7 @@ export class BrowserChassis {
       preferStatic: opts.preferStatic ?? this.researchSettings.preferStatic,
     };
     // Research must honour the configured engine chain; otherwise the hub's default decides.
-    if (!effective.engine && (!effective.engines || effective.engines.length === 0)) {
-      effective.engines = this.researchSettings.urlTemplate
-        ? ['custom', ...this.researchSettings.engineChain]
-        : [...this.researchSettings.engineChain];
-    }
-    if (this.researchSettings.urlTemplate && !effective.urlTemplate) {
-      effective.urlTemplate = this.researchSettings.urlTemplate;
-    }
+    this.applyResearchEnginePolicy(effective);
     if (this.researchSettings.enabled) {
       effective.delayMs = Math.max(Number(opts.delayMs ?? 0), this.researchSettings.delayMs);
     }
@@ -4537,23 +4520,31 @@ export class BrowserChassis {
     };
   }
 
-  public async clickMark(markId: number): Promise<string> {
-    const wc = this.getActiveWebContents();
-    this.addLog('action', `MCP Directive: click_mark(#${markId})`);
+  /**
+   * Resolve a Set-of-Marks target: ids >= 100 live in iframes, the rest in the
+   * overlay. Throws the refresh hint agents already retry on when the mark is
+   * gone — the same failure for click, type and the focus retry.
+   */
+  private async resolveMarkTarget(wc: WebContents, markId: number) {
     const target = markId >= 100
       ? await resolveFrameMark(wc, markId)
       : await this.marksOverlay.getMarkTarget(wc, markId);
     if (!target) {
       throw new Error(`Mark #${markId} not found. Call find(include_frames:true) or take_annotated_screenshot() to refresh marks.`);
     }
+    return target;
+  }
 
-    this.state.agentStatus = 'SIMULATING_INPUT';
-    this.broadcastState();
+  public async clickMark(markId: number): Promise<string> {
+    const wc = this.getActiveWebContents();
+    this.addLog('action', `MCP Directive: click_mark(#${markId})`);
+    const target = await this.resolveMarkTarget(wc, markId);
+
+    this.reportActing();
 
     await this.simulator.clickAt(wc, target.currentCenter);
 
-    this.state.agentStatus = 'IDLE';
-    this.broadcastState();
+    this.reportIdle();
 
     this.emitTelemetry({
       type: 'click',
@@ -4571,15 +4562,9 @@ export class BrowserChassis {
     const wc = this.getActiveWebContents();
     const shown = opts.secret ? `[REDACTED ${String(text).length} chars]` : `"${text}"`;
     this.addLog('action', `MCP Directive: type_mark(#${markId}, ${shown}${opts.clearFirst ? ', clear_first' : ''})`);
-    const target = markId >= 100
-      ? await resolveFrameMark(wc, markId)
-      : await this.marksOverlay.getMarkTarget(wc, markId);
-    if (!target) {
-      throw new Error(`Mark #${markId} not found. Call find(include_frames:true) or take_annotated_screenshot() to refresh marks.`);
-    }
+    const target = await this.resolveMarkTarget(wc, markId);
 
-    this.state.agentStatus = 'SIMULATING_INPUT';
-    this.broadcastState();
+    this.reportActing();
 
     await this.simulator.clickAt(wc, target.currentCenter);
     await new Promise((r) => setTimeout(r, 100));
@@ -4602,7 +4587,7 @@ export class BrowserChassis {
           .catch(() => true);
     if (focusedOk === false) {
       this.addLog('warn', `type_mark(#${markId}): target did not take focus after click; retrying once.`);
-      const retry = markId >= 100 ? await resolveFrameMark(wc, markId) : await this.marksOverlay.getMarkTarget(wc, markId);
+      const retry = await this.resolveMarkTarget(wc, markId).catch(() => null);
       if (retry) {
         await this.simulator.clickAt(wc, retry.currentCenter);
         await new Promise((r) => setTimeout(r, 100));
@@ -4617,8 +4602,7 @@ export class BrowserChassis {
 
     await this.simulator.typeText(wc, text);
 
-    this.state.agentStatus = 'IDLE';
-    this.broadcastState();
+    this.reportIdle();
     this.bumpRevision();
 
     return opts.secret
@@ -4655,13 +4639,11 @@ export class BrowserChassis {
   public async runScript(name: string, args: Record<string, any> = {}) {
     const wc = this.getActiveWebContents();
     this.addLog('action', `MCP Directive: run_script("${name}")`);
-    this.state.agentStatus = 'SIMULATING_INPUT';
-    this.broadcastState();
+    this.reportActing();
 
     try {
       const res = await this.scriptVault.runScript(wc, name, args);
-      this.state.agentStatus = 'IDLE';
-      this.broadcastState();
+      this.reportIdle();
       this.emitTelemetry({
         type: 'harvest',
         timestamp: Date.now(),
@@ -4669,8 +4651,7 @@ export class BrowserChassis {
       });
       return res;
     } catch (err: any) {
-      this.state.agentStatus = 'IDLE';
-      this.broadcastState();
+      this.reportIdle();
       throw err;
     }
   }
