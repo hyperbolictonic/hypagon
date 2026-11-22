@@ -4,6 +4,12 @@ import { APP_VERSION } from '../../shared/version.js';
 import { BRAND } from '../../shared/brand.js';
 import type { MarkItem } from '../marks/marks-overlay.js';
 import type { TransitionRecord, FieldFacts, TypingOutcome, TypingChannel } from '../telemetry/action-ledger.js';
+import type {
+  GuardPageReadInput,
+  GuardPageReadResult,
+  PageReadRequest,
+  PrecheckPageReadResult,
+} from '../jev/read-contract.js';
 import {
   targetBoxScript,
   fieldFactsScript,
@@ -48,30 +54,9 @@ export interface PrimitivesHost {
    * Optional JEV hard-funnel guard. When enforce is on, unscoped markdown/text
    * reads are refused here so the agent is steered to jev_index/read_section.
    */
-  guardPageRead?(input: {
-    as: string;
-    region?: unknown;
-    budget?: number;
-    cursor?: unknown;
-    full?: boolean;
-    pageTokens: number;
-    url?: string;
-    title?: string;
-    content?: string;
-  }): {
-    allowed: boolean;
-    reason: string;
-    note?: string;
-    refusal?: Record<string, any>;
-  };
+  guardPageRead?(input: GuardPageReadInput): GuardPageReadResult;
   /** Cheap pre-harvest check so an obviously oversized read is refused in ~30 ms. */
-  precheckPageRead?(input: {
-    as: string;
-    region?: unknown;
-    budget?: number;
-    cursor?: unknown;
-    full?: boolean;
-  }): Promise<{ blocked: boolean; note?: string; refusal?: Record<string, any> }>;
+  precheckPageRead?(input: PageReadRequest): Promise<PrecheckPageReadResult>;
   injectMarks(opts?: { includeOffscreen?: boolean }): Promise<MarkItem[]>;
   removeMarks(): Promise<void>;
   getMarks(): MarkItem[];

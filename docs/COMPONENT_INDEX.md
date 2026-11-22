@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 166 files, 664 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 168 files, 672 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (587)
+## Types (595)
 
 | File | Export | When to use |
 |---|---|---|
@@ -124,6 +124,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/input/human-activity.ts` | `HUMAN_CONSOLE_PREFIX` | Console prefix the page uses; anything else is ignored. |
 | `main/input/human-activity.ts` | `HumanActivityMonitor` | - |
 | `main/input/human-activity.ts` | `HumanActivity` *(type)* | Human takeover detection. |
+| `main/jev/controller.ts` | `JevController` | - |
+| `main/jev/controller.ts` | `JevControllerDeps` *(type)* | When to use: building the chassis — the collaborators JEV reads through. |
+| `main/jev/controller.ts` | `JevPolicy` *(type)* | When to use: declaring the optional JEV gate; wired by index.ts to the settings store + decision status. |
 | `main/jev/engine.ts` | `JevEngine` | - |
 | `main/jev/engine.ts` | `JevSection` *(type)* | Just-Enough-View (JEV) page compaction. |
 | `main/jev/engine.ts` | `JevSession` *(type)* | - |
@@ -135,6 +138,11 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/jev/policy.ts` | `FunnelReason` *(type)* | JEV hard-funnel policy. |
 | `main/jev/policy.ts` | `FunnelInput` *(type)* | - |
 | `main/jev/policy.ts` | `FunnelDecision` *(type)* | - |
+| `main/jev/read-contract.ts` | `PageReadRequest` *(type)* | A page read the agent asked for, before the JEV funnel judges it. |
+| `main/jev/read-contract.ts` | `PrecheckPageReadResult` *(type)* | Cheap pre-harvest check: refuse an obviously oversized read in ~30 ms. |
+| `main/jev/read-contract.ts` | `GuardPageReadInput` *(type)* | The guard adds the post-harvest facts (tokens, url, title, content). |
+| `main/jev/read-contract.ts` | `PageReadRefusal` *(type)* | What a refusal names: the page facts, the next call to make, the override. |
+| `main/jev/read-contract.ts` | `GuardPageReadResult` *(type)* | - |
 | `main/llm/llm-surface.ts` | `LlmSurface` | - |
 | `main/llm/llm-surface.ts` | `LlmSurfaceKind` *(type)* | A *fetchable* LLM-friendly representation. Deliberately excludes "rendered". |
 | `main/llm/llm-surface.ts` | `LlmSurfaceScope` *(type)* | Whether a representation covers the whole site (`origin`) or just the page (`page`). |

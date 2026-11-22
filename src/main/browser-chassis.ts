@@ -31,8 +31,9 @@ import { bump } from './metrics.js';
 import { ActionLedger } from './telemetry/action-ledger.js';
 import { ConstructHarvester } from './harvester/markdown.js';
 import { fetchStatic } from './network/impersonate.js';
-import { JevEngine, type JevStatus } from './jev/engine.js';
-import { decideFunnel, FunnelBreaker } from './jev/policy.js';
+import type { JevStatus } from './jev/engine.js';
+import type { GuardPageReadInput, GuardPageReadResult, PageReadRequest, PrecheckPageReadResult } from './jev/read-contract.js';
+import { JevController } from './jev/controller.js';
 import { captureComposedDom } from './harvester/dom-serializer.js';
 import { readStoredDecisionConfig, saveDecisionConfig, decisionStatus, runDecision, onDecision, type DecisionEvent } from './decide/decision-client.js';
 import { targetBoxScript, focusControlScript, DEEP_DOM_HELPERS, type TargetBox } from './primitives/dom-targeting.js';
@@ -138,10 +139,6 @@ export class BrowserChassis {
   private simulator: HumanizedInputSimulator;
   private harvester: ConstructHarvester;
   /** JEV page compaction: surface index + in-memory depth store. */
-  private jev = new JevEngine();
-  private jevPolicyGate: () => { available: boolean; enforce: boolean } = () => ({ available: false, enforce: false });
-  private jevBreaker = new FunnelBreaker();
-  private jevStats = { blocked: 0, precheck: 0, bypassed: 0, loopBreaker: 0, blockedTokens: 0 };
   private shieldBreaker: ShieldBreaker;
   private downloadManager: DownloadManager;
   private sessionVault: SessionVault;
@@ -786,241 +783,68 @@ export class BrowserChassis {
     return this.sidebarMode;
   }
 
-  /** Optional JEV gate; wired by index.ts to the settings store + decision status. */
+  // ---- JEV (Just-Enough-View) page compaction -----------------------------------------
+  // The policy, funnel, loop breaker, stats and depth store live in JevController;
+  // these delegations keep the chassis's public surface unchanged.
+
+  private readonly jevController = new JevController({
+    policy: () => ({ available: false, enforce: false }),
+    pageInfo: () => this.getPageInfo(),
+    evaluate: (script) => this.evaluateQuiet(script),
+    harvest: () => this.harvestMarkdown(),
+  });
+
   public setJevPolicyProvider(policy: () => { available: boolean; enforce: boolean }): void {
-    this.jevPolicyGate = policy;
+    this.jevController.setPolicyProvider(policy);
   }
 
   public getJevPolicy(): { available: boolean; enforce: boolean } {
-    try {
-      const policy = this.jevPolicyGate();
-      const available = policy?.available === true;
-      return { available, enforce: available && policy?.enforce === true };
-    } catch {
-      return { available: false, enforce: false };
-    }
+    return this.jevController.getPolicy();
   }
 
   public isJevEnabled(): boolean {
-    return this.getJevPolicy().available;
+    return this.jevController.isEnabled();
   }
 
   public isJevEnforced(): boolean {
-    return this.getJevPolicy().enforce;
+    return this.jevController.isEnforced();
   }
 
   public getJevStats(): { blocked: number; precheck: number; bypassed: number; loopBreaker: number; blockedTokens: number; breaker: Array<{ url: string; refusals: number; firstAt: number }> } {
-    return { ...this.jevStats, breaker: this.jevBreaker.snapshot() };
+    return this.jevController.getStats();
   }
 
   public getJevStatus(): JevStatus {
-    const policy = this.getJevPolicy();
-    return {
-      ...this.jev.status(policy.available),
-      mode: policy.enforce ? 'enforce' : 'prefer',
-      enforced: policy.enforce,
-    };
+    return this.jevController.getStatus();
   }
 
-  /**
-   * Cheap pre-harvest refusal: measure the DOM text length before paying for a
-   * full harvest. The post-harvest guard stays authoritative (inline marks and
-   * URLs can push real markdown over the threshold), so this is a latency
-   * optimization, not a second policy.
-   */
-  public async precheckJevPageRead(input: {
-    as: string;
-    region?: unknown;
-    budget?: number;
-    cursor?: unknown;
-    full?: boolean;
-  }): Promise<{ blocked: boolean; note?: string; refusal?: Record<string, any> }> {
-    const policy = this.getJevPolicy();
-    if (!policy.enforce) return { blocked: false };
-    if (input.as !== 'markdown' && input.as !== 'text') return { blocked: false };
-    if (input.full === true) return { blocked: false };
-    if (input.region !== undefined && input.region !== null) return { blocked: false };
-    if (input.cursor !== undefined && input.cursor !== null && input.cursor !== '') return { blocked: false };
-    if (typeof input.budget === 'number' && Number.isFinite(input.budget) && input.budget > 0) return { blocked: false };
-
-    const info = this.getPageInfo();
-    let chars = 0;
-    try {
-      // textContent, not innerText: no layout pass, and close enough to size the page.
-      const raw = await this.evaluateQuiet(
-        "(() => { const b = document.body; return b ? (b.textContent || '').length : 0; })()",
-      );
-      chars = Number(raw) || 0;
-    } catch {
-      // Unknown size: fall through to the harvest guard rather than guessing.
-      return { blocked: false };
-    }
-    const tokens = Math.ceil(chars / 4);
-    const decision = decideFunnel({ enforce: true, as: input.as, pageTokens: tokens });
-    if (decision.allowed) return { blocked: false };
-
-    const url = info.url || '';
-    if (this.jevBreaker.shouldRelease(url)) {
-      this.jevBreaker.reset(url);
-      this.jevStats.bypassed += 1;
-      this.jevStats.loopBreaker += 1;
-      return {
-        blocked: false,
-        note: 'JEV funnel bypassed: this page was refused twice in 60s, so the read was served. Prefer jev_index next time.',
-      };
-    }
-    this.jevBreaker.recordRefusal(url);
-    this.jevStats.blocked += 1;
-    this.jevStats.precheck += 1;
-    this.jevStats.blockedTokens += tokens;
-    return {
-      blocked: true,
-      refusal: {
-        page: { url, tokens, estimated: true },
-        next: [
-          { tool: 'jev_index' },
-          { tool: 'read_section', arguments: { section_id: 'sec_1' } },
-        ],
-        override: { parameter: 'full', value: true, note: 'bypasses the funnel and is logged' },
-      },
-    };
+  public async precheckJevPageRead(input: PageReadRequest): Promise<PrecheckPageReadResult> {
+    return this.jevController.precheckPageRead(input);
   }
 
-  /**
-   * Hard-funnel guard for unscoped page reads. Called by the primitives before a
-   * markdown/text projection leaves the process. Returns a refusal payload that
-   * names the next call, or a `note` when the loop breaker released the read.
-   */
-  public guardJevPageRead(input: {
-    as: string;
-    region?: unknown;
-    budget?: number;
-    cursor?: unknown;
-    full?: boolean;
-    pageTokens: number;
-    url?: string;
-    title?: string;
-    content?: string;
-  }): {
-    allowed: boolean;
-    reason: string;
-    note?: string;
-    refusal?: {
-      page: { url: string; tokens: number; sections: number };
-      next: Array<Record<string, any>>;
-      override: Record<string, any>;
-    };
-  } {
-    const policy = this.getJevPolicy();
-    const url = input.url || this.getPageInfo().url || '';
-    const decision = decideFunnel({
-      enforce: policy.enforce,
-      as: input.as,
-      region: input.region,
-      budget: input.budget,
-      cursor: input.cursor,
-      full: input.full,
-      pageTokens: input.pageTokens,
-    });
-    if (decision.allowed) {
-      if (decision.reason === 'override') this.jevStats.bypassed += 1;
-      return { allowed: true, reason: decision.reason };
-    }
-    if (this.jevBreaker.shouldRelease(url)) {
-      this.jevBreaker.reset(url);
-      this.jevStats.bypassed += 1;
-      this.jevStats.loopBreaker += 1;
-      return {
-        allowed: true,
-        reason: 'loop-breaker',
-        note: 'JEV funnel bypassed: this page was refused twice in 60s, so the read was served. Prefer jev_index next time.',
-      };
-    }
-    this.jevBreaker.recordRefusal(url);
-    this.jevStats.blocked += 1;
-    this.jevStats.blockedTokens += Math.max(0, Number(input.pageTokens) || 0);
-
-    let sections = 0;
-    try {
-      if (input.content) {
-        if (this.jev.current?.url !== url) {
-          const session = this.jev.build(input.content, url, input.title || '');
-          sections = session.order.length;
-        } else {
-          sections = this.jev.current.order.length;
-        }
-      }
-    } catch {
-      // The refusal still stands; jev_index will report the build error.
-    }
-    return {
-      allowed: false,
-      reason: 'unscoped',
-      refusal: {
-        page: { url, tokens: input.pageTokens, sections },
-        next: [
-          { tool: 'jev_index' },
-          { tool: 'read_section', arguments: { section_id: 'sec_1' } },
-        ],
-        override: { parameter: 'full', value: true, note: 'bypasses the funnel and is logged' },
-      },
-    };
+  public guardJevPageRead(input: GuardPageReadInput): GuardPageReadResult {
+    return this.jevController.guardPageRead(input);
   }
 
-  /** Build (or refresh) the JEV surface index for the active page. */
   public async jevIndex(): Promise<{ ok: boolean; error?: string; index?: string; status?: JevStatus }> {
-    if (!this.isJevEnabled()) {
-      return { ok: false, error: 'JEV is disabled. Enable it in Settings → Decision Model (it requires a configured decision model).' };
-    }
-    try {
-      const info = this.getPageInfo();
-      const current = this.jev.current;
-      if (!current || current.url !== info.url) {
-        const construct = await this.harvestMarkdown();
-        this.jev.build(construct.content || '', construct.url || info.url, construct.title || info.title || '');
-      }
-      return { ok: true, index: this.jev.renderIndex(), status: this.getJevStatus() };
-    } catch (error: any) {
-      return { ok: false, error: error?.message || String(error) };
-    }
+    return this.jevController.index();
   }
 
-  /**
-   * The JEV precondition shared by read and search: the feature must be on, and
-   * the folded depth store must not be from a page other than the active one.
-   * Returns the standard refusal when disabled; otherwise purges and returns
-   * undefined so the caller proceeds.
-   */
-  private requireJevFresh(): { ok: false; error: string } | undefined {
-    if (!this.isJevEnabled()) {
-      return { ok: false, error: 'JEV is disabled. Enable it in Settings → Decision Model.' };
-    }
-    if (this.jev.current && this.getPageInfo().url !== this.jev.current.url) this.jev.purge();
-    return undefined;
-  }
-
-  /** Fetch one section body from the depth store on demand. */
   public jevReadSection(
     sectionId: string,
     includeChildren = false,
   ): { ok: boolean; section_id?: string; tokens?: number; content?: string; folded?: string[]; error?: string } {
-    const blocked = this.requireJevFresh();
-    if (blocked) return blocked;
-    return this.jev.readSection(sectionId, includeChildren);
+    return this.jevController.readSection(sectionId, includeChildren);
   }
 
-  /** Keyword/regex query over the folded depth store. */
   public jevSearch(query: string): { ok: boolean; hits?: Array<{ section_id: string; heading: string; matches: number; snippet: string }>; error?: string } {
-    const blocked = this.requireJevFresh();
-    if (blocked) return blocked;
-    return this.jev.search(query);
+    return this.jevController.search(query);
   }
 
-  /**
-   * How much of the browsing view (from its right edge) the Cyberdeck panel
-   * covers in page coordinates. Docked mode resizes the browsing view instead,
-   * and the collapsed orb is small, so only the floating panel reports an inset.
-   */
+  private purgeJevDepthStore(): void {
+    this.jevController.purge();
+  }
+
   public getSidebarPageInset(): number {
     if (!this.sidebarOverlayVisible) return 0;
     if (this.sidebarMode !== 'floating') return 0;
@@ -1648,7 +1472,7 @@ export class BrowserChassis {
 
   // Tab Operations
   public createTab(url?: string): TabSummary {
-    this.jev.purge();
+    this.purgeJevDepthStore();
     if (!this.tabManager) throw new Error('Browser Chassis uninitialized');
     this.addLog('action', `MCP Directive: new_tab(${url || 'about:blank'})`);
     const tab = this.tabManager.createTab(url);
@@ -1667,7 +1491,7 @@ export class BrowserChassis {
   public switchTab(tabId: string): void {
     if (!this.tabManager) throw new Error('Browser Chassis uninitialized');
     this.addLog('action', `MCP Directive: switch_tab(${tabId})`);
-    this.jev.purge();
+    this.purgeJevDepthStore();
     this.tabManager.switchTab(tabId);
     void this.viewportController?.refreshActive();
   }
@@ -1675,7 +1499,7 @@ export class BrowserChassis {
   public closeTab(tabId?: string): void {
     if (!this.tabManager) throw new Error('Browser Chassis uninitialized');
     this.addLog('action', `MCP Directive: close_tab(${tabId || 'active'})`);
-    this.jev.purge();
+    this.purgeJevDepthStore();
     this.tabManager.closeTab(tabId);
   }
 
@@ -2354,7 +2178,7 @@ export class BrowserChassis {
   // MCP Operations on Active Tab
   public async navigateTo(url: string, autoDismissConsent: boolean = true): Promise<string> {
     bump('nav');
-    this.jev.purge();
+    this.purgeJevDepthStore();
     const wc = this.getActiveWebContents();
     await this.syncForceOpenFor(wc);
     this.state.agentStatus = 'TRAVERSING';
@@ -3288,7 +3112,7 @@ export class BrowserChassis {
     const wc = this.getActiveWebContents();
     await this.syncForceOpenFor(wc);
     if (wc.navigationHistory.canGoBack()) {
-      this.jev.purge();
+      this.purgeJevDepthStore();
       wc.navigationHistory.goBack();
       this.bumpRevision();
       this.broadcastState();
@@ -3301,7 +3125,7 @@ export class BrowserChassis {
     const wc = this.getActiveWebContents();
     await this.syncForceOpenFor(wc);
     if (wc.navigationHistory.canGoForward()) {
-      this.jev.purge();
+      this.purgeJevDepthStore();
       wc.navigationHistory.goForward();
       this.bumpRevision();
       this.broadcastState();
@@ -3313,7 +3137,7 @@ export class BrowserChassis {
   public async reload(): Promise<string> {
     const wc = this.getActiveWebContents();
     await this.syncForceOpenFor(wc);
-    this.jev.purge();
+    this.purgeJevDepthStore();
     wc.reload();
     this.bumpRevision();
     this.broadcastState();
