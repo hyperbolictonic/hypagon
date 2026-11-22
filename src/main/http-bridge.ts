@@ -30,6 +30,8 @@ import { handleTabRoutes } from './http/tabs-routes.js';
 import { handleScriptRoutes } from './http/scripts-routes.js';
 import { handleHumanInterventionRoutes } from './http/hil-routes.js';
 import { handleWindowRoutes } from './http/window-routes.js';
+import { handleMarkRoutes } from './http/marks-routes.js';
+import { handleBookmarkRoutes } from './http/bookmarks-routes.js';
 
 export type { WrapBridge };
 
@@ -727,45 +729,7 @@ export function startHttpBridge(
         return;
       }
 
-      if (req.method === 'GET' && pathname === '/marks/screenshot') {
-        const flag = (name: string) => ['1', 'true'].includes((url.searchParams.get(name) || '').toLowerCase());
-        const result = await chassis.takeAnnotatedScreenshot({ economy: flag('economy'), textOnly: flag('text_only'), includeOffscreen: flag('include_offscreen') });
-        sendJson({ success: true, ...result });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/marks/click') {
-        const body = await readBody();
-        const rawId = body.markId ?? body.mark_id ?? body.mark ?? body.id ?? body.badge ?? body.index ?? body.num ?? body.number;
-        if (rawId === undefined || isNaN(Number(rawId))) {
-          sendJson({ success: false, error: 'Must provide valid numeric markId (or mark_id)' }, 400);
-          return;
-        }
-        const result = await chassis.clickMark(Number(rawId));
-        sendJson({ success: true, result });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/marks/type') {
-        const body = await readBody();
-        const rawId = body.markId ?? body.mark_id ?? body.mark ?? body.id ?? body.badge ?? body.index ?? body.num ?? body.number;
-        const text = body.text ?? body.value ?? body.content ?? body.input ?? '';
-        if (rawId === undefined || isNaN(Number(rawId))) {
-          sendJson({ success: false, error: 'Must provide valid numeric markId (or mark_id)' }, 400);
-          return;
-        }
-        const result = await chassis.typeMark(Number(rawId), String(text), {
-          clearFirst: body?.clear_first === true || body?.clearFirst === true,
-        });
-        sendJson({ success: true, result });
-        return;
-      }
-
-      if (req.method === 'GET' && pathname === '/marks/list') {
-        const marks = chassis.getActiveMarks();
-        sendJson({ success: true, marks });
-        return;
-      }
+      if (await handleMarkRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson })) return;
 
       if (await handleScriptRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson })) return;
 
@@ -877,45 +841,7 @@ export function startHttpBridge(
       }
 
       // Bookmarks Endpoints
-      if (req.method === 'GET' && pathname === '/bookmarks') {
-        const cortex = chassis.getCortex();
-        const query = url.searchParams.get('q') || undefined;
-        const tag = url.searchParams.get('tag') || undefined;
-        const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!, 10) : undefined;
-        const bookmarks = await cortex.listBookmarks({ query, tag, limit });
-        sendJson({ success: true, bookmarks });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/bookmarks/add') {
-        const body = await readBody();
-        const cortex = chassis.getCortex();
-        const activeUrl = chassis.getTabsSummary().find(t => t.isActive)?.url || 'about:blank';
-        const bookmark = await cortex.addBookmark({
-          url: body.url || activeUrl,
-          title: body.title,
-          notes: body.notes,
-          tags: body.tags
-        });
-        sendJson({ success: true, bookmark });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/bookmarks/delete') {
-        const body = await readBody();
-        const cortex = chassis.getCortex();
-        const deleted = await cortex.deleteBookmark(body.urlOrId);
-        sendJson({ success: true, deleted });
-        return;
-      }
-
-      if (req.method === 'GET' && pathname === '/bookmarks/check') {
-        const cortex = chassis.getCortex();
-        const checkUrl = url.searchParams.get('url') || '';
-        const isBookmarked = await cortex.isBookmarked(checkUrl);
-        sendJson({ success: true, isBookmarked });
-        return;
-      }
+      if (await handleBookmarkRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson })) return;
 
       // Human-In-The-Loop & Notification Endpoints
       if (await handleHumanInterventionRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson })) return;
