@@ -210,9 +210,16 @@ export class HilManager {
   }
 
   /**
-   * Resolves the active intervention request (e.g. user clicked 'Resume Agent').
+   * Close the pending request. Resolve and cancel share the whole teardown —
+   * the guards, timer, history, state broadcast and resolver release — and
+   * differ only in the status, the request notes and the resolver's message.
    */
-  public resolveIntervention(id?: string, notes?: string): boolean {
+  private closeIntervention(
+    id: string | undefined,
+    status: 'resolved' | 'cancelled',
+    requestNotes: string | undefined,
+    resolverNotes: string,
+  ): boolean {
     if (!this.activeRequest || this.activeRequest.status !== 'pending') {
       return false;
     }
@@ -226,17 +233,16 @@ export class HilManager {
       this.activeTimer = null;
     }
 
-    this.activeRequest.status = 'resolved';
+    this.activeRequest.status = status;
     this.activeRequest.resolvedAt = Date.now();
-    this.activeRequest.notes = notes || 'User confirmed action completed.';
-
+    if (requestNotes !== undefined) this.activeRequest.notes = requestNotes;
     const elapsed = Math.round((Date.now() - this.activeRequest.requestedAt) / 1000);
-    const resolvedReq = this.activeRequest;
+    const closedReq = this.activeRequest;
 
     const targetWc = this.getActiveWebContents?.();
     this.cleanup(targetWc);
 
-    this.requestHistory.push(resolvedReq);
+    this.requestHistory.push(closedReq);
     this.activeRequest = null;
     this.onHilStateChanged?.(false, null);
 
@@ -244,9 +250,9 @@ export class HilManager {
       const resolver = this.activeResolver;
       this.activeResolver = null;
       resolver({
-        status: 'resolved',
+        status,
         elapsedSeconds: elapsed,
-        notes: resolvedReq.notes,
+        notes: resolverNotes,
       });
     }
 
@@ -254,45 +260,18 @@ export class HilManager {
   }
 
   /**
+   * Resolves the active intervention request (e.g. user clicked 'Resume Agent').
+   */
+  public resolveIntervention(id?: string, notes?: string): boolean {
+    const resolvedNotes = notes || 'User confirmed action completed.';
+    return this.closeIntervention(id, 'resolved', resolvedNotes, resolvedNotes);
+  }
+
+  /**
    * Cancels the active intervention request.
    */
   public cancelIntervention(id?: string): boolean {
-    if (!this.activeRequest || this.activeRequest.status !== 'pending') {
-      return false;
-    }
-
-    if (id && this.activeRequest.id !== id) {
-      return false;
-    }
-
-    if (this.activeTimer) {
-      clearTimeout(this.activeTimer);
-      this.activeTimer = null;
-    }
-
-    this.activeRequest.status = 'cancelled';
-    this.activeRequest.resolvedAt = Date.now();
-    const elapsed = Math.round((Date.now() - this.activeRequest.requestedAt) / 1000);
-    const cancelledReq = this.activeRequest;
-
-    const targetWc = this.getActiveWebContents?.();
-    this.cleanup(targetWc);
-
-    this.requestHistory.push(cancelledReq);
-    this.activeRequest = null;
-    this.onHilStateChanged?.(false, null);
-
-    if (this.activeResolver) {
-      const resolver = this.activeResolver;
-      this.activeResolver = null;
-      resolver({
-        status: 'cancelled',
-        elapsedSeconds: elapsed,
-        notes: 'Human intervention was cancelled.',
-      });
-    }
-
-    return true;
+    return this.closeIntervention(id, 'cancelled', undefined, 'Human intervention was cancelled.');
   }
 
   public getActiveRequest(): HilRequest | null {
