@@ -11,7 +11,7 @@
  */
 import { deriveRecipe } from '../../../packages/recipe/src/index.ts';
 import { isWrapAuthorized, tokenFromHeaders } from '../wrap/auth.js';
-import { dispatchRoute } from './route-table.js';
+import { dispatchRoute, type RouteTableContext } from './route-table.js';
 import type { WrapStore } from '../wrap/store.js';
 import type { SecretStore } from '../wrap/secrets.js';
 import type { WrapAuditLog } from '../wrap/audit.js';
@@ -27,16 +27,11 @@ export interface WrapBridge {
   token: string;
 }
 
-/** When to use: building the wrap dispatcher — request facts and the bridge helpers. */
-export interface WrapRouteContext {
+/** When to use: building the wrap dispatcher — the wrapper core plus the raw headers its token lives in. */
+export interface WrapRouteContext extends RouteTableContext {
   wrap?: WrapBridge;
-  method: string | undefined;
-  pathname: string;
-  url: URL;
   /** Raw request headers; the auth helper extracts the bearer token. */
   headers: Record<string, string | string[] | undefined>;
-  readBody: () => Promise<any>;
-  sendJson: (data: any, status?: number) => void;
 }
 
 type WrapHandler = (wrap: WrapBridge, ctx: WrapRouteContext) => Promise<void> | void;

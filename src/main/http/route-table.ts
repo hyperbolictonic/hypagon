@@ -13,11 +13,25 @@
  *   the request and can stop falling through.
  */
 
+import type { BrowserChassis } from '../browser-chassis.js';
+
 /** When to use: a family handler needs the request facts and the bridge's JSON sender. */
 export interface RouteTableContext {
   method: string | undefined;
   pathname: string;
+  /** Parsed request URL; families read query parameters from it. */
+  url: URL;
+  readBody: () => Promise<any>;
   sendJson: (data: any, status?: number) => void;
+}
+
+/**
+ * When to use: a family whose only dependency is the browser chassis — tabs,
+ * the script vault, and the other page-surface families. Families that front a
+ * service add that service as an optional field and guard it themselves.
+ */
+export interface ChassisRouteContext extends RouteTableContext {
+  chassis: BrowserChassis;
 }
 
 /** When to use: declaring a family's answer for a method+path it does not serve. */

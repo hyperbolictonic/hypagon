@@ -9,15 +9,11 @@
  */
 import type { MediaService } from '../media/service.js';
 import type { MediaQuality } from '../media/jobs.js';
-import { dispatchRoute } from './route-table.js';
+import { dispatchRoute, type RouteTableContext } from './route-table.js';
 
-/** When to use: building the media dispatcher — the request facts and the two bridge helpers. */
-export interface MediaRouteContext {
+/** When to use: building the media dispatcher — the media service, or undefined when the feature is off. */
+export interface MediaRouteContext extends RouteTableContext {
   media?: MediaService;
-  method: string | undefined;
-  pathname: string;
-  readBody: () => Promise<any>;
-  sendJson: (data: any, status?: number) => void;
 }
 
 type MediaHandler = (media: MediaService, ctx: MediaRouteContext) => Promise<void> | void;

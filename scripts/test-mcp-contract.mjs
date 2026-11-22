@@ -3,15 +3,19 @@
  * MCP ⇄ HTTP bridge contract test (static, dependency-free, no Cyberdeck needed).
  *
  * `tools-catalog.ts` hard-codes the endpoint each MCP tool calls; `http-bridge.ts`
- * declares the routes it actually serves. Nothing links the two, so the catalog
- * silently drifted once already (8 tools were calling paths the bridge 404s).
+ * and its route families declare the routes actually served. Nothing links the
+ * two, so the catalog silently drifted once already (8 tools were calling paths
+ * the bridge 404s).
  *
- * This test parses both files and asserts every catalog entry maps to a real
+ * This test parses both sides and asserts every catalog entry maps to a real
  * `{method, path}` route. Run it with `npm run test:mcp:contract` (and in CI).
  *
  * A catalog entry is considered served when its `{method, endpoint}` pair is
- * declared by the bridge. Line-oriented parsing is intentional: every route in
- * `http-bridge.ts` is a single-line `if (req.method === '…' && pathname === '…')`.
+ * declared by a route source. Two declarations are understood, both line-oriented
+ * on purpose:
+ *
+ * - the legacy `if (req.method === '…' && pathname === '…')` in `http-bridge.ts`;
+ * - a dispatch-table key `'METHOD /path':` in a `src/main/http/*-routes.ts` family.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -20,6 +24,16 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CATALOG_PATH = path.join(ROOT, 'src', 'mcp', 'tools-catalog.ts');
 const BRIDGE_PATH = path.join(ROOT, 'src', 'main', 'http-bridge.ts');
+const FAMILY_DIR = path.join(ROOT, 'src', 'main', 'http');
+
+/** Every file that can declare a route: the bridge plus its extracted families. */
+function routeSources() {
+  const families = fs
+    .readdirSync(FAMILY_DIR)
+    .filter((name) => name.endsWith('.ts'))
+    .map((name) => path.join(FAMILY_DIR, name));
+  return [BRIDGE_PATH, ...families];
+}
 
 /** Parse the MCP catalog into [{ name, method, endpoint }]. */
 function parseCatalog(src) {
@@ -49,13 +63,20 @@ function parseCatalog(src) {
   return tools;
 }
 
-/** Parse the bridge into a Set of "METHOD /path" strings (+ a per-path method map). */
+/** Parse a route source into "METHOD /path" strings (+ a per-path method map). */
 function parseBridge(src) {
   const routes = new Set();
   const byPath = new Map();
   for (const line of src.split('\n')) {
     const methods = [...line.matchAll(/req\.method\s*===\s*'([A-Z]+)'/g)].map((x) => x[1]);
     const paths = [...line.matchAll(/pathname\s*===\s*'([^']+)'/g)].map((x) => x[1]);
+    // Dispatch-table key: `'GET /media/status': handler,`.
+    const tableKey = line.match(/^\s*'([A-Z]+) (\/[^']*)':/);
+    if (tableKey) {
+      routes.add(`${tableKey[1]} ${tableKey[2]}`);
+      if (!byPath.has(tableKey[2])) byPath.set(tableKey[2], new Set());
+      byPath.get(tableKey[2]).add(tableKey[1]);
+    }
     if (methods.length === 0 || paths.length === 0) continue;
     for (const p of paths) {
       if (!byPath.has(p)) byPath.set(p, new Set());
@@ -68,10 +89,25 @@ function parseBridge(src) {
   return { routes, byPath };
 }
 
+/** Merge the route sets of every source. */
+function parseRoutes(sources) {
+  const routes = new Set();
+  const byPath = new Map();
+  for (const src of sources) {
+    const parsed = parseBridge(src);
+    for (const key of parsed.routes) routes.add(key);
+    for (const [p, methods] of parsed.byPath) {
+      if (!byPath.has(p)) byPath.set(p, new Set());
+      for (const method of methods) byPath.get(p).add(method);
+    }
+  }
+  return { routes, byPath };
+}
+
 function main() {
   const catalogSrc = fs.readFileSync(CATALOG_PATH, 'utf8');
   const catalog = parseCatalog(catalogSrc);
-  const { routes, byPath } = parseBridge(fs.readFileSync(BRIDGE_PATH, 'utf8'));
+  const { routes, byPath } = parseRoutes(routeSources().map((file) => fs.readFileSync(file, 'utf8')));
 
   // Renamed tools are cloned at runtime from their canonical entry, so the static
   // parser cannot see them — instead assert each clone's canonical name exists, so
@@ -142,7 +178,7 @@ function main() {
   const failures = missing.length + methodOnly.length + danglingAliases.length + badTiers.length;
   if (failures > 0) {
     console.log(`\nFAILED — ${failures} problem(s) would break at runtime.`);
-    console.log('Fix src/mcp/tools-catalog.ts so each endpoint matches src/main/http-bridge.ts.\n');
+    console.log('Fix src/mcp/tools-catalog.ts so each endpoint matches a route in src/main/http-bridge.ts or src/main/http/*-routes.ts.\n');
     process.exit(1);
   }
   console.log('\nPASS — every catalog tool maps to a live bridge route.\n');

@@ -26,6 +26,8 @@ import type { MediaService } from './media/service.js';
 import { handleCollaborationRoutes } from './http/collaboration-routes.js';
 import { handleMediaRoutes } from './http/media-routes.js';
 import { handleWrapRoutes, type WrapBridge } from './http/wrap-routes.js';
+import { handleTabRoutes } from './http/tabs-routes.js';
+import { handleScriptRoutes } from './http/scripts-routes.js';
 
 export type { WrapBridge };
 
@@ -204,7 +206,7 @@ export function startHttpBridge(
         return;
       }
 
-      if (await handleMediaRoutes({ media, method: req.method, pathname, readBody, sendJson })) return;
+      if (await handleMediaRoutes({ media, method: req.method, pathname, url, readBody, sendJson })) return;
 
       if (await handleCollaborationRoutes({ collaboration, chassis, method: req.method, pathname, url, readBody, sendJson })) return;
 
@@ -763,48 +765,7 @@ export function startHttpBridge(
         return;
       }
 
-      if (req.method === 'POST' && pathname === '/scripts/save') {
-        const body = await readBody();
-        const script = await chassis.saveScript(body);
-        sendJson({ success: true, script });
-        return;
-      }
-
-      if ((req.method === 'GET' || req.method === 'POST') && pathname === '/scripts/recall') {
-        const body = req.method === 'POST' ? await readBody() : {};
-        const scripts = await chassis.recallScripts(body.query, {
-          domain: body.domain,
-          tag: body.tag,
-          limit: body.limit,
-        });
-        sendJson({ success: true, scripts });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/scripts/run') {
-        const body = await readBody();
-        const execution = await chassis.runScript(body.name, body.args);
-        sendJson({ success: true, execution });
-        return;
-      }
-
-      if (req.method === 'GET' && pathname === '/scripts/list') {
-        const query = url.searchParams.get('q') || undefined;
-        const tag = url.searchParams.get('tag') || undefined;
-        const limitParam = url.searchParams.get('limit');
-        const limit = limitParam ? parseInt(limitParam, 10) : 100;
-        // Tree search when a query is present, otherwise enumerate (recallScripts lists all when query is undefined).
-        const scripts = await chassis.recallScripts(query, { tag, limit });
-        sendJson({ success: true, scripts });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/scripts/delete') {
-        const body = await readBody();
-        const deleted = await chassis.deleteScript(body.name);
-        sendJson({ success: true, deleted });
-        return;
-      }
+      if (await handleScriptRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson })) return;
 
       if (req.method === 'POST' && pathname === '/history') {
         const body = await readBody();
@@ -875,38 +836,7 @@ export function startHttpBridge(
         return;
       }
 
-      if (req.method === 'GET' && (pathname === '/tabs' || pathname === '/tabs/list')) {
-        const tabs = chassis.getTabsSummary();
-        sendJson({ success: true, tabs });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/tabs/new') {
-        const body = await readBody();
-        const tab = chassis.createTab(body.url);
-        sendJson({ success: true, tab });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/tabs/switch') {
-        const body = await readBody();
-        let rawId = body.tabId ?? body.tab_id ?? body.tab ?? body.id;
-        if (typeof rawId === 'number') rawId = `tab_${rawId}`;
-        else if (rawId && !String(rawId).startsWith('tab_') && !isNaN(Number(rawId))) rawId = `tab_${rawId}`;
-        chassis.switchTab(rawId);
-        sendJson({ success: true, message: `Switched to tab ${rawId}` });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/tabs/close') {
-        const body = await readBody();
-        let rawId = body.tabId ?? body.tab_id ?? body.tab ?? body.id;
-        if (typeof rawId === 'number') rawId = `tab_${rawId}`;
-        else if (rawId && !String(rawId).startsWith('tab_') && !isNaN(Number(rawId))) rawId = `tab_${rawId}`;
-        chassis.closeTab(rawId);
-        sendJson({ success: true, message: `Closed tab ${rawId || 'active'}` });
-        return;
-      }
+      if (await handleTabRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson })) return;
 
       // Cortex LanceDB Semantic Memory Endpoints
       if (req.method === 'POST' && pathname === '/cortex/recall') {

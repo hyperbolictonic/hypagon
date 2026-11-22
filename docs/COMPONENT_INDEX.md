@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 153 files, 648 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 155 files, 651 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (584)
+## Types (585)
 
 | File | Export | When to use |
 |---|---|---|
@@ -106,15 +106,16 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/hil/hil-manager.ts` | `HilResolution` *(type)* | - |
 | `main/hil/hil-manager.ts` | `NotificationOptions` *(type)* | - |
 | `main/http/collaboration-routes.ts` | `handleCollaborationRoutes` | When to use: the bridge request handler — dispatch `/collaboration/*` before |
-| `main/http/collaboration-routes.ts` | `CollaborationRouteContext` *(type)* | When to use: building the collaboration dispatcher — request facts, page context and bridge helpers. |
+| `main/http/collaboration-routes.ts` | `CollaborationRouteContext` *(type)* | When to use: building the collaboration dispatcher — the service plus the page context it reads. |
 | `main/http/media-routes.ts` | `handleMediaRoutes` | When to use: the bridge request handler — dispatch `/media/*` before the |
-| `main/http/media-routes.ts` | `MediaRouteContext` *(type)* | When to use: building the media dispatcher — the request facts and the two bridge helpers. |
+| `main/http/media-routes.ts` | `MediaRouteContext` *(type)* | When to use: building the media dispatcher — the media service, or undefined when the feature is off. |
 | `main/http/route-table.ts` | `dispatchRoute` | When to use: the end of every family handler — look up the entry for this |
 | `main/http/route-table.ts` | `RouteTableContext` *(type)* | When to use: a family handler needs the request facts and the bridge's JSON sender. |
+| `main/http/route-table.ts` | `ChassisRouteContext` *(type)* | When to use: a family whose only dependency is the browser chassis — tabs, |
 | `main/http/route-table.ts` | `RouteNotFound` *(type)* | When to use: declaring a family's answer for a method+path it does not serve. |
 | `main/http/wrap-routes.ts` | `handleWrapRoutes` | When to use: the bridge request handler — dispatch `/wrap/*` (auth first). |
 | `main/http/wrap-routes.ts` | `WrapBridge` *(type)* | When to use: wiring the bridge — the wrapper core and the store it serves. |
-| `main/http/wrap-routes.ts` | `WrapRouteContext` *(type)* | When to use: building the wrap dispatcher — request facts and the bridge helpers. |
+| `main/http/wrap-routes.ts` | `WrapRouteContext` *(type)* | When to use: building the wrap dispatcher — the wrapper core plus the raw headers its token lives in. |
 | `main/input/human-activity.ts` | `shouldCountAsHuman` | Pure decision used by the monitor and by tests. |
 | `main/input/human-activity.ts` | `humanListenerScript` | Self-contained listener. Idempotent: a second injection is a no-op. |
 | `main/input/human-activity.ts` | `SYNTHETIC_GRACE_MS` | How long after our own dispatch a trusted event is still considered synthetic. |
@@ -603,7 +604,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (61)
+## Modules (63)
 
 | File | Export | When to use |
 |---|---|---|
@@ -616,6 +617,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/data-paths.ts` | `dataPath` | - |
 | `main/diagnostics/main-log.ts` | `mainLogFile` | - |
 | `main/diagnostics/main-log.ts` | `logMainEvent` | - |
+| `main/http/scripts-routes.ts` | `handleScriptRoutes` | When to use: the bridge request handler — dispatch `/scripts/*`. Returns |
+| `main/http/tabs-routes.ts` | `handleTabRoutes` | When to use: the bridge request handler — dispatch `/tabs/*`. Returns false |
 | `main/http-bridge.ts` | `startHttpBridge` | - |
 | `main/media/auth.ts` | `needsLogin` | Does yt-dlp's output say the site wants a signed-in session? |
 | `main/media/cookie-format.ts` | `toNetscape` | Netscape cookie-file text for yt-dlp's `--cookies`. |

@@ -8,17 +8,12 @@
  */
 import type { BrowserChassis } from '../browser-chassis.js';
 import type { CollaborationService } from '../collaboration/service.js';
-import { dispatchRoute } from './route-table.js';
+import { dispatchRoute, type RouteTableContext } from './route-table.js';
 
-/** When to use: building the collaboration dispatcher — request facts, page context and bridge helpers. */
-export interface CollaborationRouteContext {
+/** When to use: building the collaboration dispatcher — the service plus the page context it reads. */
+export interface CollaborationRouteContext extends RouteTableContext {
   collaboration?: CollaborationService;
   chassis: BrowserChassis;
-  method: string | undefined;
-  pathname: string;
-  url: URL;
-  readBody: () => Promise<any>;
-  sendJson: (data: any, status?: number) => void;
 }
 
 type CollaborationHandler = (
