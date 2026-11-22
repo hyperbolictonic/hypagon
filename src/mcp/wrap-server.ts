@@ -339,6 +339,28 @@ function formatSecrets(data: any): string {
   ) + warning;
 }
 
+/**
+ * One tool-call envelope shared by the wrap tools: call the bridge, let `fail`
+ * name the failure text (or return undefined to proceed), render the success
+ * payload, and wrap a thrown bridge failure. Every tool answers the same three
+ * shapes — a non-ok call, a failed payload, or a thrown fetch — and nine copies
+ * of that envelope had started drifting.
+ */
+async function bridgeTool(
+  action: () => Promise<BridgeResponse>,
+  fail: (response: BridgeResponse) => string | undefined,
+  render: (data: any) => string | Promise<string>,
+) {
+  try {
+    const response = await action();
+    const message = fail(response);
+    if (message !== undefined) return toolError(message);
+    return toolSuccess(await render(response.data));
+  } catch (err: any) {
+    return bridgeFailure(err);
+  }
+}
+
 function toolSuccess(text: string) {
   return { content: [{ type: 'text' as const, text: clampText(text) }] };
 }
@@ -451,47 +473,36 @@ export async function createWrapMcpServer() {
     'wrap_list',
     'List saved REST wrappers as one line each: id, purpose, method/host, required arguments. Call this before wrap_get or wrap_run.',
     {},
-    async () => {
-      try {
-        const response = await callBridge('/wrap/manifest');
-        if (!response.ok) return toolError(errorText(response.data?.code, response.data?.error || `HTTP ${response.status}`));
-        return toolSuccess(formatManifest(response.data));
-      } catch (err: any) {
-        return bridgeFailure(err);
-      }
-    },
+    () =>
+      bridgeTool(
+        () => callBridge('/wrap/manifest'),
+        (r) => (r.ok ? undefined : errorText(r.data?.code, r.data?.error || `HTTP ${r.status}`)),
+        (data) => formatManifest(data),
+      ),
   );
 
   server.tool(
     'wrap_get',
     'Show one wrapper in full: input schema, request template, and response recipe. Use wrap_list to discover ids.',
     { id: z.string().describe('Wrapper id, for example "orders.create"') },
-    async ({ id }) => {
-      try {
-        const response = await callBridge(`/wrap/wrapper?id=${encodeURIComponent(id)}`);
-        if (!response.ok || !response.data?.wrapper) {
-          return toolError(errorText(response.data?.code, response.data?.error || `No wrapper named "${id}".`));
-        }
-        return toolSuccess(JSON.stringify(response.data.wrapper, null, 2));
-      } catch (err: any) {
-        return bridgeFailure(err);
-      }
-    },
+    ({ id }) =>
+      bridgeTool(
+        () => callBridge(`/wrap/wrapper?id=${encodeURIComponent(id)}`),
+        (r) => (r.ok && r.data?.wrapper ? undefined : errorText(r.data?.code, r.data?.error || `No wrapper named "${id}".`)),
+        (data) => JSON.stringify(data.wrapper, null, 2),
+      ),
   );
 
   server.tool(
     'wrap_secret_list',
     'List credential names a human has bound to hosts. Values are never available to this server. Use a name in request.auth; the main process attaches it only when the request host is allowed.',
     {},
-    async () => {
-      try {
-        const response = await callBridge('/wrap/secrets');
-        if (!response.ok) return toolError(errorText(response.data?.code, response.data?.error || `HTTP ${response.status}`));
-        return toolSuccess(formatSecrets(response.data));
-      } catch (err: any) {
-        return bridgeFailure(err);
-      }
-    },
+    () =>
+      bridgeTool(
+        () => callBridge('/wrap/secrets'),
+        (r) => (r.ok ? undefined : errorText(r.data?.code, r.data?.error || `HTTP ${r.status}`)),
+        (data) => formatSecrets(data),
+      ),
   );
 
   server.tool(
@@ -505,28 +516,14 @@ export async function createWrapMcpServer() {
       description: z.string().optional(),
       max_fields: z.coerce.number().optional().describe('Maximum fields to infer (default 12, max 60)'),
     },
-    async ({ sample, url, id, name, description, max_fields }) => {
-      try {
-        const response = await callBridge('/wrap/derive', 'POST', {
-          sample,
-          url,
-          id,
-          name,
-          description,
-          max_fields,
-        });
-        if (!response.ok || response.data?.success === false) {
-          return toolError(errorText(response.data?.code, response.data?.error || `HTTP ${response.status}`));
-        }
-        const recipe = response.data.recipe;
-        return toolSuccess(
-          `## Derived recipe (from ${response.data.source})\n\n\`\`\`json\n${JSON.stringify(recipe, null, 2)}\n\`\`\`\n\n` +
-            'Pass this as `response` to wrap_create (or wrap_update), then wrap_test it against a real call.',
-        );
-      } catch (err: any) {
-        return bridgeFailure(err);
-      }
-    },
+    ({ sample, url, id, name, description, max_fields }) =>
+      bridgeTool(
+        () => callBridge('/wrap/derive', 'POST', { sample, url, id, name, description, max_fields }),
+        (r) => (r.ok && r.data?.success !== false ? undefined : errorText(r.data?.code, r.data?.error || `HTTP ${r.status}`)),
+        (data) =>
+          `## Derived recipe (from ${data.source})\n\n\`\`\`json\n${JSON.stringify(data.recipe, null, 2)}\n\`\`\`\n\n` +
+          'Pass this as `response` to wrap_create (or wrap_update), then wrap_test it against a real call.',
+      ),
   );
 
   server.tool(
@@ -535,22 +532,20 @@ export async function createWrapMcpServer() {
     {
       wrapper: z.record(z.string(), z.unknown()).describe('Complete wrapper object. Use flat input arguments, not URL or header JSON.'),
     },
-    async ({ wrapper }) => {
-      try {
-        const response = await callBridge('/wrap/wrappers', 'POST', { action: 'create', wrapper: asObject(wrapper) });
-        if (!response.data?.success) {
-          const errors = Array.isArray(response.data?.errors) ? response.data.errors : [response.data?.error || `HTTP ${response.status}`];
-          return toolError(`Wrapper rejected:\n- ${errors.join('\n- ')}`);
-        }
-        const saved = response.data.wrapper;
-        const sync = await refreshGeneratedTools();
-        return toolSuccess(
-          `Created ${saved?.id}. Call wrap_test with dryRun first, then wrap_run.${generatedWarning(saved, sync)}`,
-        );
-      } catch (err: any) {
-        return bridgeFailure(err);
-      }
-    },
+    ({ wrapper }) =>
+      bridgeTool(
+        () => callBridge('/wrap/wrappers', 'POST', { action: 'create', wrapper: asObject(wrapper) }),
+        (r) => {
+          if (r.data?.success) return undefined;
+          const errors = Array.isArray(r.data?.errors) ? r.data.errors : [r.data?.error || `HTTP ${r.status}`];
+          return `Wrapper rejected:\n- ${errors.join('\n- ')}`;
+        },
+        async (data) => {
+          const saved = data.wrapper;
+          const sync = await refreshGeneratedTools();
+          return `Created ${saved?.id}. Call wrap_test with dryRun first, then wrap_run.${generatedWarning(saved, sync)}`;
+        },
+      ),
   );
 
   server.tool(
@@ -559,40 +554,35 @@ export async function createWrapMcpServer() {
     {
       wrapper: z.record(z.string(), z.unknown()).describe('Complete replacement wrapper object.'),
     },
-    async ({ wrapper }) => {
-      try {
-        const response = await callBridge('/wrap/wrappers', 'POST', { action: 'update', wrapper: asObject(wrapper) });
-        if (!response.data?.success) {
-          const errors = Array.isArray(response.data?.errors) ? response.data.errors : [response.data?.error || `HTTP ${response.status}`];
-          return toolError(`Wrapper rejected:\n- ${errors.join('\n- ')}`);
-        }
-        const sync = await refreshGeneratedTools();
-        const updated = response.data.wrapper;
-        return toolSuccess(
-          `Updated ${updated?.id}. Run wrap_test with dryRun to verify the change.${generatedWarning(updated, sync)}`,
-        );
-      } catch (err: any) {
-        return bridgeFailure(err);
-      }
-    },
+    ({ wrapper }) =>
+      bridgeTool(
+        () => callBridge('/wrap/wrappers', 'POST', { action: 'update', wrapper: asObject(wrapper) }),
+        (r) => {
+          if (r.data?.success) return undefined;
+          const errors = Array.isArray(r.data?.errors) ? r.data.errors : [r.data?.error || `HTTP ${r.status}`];
+          return `Wrapper rejected:\n- ${errors.join('\n- ')}`;
+        },
+        async (data) => {
+          const updated = data.wrapper;
+          const sync = await refreshGeneratedTools();
+          return `Updated ${updated?.id}. Run wrap_test with dryRun to verify the change.${generatedWarning(updated, sync)}`;
+        },
+      ),
   );
 
   server.tool(
     'wrap_delete',
     'Delete a saved wrapper by id. This removes the saved request and recipe; it does not affect the remote API.',
     { id: z.string().describe('Wrapper id to delete') },
-    async ({ id }) => {
-      try {
-        const response = await callBridge('/wrap/wrappers', 'POST', { action: 'delete', id });
-        if (!response.data?.success) {
-          return toolError(errorText(response.data?.code, response.data?.error || `No wrapper named "${id}".`));
-        }
-        await refreshGeneratedTools();
-        return toolSuccess(`Deleted ${id}.`);
-      } catch (err: any) {
-        return bridgeFailure(err);
-      }
-    },
+    ({ id }) =>
+      bridgeTool(
+        () => callBridge('/wrap/wrappers', 'POST', { action: 'delete', id }),
+        (r) => (r.data?.success ? undefined : errorText(r.data?.code, r.data?.error || `No wrapper named "${id}".`)),
+        async () => {
+          await refreshGeneratedTools();
+          return `Deleted ${id}.`;
+        },
+      ),
   );
 
   server.tool(
@@ -604,23 +594,18 @@ export async function createWrapMcpServer() {
       format: z.enum(['markdown', 'json', 'both']).optional().describe('markdown (default), json records, or both'),
       max_pages: z.coerce.number().optional().describe('Page cap for a paginated recipe (default 10, max 25)'),
     },
-    async ({ id, args, format, max_pages }) => {
-      try {
-        const response = await callBridge('/wrap/run', 'POST', {
-          id,
-          args: asObject(args || {}) || {},
-          format: format || 'markdown',
-          maxPages: max_pages,
-        });
-        const data = response.data;
-        if (!data) return toolError(`No response from the wrapper bridge (HTTP ${response.status}).`);
-
-        const text = resultText(data, format || 'markdown');
-        return data.ok === false ? toolError(text) : toolSuccess(text);
-      } catch (err: any) {
-        return bridgeFailure(err);
-      }
-    },
+    ({ id, args, format, max_pages }) =>
+      bridgeTool(
+        () =>
+          callBridge('/wrap/run', 'POST', {
+            id,
+            args: asObject(args || {}) || {},
+            format: format || 'markdown',
+            maxPages: max_pages,
+          }),
+        (r) => (!r.data ? `No response from the wrapper bridge (HTTP ${r.status}).` : r.data.ok === false ? resultText(r.data, format || 'markdown') : undefined),
+        (data) => resultText(data, format || 'markdown'),
+      ),
   );
 
   server.tool(
@@ -633,42 +618,36 @@ export async function createWrapMcpServer() {
       sample: z.unknown().optional().describe('Sample JSON response to render through the recipe'),
       dryRun: z.boolean().optional().describe('Preview only; defaults to true'),
     },
-    async ({ id, wrapper, args, sample, dryRun }) => {
-      try {
-        const payload: Record<string, unknown> = {
-          id,
-          args: asObject(args || {}) || {},
-          dryRun: dryRun !== false,
-        };
-        if (wrapper !== undefined) payload.wrapper = asObject(wrapper);
-        if (sample !== undefined) payload.sample = asJson(sample);
-
-        const response = await callBridge('/wrap/test', 'POST', payload);
-        const data = response.data;
-        if (!data) return toolError(`No response from the wrapper bridge (HTTP ${response.status}).`);
-
-        const text = resultText(data, 'markdown');
-        return data.ok === false ? toolError(text) : toolSuccess(text);
-      } catch (err: any) {
-        return bridgeFailure(err);
-      }
-    },
+    ({ id, wrapper, args, sample, dryRun }) =>
+      bridgeTool(
+        () => {
+          const payload: Record<string, unknown> = {
+            id,
+            args: asObject(args || {}) || {},
+            dryRun: dryRun !== false,
+          };
+          if (wrapper !== undefined) payload.wrapper = asObject(wrapper);
+          if (sample !== undefined) payload.sample = asJson(sample);
+          return callBridge('/wrap/test', 'POST', payload);
+        },
+        (r) => (!r.data ? `No response from the wrapper bridge (HTTP ${r.status}).` : r.data.ok === false ? resultText(r.data, 'markdown') : undefined),
+        (data) => resultText(data, 'markdown'),
+      ),
   );
 
   server.tool(
     'wrap_reload',
     'Re-read the wrapper manifest. The server is stateless, so this is mainly a compatibility alias for wrap_list after an external file change.',
     {},
-    async () => {
-      try {
-        const response = await callBridge('/wrap/manifest');
-        if (!response.ok) return toolError(errorText(response.data?.code, response.data?.error || `HTTP ${response.status}`));
-        await refreshGeneratedTools();
-        return toolSuccess(formatManifest(response.data));
-      } catch (err: any) {
-        return bridgeFailure(err);
-      }
-    },
+    () =>
+      bridgeTool(
+        () => callBridge('/wrap/manifest'),
+        (r) => (r.ok ? undefined : errorText(r.data?.code, r.data?.error || `HTTP ${r.status}`)),
+        async (data) => {
+          await refreshGeneratedTools();
+          return formatManifest(data);
+        },
+      ),
   );
 
   // Register the generated tools that already qualify (S4). Best-effort: a missing
