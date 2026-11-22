@@ -29,6 +29,7 @@ import { handleJevRoutes } from './http/jev-routes.js';
 import { handleRecordingRoutes } from './http/recording-routes.js';
 import { handleSessionRoutes } from './http/session-routes.js';
 import { handleNetworkRoutes } from './http/network-routes.js';
+import { handleCortexRoutes } from './http/cortex-routes.js';
 
 export type { WrapBridge };
 
@@ -660,40 +661,7 @@ export function startHttpBridge(
       if (await handleTabRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson })) return;
 
       // Cortex LanceDB Semantic Memory Endpoints
-      if (req.method === 'POST' && pathname === '/cortex/recall') {
-        const body = await readBody();
-        const cortex = chassis.getCortex();
-        const results = await cortex.recall(body.query, { limit: body.limit, domain: body.domain });
-        sendJson({ success: true, results });
-        return;
-      }
-
-      if (req.method === 'GET' && pathname === '/cortex/history') {
-        const cortex = chassis.getCortex();
-        const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!, 10) : undefined;
-        const domain = url.searchParams.get('domain') || undefined;
-        const history = await cortex.getHistory({ limit, domain });
-        sendJson({ success: true, history });
-        return;
-      }
-
-      if (req.method === 'GET' && pathname === '/cortex/suggest') {
-        const cortex = chassis.getCortex();
-        const query = url.searchParams.get('q') || '';
-        const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!, 10) : undefined;
-        const semantic = url.searchParams.get('semantic') !== 'false';
-        const suggestions = await cortex.suggestUrls(query, { limit, semantic });
-        sendJson({ success: true, suggestions });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/cortex/history/clear') {
-        const body = await readBody();
-        const cortex = chassis.getCortex();
-        await cortex.clearHistory(body.olderThan);
-        sendJson({ success: true, message: 'History cleared' });
-        return;
-      }
+      if (await handleCortexRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson })) return;
 
       // Bookmarks Endpoints
       if (await handleBookmarkRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson })) return;
