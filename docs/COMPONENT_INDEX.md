@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 155 files, 651 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 157 files, 653 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -604,7 +604,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (63)
+## Modules (65)
 
 | File | Export | When to use |
 |---|---|---|
@@ -617,8 +617,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/data-paths.ts` | `dataPath` | - |
 | `main/diagnostics/main-log.ts` | `mainLogFile` | - |
 | `main/diagnostics/main-log.ts` | `logMainEvent` | - |
+| `main/http/hil-routes.ts` | `handleHumanInterventionRoutes` | When to use: the bridge request handler — dispatch `/hil/*`. Returns false |
 | `main/http/scripts-routes.ts` | `handleScriptRoutes` | When to use: the bridge request handler — dispatch `/scripts/*`. Returns |
 | `main/http/tabs-routes.ts` | `handleTabRoutes` | When to use: the bridge request handler — dispatch `/tabs/*`. Returns false |
+| `main/http/window-routes.ts` | `handleWindowRoutes` | When to use: the bridge request handler — dispatch `/window/*`. Returns |
 | `main/http-bridge.ts` | `startHttpBridge` | - |
 | `main/media/auth.ts` | `needsLogin` | Does yt-dlp's output say the site wants a signed-in session? |
 | `main/media/cookie-format.ts` | `toNetscape` | Netscape cookie-file text for yt-dlp's `--cookies`. |

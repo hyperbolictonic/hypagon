@@ -28,6 +28,8 @@ import { handleMediaRoutes } from './http/media-routes.js';
 import { handleWrapRoutes, type WrapBridge } from './http/wrap-routes.js';
 import { handleTabRoutes } from './http/tabs-routes.js';
 import { handleScriptRoutes } from './http/scripts-routes.js';
+import { handleHumanInterventionRoutes } from './http/hil-routes.js';
+import { handleWindowRoutes } from './http/window-routes.js';
 
 export type { WrapBridge };
 
@@ -916,42 +918,7 @@ export function startHttpBridge(
       }
 
       // Human-In-The-Loop & Notification Endpoints
-      if (req.method === 'POST' && pathname === '/hil/request') {
-        const body = await readBody();
-        const result = await chassis.requestHumanIntervention(body.reason, {
-          url: body.url,
-          timeoutSeconds: body.timeoutSeconds,
-          bringToFront: body.bringToFront,
-        });
-        sendJson({ success: true, result });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/hil/resolve') {
-        const body = await readBody();
-        const resolved = chassis.resolveHumanIntervention(body.id, body.notes);
-        sendJson({ success: true, resolved });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/hil/cancel') {
-        const body = await readBody();
-        const cancelled = chassis.cancelHumanIntervention(body.id);
-        sendJson({ success: true, cancelled });
-        return;
-      }
-
-      if (req.method === 'GET' && pathname === '/hil/active') {
-        const active = chassis.getActiveHumanIntervention();
-        sendJson({ success: true, active });
-        return;
-      }
-
-      if (req.method === 'GET' && pathname === '/hil/history') {
-        const history = chassis.getHumanInterventionHistory();
-        sendJson({ success: true, history });
-        return;
-      }
+      if (await handleHumanInterventionRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson })) return;
 
       if (req.method === 'POST' && pathname === '/notify') {
         const body = await readBody();
@@ -961,38 +928,7 @@ export function startHttpBridge(
       }
 
       // Window & System Tray Management Endpoints
-      if (req.method === 'POST' && pathname === '/window/visibility') {
-        const body = await readBody();
-        chassis.setWindowVisibility(!!body.visible);
-        if (body.visible && body.focus !== false) chassis.focusWindow();
-        sendJson({ success: true, visible: chassis.isWindowVisible(), focused: chassis.isWindowFocused() });
-        return;
-      }
-
-      if (req.method === 'GET' && pathname === '/window/visibility') {
-        sendJson({ success: true, visible: chassis.isWindowVisible(), focused: chassis.isWindowFocused() });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/window/focus') {
-        const focused = chassis.focusWindow();
-        sendJson({ success: true, focused });
-        return;
-      }
-
-      if (req.method === 'POST' && pathname === '/window/tray') {
-        const body = await readBody();
-        if (typeof body.closeToTray === 'boolean') {
-          chassis.setCloseToTray(body.closeToTray);
-        }
-        sendJson({ success: true, closeToTray: chassis.isCloseToTray() });
-        return;
-      }
-
-      if (req.method === 'GET' && pathname === '/window/tray') {
-        sendJson({ success: true, closeToTray: chassis.isCloseToTray() });
-        return;
-      }
+      if (await handleWindowRoutes({ chassis, method: req.method, pathname, url, readBody, sendJson })) return;
 
       // Chaos Kinematics & Mouse Movement Endpoints
       if (req.method === 'POST' && pathname === '/chaos/trajectory') {
