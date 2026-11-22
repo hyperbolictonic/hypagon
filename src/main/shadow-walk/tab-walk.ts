@@ -74,6 +74,54 @@ function roleOf(node: any): string {
   return String(node?.role?.value || '').toLowerCase();
 }
 
+/** Focus a CDP node; some hosts (notably with delegatesFocus) reject DOM.focus, so fall back to Runtime.callFunctionOn. */
+async function focusHostNode(dbg: any, backendNodeId: number): Promise<boolean> {
+  try {
+    await dbg.sendCommand('DOM.focus', { backendNodeId });
+    return true;
+  } catch {
+    try {
+      const resolved = (await dbg.sendCommand('DOM.resolveNode', { backendNodeId })) as any;
+      const objectId = resolved?.object?.objectId;
+      if (!objectId) throw new Error('host could not be resolved');
+      await dbg.sendCommand('Runtime.callFunctionOn', {
+        objectId,
+        functionDeclaration: 'function () { this.focus(); }',
+        returnByValue: true,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/** The content quad of a CDP node, as an axis-aligned rect; zero rect when the node has no box. */
+async function nodeRect(
+  send: (method: string, params?: Record<string, unknown>) => Promise<any>,
+  backendNodeId: number,
+): Promise<{ x: number; y: number; width: number; height: number }> {
+  const rect = { x: 0, y: 0, width: 0, height: 0 };
+  try {
+    const raw = await send('DOM.getBoxModel', { backendNodeId });
+    const model = (raw as any)?.model || raw;
+    const quad = model?.content;
+    if (Array.isArray(quad) && quad.length >= 8) {
+      const xs = [quad[0], quad[2], quad[4], quad[6]].map(Number);
+      const ys = [quad[1], quad[3], quad[5], quad[7]].map(Number);
+      return {
+        x: Math.min(...xs),
+        y: Math.min(...ys),
+        width: Math.max(...xs) - Math.min(...xs),
+        height: Math.max(...ys) - Math.min(...ys),
+      };
+    }
+  } catch {
+    // A focused node without a box is still a valid focus step; keep the step with a zero rect.
+  }
+  return rect;
+}
+
 /** RootWebArea also claims `focused:true`; it is never the control the user is on. */
 function focusedNode(ax: any): any | null {
   const candidates = (ax?.nodes || []).filter(
@@ -176,21 +224,11 @@ export async function runTabWalk(
   }
 
   try {
-    await dbg.sendCommand('DOM.focus', { backendNodeId: hostBackend });
-  } catch {
-    // Some hosts (notably with delegatesFocus) reject DOM.focus even though focus() works.
-    try {
-      const resolved = (await dbg.sendCommand('DOM.resolveNode', { backendNodeId: hostBackend })) as any;
-      const objectId = resolved?.object?.objectId;
-      if (!objectId) throw new Error('host could not be resolved');
-      await dbg.sendCommand('Runtime.callFunctionOn', {
-        objectId,
-        functionDeclaration: 'function () { this.focus(); }',
-        returnByValue: true,
-      });
-    } catch {
+    if (!(await focusHostNode(dbg, hostBackend))) {
       return { ...fail('not-focusable'), hostTag };
     }
+  } catch {
+    return { ...fail('not-focusable'), hostTag };
   }
 
   const send = async (method: string, params: Record<string, unknown> = {}) => dbg.sendCommand(method as any, params as any);
@@ -215,22 +253,7 @@ export async function runTabWalk(
       inside.has(initialBackend) &&
       INTERACTIVE.has(roleOf(initial))
     ) {
-      let rect = { x: 0, y: 0, width: 0, height: 0 };
-      try {
-        const raw = await send('DOM.getBoxModel', { backendNodeId: initialBackend });
-        const model = (raw as any)?.model || raw;
-        const quad = model?.content;
-        if (Array.isArray(quad) && quad.length >= 8) {
-          const xs = [quad[0], quad[2], quad[4], quad[6]].map(Number);
-          const ys = [quad[1], quad[3], quad[5], quad[7]].map(Number);
-          rect = {
-            x: Math.min(...xs),
-            y: Math.min(...ys),
-            width: Math.max(...xs) - Math.min(...xs),
-            height: Math.max(...ys) - Math.min(...ys),
-          };
-        }
-      } catch {}
+      const rect = await nodeRect(send, initialBackend);
       steps.push({ index: 0, role: roleOf(initial), name: String(initial.name?.value || ''), rect, gapMs: 0 });
     }
 
@@ -254,24 +277,7 @@ export async function runTabWalk(
         break;
       }
 
-      let rect = { x: 0, y: 0, width: 0, height: 0 };
-      try {
-        const raw = await send('DOM.getBoxModel', { backendNodeId: backend });
-        const model = (raw as any)?.model || raw;
-        const quad = model?.content;
-        if (Array.isArray(quad) && quad.length >= 8) {
-          const xs = [quad[0], quad[2], quad[4], quad[6]].map(Number);
-          const ys = [quad[1], quad[3], quad[5], quad[7]].map(Number);
-          rect = {
-            x: Math.min(...xs),
-            y: Math.min(...ys),
-            width: Math.max(...xs) - Math.min(...xs),
-            height: Math.max(...ys) - Math.min(...ys),
-          };
-        }
-      } catch {
-        // A focused node without a box is still a valid focus step; keep the step with a zero rect.
-      }
+      const rect = await nodeRect(send, backend);
 
       steps.push({
         index: i + 1,
@@ -289,24 +295,7 @@ export async function runTabWalk(
   const landed = steps.length > 0;
   let restored = false;
   if (!landed && options.restore !== false) {
-    try {
-      await dbg.sendCommand('DOM.focus', { backendNodeId: hostBackend });
-      restored = true;
-    } catch {
-      try {
-        const resolved = (await dbg.sendCommand('DOM.resolveNode', { backendNodeId: hostBackend })) as any;
-        const objectId = resolved?.object?.objectId;
-        if (!objectId) throw new Error('host could not be resolved');
-        await dbg.sendCommand('Runtime.callFunctionOn', {
-          objectId,
-          functionDeclaration: 'function () { this.focus(); }',
-          returnByValue: true,
-        });
-        restored = true;
-      } catch {
-        restored = false;
-      }
-    }
+    restored = await focusHostNode(dbg, hostBackend);
   }
 
   return {

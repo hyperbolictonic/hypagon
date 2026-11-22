@@ -148,7 +148,7 @@
       "main/shadow-walk/ax-controls.ts": 25,
       "main/shadow-walk/sealed-targets.ts": 10,
       "main/shadow-walk/settings.ts": 19,
-      "main/shadow-walk/tab-walk.ts": 55,
+      "main/shadow-walk/tab-walk.ts": 15,
       "main/tabs/tab-manager.ts": 30,
       "main/telemetry/input-simulator.ts": 34,
       "main/tools/settings.ts": 8,
@@ -167,7 +167,7 @@
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 1170
+    "totalDuplicatedLines": 1130
   },
   "modularity": {
     "files": {
