@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 170 files, 677 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 172 files, 682 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (600)
+## Types (605)
 
 | File | Export | When to use |
 |---|---|---|
@@ -89,6 +89,11 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/decide/sensitive-gate.ts` | `detectSensitiveGate` | Inspect the state Kuang is about to send. `state` may be the composed page text or the component |
 | `main/decide/sensitive-gate.ts` | `SensitiveGate` *(type)* | Sensitive gates — situations where the correct action is **a human**, never a click. |
 | `main/decide/sensitive-gate.ts` | `GateDetection` *(type)* | - |
+| `main/deck/collab.ts` | `CollabController` | When to use: the deck surface — own the note cycle, list popup and overlay providers. |
+| `main/deck/collab.ts` | `CollabControllerDeps` *(type)* | When to use: building the deck — everything the collab cycle reads through. |
+| `main/deck/controller.ts` | `DeckController` | When to use: the chassis — own the deck panel view, its modes and orb geometry. |
+| `main/deck/controller.ts` | `DeckMode` *(type)* | When to use: a surface that stores or compares the deck's panel state. |
+| `main/deck/controller.ts` | `DeckControllerDeps` *(type)* | When to use: building the chassis — everything the deck reads through. |
 | `main/downloads/download-manager.ts` | `DownloadManager` | - |
 | `main/downloads/download-manager.ts` | `DownloadRecord` *(type)* | - |
 | `main/drive/driver.ts` | `driveTask` | Run the loop until a stop condition. Never throws: every failure is a typed status. |
@@ -124,7 +129,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/input/human-activity.ts` | `HUMAN_CONSOLE_PREFIX` | Console prefix the page uses; anything else is ignored. |
 | `main/input/human-activity.ts` | `HumanActivityMonitor` | - |
 | `main/input/human-activity.ts` | `HumanActivity` *(type)* | Human takeover detection. |
-| `main/jev/controller.ts` | `JevController` | - |
+| `main/jev/controller.ts` | `JevController` | When to use: the chassis — own the JEV gate, funnel, loop breaker, stats and depth store. |
 | `main/jev/controller.ts` | `JevControllerDeps` *(type)* | When to use: building the chassis — the collaborators JEV reads through. |
 | `main/jev/controller.ts` | `JevPolicy` *(type)* | When to use: declaring the optional JEV gate; wired by index.ts to the settings store + decision status. |
 | `main/jev/engine.ts` | `JevEngine` | - |
@@ -329,7 +334,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/researcher.ts` | `ResearchOutcome` *(type)* | - |
 | `main/research/researcher.ts` | `ResearcherDeps` *(type)* | - |
 | `main/research/session-controller.ts` | `researchError` | When to use: declaring the error contract shared by the research surfaces. |
-| `main/research/session-controller.ts` | `ResearchSessionController` | - |
+| `main/research/session-controller.ts` | `ResearchSessionController` | When to use: the chassis — own the stealth research session, its settings and WAF cooldowns. |
 | `main/research/session-controller.ts` | `ResearchSessionDeps` *(type)* | When to use: building the chassis — the collaborators the research session reads through. |
 | `main/research/settings.ts` | `normalizeResearchSettings` | - |
 | `main/research/settings.ts` | `looksLikeChallenge` | - |
@@ -530,7 +535,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/validate-wrapper.ts` | `validateWrapper` | - |
 | `main/wrap/validate-wrapper.ts` | `isPlainObject` | - |
 | `main/wrap/validate-wrapper.ts` | `WrapperValidation` *(type)* | - |
-| `main/zoom/controller.ts` | `ZoomController` | - |
+| `main/zoom/controller.ts` | `ZoomController` | When to use: the chassis — own the zoom policy, override and rendered proportions. |
 | `main/zoom/controller.ts` | `ZoomControllerDeps` *(type)* | When to use: building the chassis — everything zoom reads through. |
 | `mcp/process-guard.ts` | `installProcessGuards` | When to use: at the top of a stdio MCP server entrypoint, before connecting |
 | `mcp/process-guard.ts` | `ProcessGuardOptions` *(type)* | Process resilience shared by the stdio MCP entrypoints. |

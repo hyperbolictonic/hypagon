@@ -31,6 +31,7 @@ export interface ZoomControllerDeps {
   onChanged: () => void;
 }
 
+/** When to use: the chassis — own the zoom policy, override and rendered proportions. */
 export class ZoomController {
   private readonly deps: ZoomControllerDeps;
   private mode: ZoomMode = 'compensate';

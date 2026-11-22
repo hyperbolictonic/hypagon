@@ -27,6 +27,7 @@
       "main/input/human-activity.ts": 1,
       "main/jev/engine.ts": 4,
       "main/jev/policy.ts": 4,
+      "main/jev/read-contract.ts": 1,
       "main/llm/llm-surface.ts": 6,
       "main/marks/marks-overlay.ts": 2,
       "main/media/binaries.ts": 6,

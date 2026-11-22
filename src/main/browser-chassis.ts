@@ -29,6 +29,7 @@ import { fetchStatic } from './network/impersonate.js';
 import type { JevStatus } from './jev/engine.js';
 import type { GuardPageReadInput, GuardPageReadResult, PageReadRequest, PrecheckPageReadResult } from './jev/read-contract.js';
 import { JevController } from './jev/controller.js';
+import { DeckController } from './deck/controller.js';
 import { captureComposedDom } from './harvester/dom-serializer.js';
 import { readStoredDecisionConfig, saveDecisionConfig, decisionStatus, runDecision, onDecision, type DecisionEvent } from './decide/decision-client.js';
 import { targetBoxScript, focusControlScript, DEEP_DOM_HELPERS, type TargetBox } from './primitives/dom-targeting.js';
@@ -85,30 +86,7 @@ import { SearchHub, type SearchOutcome } from './search/search-engine.js';
 import { Crawler, type CrawlOptions, type CrawlOutcome, type HumanAssistInfo } from './crawl/crawler.js';
 import { anchorHighlights, relocateCitation as relocateAgainstHtml, relocateCitations as relocateMany, type CitationAnchor, type CitationRelocation } from './research/anchors.js';
 import { AnchorStore } from './research/anchor-store.js';
-import { MenuPopup } from './ui/menu-popup.js';
 import { Researcher, type ResearchOptions, type ResearchOutcome } from './research/researcher.js';
-
-/**
- * Width of the page's classic scrollbar in the browsing view. Floating/docked panels are inset by
- * this much so they never sit on top of the scrollbar track (Chromium reserves 15px on Windows).
- */
-const PAGE_SCROLLBAR_GUTTER = 16;
-
-/** Width of the Command Deck HUD (docked and floating). */
-const PANEL_WIDTH = 420;
-
-/** Orb chip size and screen margin used when the deck is collapsed. The
- *  native view is larger than the visible chip so hover scale, the pulse
- *  ring and the count badge never clip at the view edge. */
-const DECK_ORB_SIZE = 56;
-const DECK_ORB_VIEW = 84;
-const DECK_ORB_VIEW_PAD = (DECK_ORB_VIEW - DECK_ORB_SIZE) / 2;
-const DECK_ORB_MARGIN = 12;
-/** Collab-mode toolbar pill: the orb is replaced by this bar. */
-const TOOLBAR_BAR_WIDTH = 248;
-
-/** Sidebar transition duration, shared by the native bounds animation and the panel's CSS reveal. */
-const SIDEBAR_TRANSITION_MS = 240;
 
 /** The result of a human-handoff read, or null when no human took over. */
 type HumanHandoffResult = {
@@ -718,7 +696,7 @@ export class BrowserChassis {
           try {
             const edit = JSON.parse(log.message.slice(COLLABORATION_CLASS_PREFIX.length));
             if (edit?.target) {
-              this.collaborationClassListener?.(
+              this.deckController.forwardClassEdit(
                 edit.target,
                 Array.isArray(edit.added) ? edit.added.map(String) : [],
                 Array.isArray(edit.removed) ? edit.removed.map(String) : [],
@@ -746,7 +724,7 @@ export class BrowserChassis {
     // Child-view bounds are relative to the content area (excluding the title
     // bar and menu), so size the page viewport from the content size.
     const [winWidth, winHeight] = this.mainWindow.getContentSize();
-    const rightPanelWidth = this.sidebarMode === 'docked' ? 420 : 0;
+    const rightPanelWidth = this.deckController.getMode() === 'docked' ? 420 : 0;
     // With tab bar, top bar height is 100px (64px navbar + 36px tab bar)
     const topBarHeight = 100;
 
@@ -761,8 +739,44 @@ export class BrowserChassis {
     };
   }
 
+  // ---- Deck chrome --------------------------------------------------------------------
+  // The panel view, its mode transitions, the orb geometry and the collab wiring
+  // live in DeckController; these delegations keep the chassis's public surface unchanged.
+
+  private readonly deckController = new DeckController({
+    window: () => this.mainWindow,
+    loadPanel: (view) => {
+      const devUrl = process.env.VITE_DEV_SERVER_URL;
+      if (devUrl) {
+        const url = new URL(devUrl);
+        url.searchParams.set('sidebar', '1');
+        view.webContents.loadURL(url.toString());
+      } else {
+        view.webContents.loadFile(path.join(__dirname, '../../dist/index.html'), {
+          query: { sidebar: '1' },
+        });
+      }
+    },
+    popupPreloadPath: path.join(__dirname, '../preload/index.js'),
+    activeWebContents: () => this.getActiveWebContents(),
+    pageUrl: () => this.getPageInfo().url,
+    log: (level, message) => this.addLog(level, message),
+    onModeChanged: () => this.tabManager?.updateActiveTabBounds(),
+    sendToShell: (channel, payload) => {
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.mainWindow.webContents.send(channel, payload);
+      }
+    },
+    onPanelLoaded: () => this.deckController.sendToPanel('chassis:decision-status', decisionStatus()),
+    stopSelection: () => this.stopCollaborationSelection(),
+  });
+
+  private setupSidebarView(): void {
+    this.deckController.setup();
+  }
+
   public getSidebarMode(): 'docked' | 'floating' | 'collapsed' {
-    return this.sidebarMode;
+    return this.deckController.getMode();
   }
 
   // ---- JEV (Just-Enough-View) page compaction -----------------------------------------
@@ -800,11 +814,36 @@ export class BrowserChassis {
     return this.jevController.getStatus();
   }
 
-  public async precheckJevPageRead(input: PageReadRequest): Promise<PrecheckPageReadResult> {
+  public async precheckJevPageRead(input: {
+    as: string;
+    region?: unknown;
+    budget?: number;
+    cursor?: unknown;
+    full?: boolean;
+  }): Promise<{ blocked: boolean; note?: string; refusal?: Record<string, any> }> {
     return this.jevController.precheckPageRead(input);
   }
 
-  public guardJevPageRead(input: GuardPageReadInput): GuardPageReadResult {
+  public guardJevPageRead(input: {
+    as: string;
+    region?: unknown;
+    budget?: number;
+    cursor?: unknown;
+    full?: boolean;
+    pageTokens: number;
+    url?: string;
+    title?: string;
+    content?: string;
+  }): {
+    allowed: boolean;
+    reason: string;
+    note?: string;
+    refusal?: {
+      page: { url: string; tokens: number; sections: number };
+      next: Array<Record<string, any>>;
+      override: Record<string, any>;
+    };
+  } {
     return this.jevController.guardPageRead(input);
   }
 
@@ -827,88 +866,25 @@ export class BrowserChassis {
     this.jevController.purge();
   }
 
+
   public getSidebarPageInset(): number {
-    if (!this.sidebarOverlayVisible) return 0;
-    if (this.sidebarMode !== 'floating') return 0;
-    return PANEL_WIDTH + PAGE_SCROLLBAR_GUTTER;
+    return this.deckController.pageInset();
   }
 
   public setSidebarMode(mode: 'docked' | 'floating' | 'collapsed'): void {
-    if (mode !== 'docked' && mode !== 'floating' && mode !== 'collapsed') return;
-    if (mode === 'docked' || mode === 'floating') this.lastOpenSidebarMode = mode;
-    const previous = this.sidebarMode;
-    this.sidebarMode = mode;
-    // Leaving collapsed mode also leaves collab mode.
-    if (mode !== 'collapsed' && this.collabMode) {
-      this.collabMode = false;
-      this.collabFocusIndex = -1;
-      void this.exitCollabModeOnPage();
-    }
-    this.addLog('action', `Sidebar mode: ${mode}`);
-    // Animate only real transitions; arriving in the requested mode again snaps.
-    this.positionSidebar(mode !== previous);
-    this.tabManager?.updateActiveTabBounds();
-    this.broadcastSidebarSurfaceState();
-  }
-
-  /**
-   * Interpolate the sidebar view into `target` bounds. Native views cannot be
-   * moved by CSS, so the main process steps the bounds on the same easing the
-   * panel's DOM reveal uses, keeping view and content in lockstep.
-   */
-  private animateSidebarBounds(target: Electron.Rectangle): void {
-    if (!this.mainWindow || !this.sidebarView) return;
-    if (this.sidebarBoundsAnimation) this.sidebarBoundsAnimation.cancelled = true;
-    const token = { cancelled: false };
-    this.sidebarBoundsAnimation = token;
-
-    const start = this.sidebarView.getBounds();
-    const dx = target.x - start.x;
-    const dy = target.y - start.y;
-    const dw = target.width - start.width;
-    const dh = target.height - start.height;
-    if (!dx && !dy && !dw && !dh) return;
-
-    const startedAt = Date.now();
-    const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
-
-    const step = (): void => {
-      if (token.cancelled || !this.sidebarView || !this.sidebarView.webContents) return;
-      const progress = Math.min(1, (Date.now() - startedAt) / SIDEBAR_TRANSITION_MS);
-      const eased = easeOutCubic(progress);
-      this.sidebarView.setBounds({
-        x: Math.round(start.x + dx * eased),
-        y: Math.round(start.y + dy * eased),
-        width: Math.round(start.width + dw * eased),
-        height: Math.round(start.height + dh * eased),
-      });
-      if (progress < 1) {
-        setTimeout(step, 16);
-      } else {
-        // Shrinking a transparent WebContentsView can leave stale pixels from
-        // the previous larger root layer on Windows; force a clean repaint.
-        this.sidebarView?.webContents.invalidate();
-      }
-    };
-    step();
+    this.deckController.setMode(mode);
   }
 
   public toggleSidebarMode(): void {
-    if (this.sidebarMode === 'collapsed') {
-      this.setSidebarMode(this.lastOpenSidebarMode);
-    } else {
-      this.lastOpenSidebarMode = this.sidebarMode;
-      this.setSidebarMode('collapsed');
-    }
+    this.deckController.toggleMode();
   }
 
   private sendToSurfaces(channel: string, payload: unknown): void {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send(channel, payload);
     }
-    if (this.sidebarView && !this.sidebarView.webContents.isDestroyed()) {
-      this.sidebarView.webContents.send(channel, payload);
-    }
+    const panel = this.deckController.getView()?.webContents;
+    if (panel && !panel.isDestroyed()) panel.send(channel, payload);
   }
 
   /** Broadcast an event to every render surface (shell and deck panel alike). */
@@ -916,307 +892,67 @@ export class BrowserChassis {
     this.sendToSurfaces(channel, payload);
   }
 
-  /**
-   * The authoritative deck surface state. The sidebar renderer applies this
-   * verbatim on boot, on every broadcast and after reloads, so DOM classes and
-   * native bounds can never drift apart.
-   */
   public getSidebarSurfaceState(): SidebarSurfaceState {
-    return {
-      mode: this.sidebarMode,
-      collabMode: this.collabMode,
-      collabEnabled: this.isCollabEnabled(),
-      orbEdge: this.orbEdge,
-    };
+    return this.deckController.surfaceState();
   }
 
-  /**
-   * Collab mode: while the deck is collapsed, the orb is replaced by a small
-   * collaborations toolbar (cycle notes, concise list, pick element) wired to
-   * the page overlay. Entering cancels the radial stage and any picking.
-   */
   public setCollabMode(open: boolean): void {
-    const next = Boolean(open);
-    if (next && !this.isCollabEnabled()) {
-      this.addLog('info', 'Collab mode is disabled — enable it in Settings → Experimental.');
-      return;
-    }
-    if (next === this.collabMode) return;
-    if (next && this.sidebarMode !== 'collapsed') this.setSidebarMode('collapsed');
-    this.collabMode = next;
-    this.collabFocusIndex = -1;
-    if (next) {
-      void this.enterCollabModeOnPage();
-    } else {
-      void this.exitCollabModeOnPage();
-    }
-    this.positionSidebar(true);
-    this.broadcastSidebarSurfaceState();
+    this.deckController.setCollabMode(open);
   }
 
-  /**
-   * Escape from the deck surface: cancels an armed picker, closes the element
-   * toolbar and leaves collab mode. The deck owns keyboard focus right after a
-   * radial-menu click, so page-level Escape handlers alone cannot see the key.
-   */
   public exitCollabUi(): void {
-    void this.stopCollaborationSelection();
-    if (this.collabMode) {
-      this.setCollabMode(false);
-      return;
-    }
-    try {
-      const wc = this.getActiveWebContents();
-      void wc
-        .executeJavaScript(
-          '(() => { window.__kuangCollabSelectionCancel && window.__kuangCollabSelectionCancel(); window.__hbCollabClearElementBar && window.__hbCollabClearElementBar(); })()',
-        )
-        .catch(() => undefined);
-    } catch {
-      // The active tab may be mid-navigation; nothing is left to clean up.
-    }
+    this.deckController.exitCollabUi();
   }
 
-  private async enterCollabModeOnPage(): Promise<void> {
-    try {
-      await this.overlayRefresher?.();
-      const wc = this.getActiveWebContents();
-      await wc.executeJavaScript('window.__hbCollabEnterMode && window.__hbCollabEnterMode()').catch(() => undefined);
-    } catch {
-      // The page may be navigating; the mode state remains and re-syncs on load.
-    }
-  }
-
-  private async exitCollabModeOnPage(): Promise<void> {
-    try {
-      await this.stopCollaborationSelection();
-      const wc = this.getActiveWebContents();
-      await wc.executeJavaScript('window.__hbCollabExitMode && window.__hbCollabExitMode()').catch(() => undefined);
-    } catch {
-      // The active tab may be closing or navigating.
-    }
-  }
-
-  /** The deck's page layer. Set by index.ts once the collaboration service exists. */
-  private collaborationThreadsProvider?: (filter: { url: string }) => CollaborationThread[];
-  private overlayRefresher?: () => Promise<void> | void;
-  private collaborationResolver?: (id: string) => Promise<unknown> | unknown;
-
-  /**
-   * Move the collab note cycle by `delta` (-1/1). The focused thread is
-   * flashed + scrolled into view by the page overlay (`__hbCollabShowThread`).
-   */
   public collabNavigate(delta: number): void {
-    if (!this.isCollabEnabled()) return;
-    const threads = this.collabThreads();
-    if (!threads.length) return;
-    const step = Math.sign(delta || 1);
-    const base = this.collabFocusIndex < 0 ? (step < 0 ? 0 : -1) : this.collabFocusIndex;
-    this.collabFocusIndex = (base + step + threads.length) % threads.length;
-    this.cycleTo(threads[this.collabFocusIndex].id);
+    this.deckController.navigate(delta);
   }
 
-  /** Apply focus to a thread id; ensures the page overlay exists first. */
-  private cycleTo(threadId: string): void {
-    void (async () => {
-      try {
-        await this.overlayRefresher?.();
-      } catch {
-        // Refresh failures are non-fatal; the focus attempt is the visible part.
-      }
-      this.collabShowThread(threadId);
-    })();
-  }
-
-  /** The same thread set the page overlay displays, in display order. */
-  private collabThreads(): CollaborationThread[] {
-    try {
-      return (this.collaborationThreadsProvider?.({ url: this.getPageInfo().url }) ?? [])
-        .filter((thread) => thread.status !== 'resolved');
-    } catch {
-      return [];
-    }
-  }
-
-  private collabShowThread(threadId: string): void {
-    try {
-      const wc = this.getActiveWebContents();
-      void wc.executeJavaScript(`window.__hbCollabShowThread && window.__hbCollabShowThread(${JSON.stringify(threadId)})`).catch(() => undefined);
-    } catch {
-      // Page may be mid-navigation; the overlay refreshs re-establishes it.
-    }
-  }
-
-  /**
-   * Toggle the concise note list — a themed MenuPopup with one row per open
-   * thread, anchored to the left of the toolbar pill. Clicking a row cycles to
-   * that note on the page.
-   */
   public collabToggleList(anchor?: { x: number; y: number; width: number; height: number }): void {
-    if (!this.isCollabEnabled()) return;
-    const pop = MenuPopup.shared(path.join(__dirname, '../preload/index.js'));
-    if (pop.isOpen) {
-      pop.dismiss();
-      return;
-    }
-    const threads = this.collabThreads();
-    const items = threads.length ? threads.map((thread, index) => {
-      const text = thread.messages[0]?.text || thread.intent || thread.target.text || '';
-      return {
-        id: thread.id,
-        label: `${index === this.collabFocusIndex ? '▸ ' : ''}${thread.target.text || thread.target.name || 'element'}`.slice(0, 40),
-        hint: `${thread.status} · ${text.slice(0, 46)}${text.length > 46 ? '…' : ''}`,
-      };
-    }) : [{ id: '__empty__', label: 'No open notes on this page', hint: 'Use the pen to select an element and add one.', disabled: true }];
-    const sidebarBounds = this.sidebarView?.getBounds();
-    const pillAnchor =
-      sidebarBounds && this.mainWindow && !this.mainWindow.isDestroyed()
-        ? { x: sidebarBounds.x, y: sidebarBounds.y, width: 0, height: 0 }
-        : (anchor ?? { x: 0, y: 0, width: 0, height: 0 });
-    void pop.open(this.mainWindow as BrowserWindow, pillAnchor, items, { align: 'left-of', itemHeight: 56, width: 320 })
-      .then((selection) => {
-        if (!selection || selection.id === '__empty__') return;
-        this.collabFocusIndex = threads.findIndex((thread) => thread.id === selection.id);
-        if (this.collabFocusIndex >= 0) this.cycleTo(selection.id);
-      });
+    this.deckController.toggleList(anchor);
   }
 
-  /** Resolve from the in-page annotation card, then remove its highlight and advance. */
   private async resolveCollaborationNote(threadId: string): Promise<void> {
-    if (!this.collaborationResolver) {
-      this.addLog('warn', 'Collaboration resolve action is unavailable.');
-      return;
-    }
-    const before = this.collabThreads();
-    const resolvedIndex = before.findIndex((thread) => thread.id === threadId);
-    try {
-      await this.collaborationResolver(threadId);
-      await this.overlayRefresher?.();
-    } catch (error: any) {
-      this.addLog('warn', `Could not resolve collaboration note: ${error?.message || error}`);
-      this.collabToast('Resolve failed — check the gateway.');
-      return;
-    }
-    const remaining = this.collabThreads();
-    this.collabFocusIndex = Math.min(resolvedIndex - 1, remaining.length - 1);
-    if (this.collabMode && remaining.length) this.collabNavigate(1);
-    else if (!remaining.length) this.collabFocusIndex = -1;
-    this.collabToast('Note resolved');
-  }
-
-  private collabToast(message: string): void {
-    try {
-      const wc = this.getActiveWebContents();
-      void wc
-        .executeJavaScript(`window.__hbCollabToast && window.__hbCollabToast(${JSON.stringify(message)})`)
-        .catch(() => undefined);
-    } catch {
-      // The page may be mid-navigation; the resolve itself already persisted.
-    }
+    await this.deckController.resolveNote(threadId);
   }
 
   /** Called by index.ts once the collaboration service exists. */
   public setCollaborationThreadsProvider(provider: (filter: { url: string }) => CollaborationThread[]): void {
-    this.collaborationThreadsProvider = provider;
+    this.deckController.setThreadsProvider(provider);
   }
 
   /** Ensure the page overlay (and its focus helper) is injected before navigating. */
   public setCollaborationOverlayRefresher(refresh: () => Promise<void> | void): void {
-    this.overlayRefresher = refresh;
+    this.deckController.setOverlayRefresher(refresh);
   }
 
   public setCollaborationResolver(resolve: (id: string) => Promise<unknown> | unknown): void {
-    this.collaborationResolver = resolve;
+    this.deckController.setResolver(resolve);
   }
 
-  private collaborationClassListener?: (target: CollaborationTarget, added: string[], removed: string[]) => void;
-
-  /** Experimental gate for collab mode; wired by index.ts to the persisted flag. */
-  private collabEnabledGate: () => boolean = () => true;
-
   public setCollabEnabledProvider(enabled: () => boolean): void {
-    this.collabEnabledGate = enabled;
-    if (!enabled()) this.setCollabMode(false);
-    this.broadcastSidebarSurfaceState();
+    this.deckController.setEnabledProvider(enabled);
   }
 
   public isCollabEnabled(): boolean {
-    try {
-      return this.collabEnabledGate();
-    } catch {
-      return false;
-    }
+    return this.deckController.isCollabEnabled();
   }
 
   /** Called by index.ts: forwards human class-list edits to the collab service. */
   public setCollaborationClassListener(listener: (target: CollaborationTarget, added: string[], removed: string[]) => void): void {
-    this.collaborationClassListener = listener;
-  }
-
-  private broadcastSidebarSurfaceState(): void {
-    this.sendToSurfaces('chassis:sidebar-state', this.getSidebarSurfaceState());
-  }
-
-  /** Re-assert bounds + classes after (re)loads so a reload can never strand a stale shape. */
-  private syncSidebarSurface(): void {
-    this.positionSidebar();
-    this.broadcastSidebarSurfaceState();
+    this.deckController.setClassListener(listener);
   }
 
   private positionSidebar(animate = false): void {
-    if (!this.mainWindow || !this.sidebarView) return;
-    // A snap (window resize, visibility change) invalidates a running
-    // transition; the direct setBounds below must be its final word.
-    if (this.sidebarBoundsAnimation) this.sidebarBoundsAnimation.cancelled = true;
-    if (!this.sidebarOverlayVisible) {
-      this.sidebarView.setBounds({ x: 0, y: 0, width: 0, height: 0 });
-      return;
-    }
+    this.deckController.position(animate);
+  }
 
-    // Child-view bounds are relative to the content area (excluding the title
-    // bar and menu), so read the content size instead of the outer size.
-    const [winWidth, winHeight] = this.mainWindow.getContentSize();
-    // Leave the page's right-edge scrollbar out from under the panel. The browsing view spans the
-    // full window width (floating panels sit *over* the page), so a panel flush to the right edge
-    // covers the scrollbar track completely and the page becomes undraggable by hand.
-    const scrollbarGutter = PAGE_SCROLLBAR_GUTTER;
-    const usableWidth = Math.max(0, winWidth - scrollbarGutter);
+  private setSidebarOverlayVisible(visible: boolean): void {
+    this.deckController.setOverlayVisible(visible);
+  }
 
-    if (this.sidebarMode === 'collapsed') {
-      // The collapsed deck shrinks to a free-floating orb chip anchored at a
-      // bottom corner, clear of the scrollbar track. The native view is the
-      // chip plus padding (hover scale, pulse ring, count badge must not clip).
-      // In collab mode the orb is replaced by a horizontal toolbar pill with
-      // its own sized view, same corner.
-      const orbView = { width: DECK_ORB_VIEW, height: DECK_ORB_VIEW };
-      const pillView = { width: TOOLBAR_BAR_WIDTH + 2 * DECK_ORB_VIEW_PAD, height: DECK_ORB_VIEW };
-      const viewSize = this.collabMode ? pillView : orbView;
-      const anchorX = this.orbEdge === 'left'
-        ? Math.max(0, DECK_ORB_MARGIN - DECK_ORB_VIEW_PAD)
-        : usableWidth - DECK_ORB_MARGIN + DECK_ORB_VIEW_PAD;
-      const bounds = {
-        x: Math.max(0, anchorX - viewSize.width),
-        y: Math.max(0, winHeight - DECK_ORB_MARGIN + DECK_ORB_VIEW_PAD - viewSize.height),
-        width: viewSize.width,
-        height: viewSize.height,
-      };
-      if (animate) this.animateSidebarBounds(bounds);
-      else {
-        this.sidebarView.setBounds(bounds);
-        this.sidebarView.webContents.invalidate();
-      }
-      return;
-    }
-
-    const width = PANEL_WIDTH;
-    const bounds = {
-      x: Math.max(0, usableWidth - width),
-      y: 100,
-      width: Math.min(width, usableWidth),
-      height: Math.max(0, winHeight - 100),
-    };
-    if (animate) this.animateSidebarBounds(bounds);
-    else this.sidebarView.setBounds(bounds);
+  private bringSidebarToFront(): void {
+    this.deckController.bringToFront();
   }
 
   // ---- Research session ---------------------------------------------------------------
@@ -1271,66 +1007,6 @@ export class BrowserChassis {
 
   private researchError(code: string, message: string): Error & { code: string } {
     return researchError(code, message);
-  }
-
-  private setSidebarOverlayVisible(visible: boolean): void {
-    this.sidebarOverlayVisible = visible;
-    this.positionSidebar();
-  }
-
-  private bringSidebarToFront(): void {
-    if (!this.mainWindow || !this.sidebarView) return;
-    try {
-      this.mainWindow.contentView.removeChildView(this.sidebarView);
-    } catch {
-      // Not currently attached.
-    }
-    this.mainWindow.contentView.addChildView(this.sidebarView);
-    this.positionSidebar();
-  }
-
-  private setupSidebarView(): void {
-    if (!this.mainWindow) return;
-
-    this.sidebarView = new WebContentsView({
-      webPreferences: {
-        preload: path.join(__dirname, '../preload/index.js'),
-        nodeIntegration: false,
-        contextIsolation: true,
-        // The preload is an ESM bundle; sandboxed preloads must be CJS. The
-        // overlay only loads our local index.html, so context isolation is the
-        // relevant boundary here.
-        sandbox: false,
-        backgroundThrottling: false,
-      },
-    });
-    this.sidebarView.setBackgroundColor('#00000000');
-    this.mainWindow.contentView.addChildView(this.sidebarView);
-
-    try {
-      const devUrl = process.env.VITE_DEV_SERVER_URL;
-      if (devUrl) {
-        const url = new URL(devUrl);
-        url.searchParams.set('sidebar', '1');
-        this.sidebarView.webContents.loadURL(url.toString());
-      } else {
-        this.sidebarView.webContents.loadFile(path.join(__dirname, '../../dist/index.html'), {
-          query: { sidebar: '1' },
-        });
-      }
-    } catch (err: any) {
-      this.addLog('warn', `Sidebar overlay failed to load: ${err?.message || err}`);
-    }
-
-    this.sidebarView.webContents.on('did-finish-load', () => {
-      this.sidebarView?.webContents.send('chassis:decision-status', decisionStatus());
-      // A page reload resets the sidebar DOM to its optimistic state while the
-      // native bounds keep the previous shape; re-assert both so they can never
-      // diverge (this is the "stuck open" desync class of bugs).
-      this.syncSidebarSurface();
-    });
-
-    this.positionSidebar();
   }
 
   public getActiveWebContents(): Electron.WebContents {
@@ -1587,59 +1263,17 @@ export class BrowserChassis {
     ipcMain.handle('chassis:get-sidebar-mode', () => this.getSidebarMode());
     ipcMain.handle('chassis:get-sidebar-state', () => this.getSidebarSurfaceState());
     // TEMP instrumentation: live bounds for verifying collab-mode geometry.
-    ipcMain.handle('chassis:get-sidebar-bounds', () => this.sidebarView?.getBounds() ?? null);
+    ipcMain.handle('chassis:get-sidebar-bounds', () => this.deckController.getView()?.getBounds() ?? null);
     ipcMain.on('chassis:set-sidebar-mode', (_: any, mode: 'docked' | 'floating' | 'collapsed') =>
       this.setSidebarMode(mode),
     );
     ipcMain.on('chassis:toggle-sidebar-mode', () => this.toggleSidebarMode());
 
     // Orb drag choreography (only meaningful while collapsed).
-    ipcMain.on('chassis:set-sidebar-orb-edge', (_: any, edge: 'left' | 'right') => {
-      const next = edge === 'left' ? 'left' : 'right';
-      if (next === this.orbEdge) return;
-      this.orbEdge = next;
-      if (this.sidebarMode === 'collapsed') this.positionSidebar(true);
-      this.broadcastSidebarSurfaceState();
-    });
+    ipcMain.on('chassis:set-sidebar-orb-edge', (_: any, edge: 'left' | 'right') => this.deckController.setOrbEdge(edge));
     // Live drag: forward pointer deltas, clamped inside the content area.
-    ipcMain.on('chassis:orbit-drag', (_: any, delta: { dx: number; dy: number }) => {
-      if (this.sidebarMode !== 'collapsed') return;
-      if (!this.mainWindow || !this.sidebarView) return;
-      if (this.sidebarBoundsAnimation) this.sidebarBoundsAnimation.cancelled = true;
-      const [winWidth, winHeight] = this.mainWindow.getContentSize();
-      const current = this.sidebarView.getBounds();
-      const dx = Number(delta?.dx);
-      const dy = Number(delta?.dy);
-      const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(value, max));
-      // The view is chip+padding; keep the visible chip inside the page area.
-      const maxX = Math.max(0, winWidth - PAGE_SCROLLBAR_GUTTER - DECK_ORB_VIEW + DECK_ORB_VIEW_PAD - DECK_ORB_MARGIN);
-      const x = clamp(
-        Number.isFinite(dx) ? current.x + dx : current.x,
-        0,
-        maxX,
-      );
-      const y = clamp(
-        Number.isFinite(dy) ? current.y + dy : current.y,
-        100,
-        Math.max(100, winHeight - DECK_ORB_VIEW + DECK_ORB_VIEW_PAD - DECK_ORB_MARGIN),
-      );
-      this.sidebarView.setBounds({
-        x: Math.round(x),
-        y: Math.round(y),
-        width: DECK_ORB_VIEW,
-        height: DECK_ORB_VIEW,
-      });
-    });
-    // Drop: dock to the nearest vertical edge with the standard margin.
-    ipcMain.on('chassis:orbit-drag-end', () => {
-      if (this.sidebarMode !== 'collapsed') return;
-      if (!this.mainWindow || !this.sidebarView) return;
-      const [winWidth] = this.mainWindow.getContentSize();
-      const current = this.sidebarView.getBounds();
-      this.orbEdge = current.x + current.width / 2 < winWidth / 2 ? 'left' : 'right';
-      this.positionSidebar(true);
-      this.broadcastSidebarSurfaceState();
-    });
+    ipcMain.on('chassis:orbit-drag', (_: any, delta: { dx: number; dy: number }) => this.deckController.dragOrb(delta));
+    ipcMain.on('chassis:orbit-drag-end', () => this.deckController.endOrbDrag());
 
     // Collab mode: toolbar pill, note cycling, concise list.
     ipcMain.on('chassis:set-collab-mode', (_: any, open: boolean) => this.setCollabMode(Boolean(open)));

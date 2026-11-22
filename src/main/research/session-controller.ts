@@ -28,6 +28,7 @@ export interface ResearchSessionDeps {
   log: (level: 'info' | 'warn' | 'action', message: string) => void;
 }
 
+/** When to use: the chassis — own the stealth research session, its settings and WAF cooldowns. */
 export class ResearchSessionController {
   private readonly deps: ResearchSessionDeps;
   private settings: ResearchSettings = DEFAULT_RESEARCH_SETTINGS;

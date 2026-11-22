@@ -52,6 +52,7 @@ const refusalNext = [
 /** The override hint every refusal carries. */
 const refusalOverride = { parameter: 'full', value: true, note: 'bypasses the funnel and is logged' };
 
+/** When to use: the chassis — own the JEV gate, funnel, loop breaker, stats and depth store. */
 export class JevController {
   private readonly deps: JevControllerDeps;
   private readonly engine = new JevEngine();
