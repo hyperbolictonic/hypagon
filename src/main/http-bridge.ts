@@ -138,6 +138,8 @@ export function startHttpBridge(
       });
 
     // Helper to send JSON
+    // The success tail most routes share; failures keep their explicit sendJson calls.
+    const sendOk = (result: any, extra: Record<string, unknown> = {}) => sendJson({ success: true, ...result, ...extra });
     const sendJson = (data: any, status = 200) => {
       const duration = Date.now() - startTime;
       const statusColor = status >= 400 ? '\x1b[31m' : '\x1b[32m';
@@ -217,20 +219,20 @@ export function startHttpBridge(
         return;
       }
       if (req.method === 'POST' && pathname === '/metrics/reset') {
-        sendJson({ success: true, ...resetMetrics() });
+        sendOk(resetMetrics());
         return;
       }
 
       if (req.method === 'GET' && pathname === '/human/status') {
-        sendJson({ success: true, ...chassis.getHumanStatus() });
+        sendOk(chassis.getHumanStatus());
         return;
       }
       if (req.method === 'POST' && pathname === '/human/takeover') {
-        sendJson({ success: true, ...chassis.takeOverHuman() });
+        sendOk(chassis.takeOverHuman());
         return;
       }
       if (req.method === 'POST' && pathname === '/human/resume') {
-        sendJson({ success: true, ...chassis.resumeHuman() });
+        sendOk(chassis.resumeHuman());
         return;
       }
 
@@ -305,7 +307,7 @@ export function startHttpBridge(
           policy: body?.policy,
           forceRemove: body?.force_remove === true || body?.forceRemove === true,
         });
-        sendJson({ success: true, result });
+        sendOk({ result });
         return;
       }
 
@@ -320,7 +322,7 @@ export function startHttpBridge(
           return;
         }
         const result = await chassis.clickElement(selector, coords);
-        sendJson({ success: true, result });
+        sendOk({ result });
         return;
       }
 
@@ -329,28 +331,28 @@ export function startHttpBridge(
         const selector = body.selector || body.element || body.target;
         const text = body.text ?? body.value ?? body.content ?? body.input ?? '';
         const result = await chassis.typeText(String(text), selector);
-        sendJson({ success: true, result });
+        sendOk({ result });
         return;
       }
 
       if (req.method === 'POST' && pathname === '/form/fill') {
         const body = await readBody();
         const result = await chassis.fillForm(body.fields || {}, body.submitSelector);
-        sendJson({ success: true, result });
+        sendOk({ result });
         return;
       }
 
       if (req.method === 'POST' && pathname === '/press-key') {
         const body = await readBody();
         const result = await chassis.pressKey(body.key);
-        sendJson({ success: true, result });
+        sendOk({ result });
         return;
       }
 
       if (req.method === 'POST' && pathname === '/scroll') {
         const body = await readBody();
         const result = await chassis.scrollPage(body.direction || 'down', body.amount || 400);
-        sendJson({ success: true, result });
+        sendOk({ result });
         return;
       }
 
@@ -407,7 +409,7 @@ export function startHttpBridge(
         const maxFiles = body.maxFiles !== undefined ? Number(body.maxFiles) : 50;
         const maxAgeMs = body.maxAgeDays !== undefined ? Number(body.maxAgeDays) * 86400000 : 7 * 86400000;
         const cleanupResult = chassis.cleanupScreenshots(maxFiles, maxAgeMs);
-        sendJson({ success: true, ...cleanupResult });
+        sendOk(cleanupResult);
         return;
       }
 
@@ -426,7 +428,7 @@ export function startHttpBridge(
           return;
         }
         const result = await chassis.evaluateJavaScript(script);
-        sendJson({ success: true, result });
+        sendOk({ result });
         return;
       }
 
@@ -440,7 +442,7 @@ export function startHttpBridge(
           skipHitTest: body?.skip_hit_test === true,
           deep: body?.deep === true,
         });
-        sendJson({ success: true, ...facts });
+        sendOk(facts);
         return;
       }
 
@@ -464,7 +466,7 @@ export function startHttpBridge(
           skipHitTest: body?.skip_hit_test === true,
           maxSide: body?.max_side !== undefined ? Number(body.max_side) : undefined,
         });
-        sendJson({ success: true, ...result });
+        sendOk(result);
         return;
       }
 
@@ -514,7 +516,7 @@ export function startHttpBridge(
           maxStringLength: body.maxStringLength || body.max_string_length,
           filterPredicate: body.filterPredicate || body.filter_predicate || body.filter,
         });
-        sendJson({ success: true, ...result });
+        sendOk(result);
         return;
       }
 
@@ -527,7 +529,7 @@ export function startHttpBridge(
           saveToDisk: body.saveToDisk ?? body.save_to_disk,
           forceRerender: body.forceRerender ?? body.force_rerender,
         });
-        sendJson({ success: true, ...result });
+        sendOk(result);
         return;
       }
 
@@ -540,7 +542,7 @@ export function startHttpBridge(
           harvestToCortex: body.harvestToCortex ?? body.harvest_to_cortex,
           waitUntilIdleMs: body.waitUntilIdleMs ?? body.wait_until_idle_ms,
         });
-        sendJson({ success: true, ...result });
+        sendOk(result);
         return;
       }
 
@@ -595,7 +597,7 @@ export function startHttpBridge(
         if (body.action === 'back') result = await chassis.goBack();
         else if (body.action === 'forward') result = await chassis.goForward();
         else if (body.action === 'reload') result = await chassis.reload();
-        sendJson({ success: true, result });
+        sendOk({ result });
         return;
       }
 
@@ -726,7 +728,7 @@ export function startHttpBridge(
         const body = await readBody();
         const since = body?.since !== undefined && body.since !== null && body.since !== '' ? Number(body.since) : undefined;
         const diff = await chassis.getPrimitives().diff(isNaN(Number(since)) ? undefined : since);
-        sendJson({ success: true, ...diff });
+        sendOk(diff);
         return;
       }
 
@@ -742,7 +744,7 @@ export function startHttpBridge(
           pollMs: body.poll_ms ?? body.pollMs,
           require: body.require === 'all' ? 'all' : 'any',
         });
-        sendJson({ success: true, ...result });
+        sendOk(result);
         return;
       }
 
@@ -750,7 +752,7 @@ export function startHttpBridge(
         const body = await readBody();
         const conditions = Array.isArray(body?.conditions) ? body.conditions : body?.condition ? [body.condition] : [];
         const result = await chassis.getPrimitives().expect(conditions);
-        sendJson({ success: true, ...result });
+        sendOk(result);
         return;
       }
 
@@ -787,7 +789,7 @@ export function startHttpBridge(
           }
         }
         // 200 with a status field: the transcript matters more than the HTTP code here.
-        sendJson({ success: true, ...result, recipe });
+        sendOk(result, { recipe });
         return;
       }
       if (req.method === 'GET' && pathname === '/decisions') {
@@ -797,7 +799,7 @@ export function startHttpBridge(
       }
       if (pathname === '/decide' && (req.method === 'GET' || req.method === 'POST')) {
         if (req.method === 'GET') {
-          sendJson({ success: true, ...decisionStatus() });
+          sendOk(decisionStatus());
           return;
         }
         const body = await readBody();
@@ -912,7 +914,7 @@ export function startHttpBridge(
             (result as any).hint =
               'No deterministic gate matched (no age-verification or CAPTCHA copy). The agent decides: if this is a compliance boundary — age, CAPTCHA, payment, identity — call request_human_intervention; otherwise choose the next step yourself.';
           }
-          sendJson({ success: true, ...result });
+          sendOk(result);
         } else {
           const code = result.error?.code;
           // A sensitive gate is a hand-off, not just an error: raise the HIL request from Kuang so
@@ -963,7 +965,7 @@ export function startHttpBridge(
           limit: body?.limit !== undefined ? Number(body.limit) : undefined,
           full: body?.full === true,
         });
-        sendJson({ success: true, ...obs });
+        sendOk(obs);
         return;
       }
 
@@ -980,21 +982,21 @@ export function startHttpBridge(
           maxFrames: body?.max_frames !== undefined ? Number(body.max_frames) : undefined,
           timeoutMs: body?.timeout_ms !== undefined ? Number(body.timeout_ms) : undefined,
         });
-        sendJson({ success: true, ...data });
+        sendOk(data);
         return;
       }
 
       if (req.method === 'POST' && pathname === '/llm/surface') {
         const body = await readBody();
         const report = await chassis.probeLlmSurface(body?.url);
-        sendJson({ success: true, ...report });
+        sendOk(report);
         return;
       }
 
       if (req.method === 'POST' && pathname === '/llm/fetch') {
         const body = await readBody();
         const result = await chassis.fetchLlmSurface({ url: body?.url, as: body?.as });
-        sendJson({ success: true, ...result });
+        sendOk(result);
         return;
       }
 
@@ -1006,7 +1008,7 @@ export function startHttpBridge(
           cursor: body?.cursor,
           as: body?.as,
         });
-        sendJson({ success: true, ...result });
+        sendOk(result);
         return;
       }
 
@@ -1018,7 +1020,7 @@ export function startHttpBridge(
           urlTemplate: body?.url_template ?? body?.urlTemplate,
           max: body?.max_results ?? body?.max,
         });
-        sendJson({ success: true, ...outcome });
+        sendOk(outcome);
         return;
       }
 
@@ -1037,7 +1039,7 @@ export function startHttpBridge(
           concurrency: body?.concurrency,
           anchorsFor: body?.anchors_for ?? body?.anchorsFor,
         });
-        sendJson({ success: true, ...outcome });
+        sendOk(outcome);
         return;
       }
 
@@ -1053,7 +1055,7 @@ export function startHttpBridge(
           harvestToCortex: body?.harvest_to_cortex ?? body?.harvestToCortex,
           preferLlm: body?.prefer_llm ?? body?.preferLlm,
         });
-        sendJson({ success: true, ...outcome });
+        sendOk(outcome);
         return;
       }
 
@@ -1064,7 +1066,7 @@ export function startHttpBridge(
           fingerprint: body?.fingerprint,
           threshold: body?.threshold,
         });
-        sendJson({ success: true, ...result });
+        sendOk(result);
         return;
       }
 
@@ -1074,7 +1076,7 @@ export function startHttpBridge(
           url: body?.url,
           maxUrls: body?.max_urls ?? body?.maxUrls,
         });
-        sendJson({ success: true, ...result });
+        sendOk(result);
         return;
       }
 
@@ -1089,7 +1091,7 @@ export function startHttpBridge(
           maxScrolls: body?.max_scrolls ?? body?.maxScrolls,
           max: body?.max !== undefined ? Number(body.max) : undefined,
         });
-        sendJson({ success: true, ...data });
+        sendOk(data);
         return;
       }
 
@@ -1103,7 +1105,7 @@ export function startHttpBridge(
           maxSteps: body?.max_steps !== undefined ? Number(body.max_steps) : undefined,
           restore: body?.restore !== false,
         });
-        sendJson({ success: true, ...result });
+        sendOk(result);
         return;
       }
 
@@ -1123,7 +1125,7 @@ export function startHttpBridge(
           includeFrames: body?.include_frames === true,
           refresh: body?.refresh === true,
         });
-        sendJson({ success: true, ...data });
+        sendOk(data);
         return;
       }
 
@@ -1152,7 +1154,7 @@ export function startHttpBridge(
           dryRun: body?.dry_run === true || body?.dryRun === true,
           includeOffscreen: body?.include_offscreen === undefined ? true : body.include_offscreen === true,
         });
-        sendJson({ success: true, ...result });
+        sendOk(result);
         return;
       }
 
@@ -1162,7 +1164,7 @@ export function startHttpBridge(
       if (req.method === 'POST' && pathname === '/context/save') {
         const body = await readBody();
         const result = await chassis.saveSession(body?.name);
-        sendJson({ success: true, result });
+        sendOk({ result });
         return;
       }
 
@@ -1173,7 +1175,7 @@ export function startHttpBridge(
           return;
         }
         const result = await chassis.restoreSession(body.name);
-        sendJson({ success: true, result });
+        sendOk({ result });
         return;
       }
 
