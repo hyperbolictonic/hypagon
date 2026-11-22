@@ -85,20 +85,10 @@ import { PrerenderEngine, type PrerenderOptions } from './prerender/prerender-en
 import { LlmSurface, type LlmSurfaceReport, type LlmSurfaceKind, type LlmFetchResult, type ReadUrlResult } from './llm/llm-surface.js';
 import { SearchHub, type SearchOutcome } from './search/search-engine.js';
 import { Crawler, type CrawlOptions, type CrawlOutcome, type HumanAssistInfo } from './crawl/crawler.js';
-import { anchorHighlights, relocateCitation as relocateAgainstHtml, relocateCitations as relocateMany, type CitationAnchor, type CitationRelocation } from './research/anchors.js';
-import { AnchorStore } from './research/anchor-store.js';
+import { type CitationAnchor, type CitationRelocation } from './research/anchors.js';
+import { CitationController, type HumanHandoffResult, type RevalidationSummary } from './research/citation-controller.js';
 import { Researcher, type ResearchOptions, type ResearchOutcome } from './research/researcher.js';
 
-/** The result of a human-handoff read, or null when no human took over. */
-type HumanHandoffResult = {
-  title: string;
-  markdown: string;
-  links: string[];
-  status: number;
-  humanAssisted?: boolean;
-  humanMs?: number;
-  anchors?: CitationAnchor[];
-} | null;
 
 export class BrowserChassis {
   private mainWindow: BrowserWindow | null = null;
@@ -129,27 +119,10 @@ export class BrowserChassis {
   private actionLedger: ActionLedger;
   /** Reused off-screen view for detached reads (SERPs, Markdown alternates, crawls). */
   /** Origins a human has authenticated; skip the anonymous static tier for them. */
-  private warmOrigins = new Set<string>();
   /** Only one human hand-off at a time (the shared research view is serialized). */
-  private hilActive = false;
   /** Why the last hand-off was skipped (surfaced in the WAF error). */
-  private handoffSkipReason: string | null = null;
-  #anchorStore: AnchorStore | null = null;
   /** Responsive device emulation; one controller for the whole browser. */
   private viewportController: ViewportController | null = null;
-
-  private get anchorStore(): AnchorStore {
-    if (!this.#anchorStore) {
-      let dir = process.cwd();
-      try {
-        dir = app.getPath('userData');
-      } catch {
-        /* fall back to the working directory */
-      }
-      this.#anchorStore = new AnchorStore(path.join(dir, 'research-anchors.json'));
-    }
-    return this.#anchorStore;
-  }
 
   private sidebarView: WebContentsView | null = null;
   private sidebarMode: 'docked' | 'floating' | 'collapsed' = 'floating';
@@ -400,7 +373,7 @@ export class BrowserChassis {
           return { ok: false as const, reason: 'static tier disabled in settings', disabled: true };
         }
         try {
-          if (this.warmOrigins.has(new URL(url).origin)) {
+          if (this.citationController.originIsWarm(url)) {
             // A human authenticated this origin in the real browser; keep the cookie and the
             // browser together rather than replaying the session through a static client.
             return {
@@ -428,8 +401,7 @@ export class BrowserChassis {
         }
         let anchors: CitationAnchor[] | undefined;
         if (pageOpts?.anchorsFor) {
-          anchors = await anchorHighlights(outcome.result.body, pageOpts.anchorsFor);
-          if (anchors.length) this.anchorStore.upsert(url, anchors);
+          anchors = (await this.citationController.anchorFromHtml(url, outcome.result.body, pageOpts.anchorsFor)) ?? [];
         }
         return {
           ok: true as const,
@@ -2980,392 +2952,39 @@ export class BrowserChassis {
     return this.getViewportBounds();
   }
 
-  /**
-   * Can a human actually do anything on this page?
-   *
-   * A bare 403 ("Access Denied", "Request blocked") has no control to interact with; showing it
-   * only interrupts the run. A real challenge has a CAPTCHA widget, a credential/OTP field, a form,
-   * or an explicit verify/continue control.
-   */
-  private async probeHumanActionable(
-    wc: Electron.WebContents,
-  ): Promise<{ actionable: boolean; why: string }> {
-    const script = `(() => {
-      const visible = (el) => {
-        try {
-          const r = el.getBoundingClientRect();
-          if (r.width < 4 || r.height < 4) return false;
-          const s = getComputedStyle(el);
-          return s.visibility !== 'hidden' && s.display !== 'none' && Number(s.opacity) > 0.05;
-        } catch (e) { return false; }
-      };
-      const anyVisible = (sel) => {
-        try {
-          for (const el of document.querySelectorAll(sel)) if (visible(el)) return true;
-        } catch (e) {}
-        return false;
-      };
+  // ---- Citations & human hand-off -----------------------------------------------------
+  // The anchor store, warm origins, hand-off state and the citation fetch/relocate
+  // pipeline live in CitationController.
 
-      const captcha = [
-        'iframe[src*="challenges.cloudflare.com"]',
-        'iframe[src*="hcaptcha.com"]',
-        'iframe[src*="recaptcha"]',
-        'iframe[src*="captcha"]',
-        '.cf-turnstile', '.h-captcha', '.g-recaptcha', '[data-sitekey]',
-      ].find(anyVisible);
+  private readonly citationController = new CitationController({
+    window: () => this.mainWindow,
+    detachedView: this.detachedView,
+    hilManager: () => this.hilManager,
+    researchSettings: () => this.researchSettings,
+    viewportBounds: () => this.computeViewportBounds(),
+    reassertViewport: () => this.reassertViewport(),
+    activeWebContents: () => this.getActiveWebContents(),
+    log: (level, message) => this.addLog(level, message),
+  });
 
-      const credential = [
-        'input[type="password"]',
-        'input[autocomplete="one-time-code"]',
-        'input[name*="otp" i]',
-        'input[name*="code" i]',
-        'input[type="email"]',
-      ].find(anyVisible);
-
-      const form = anyVisible('form') && anyVisible('form button, form input[type="submit"]');
-      const control = anyVisible('button, [role="button"], input[type="submit"], input[type="checkbox"], input[type="radio"]');
-      const text = (document.body ? document.body.innerText : '').toLowerCase();
-      const verify = /verify|human|robot|check|continue|login|sign in|unusual traffic|challenge/.test(text);
-      const hardBlock =
-        /access denied|request blocked|you have been blocked|forbidden|banned|not allowed|ip has been/.test(text) &&
-        !captcha && !credential && !form;
-
-      if (captcha) return { actionable: true, why: 'captcha widget' };
-      if (credential) return { actionable: true, why: 'credential/OTP field' };
-      if (form) return { actionable: true, why: 'form' };
-      if (hardBlock) return { actionable: false, why: 'hard block with no controls' };
-      if (control && verify) return { actionable: true, why: 'interactive control' };
-      return { actionable: false, why: 'no interactive element' };
-    })()`;
-
-    try {
-      const result = await wc.executeJavaScript(script);
-      if (result && typeof result.actionable === 'boolean' && typeof result.why === 'string') {
-        return result;
-      }
-    } catch {
-      /* page not scriptable yet */
-    }
-    return { actionable: true, why: 'probe unavailable' };
-  }
-
-  /** Parse the live rendered page and fingerprint the blocks behind matching highlights. */
-  /** Revalidate a stored citation anchor against the page's current markup. */
-  /** Fetch a URL for citation work, following the research tier policy. */
-  private async fetchCitationHtml(url: string): Promise<{
-    html: string;
-    status: number;
-    via: 'static' | 'render';
-    error?: string;
-  }> {
-    let html = '';
-    let status = 0;
-    let via: 'static' | 'render' = 'render';
-
-    if (this.researchSettings.preferStatic) {
-      try {
-        const outcome = await fetchStatic(url);
-        if (outcome.kind === 'ok' && outcome.result.status < 400) {
-          html = outcome.result.body;
-          status = outcome.result.status;
-          via = 'static';
-        }
-      } catch {
-        /* fall through to render */
-      }
-    }
-
-    if (!html) {
-      const rendered = await this.loadDetached<string>(
-        url,
-        'document.documentElement.outerHTML',
-        { timeoutMs: 25_000, settleMs: 400 },
-      );
-      html = typeof rendered.result === 'string' ? rendered.result : '';
-      status = rendered.status;
-      via = 'render';
-    }
-
-    if (!html) return { html: '', status, via, error: 'could not read the page' };
-
-    // Judge the challenge on visible text: raw HTML contains scripts/meta that can trip a marker.
-    const visible = html
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 4000);
-    if (looksLikeChallenge(status, visible)) {
-      return { html: '', status, via, error: 'challenge page' };
-    }
-
-    return { html, status, via };
-  }
-
-  /** Revalidate a stored citation anchor against the page's current markup. */
   public async relocateCitation(opts: {
     url: string;
     fingerprint: unknown;
     threshold?: number;
   }): Promise<CitationRelocation> {
-    if (!opts?.url || typeof opts.url !== 'string') {
-      throw this.researchError('BAD_REQUEST', 'relocate_citation needs a url.');
-    }
-    if (!opts.fingerprint || typeof opts.fingerprint !== 'object') {
-      throw this.researchError('BAD_REQUEST', 'relocate_citation needs a fingerprint object.');
-    }
-
-    const fetched = await this.fetchCitationHtml(opts.url);
-    if (fetched.error) {
-      return {
-        found: false,
-        score: null,
-        path: null,
-        text: null,
-        candidates: [],
-        via: fetched.via,
-        error: fetched.error,
-      };
-    }
-
-    const result = await relocateAgainstHtml(fetched.html, opts.fingerprint as any, opts.threshold ?? 40);
-    return { ...result, via: fetched.via };
+    return this.citationController.relocateCitation(opts);
   }
 
-  /** Revalidate every stored anchor for one URL (or the most recent URLs). */
-  public async revalidateStored(opts: { url?: string; maxUrls?: number } = {}): Promise<{
-    urls: number;
-    checked: number;
-    found: number;
-    missing: number;
-    results: Array<{ url: string; checked: number; found: number; error?: string }>;
-  }> {
-    const urls = opts.url
-      ? [opts.url]
-      // Each URL is fetched sequentially with a 25s limit. Keep a single call bounded so an agent
-      // cannot pin the bridge for hours by asking for every stored URL at once.
-      : this.anchorStore.urls().slice(0, Math.min(25, Math.max(1, Number(opts.maxUrls) || 5)));
-
-    let checked = 0;
-    let found = 0;
-    const results: Array<{ url: string; checked: number; found: number; error?: string }> = [];
-
-    for (const url of urls) {
-      const records = this.anchorStore.list(url);
-      if (records.length === 0) continue;
-
-      const fetched = await this.fetchCitationHtml(url);
-      if (fetched.error) {
-        results.push({ url, checked: 0, found: 0, error: fetched.error });
-        continue;
-      }
-
-      const relocations = await relocateMany(
-        fetched.html,
-        records.map((record) => record.fingerprint),
-        40,
-      );
-      this.anchorStore.applyChecks(url, relocations);
-
-      const urlFound = relocations.filter((result) => result.found).length;
-      checked += relocations.length;
-      found += urlFound;
-      results.push({ url, checked: relocations.length, found: urlFound });
-    }
-
-    return { urls: results.length, checked, found, missing: checked - found, results };
+  public async revalidateStored(opts: { url?: string; maxUrls?: number } = {}): Promise<RevalidationSummary> {
+    return this.citationController.revalidateStored(opts);
   }
 
-  /**
-   * Human hand-off for a challenged page.
-   *
-   * Research renders in `persist:hypagon-research`; solving the challenge in a normal browsing tab
-   * would populate a different cookie jar. This temporarily attaches the shared research util view
-   * to the window so the human solves it in the same session, then harvests that live view.
-   */
   private async attemptHumanHandoff(
     url: string,
     onHuman?: (info: HumanAssistInfo) => void,
     anchorsFor?: string,
   ): Promise<HumanHandoffResult> {
-    // The util view is shared with every detached read. Hold its queue for the whole hand-off so a
-    // concurrent search/crawl cannot navigate the challenge out from under the human.
-    return this.withUtilView(() => this.attemptHumanHandoffExclusive(url, onHuman, anchorsFor));
-  }
-
-  private async attemptHumanHandoffExclusive(
-    url: string,
-    onHuman?: (info: HumanAssistInfo) => void,
-    anchorsFor?: string,
-  ): Promise<HumanHandoffResult> {
-    const win = this.mainWindow;
-    if (!win || win.isDestroyed()) return null;
-    if (process.env.HYPAGON_HIL === '0') return null;
-    if (!this.researchSettings.humanInLoop) return null;
-    if (this.hilActive) return null;
-
-    this.handoffSkipReason = null;
-    this.hilActive = true;
-    const view = this.detachedView.getView();
-    const wc = view.webContents;
-    let attached = false;
-    let humanMs = 0;
-
-    try {
-      // A queued detached read can run between the failed render and this hand-off. Reload the
-      // challenged URL when the view no longer shows it, so the human never solves another page.
-      if (wc.getURL() !== url) {
-        try {
-          await wc.loadURL(url);
-        } catch {
-          /* probe whatever committed */
-        }
-      }
-
-      const probe = await this.probeHumanActionable(wc);
-      if (!probe.actionable && process.env.HYPAGON_HIL_FORCE !== '1') {
-        this.handoffSkipReason = probe.why;
-        this.addLog('info', `Skipping human hand-off for ${url}: ${probe.why}.`);
-        return null;
-      }
-
-      win.contentView.addChildView(view);
-      attached = true;
-      view.setBounds(await this.computeViewportBounds());
-      win.show();
-      win.focus();
-      // The hand-off page is a WebContentsView, not a tab: give it keyboard focus so F5/Ctrl+R
-      // reach it, and route reload explicitly (the app menu reloads the active tab otherwise).
-      try {
-        wc.focus();
-      } catch {
-        /* focus is best-effort */
-      }
-      const onKey = (event: Electron.Event, input: Electron.Input) => {
-        const reload =
-          input.key === 'F5' || ((input.control || input.meta) && input.key.toLowerCase() === 'r');
-        if (reload) {
-          event.preventDefault();
-          wc.reload();
-        }
-      };
-      wc.on('before-input-event', onKey);
-
-      // Off-screen research renders force a 1280x900 metrics override. For a human to solve a
-      // challenge the page should lay out at the real viewport, not a fake capture size.
-      try {
-        if (wc.debugger.isAttached()) {
-          await wc.debugger.sendCommand('Emulation.clearDeviceMetricsOverride');
-          await wc.debugger.sendCommand('Emulation.setFocusEmulationEnabled', { enabled: true });
-        }
-      } catch {
-        /* metrics override is optional */
-      }
-
-      // Route the intervention banner to the page the human is actually looking at.
-      this.hilManager.setActiveWebContentsGetter(() => wc);
-      onHuman?.({ phase: 'needed', url, reason: 'challenge' });
-      this.addLog('warn', `Human hand-off requested for ${url}.`);
-
-      // Solving a challenge usually navigates; re-inject the banner so RESUME stays reachable.
-      const refresh = () => setTimeout(() => this.hilManager.refreshBanner(), 400);
-      wc.on('did-navigate', refresh);
-      wc.on('did-finish-load', refresh);
-
-      try {
-        const humanStarted = Date.now();
-        const resolution = await this.hilManager.requestIntervention({
-          reason:
-            'A bot challenge or login wall blocked this page. Complete it here, then press RESUME AGENT.',
-          url,
-          timeoutSeconds: this.researchSettings.hilTimeoutSec,
-          bringToFront: true,
-          inPageBanner: false,
-        });
-        humanMs = Date.now() - humanStarted;
-        if (resolution.status !== 'resolved') return null;
-      } finally {
-        wc.removeListener('before-input-event', onKey);
-        wc.removeListener('did-navigate', refresh);
-        wc.removeListener('did-finish-load', refresh);
-      }
-
-      const state = await wc
-        .executeJavaScript(
-          `(() => ({
-            title: document.title || '',
-            text: (document.body ? document.body.innerText : '').slice(0, 4000),
-            links: Array.from(document.querySelectorAll('a[href]'))
-              .map((a) => a.href)
-              .filter((h) => /^https?:/i.test(h))
-              .slice(0, 400),
-          }))()`,
-        )
-        .catch(() => null);
-      if (!state) return null;
-
-      // A login may be resolved while the WAF is still up — don't pretend it worked.
-      if (looksLikeChallenge(200, state.text || '')) return null;
-
-      const snapshot = await RenderedSnapshotEngine.capture(wc, {
-        format: 'markdown',
-        waitUntilIdleMs: 400,
-      });
-
-      // Anchors are read from the live view here, before the queue is released, so they always
-      // describe the document the human actually cleared.
-      let anchors: CitationAnchor[] | undefined;
-      if (anchorsFor) {
-        try {
-          const html = await wc.executeJavaScript('document.documentElement.outerHTML');
-          if (typeof html === 'string' && html) {
-            anchors = await anchorHighlights(html, anchorsFor);
-            if (anchors.length) this.anchorStore.upsert(url, anchors);
-          }
-        } catch (err: any) {
-          this.addLog('warn', `Citation anchoring failed after hand-off: ${err?.message || err}`);
-        }
-      }
-
-      try {
-        this.warmOrigins.add(new URL(url).origin);
-      } catch {
-        /* ignore */
-      }
-      onHuman?.({ phase: 'done', url });
-      this.addLog('action', `Human hand-off cleared the challenge for ${url}.`);
-
-      return {
-        title: state.title || url,
-        markdown: snapshot.content || '',
-        links: Array.isArray(state.links) ? state.links : [],
-        status: 200,
-        humanAssisted: true,
-        humanMs,
-        anchors,
-      };
-    } catch (err: any) {
-      this.addLog('warn', `Human hand-off failed for ${url}: ${err?.message || err}`);
-      return null;
-    } finally {
-      this.hilActive = false;
-      this.hilManager.setActiveWebContentsGetter(() => {
-        try {
-          return this.getActiveWebContents();
-        } catch {
-          return null;
-        }
-      });
-      if (attached && !win.isDestroyed()) {
-        try {
-          win.contentView.removeChildView(view);
-        } catch {
-          /* already detached */
-        }
-      }
-      this.reassertViewport();
-    }
+    return this.citationController.attemptHandoff(url, onHuman, anchorsFor);
   }
 
   /** Renders a page in a detached view and returns its Markdown + outgoing links (for deep_crawl). */
@@ -3431,7 +3050,7 @@ export class BrowserChassis {
       const handoff = await this.attemptHumanHandoff(url, opts.onHuman, opts.anchorsFor);
       if (handoff) return handoff;
 
-      const skip = this.handoffSkipReason ? ` — ${this.handoffSkipReason}` : '';
+      const skip = this.citationController.skipReason ? ` — ${this.citationController.skipReason}` : '';
       this.markResearchCooldown(host, 'WAF/challenge page');
       throw this.researchError(
         'WAF_CHALLENGE',
@@ -3439,11 +3058,9 @@ export class BrowserChassis {
       );
     }
 
-    let anchors: CitationAnchor[] | undefined;
-    if (opts.anchorsFor && rendered.html) {
-      anchors = await anchorHighlights(rendered.html, opts.anchorsFor);
-      if (anchors.length) this.anchorStore.upsert(url, anchors);
-    }
+    const anchors = opts.anchorsFor && rendered.html
+      ? await this.citationController.anchorFromHtml(url, rendered.html, opts.anchorsFor)
+      : undefined;
 
     return {
       title: r.result?.title || url,

@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 173 files, 686 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 174 files, 690 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (609)
+## Types (613)
 
 | File | Export | When to use |
 |---|---|---|
@@ -327,6 +327,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/anchors.ts` | `CitationAnchor` *(type)* | - |
 | `main/research/anchors.ts` | `CitationCandidate` *(type)* | - |
 | `main/research/anchors.ts` | `CitationRelocation` *(type)* | - |
+| `main/research/citation-controller.ts` | `CitationController` | When to use: the chassis — own the anchor store, warm origins, hand-off state and the citation fetch/relocate pipeline. |
+| `main/research/citation-controller.ts` | `HumanHandoffResult` *(type)* | The result of a human-handoff read, or null when no human took over. |
+| `main/research/citation-controller.ts` | `CitationControllerDeps` *(type)* | When to use: building the chassis — everything the citation pipeline reads through. |
+| `main/research/citation-controller.ts` | `RevalidationSummary` *(type)* | The outcome of revalidating stored anchors across URLs. |
 | `main/research/detached-view.ts` | `DetachedViewController` | When to use: the chassis — own the shared off-screen research view and its serialized queue. |
 | `main/research/detached-view.ts` | `DetachedLoadOptions` *(type)* | When to use: a detached load — wait bounds, a readiness probe and a post-load hook. |
 | `main/research/detached-view.ts` | `DetachedLoadResult` *(type)* | When to use: reading a detached load's outcome — the script result, post-load hook output, HTTP status and content type. |
