@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 261 files, 876 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 262 files, 880 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (745)
+## Types (749)
 
 | File | Export | When to use |
 |---|---|---|
@@ -497,6 +497,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotResult` *(type)* | - |
 | `main/tabs/page-info.ts` | `readPageInfo` | When to use: reading the active page — prefers the live document over cached state. |
 | `main/tabs/page-info.ts` | `PageInfo` *(type)* | The page identity the primitives, JEV and HUD read. |
+| `main/tabs/tab-events.ts` | `createTabEventHandlers` | When to use: building the tab manager — the reaction set for its events. |
+| `main/tabs/tab-events.ts` | `ConsoleLine` *(type)* | One page console line. |
+| `main/tabs/tab-events.ts` | `TabEventDeps` *(type)* | The chassis callbacks the tab handlers read and write. |
+| `main/tabs/tab-events.ts` | `TabEventHandlers` *(type)* | The handlers a `TabManager` installs. |
 | `main/tabs/tab-manager.ts` | `TabManager` | - |
 | `main/tabs/tab-manager.ts` | `TabInstance` *(type)* | - |
 | `main/tabs/tab-manager.ts` | `TabManagerOptions` *(type)* | - |

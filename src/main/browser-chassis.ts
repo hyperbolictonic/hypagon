@@ -61,6 +61,7 @@ import { HudWatchdog } from './boot/hud-watchdog.js';
 import { IpcSurface } from './ipc/ipc-surface.js';
 import { readPageInfo } from './tabs/page-info.js';
 import { TabSurface } from './tabs/tab-surface.js';
+import { createTabEventHandlers } from './tabs/tab-events.js';
 import { LlmSurface } from './llm/llm-surface.js';
 import { ReadSurface } from './llm/read-surface.js';
 import { SearchHub, engineHost } from './search/search-engine.js';
@@ -190,6 +191,8 @@ export class BrowserChassis {
   private sidebarOverlayVisible = true;
   /** Monotonic page revision: bumped on navigation and every mutating action. */
   private revision = 0;
+  /** The tab manager's lifecycle reactions. */
+  private tabEvents!: ReturnType<typeof createTabEventHandlers>;
   /** The page overlay picker and its signal channel. */
   readonly collaboration = new CollaborationSurface({
     activeWebContents: () => this.getActiveWebContents(),
@@ -245,6 +248,28 @@ export class BrowserChassis {
   readonly consoleLogs = new ConsoleLogBuffer();
 
   constructor() {
+    this.tabEvents = createTabEventHandlers({
+      state: this.state,
+      activeTabId: () => this.tabManager?.getActiveTabId(),
+      allTabs: () => this.tabManager?.allTabs() ?? [],
+      broadcastState: () => this.telemetry.broadcastState(),
+      bumpRevision: () => this.bumpRevision(),
+      reassertViewport: () => this.reassertViewport(),
+      send: (channel, payload) => this.sendToSurfaces(channel, payload),
+      updateTray: (pending) =>
+        this.trayManager?.updateStatus(this.state.agentStatus, this.state.tabs?.length ?? 0, pending),
+      hilPending: () => !!this.hil.manager.getActiveRequest(),
+      attachNetwork: (wc) => this.network.manager.attach(wc),
+      registerViewportTab: (tab) => this.viewportController?.registerTab(tab),
+      syncForceOpen: (wc) => this.shadow.syncForceOpen(wc),
+      indexTab: (tab) => this.harvest.indexTabQuietly(tab),
+      ingestHuman: (message) => this.human.monitor.ingest(message),
+      noteHuman: (activity) => this.human.note(activity),
+      recordConsole: (log) => this.consoleLogs.record(log),
+      collaborationSignal: (message) => this.collaboration.handleSignal(message),
+      logEvent: (name, detail) => logMainEvent(name, detail),
+      humanListenerScript: () => humanListenerScript(),
+    });
     this.subscribeToDecisions();
     this.page = this.createPageScriptSurface();
     this.tabOps = new TabSurface({
@@ -751,14 +776,14 @@ export class BrowserChassis {
         this.zoom.setZoom({ action });
       },
       onTakeoverShortcut: () => this.human.toggle(),
-      onRendererGone: (tab, details) => this.handleRendererGone(tab, details),
-      onTabUpdated: (tab) => this.handleTabUpdated(tab),
-      onTabsChanged: (tabs) => this.handleTabsChanged(tabs),
-      onTabCreated: (tab) => this.handleTabCreated(tab),
+      onRendererGone: this.tabEvents.onRendererGone,
+      onTabUpdated: this.tabEvents.onTabUpdated,
+      onTabsChanged: this.tabEvents.onTabsChanged,
+      onTabCreated: this.tabEvents.onTabCreated,
       onViewAdded: () => this.deck.bringToFront(),
       onTabClosed: (tabId) => this.viewportController?.unregisterTab(tabId),
       onLog: (level, msg) => this.telemetry.addLog(level, msg),
-      onConsoleLog: (log) => this.handleConsoleLog(log),
+      onConsoleLog: this.tabEvents.onConsoleLog,
     });
 
     this.telemetry.addLog('info', `Stealth Profile Active: Spoofing host ${this.hostProfile.name} v${this.hostProfile.version}`);
@@ -771,78 +796,6 @@ export class BrowserChassis {
       this.tabManager?.updateActiveTabBounds();
       this.viewportController?.scheduleRefresh();
     });
-  }
-
-  private handleRendererGone(tab: TabInstance, details: Electron.RenderProcessGoneDetails): void {
-        logMainEvent('tab-renderer-gone', {
-          tabId: tab.id,
-          url: tab.url,
-          reason: details.reason,
-          exitCode: details.exitCode,
-        });
-        if (details.reason === 'clean-exit') return;
-        setTimeout(() => {
-          const live = this.tabManager?.allTabs().find((candidate) => candidate.id === tab.id);
-          if (!live || live.view.webContents.isDestroyed()) return;
-          try {
-            live.view.webContents.reload();
-          } catch {
-            // The tab was closed while the renderer was restarting.
-          }
-          this.reassertViewport();
-        }, 600);
-  }
-
-  private handleTabUpdated(tab: TabInstance): void {
-        if (tab.id === this.tabManager?.getActiveTabId()) {
-          this.state.currentUrl = tab.url;
-          this.state.pageTitle = tab.title;
-          this.state.isLoading = tab.isLoading;
-          this.state.activeTabId = tab.id;
-          this.telemetry.broadcastState();
-
-          if (!tab.isLoading) this.bumpRevision();
-
-          // Re-arm the takeover listener after every document (listeners die with the page).
-          if (this.tabReadyForBackgroundWork(tab)) {
-            void tab.view.webContents.executeJavaScript(humanListenerScript()).catch(() => null);
-          }
-          if (this.tabReadyForBackgroundWork(tab)) {
-            this.harvest.indexTabQuietly(tab);
-          }
-        }
-  }
-
-  private handleTabsChanged(tabs: TabSummary[]): void {
-        this.state.tabs = tabs;
-        this.telemetry.broadcastState();
-        this.trayManager?.updateStatus(this.state.agentStatus, tabs.length, !!this.hil.manager.getActiveRequest());
-        this.sendToSurfaces('chassis:tabs-updated', tabs);
-  }
-
-  private handleTabCreated(tab: TabInstance): void {
-        this.network.manager.attach(tab.view.webContents);
-        this.viewportController?.registerTab(tab);
-        // A tab created while force-open is armed must be patched *before* its document runs.
-        // onTabCreated fires before the first load, but CDP arming is async; if the first document
-        // already started, reload once so the patch is actually present.
-        void this.shadow.syncForceOpen(tab.view.webContents).then((result) => {
-          if (result.changed && result.armed && !tab.view.webContents.isDestroyed()) {
-            setTimeout(() => {
-              try {
-                tab.view.webContents.reload();
-              } catch {}
-            }, 60);
-          }
-        });
-  }
-
-  private handleConsoleLog(log: { level: string; message: string; line: number; sourceId: string; timestamp: number }): void {
-        this.consoleLogs.record(log);
-        // Takeover channel: the page reports trusted pointer/key/wheel activity with a magic prefix.
-        const human = this.human.monitor.ingest(log.message);
-        if (human) this.human.note(human);
-        this.collaboration.handleSignal(log.message);
   }
 
   public getViewportBounds(): { x: number; y: number; width: number; height: number } {
@@ -962,11 +915,6 @@ export class BrowserChassis {
    * The tab manager, or the standard uninitialized failure. Every tab operation
    * begins with this check; the message is the contract agents retry on.
    */
-/** A loaded, real-URL tab is ready for background work (listener re-arm, quiet indexing). */
-  private tabReadyForBackgroundWork(tab: { isLoading: boolean; url?: string }): boolean {
-    return !tab.isLoading && Boolean(tab.url) && !tab.url!.startsWith('mark-eleven:') && tab.url !== 'about:blank';
-  }
-
   private requireTabManager(): NonNullable<BrowserChassis['tabManager']> {
     if (!this.tabManager) throw new Error('Browser Chassis uninitialized');
     return this.tabManager;
