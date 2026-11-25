@@ -27,10 +27,12 @@ import { createSecretAdapter } from './secrets.ts';
 import { clampInt, failure, previewUrl, redactDeep, redactText, renderPayload, secretVariants } from '../render.ts';
 import { resolveHosts } from '../security.ts';
 import { resolveWrapLimits, type WrapLimits } from '../limits.ts';
-import { resolveWrapper } from '../resolve.ts';
+import type { ExecuteOptions } from '../execute-pipeline.ts';
+import { bindRunCore, WrapRunSurface } from '../run-surface.ts';
+import type { WrapCore } from '../core.ts';
 import type { WrapExecutor } from '../executor.ts';
 import type { ExecutorOptions } from '../executor.ts';
-import type { WrapFormat, WrapPreview, WrapRunResult, WrapWrapper } from '../types.ts';
+import type { WrapPreview, WrapRunResult, WrapWrapper } from '../types.ts';
 import type { SecretStore } from '../secrets.ts';
 import type { WrapStore } from '../store.ts';
 
@@ -116,6 +118,8 @@ export interface AnyApiExecutorOptions extends ExecutorOptions {
   secretSource?: Pick<SecretStore, 'list' | 'resolve'>;
 }
 
+export interface AnyApiWrapExecutor extends WrapCore {}
+
 export class AnyApiWrapExecutor {
   readonly store: WrapStore;
   private readonly legacy: WrapExecutor;
@@ -130,64 +134,18 @@ export class AnyApiWrapExecutor {
     this.transport = resolveWrapLimits(options);
     this.secretSource = options.secretSource;
     this.audit = options.audit;
-  }
-
-  status(): { wrappers: number; allowPrivateHosts: boolean } {
-    return { wrappers: this.store.count(), allowPrivateHosts: this.transport.allowPrivateHosts };
-  }
-
-  async run(
-    id: string,
-    args: unknown,
-    options: { format?: WrapFormat; includeRaw?: boolean; maxPages?: number } = {},
-  ): Promise<WrapRunResult> {
-    const wrapper = this.store.get(id);
-    if (!wrapper) return failure({ id, name: id }, 'WRAPPER_NOT_FOUND', `No wrapper named "${id}".`);
-
-    if (!this.usable(wrapper).ok) {
-      return this.legacy.run(id, args, options);
-    }
-
-    return this.execute(wrapper, args, {
-      dryRun: false,
-      includeRaw: Boolean(options.includeRaw),
-      format: options.format || 'markdown',
+    const surface = new WrapRunSurface({
+      store,
+      limits: this.transport,
+      gate: (wrapper) => this.usable(wrapper),
+      execute: (wrapper, args, runOptions) => this.execute(wrapper, args, runOptions),
+      fallback: {
+        run: (id, args, runOptions) => this.legacy.run(id, args, runOptions),
+        preview: (id, args) => this.legacy.preview(id, args),
+        test: (input) => this.legacy.test(input),
+      },
     });
-  }
-
-  async preview(id: string, args: unknown): Promise<WrapRunResult> {
-    const wrapper = this.store.get(id);
-    if (!wrapper) return failure({ id, name: id }, 'WRAPPER_NOT_FOUND', `No wrapper named "${id}".`);
-
-    if (!this.usable(wrapper).ok) return this.legacy.preview(id, args);
-
-    return this.execute(wrapper, args, { dryRun: true, includeRaw: false, format: 'markdown' });
-  }
-
-  async test(input: {
-    id?: string;
-    wrapper?: unknown;
-    args?: unknown;
-    sample?: unknown;
-    dryRun?: boolean;
-    format?: WrapFormat;
-    maxPages?: number;
-    includeRaw?: boolean;
-  }): Promise<WrapRunResult> {
-    const resolved = this.resolve(input.id, input.wrapper);
-    if (!resolved.wrapper) {
-      return failure({ id: input.id || '(unsaved)', name: input.id || '(unsaved)' }, resolved.code, resolved.message);
-    }
-
-    if (input.sample !== undefined || !this.usable(resolved.wrapper).ok) {
-      return this.legacy.test(input);
-    }
-
-    return this.execute(resolved.wrapper, input.args, {
-      dryRun: input.dryRun !== false,
-      includeRaw: Boolean(input.includeRaw),
-      format: input.format || 'markdown',
-    });
+    Object.assign(this, bindRunCore(surface));
   }
 
   /** Why this wrapper is not on the core, or `{ ok: true }`. */
@@ -222,7 +180,7 @@ export class AnyApiWrapExecutor {
   private async execute(
     wrapper: WrapWrapper,
     argsInput: unknown,
-    options: { dryRun: boolean; includeRaw: boolean; format: WrapFormat },
+    options: ExecuteOptions,
   ): Promise<WrapRunResult> {
     const identity = { id: wrapper.id, name: wrapper.name };
 
@@ -336,12 +294,6 @@ export class AnyApiWrapExecutor {
     };
   }
 
-  private resolve(
-    id: string | undefined,
-    wrapper: unknown,
-  ): { wrapper?: WrapWrapper; code: string; message: string } {
-    return resolveWrapper(this.store, id, wrapper);
-  }
 }
 
 /**

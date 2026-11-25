@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 235 files, 820 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 236 files, 824 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (695)
+## Types (699)
 
 | File | Export | When to use |
 |---|---|---|
@@ -569,6 +569,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/rendering.ts` | `Rendered` *(type)* | The markdown, records and documents a recipe produced for one or more pages. |
 | `main/wrap/resolve.ts` | `resolveWrapper` | When to use: `run` / `preview` / `test` on either executor core — resolve the |
 | `main/wrap/resolve.ts` | `WrapperResolution` *(type)* | When to use: the result of resolving an id-or-inline wrapper — the wrapper, or the code and message to return. |
+| `main/wrap/run-surface.ts` | `bindRunCore` | The surface's bound operations, ready to copy onto an executor instance. |
+| `main/wrap/run-surface.ts` | `WrapRunSurface` | The not-found/status/test contract both wrapper executors publish. |
+| `main/wrap/run-surface.ts` | `WrapRunSurfaceDeps` *(type)* | When to use: building an executor — where a resolved wrapper actually runs. |
+| `main/wrap/run-surface.ts` | `WrapCoreMethods` *(type)* | The four bound operations an executor publishes; see `bindRunCore`. |
 | `main/wrap/secrets.ts` | `SecretStore` | - |
 | `main/wrap/secrets.ts` | `WrapSecretKind` *(type)* | - |
 | `main/wrap/secrets.ts` | `WrapOAuthMetadata` *(type)* | - |

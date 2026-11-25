@@ -8,12 +8,13 @@
  */
 
 import { resolveWrapLimits, type WrapLimits, type WrapTransportOptions } from './limits.ts';
-import { resolveWrapper } from './resolve.ts';
-import { clampInt, failure } from './render.ts';
+import { bindRunCore, WrapRunSurface } from './run-surface.ts';
+import type { WrapCore } from './core.ts';
+import { clampInt } from './render.ts';
 import { renderWrapped } from './rendering.ts';
 import { executeWrapper, type ExecuteOptions } from './execute-pipeline.ts';
 import type { WrapIndexContext, WrapIndexDocument } from './pagination.ts';
-import type { WrapFormat, WrapRunResult, WrapWrapper } from './types.ts';
+import type { WrapRunResult, WrapWrapper } from './types.ts';
 import type { WrapStore } from './store.ts';
 import type { SecretStore } from './secrets.ts';
 import type { WrapAuditLog } from './audit.ts';
@@ -39,6 +40,8 @@ export interface ExecutorOptions extends WrapTransportOptions {
 /** Overall item cap when a recipe does not declare `limits.maxItems` (mirrors the renderer). */
 const DEFAULT_MAX_ITEMS = 50;
 
+export interface WrapExecutor extends WrapCore {}
+
 export class WrapExecutor {
   readonly store: WrapStore;
   private readonly transport: WrapLimits;
@@ -56,57 +59,13 @@ export class WrapExecutor {
     this.indexDocuments = options.indexDocuments;
     this.secrets = options.secrets;
     this.audit = options.audit;
-  }
-
-  status(): { wrappers: number; allowPrivateHosts: boolean } {
-    return { wrappers: this.store.count(), allowPrivateHosts: this.transport.allowPrivateHosts };
-  }
-
-  async run(
-    id: string,
-    args: unknown,
-    options: { format?: WrapFormat; includeRaw?: boolean; maxPages?: number } = {},
-  ): Promise<WrapRunResult> {
-    const wrapper = this.store.get(id);
-    if (!wrapper) return failure({ id, name: id }, 'WRAPPER_NOT_FOUND', `No wrapper named "${id}".`);
-
-    return this.execute(wrapper, args, {
-      dryRun: false,
-      includeRaw: Boolean(options.includeRaw),
-      format: options.format || 'markdown',
-      maxPages: options.maxPages,
+    const surface = new WrapRunSurface({
+      store,
+      limits: this.transport,
+      execute: (wrapper, args, runOptions) => this.execute(wrapper, args, runOptions),
+      renderSample: (wrapper, sample) => this.renderSample(wrapper, sample),
     });
-  }
-
-  async preview(id: string, args: unknown): Promise<WrapRunResult> {
-    const wrapper = this.store.get(id);
-    if (!wrapper) return failure({ id, name: id }, 'WRAPPER_NOT_FOUND', `No wrapper named "${id}".`);
-    return this.execute(wrapper, args, { dryRun: true, includeRaw: false, format: 'markdown' });
-  }
-
-  async test(input: {
-    id?: string;
-    wrapper?: unknown;
-    args?: unknown;
-    sample?: unknown;
-    dryRun?: boolean;
-    format?: WrapFormat;
-    maxPages?: number;
-    includeRaw?: boolean;
-  }): Promise<WrapRunResult> {
-    const resolved = this.resolve(input.id, input.wrapper);
-    if (!resolved.wrapper) return failure({ id: input.id || '(unsaved)', name: input.id || '(unsaved)' }, resolved.code, resolved.message);
-
-    if (input.sample !== undefined) {
-      return this.renderSample(resolved.wrapper, input.sample);
-    }
-
-    return this.execute(resolved.wrapper, input.args, {
-      dryRun: input.dryRun !== false,
-      includeRaw: Boolean(input.includeRaw),
-      format: input.format || 'markdown',
-      maxPages: input.maxPages,
-    });
+    Object.assign(this, bindRunCore(surface));
   }
 
   private async execute(wrapper: WrapWrapper, argsInput: unknown, options: ExecuteOptions): Promise<WrapRunResult> {
@@ -144,12 +103,5 @@ export class WrapExecutor {
     };
   }
 
-
-  private resolve(
-    id: string | undefined,
-    wrapper: unknown,
-  ): { wrapper?: WrapWrapper; code: string; message: string } {
-    return resolveWrapper(this.store, id, wrapper);
-  }
 }
 
