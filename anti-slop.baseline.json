@@ -62,7 +62,6 @@
       "main/search/search-engine.ts": 5,
       "main/session/session-vault.ts": 2,
       "main/settings/jev.ts": 3,
-      "main/shadow-walk/ax-controls.ts": 5,
       "main/shadow-walk/component-signature.ts": 2,
       "main/shadow-walk/force-open.ts": 3,
       "main/shadow-walk/part-highlight-css.ts": 1,
@@ -169,10 +168,6 @@
         "class": 1
       },
       "main/search/search-engine.ts": {
-        "function": 1
-      },
-      "main/shadow-walk/ax-controls.ts": {
-        "file": 1,
         "function": 1
       },
       "main/shadow-walk/tab-walk.ts": {

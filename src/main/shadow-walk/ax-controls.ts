@@ -13,183 +13,45 @@
  *   - Results carry coordinates and roles, never a mark id and never an input value.
  *   - Full scans are rate-limited; a loop cannot turn the browser into a scanner.
  *
- * Per-frame geometry:
- *   - Same-process frames: `DOM.getBoxModel` already returns top-level viewport pixels.
- *   - OOPIF: its session measures relative to that target's root viewport, so the root frame's
- *     top-level rect is added. Nested OOPIFs compose the same way.
+ * Why this file is small: `sealed-scan.ts` owns the identity scan (AX tree, pierce, OOPIF
+ * sessions, component surface, style provenance), `sealed-measure.ts` owns the box-model pass,
+ * `sealed-gate.ts` owns the cache and the rate limit, and `sealed-cdp.ts` owns the session
+ * attach/detach both phases share. This module is the policy: validate, reuse or scan, filter,
+ * measure, report.
  */
 import type { WebContents } from 'electron';
-import { bump } from '../metrics.js';
-import { listFrames, type FrameInfo } from '../browser/frames.js';
-import { layoutViewport } from '../browser/layout-viewport.js';
-import { normalizeSurface, type ComponentSurface } from './component-signature.js';
+import { listFrames } from '../browser/frames.js';
+import { SealedScanGate } from './sealed-gate.js';
+import { measureSealedControls } from './sealed-measure.js';
+import { SealedScanner } from './sealed-scan.js';
 import { loadShadowWalkSettings } from './settings.js';
-import { clearSealedTokens, issueSealedToken } from './sealed-targets.js';
-import { axProperty, cdpSend, contentRect } from './cdp.js';
+import type { SealedFindOptions, SealedFindResult, SealedIdentity } from './sealed-types.js';
 
-export interface SealedRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+export type { SealedControl, SealedFindOptions, SealedFindResult, SealedRect } from './sealed-types.js';
+export { SealedRateLimitError } from './sealed-gate.js';
 
-export interface SealedControl {
-  role: string;
-  name: string;
-  rect: SealedRect;
-  actions: string[];
-  source: 'ax';
-  frameId: string;
-  frameUrl?: string;
-  inViewport: boolean;
-  disabled?: boolean;
-  focusable?: boolean;
-  focused?: boolean;
-  /** Host exported surface, when the control belongs to a custom-element host. */
-  component?: ComponentSurface;
-  /** Stylesheet provenance when cdpStyleMatch is on. */
-  style?: { sourceUrl?: string; constructed?: boolean };
-  /** Short-lived capability for scrolling/re-measuring an offscreen control. */
-  token?: string;
-}
-
-export interface SealedFindOptions {
-  role?: string;
-  name?: string;
-  contains?: string;
-  regex?: string;
-  flags?: string;
-  tag?: string;
-  selector?: string;
-  limit?: number;
-  includeOffscreen?: boolean;
-  /** Bypass the identity cache (use after a DOM change that did not bump the revision). */
-  refresh?: boolean;
-  /** Chassis revision, so a click invalidates the cached identity list. */
-  revision?: number;
-}
-
-export interface SealedFindResult {
-  controls: SealedControl[];
-  /** Matches before the limit / offscreen filter. */
-  total: number;
-  cached: boolean;
-  frames: number;
-  scannedAt: number;
-  notes: string[];
-}
-
-export class SealedRateLimitError extends Error {
-  public code = 'SEALED_RATE_LIMITED';
-  public retryAfterMs: number;
-  constructor(retryAfterMs: number) {
-    super(`Sealed discovery is rate-limited (6 scans/minute per tab); retry in ${Math.ceil(retryAfterMs / 1000)}s.`);
-    this.name = 'SealedRateLimitError';
-    this.retryAfterMs = retryAfterMs;
-  }
-}
-
-const INTERACTIVE_ROLES = new Set([
-  'button',
-  'link',
-  'textbox',
-  'searchbox',
-  'combobox',
-  'checkbox',
-  'radio',
-  'switch',
-  'tab',
-  'menuitem',
-  'slider',
-  'spinbutton',
-]);
-
-const TYPE_ROLES = new Set(['textbox', 'searchbox', 'combobox', 'spinbutton', 'slider']);
-
-const CACHE_TTL_MS = 5000;
-const RATE_WINDOW_MS = 60000;
-const RATE_LIMIT = 6;
 const MAX_LIMIT = 40;
 const MAX_FRAMES = 8;
-const MAX_TARGETS = 8;
 
-interface Identity {
-  backendNodeId: number;
-  frameIndex: number;
-  role: string;
-  name: string;
-  nodeName: string;
-  actions: string[];
-  disabled: boolean;
-  focusable: boolean;
-  focused: boolean;
-  order: number;
-  component?: ComponentSurface;
-  style?: { sourceUrl?: string; constructed?: boolean };
-}
-
-interface CacheEntry {
-  key: string;
-  at: number;
-  identities: Identity[];
-  notes: string[];
-  frames: number;
-}
-
-interface TargetSession {
-  targetId: string;
-  sessionId: string;
-}
-
-const caches = new WeakMap<WebContents, CacheEntry>();
-const rates = new WeakMap<WebContents, number[]>();
-
-function actionsFor(role: string, focusable: boolean): string[] {
-  if (TYPE_ROLES.has(role)) return ['click', 'type'];
-  if (INTERACTIVE_ROLES.has(role)) return ['click'];
-  return focusable ? ['focus'] : [];
+function emptyResult(notes: string[] = []): SealedFindResult {
+  return { controls: [], total: 0, cached: false, frames: 0, scannedAt: Date.now(), notes };
 }
 
 function lower(value: any): string {
   return String(value ?? '').toLowerCase();
 }
 
-/** Walk a DOM tree (already pierced) and index everything under a closed shadow root. */
-function collectClosed(root: any): {
-  ids: Set<number>;
-  info: Map<number, { nodeName: string; order: number; host?: any }>;
-} {
-  const ids = new Set<number>();
-  const info = new Map<number, { nodeName: string; order: number; host?: any }>();
-  let order = 0;
-  const walk = (node: any, insideClosed: boolean, host: any) => {
-    if (!node) return;
-    if (insideClosed && node.backendNodeId) {
-      ids.add(Number(node.backendNodeId));
-      info.set(Number(node.backendNodeId), {
-        nodeName: String(node.nodeName || '').toUpperCase(),
-        order: order++,
-        host,
-      });
-    }
-    for (const child of node.children || []) walk(child, insideClosed, host);
-    for (const shadow of node.shadowRoots || []) {
-      const closed = shadow.shadowRootType === 'closed';
-      // The host of a closed root is the node that owns it; nested hosts replace it for their
-      // own descendants.
-      walk(shadow, insideClosed || closed, closed ? node : host);
-    }
-  };
-  walk(root, false, undefined);
-  return { ids, info };
-}
-
-function attributesOf(node: any): Record<string, string> {
-  const out: Record<string, string> = {};
-  const attrs = node?.attributes || [];
-  for (let i = 0; i + 1 < attrs.length; i += 2) out[String(attrs[i])] = String(attrs[i + 1]);
-  return out;
+/** The agent-facing filters, applied to cached identities before any measuring. */
+function filterIdentities(identities: SealedIdentity[], options: SealedFindOptions): SealedIdentity[] {
+  const want = lower(options.name || options.contains || '');
+  const re = options.regex ? new RegExp(options.regex, options.flags || 'i') : null;
+  return identities.filter((identity) => {
+    if (options.role && identity.role !== lower(options.role)) return false;
+    if (options.tag && identity.nodeName !== String(options.tag).toUpperCase()) return false;
+    if (want && !lower(identity.name).includes(want)) return false;
+    if (re && !re.test(identity.name)) return false;
+    return true;
+  });
 }
 
 /**
@@ -200,32 +62,22 @@ function attributesOf(node: any): Record<string, string> {
  */
 export async function findSealedControls(
   wc: WebContents,
-  options: SealedFindOptions = {}
+  options: SealedFindOptions = {},
 ): Promise<SealedFindResult> {
-  const empty = (notes: string[] = []): SealedFindResult => ({
-    controls: [],
-    total: 0,
-    cached: false,
-    frames: 0,
-    scannedAt: Date.now(),
-    notes,
-  });
-
-  if (!wc || wc.isDestroyed()) return empty(['No active tab.']);
-  if (!wc.debugger?.isAttached()) return empty(['The CDP debugger is not attached to the active tab.']);
+  if (!wc || wc.isDestroyed()) return emptyResult(['No active tab.']);
+  if (!wc.debugger?.isAttached()) return emptyResult(['The CDP debugger is not attached to the active tab.']);
   if (options.selector) {
     const err: any = new Error(
-      'Selector filtering is not available for sealed controls; use name, role, tag or contains.'
+      'Selector filtering is not available for sealed controls; use name, role, tag or contains.',
     );
     err.code = 'NOT_SUPPORTED';
     throw err;
   }
 
   const frames = await listFrames(wc, { maxFrames: MAX_FRAMES });
-  if (!frames.length) return empty(['No frame tree available for the active tab.']);
-
+  if (!frames.length) return emptyResult(['No frame tree available for the active tab.']);
   const main = frames.find((f) => f.depth === 0);
-  if (!main) return empty(['The frame list has no main frame.']);
+  if (!main) return emptyResult(['The frame list has no main frame.']);
 
   const settings = loadShadowWalkSettings();
   const componentsEnabled = settings.shadow.componentSurface;
@@ -238,364 +90,32 @@ export async function findSealedControls(
     styleMatch ? 'styles' : 'best-effort',
   ].join('|');
 
-  const cache = caches.get(wc);
-  let identities: Identity[];
-  let notes: string[] = [];
-  let cached = false;
+  const gate = new SealedScanGate();
+  const cached = options.refresh ? null : gate.cached(wc, key);
 
-  if (!options.refresh && cache && cache.key === key && Date.now() - cache.at < CACHE_TTL_MS) {
-    identities = cache.identities;
-    notes = cache.notes;
-    cached = true;
-    bump('sealed.cacheHit');
+  let identities: SealedIdentity[];
+  let notes: string[];
+  if (cached) {
+    identities = cached.identities;
+    notes = cached.notes;
   } else {
-    const now = Date.now();
-    const recent = (rates.get(wc) || []).filter((t) => now - t < RATE_WINDOW_MS);
-    if (recent.length >= RATE_LIMIT) {
-      throw new SealedRateLimitError(RATE_WINDOW_MS - (now - recent[0]));
-    }
-    recent.push(now);
-    rates.set(wc, recent);
-
-    const dbg = wc.debugger;
-    const sessions = new Map<string, TargetSession>();
-    const opened: string[] = [];
-    const axEnabled = new Set<string | undefined>();
-    const cssEnabled = new Set<string | undefined>();
-    const surfaceCache = new Map<number, ComponentSurface>();
-    const styleHeaders = new Map<string, { sourceURL?: string; isConstructed?: boolean }>();
-    const onDebugMessage = (...args: any[]) => {
-      const method = args[1] || args[0]?.method;
-      const params = args[2] || args[0]?.params;
-      const header = params?.header;
-      if (method === 'CSS.styleSheetAdded' && header?.styleSheetId) {
-        styleHeaders.set(String(header.styleSheetId), {
-          sourceURL: header.sourceURL ? String(header.sourceURL) : undefined,
-          isConstructed: header.isConstructed === true,
-        });
-      }
-    };
-    if (styleMatch) (dbg as any).on('message', onDebugMessage);
-    clearSealedTokens(wc);
-    const docCache = new Map<string, any>();
-
-    const send = cdpSend(dbg);
-
-    const sessionFor = (frame: FrameInfo | undefined): string | undefined => {
-      if (!frame?.oopif || !frame.targetId) return undefined;
-      return sessions.get(frame.targetId)?.sessionId;
-    };
-
-    const surfaceFor = async (host: any, session: string | undefined): Promise<ComponentSurface | undefined> => {
-      const backend = Number(host?.backendNodeId);
-      if (!backend) return undefined;
-      const cached = surfaceCache.get(backend);
-      if (cached) return cached;
-
-      const attrs = attributesOf(host);
-      let cssVars: string[] = [];
-      try {
-        if (!cssEnabled.has(session)) {
-          await send(session, 'CSS.enable');
-          cssEnabled.add(session);
-        }
-        if (host.nodeId) {
-          const computed = await send(session, 'CSS.getComputedStyleForNode', { nodeId: host.nodeId });
-          cssVars = (computed?.computedStyle || [])
-            .map((item: any) => String(item?.name || ''))
-            .filter((name: string) => name.startsWith('--'))
-            .sort();
-        }
-      } catch {
-        // part/exportparts are still useful without computed custom properties.
-      }
-
-      const surface = normalizeSurface({
-        tag: host.nodeName,
-        defined: true,
-        part: String(attrs.part || '').split(/\s+/).filter(Boolean),
-        exportparts: String(attrs.exportparts || '').split(','),
-        cssVars,
-      });
-      surfaceCache.set(backend, surface);
-      return surface;
-    };
-
-    try {
-      // Attach each OOPIF target once. The same session is reused for every frame it hosts.
-      for (const frame of frames) {
-        if (!frame.oopif || !frame.targetId || sessions.has(frame.targetId)) continue;
-        if (sessions.size >= MAX_TARGETS) break;
-        bump('cdp.frame');
-        const attached = await send(undefined, 'Target.attachToTarget', {
-          targetId: frame.targetId,
-          flatten: true,
-        });
-        if (!attached?.sessionId) continue;
-        opened.push(attached.sessionId);
-        sessions.set(frame.targetId, { targetId: frame.targetId, sessionId: attached.sessionId });
-        await send(attached.sessionId, 'Page.enable').catch(() => undefined);
-        await send(attached.sessionId, 'DOM.enable').catch(() => undefined);
-      }
-
-      const metrics = await send(undefined, 'Page.getLayoutMetrics').catch(() => null);
-      const viewport = layoutViewport(metrics);
-
-      const docs = new Map<number, any>();
-      for (let i = 0; i < frames.length; i++) {
-        const frame = frames[i];
-        try {
-          if (frame.depth === 0) {
-            if (!docCache.has('main')) {
-              bump('cdp.pierce');
-              docCache.set('main', (await send(undefined, 'DOM.getDocument', { depth: -1, pierce: true })).root);
-            }
-            docs.set(i, docCache.get('main'));
-            continue;
-          }
-
-          const parent = frames.find((f) => f.frameId === frame.parentFrameId);
-          const parentSession = sessionFor(parent);
-          const owner = await send(parentSession, 'DOM.getFrameOwner', { frameId: frame.frameId });
-          if (!owner?.backendNodeId) {
-            notes.push(`Frame ${frame.url || frame.frameId} has no owner element.`);
-            continue;
-          }
-
-          // A same-process child document is reachable through the frame owner's contentDocument;
-          // that includes its closed shadow roots. A cross-process child returns no contentDocument,
-          // so its own target's document is the root.
-          const described = await send(parentSession, 'DOM.describeNode', {
-            backendNodeId: owner.backendNodeId,
-            depth: -1,
-            pierce: true,
-          });
-          const contentDocument = described?.node?.contentDocument;
-          if (contentDocument) {
-            docs.set(i, contentDocument);
-            continue;
-          }
-
-          const ownSession = sessionFor(frame);
-          const docKey = ownSession || `frame:${frame.frameId}`;
-          if (!docCache.has(docKey)) {
-            bump('cdp.pierce');
-            docCache.set(docKey, (await send(ownSession, 'DOM.getDocument', { depth: -1, pierce: true })).root);
-          }
-          docs.set(i, docCache.get(docKey));
-        } catch (err: any) {
-          notes.push(`Frame ${frame.url || frame.frameId}: ${String(err?.message || err)}`);
-        }
-      }
-
-      identities = [];
-      let order = 0;
-      for (let i = 0; i < frames.length; i++) {
-        const frame = frames[i];
-        const root = docs.get(i);
-        if (!root) continue;
-        const session = sessionFor(frame);
-
-        try {
-          if (!axEnabled.has(session)) {
-            await send(session, 'Accessibility.enable');
-            axEnabled.add(session);
-          }
-          if (styleMatch && !cssEnabled.has(session)) {
-            await send(session, 'CSS.enable').catch(() => undefined);
-            cssEnabled.add(session);
-            // The styleSheetAdded events for existing sheets are emitted after enable; give them
-            // one turn before matched-style lookups.
-            await new Promise((resolve) => setTimeout(resolve, 40));
-          }
-          bump('cdp.ax');
-          const ax = await send(session, 'Accessibility.getFullAXTree', { frameId: frame.frameId });
-          const closed = collectClosed(root);
-          for (const node of ax?.nodes || []) {
-            const backend = Number(node?.backendDOMNodeId);
-            if (!backend || !closed.ids.has(backend)) continue;
-            if (node.ignored) continue;
-            const role = lower(node.role?.value);
-            if (!INTERACTIVE_ROLES.has(role)) continue;
-
-            const dom = closed.info.get(backend);
-            const focusable = axProperty(node, 'focusable') === true;
-            const component = componentsEnabled && dom?.host ? await surfaceFor(dom.host, session) : undefined;
-            identities.push({
-              backendNodeId: backend,
-              frameIndex: i,
-              role,
-              name: String(node.name?.value || ''),
-              nodeName: dom?.nodeName || '',
-              actions: actionsFor(role, focusable),
-              disabled: axProperty(node, 'disabled') === true,
-              focusable,
-              focused: axProperty(node, 'focused') === true,
-              order: order++,
-              component,
-            });
-          }
-        } catch (err: any) {
-          notes.push(`Frame ${frame.url || frame.frameId}: ${String(err?.message || err)}`);
-        }
-      }
-
-      bump('sealed.scan');
-      bump('sealed.nodes', identities.length);
-
-      if (styleMatch && identities.length) {
-        const groups = new Map<string | undefined, Identity[]>();
-        for (const identity of identities) {
-          const frame = frames[identity.frameIndex];
-          const session = sessionFor(frame);
-          const bucket = groups.get(session);
-          if (bucket) bucket.push(identity);
-          else groups.set(session, [identity]);
-        }
-        for (const [session, list] of groups) {
-          try {
-            const pushed = await send(session, 'DOM.pushNodesByBackendIdsToFrontend', {
-              backendNodeIds: list.map((identity) => identity.backendNodeId),
-            });
-            const nodeIds: number[] = pushed?.nodeIds || [];
-            for (let i = 0; i < list.length; i++) {
-              const nodeId = nodeIds[i];
-              if (!nodeId) continue;
-              const matched = await send(session, 'CSS.getMatchedStylesForNode', { nodeId }).catch(() => null);
-              for (const entry of matched?.matchedCSSRules || []) {
-                const sheetId = entry?.rule?.styleSheetId;
-                const header = sheetId ? styleHeaders.get(String(sheetId)) : undefined;
-                if (!header) continue;
-                list[i].style = {
-                  sourceUrl: header.sourceURL || undefined,
-                  constructed: header.isConstructed === true ? true : undefined,
-                };
-                break;
-              }
-            }
-          } catch {
-            // Provenance is best-effort; the control result is still valid.
-          }
-        }
-        bump('sealed.styleLookups', identities.length);
-      }
-
-      if (!identities.length) notes.push('No controls were found inside closed shadow roots.');
-      caches.set(wc, { key, at: Date.now(), identities, notes, frames: frames.length });
-    } catch (err) {
-      throw err;
-    } finally {
-      // Release the AX domain promptly; the page cannot see it, but leaving it on is still state.
-      for (const session of axEnabled) {
-        await send(session, 'Accessibility.disable').catch(() => undefined);
-      }
-      for (const session of cssEnabled) {
-        await send(session, 'CSS.disable').catch(() => undefined);
-      }
-      if (styleMatch) (dbg as any).removeListener('message', onDebugMessage);
-      for (const sessionId of opened) {
-        await dbg.sendCommand('Target.detachFromTarget', { sessionId } as any).catch(() => undefined);
-      }
-    }
+    gate.admit(wc);
+    const scan = await new SealedScanner(wc, frames, { componentsEnabled, styleMatch }).scan();
+    identities = scan.identities;
+    notes = scan.notes;
+    gate.store(wc, { key, at: Date.now(), identities, notes, frames: frames.length });
   }
 
-  const limit = Math.max(1, Math.min(options.limit ?? 25, MAX_LIMIT));
-  const want = lower(options.name || options.contains || '');
-  const re = options.regex ? new RegExp(options.regex, options.flags || 'i') : null;
-  const filtered = identities.filter((id) => {
-    if (options.role && id.role !== lower(options.role)) return false;
-    if (options.tag && id.nodeName !== String(options.tag).toUpperCase()) return false;
-    if (want && !lower(id.name).includes(want)) return false;
-    if (re && !re.test(id.name)) return false;
-    return true;
-  });
+  const filtered = filterIdentities(identities, options);
+  const measured = await measureSealedControls(wc, frames, filtered, options);
 
-  const targetRootOffsets = new Map<string, { x: number; y: number }>();
-  for (const frame of frames) {
-    // `listFrames` is depth-ordered, so the first frame per target is that target's root.
-    if (frame.oopif && frame.targetId && !targetRootOffsets.has(frame.targetId)) {
-      targetRootOffsets.set(frame.targetId, { x: frame.rect.x, y: frame.rect.y });
-    }
-  }
-
-  const dbg = wc.debugger;
-  const send = cdpSend(dbg);
-  const sessions = new Map<string, string>();
-  const openedNow: string[] = [];
-  try {
-    for (const frame of frames) {
-      if (!frame.oopif || !frame.targetId || sessions.has(frame.targetId)) continue;
-      const attached = await send(undefined, 'Target.attachToTarget', { targetId: frame.targetId, flatten: true });
-      if (!attached?.sessionId) continue;
-      sessions.set(frame.targetId, attached.sessionId);
-      openedNow.push(attached.sessionId);
-      await send(attached.sessionId, 'Page.enable').catch(() => undefined);
-      await send(attached.sessionId, 'DOM.enable').catch(() => undefined);
-    }
-
-    const out: SealedControl[] = [];
-    const viewport = layoutViewport(await send(undefined, 'Page.getLayoutMetrics').catch(() => null));
-    for (const id of filtered) {
-      if (out.length >= limit) break;
-      const frame = frames[id.frameIndex];
-      if (!frame) continue;
-      const session = frame.oopif && frame.targetId ? sessions.get(frame.targetId) : undefined;
-      let model: any;
-      try {
-        const raw = await send(session, 'DOM.getBoxModel', { backendNodeId: id.backendNodeId });
-        model = raw?.model || raw;
-      } catch {
-        continue;
-      }
-      const modelRect = contentRect(model);
-      if (!modelRect) continue;
-      const offset = frame.oopif && frame.targetId ? targetRootOffsets.get(frame.targetId) : undefined;
-      const rect: SealedRect = {
-        x: modelRect.x + (offset?.x || 0),
-        y: modelRect.y + (offset?.y || 0),
-        width: modelRect.width,
-        height: modelRect.height,
-      };
-      if (rect.width <= 0 || rect.height <= 0) continue;
-      const inViewport =
-        rect.x < viewport.width &&
-        rect.y < viewport.height &&
-        rect.x + rect.width > 0 &&
-        rect.y + rect.height > 0;
-      if (options.includeOffscreen === false && !inViewport) continue;
-      out.push({
-        role: id.role,
-        name: id.name,
-        rect,
-        actions: id.actions,
-        source: 'ax',
-        frameId: frame.frameId,
-        frameUrl: frame.url,
-        inViewport,
-        disabled: id.disabled || undefined,
-        focusable: id.focusable || undefined,
-        focused: id.focused || undefined,
-        component: id.component,
-        style: id.style,
-        token: issueSealedToken(wc, id.backendNodeId, frame.frameId) || undefined,
-      });
-    }
-
-    if (out.length < filtered.length) {
-      notes.push(`${filtered.length - out.length} sealed match(es) not returned (limit or not measurable).`);
-    }
-
-    return {
-      controls: out,
-      total: filtered.length,
-      cached,
-      frames: frames.length,
-      scannedAt: Date.now(),
-      notes,
-    };
-  } finally {
-    for (const sessionId of openedNow) {
-      await dbg.sendCommand('Target.detachFromTarget', { sessionId } as any).catch(() => undefined);
-    }
-  }
+  return {
+    controls: measured.controls,
+    total: filtered.length,
+    cached: cached !== null,
+    frames: frames.length,
+    scannedAt: Date.now(),
+    // Concatenated, not pushed: the cached note list is shared with the next call.
+    notes: [...notes, ...measured.notes],
+  };
 }
