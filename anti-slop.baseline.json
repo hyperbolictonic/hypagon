@@ -159,9 +159,6 @@
       "main/deck/controller.ts": {
         "class": 1
       },
-      "main/drive/driver.ts": {
-        "function": 1
-      },
       "main/harvester/markdown.ts": {
         "function": 2
       },
