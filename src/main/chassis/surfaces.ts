@@ -52,7 +52,7 @@ export function createShadowWalkSurface(host: ChassisHost): ShadowWalkSurface {
     activeWebContents: () => activeWebContents(host),
     allTabs: () => host.tabSetup.manager?.allTabs() ?? [],
     log: host.log,
-    pressKey: (wc, key) => host.input.simulator.pressKey(wc, key),
+    pressKey: (wc, key) => host.input.simulator.keyboard.pressKey(wc, key),
     bumpRevision: () => bumpRevision(host),
     capturePage: (wc, bounds) => host.harvest.capturePageWithRetry(wc, bounds),
   });

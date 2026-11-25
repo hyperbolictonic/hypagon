@@ -76,7 +76,7 @@
       "main/telemetry/chaos-kinematics.ts": 2,
       "main/telemetry/host-fingerprint.ts": 1,
       "main/telemetry/input-profile.ts": 2,
-      "main/telemetry/input-simulator.ts": 2,
+      "main/telemetry/input-simulator.ts": 1,
       "main/tools/settings.ts": 3,
       "main/tools/state.ts": 2,
       "main/tray/tray-manager.ts": 2,
@@ -173,11 +173,6 @@
       },
       "main/telemetry/host-fingerprint.ts": {
         "function": 1
-      },
-      "main/telemetry/input-simulator.ts": {
-        "class": 1,
-        "file": 1,
-        "function": 2
       },
       "main/tray/tray-manager.ts": {
         "class": 1

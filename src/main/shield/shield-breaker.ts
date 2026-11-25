@@ -228,7 +228,7 @@ export class ShieldBreaker {
     offset: { x: number; y: number } = { x: 0, y: 0 }
   ): Promise<ShieldDismissResult> {
     const point = { x: offset.x + match.x, y: offset.y + match.y };
-    await this.simulator.clickAt(wc, point);
+    await this.simulator.pointer.clickAt(wc, point);
     await wc
       .executeJavaScript(`(() => { if (document.body.style.overflow === 'hidden') document.body.style.overflow = 'auto'; })()`)
       .catch(() => {});

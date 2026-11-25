@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 372 files, 1116 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 378 files, 1124 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (895)
+## Types (896)
 
 | File | Export | When to use |
 |---|---|---|
@@ -660,12 +660,13 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/telemetry/chaos-kinematics.ts` | `ChaosKinematicsOptions` *(type)* | - |
 | `main/telemetry/host-fingerprint.ts` | `detectHostBrowserProfile` | Clean, zero-subprocess host browser profile detector. |
 | `main/telemetry/host-fingerprint.ts` | `HostBrowserProfile` *(type)* | - |
+| `main/telemetry/input/context.ts` | `InputState` | When to use: `HumanizedInputSimulator` — one state object per simulator. |
+| `main/telemetry/input/context.ts` | `InputTelemetryReporter` *(type)* | When to use: a caller that wants input telemetry (the HUD and the replay recorder). |
+| `main/telemetry/input/context.ts` | `HumanProfile` *(type)* | The human pacing knobs; replaced at runtime by Settings → INPUT. |
 | `main/telemetry/input-profile.ts` | `loadInputProfile` | Resolve the active profile: defaults, then the file, then env overrides. |
 | `main/telemetry/input-profile.ts` | `saveInputProfile` | Persist a (partial) profile, clamped, and return the profile that is now active. |
 | `main/telemetry/input-profile.ts` | `DEFAULT_INPUT_PROFILE` | - |
 | `main/telemetry/input-profile.ts` | `InputProfile` *(type)* | - |
-| `main/telemetry/input-simulator.ts` | `HumanizedInputSimulator` | - |
-| `main/telemetry/input-simulator.ts` | `InputTelemetryReporter` *(type)* | - |
 | `main/telemetry/telemetry-surface.ts` | `TelemetrySurface` | The log ring, state broadcast and telemetry fan-out shared by every chassis surface. |
 | `main/telemetry/telemetry-surface.ts` | `LogEntry` *(type)* | One HUD log line; newest entries sit at the head of the ring. |
 | `main/telemetry/telemetry-surface.ts` | `TelemetrySurfaceDeps` *(type)* | Dependencies the telemetry surface needs from the chassis and its renderers. |
@@ -924,7 +925,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (213)
+## Modules (220)
 
 | File | Export | When to use |
 |---|---|---|
@@ -1073,6 +1074,13 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/sealed-targets.ts` | `resolveSealedToken` | Resolve a sealed token to a live top-level viewport centre, scrolling the real node into view. |
 | `main/takeover-key.ts` | `isTakeoverShortcut` | When to use: a `before-input-event` handler that must fire the takeover toggle. |
 | `main/telemetry/bezier.ts` | `generateOrganicTrajectory` | Generates an organic, human-like trajectory between two coordinates. |
+| `main/telemetry/input/cdp-input.ts` | `CdpInput` | When to use: `HumanizedInputSimulator` — the pointer and keyboard controllers. |
+| `main/telemetry/input/cursor-overlay.ts` | `VISUAL_CURSOR_SCRIPT` | The in-page ghost cursor: a full-viewport canvas drawing the phosphor trail, the |
+| `main/telemetry/input/keyboard.ts` | `HumanKeyboard` | When to use: `HumanizedInputSimulator` — everything that presses keys. |
+| `main/telemetry/input/keys.ts` | `keyDescriptor` | Best-effort US-layout descriptor for a single typed character. |
+| `main/telemetry/input/keys.ts` | `keyEventParams` | The CDP `Input.dispatchKeyEvent` payload for a descriptor; `phase` picks down or up. |
+| `main/telemetry/input/pointer.ts` | `HumanPointer` | When to use: `HumanizedInputSimulator` — everything that moves the pointer. |
+| `main/telemetry/input-simulator.ts` | `HumanizedInputSimulator` | - |
 | `main/tools/ipc.ts` | `registerToolSettingsIpc` | Human-only writes over IPC. The bridge exposes a read-only config route to MCP processes. |
 | `main/tools/state.ts` | `sanitizeToolSettings` | - |
 | `main/tools/state.ts` | `buildToolManagerState` | - |

@@ -87,7 +87,7 @@ export function createInteractionStack(host: ChassisHost): InteractionStack {
     findSealed: (opts) => host.marks.findSealed(opts),
     componentSurfaceEnabled: () => loadShadowWalkSettings().shadow.componentSurface,
     insertText: (text) => host.input.insertText(text),
-    pasteText: (text) => host.input.simulator.pasteText(activeWebContents(host), text),
+    pasteText: (text) => host.input.simulator.keyboard.pasteText(activeWebContents(host), text),
     moveMouseTo: (target) => host.input.moveMouse(target),
     pressKey: (key) => host.input.pressKey(key),
     snapshotRenderedPage: (opts) => host.marks.snapshotRenderedPage(opts),

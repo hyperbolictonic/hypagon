@@ -79,7 +79,7 @@ export class InputSurface {
   }
 
   insertText(text: string): Promise<boolean> {
-    return this.simulator.insertText(this.deps.activeWebContents(), text);
+    return this.simulator.keyboard.insertText(this.deps.activeWebContents(), text);
   }
 
 
@@ -87,7 +87,7 @@ export class InputSurface {
   async pressKey(key: string): Promise<string> {
     const wc = this.deps.activeWebContents();
     this.deps.log('action', `MCP Directive: press_key("${key}")`);
-    await this.simulator.pressKey(wc, key);
+    await this.simulator.keyboard.pressKey(wc, key);
     this.deps.bumpRevision();
     return `Pressed key: ${key}`;
   }
@@ -99,6 +99,6 @@ export class InputSurface {
 
   async moveMouse(target: { x: number; y: number }, options?: ChaosKinematicsOptions): Promise<void> {
     const wc = this.deps.activeWebContents();
-    await this.simulator.moveMouseTo(wc, target, options);
+    await this.simulator.pointer.moveMouseTo(wc, target, options);
   }
 }

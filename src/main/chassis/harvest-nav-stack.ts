@@ -44,9 +44,11 @@ export function createHarvestNavStack(host: ChassisHost): HarvestNavStack {
     revision: () => currentRevision(host),
     marksOverlay: host.marksOverlay,
     simulator: {
-      clickAt: (wc, point) => host.input.simulator.clickAt(wc, point),
-      clearFocusedField: (wc) => host.input.simulator.clearFocusedField(wc),
-      typeText: (wc, text) => host.input.simulator.typeText(wc, text),
+      pointer: { clickAt: (wc, point) => host.input.simulator.pointer.clickAt(wc, point) },
+      keyboard: {
+        clearFocusedField: (wc) => host.input.simulator.keyboard.clearFocusedField(wc),
+        typeText: (wc, text) => host.input.simulator.keyboard.typeText(wc, text),
+      },
     },
     refuseShadow: (surface) => assertShadowSurface(surface),
     log: host.log,

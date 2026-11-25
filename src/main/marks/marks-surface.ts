@@ -23,7 +23,10 @@ export interface MarksSurfaceDeps {
   activeWebContents(): WebContents;
   revision(): number;
   marksOverlay: MarksOverlay;
-  simulator: Pick<HumanizedInputSimulator, 'clickAt' | 'clearFocusedField' | 'typeText'>;
+  simulator: {
+    pointer: Pick<HumanizedInputSimulator['pointer'], 'clickAt'>;
+    keyboard: Pick<HumanizedInputSimulator['keyboard'], 'clearFocusedField' | 'typeText'>;
+  };
   refuseShadow(surface: ShadowWalkSurface): void;
   log(level: 'info' | 'warn' | 'action', message: string): void;
   reportActing(): void;
@@ -103,7 +106,7 @@ export class MarksSurface {
       this.deps.log('warn', `type_mark(#${markId}): target did not take focus after click; retrying once.`);
       const retry = await this.resolveMarkTarget(wc, markId).catch(() => null);
       if (retry) {
-        await this.deps.simulator.clickAt(wc, retry.currentCenter);
+        await this.deps.simulator.pointer.clickAt(wc, retry.currentCenter);
         await new Promise((r) => setTimeout(r, 100));
       }
     }
@@ -111,10 +114,10 @@ export class MarksSurface {
     if (opts.clearFirst) {
       // Replace rather than append: the target may already hold a value (e.g. a pre-filled
       // origin/airport field), and appending silently corrupts it.
-      await this.deps.simulator.clearFocusedField(wc);
+      await this.deps.simulator.keyboard.clearFocusedField(wc);
     }
 
-    await this.deps.simulator.typeText(wc, text);
+    await this.deps.simulator.keyboard.typeText(wc, text);
 
     this.deps.reportIdle();
     this.deps.bumpRevision();
@@ -146,7 +149,7 @@ export class MarksSurface {
   private async focusMark(wc: WebContents, markId: number, settleMs = 0) {
     const target = await this.resolveMarkTarget(wc, markId);
     this.deps.reportActing();
-    await this.deps.simulator.clickAt(wc, target.currentCenter);
+    await this.deps.simulator.pointer.clickAt(wc, target.currentCenter);
     if (settleMs) await new Promise((r) => setTimeout(r, settleMs));
     return target;
   }

@@ -107,7 +107,7 @@ async function fillField(
   const info = await wc.executeJavaScript(fieldProbeScript(selector));
   if (!info) return { filled: false, detail: `Field skipped (not found): ${selector}` };
 
-  await simulator.clickAt(wc, { x: info.x, y: info.y });
+  await simulator.pointer.clickAt(wc, { x: info.x, y: info.y });
 
   if (info.type === 'checkbox' || info.type === 'radio') {
     await wc.executeJavaScript(toggleScript(selector, value));
@@ -118,7 +118,7 @@ async function fillField(
     return { filled: true, detail: `Selected option [${selector}] -> "${value}"` };
   }
   await wc.executeJavaScript(clearFieldScript(selector));
-  await simulator.typeText(wc, String(value));
+  await simulator.keyboard.typeText(wc, String(value));
   return { filled: true, detail: `Typed [${selector}] -> "${String(value)}"` };
 }
 
@@ -166,7 +166,7 @@ export class InputActionsController {
       throw new Error('Must provide either selector or coordinates');
     }
 
-    await this.deps.simulator().clickAt(wc, { x: targetX!, y: targetY! });
+    await this.deps.simulator().pointer.clickAt(wc, { x: targetX!, y: targetY! });
 
     // The focus nudge is applied to the **resolved control**, never to a custom-element
     // host: `host.focus()` either moves focus off the inner <input> or does nothing, and
@@ -204,10 +204,10 @@ export class InputActionsController {
     }
 
     if (opts.clearFirst) {
-      await this.deps.simulator().clearFocusedField(wc);
+      await this.deps.simulator().keyboard.clearFocusedField(wc);
     }
 
-    await this.deps.simulator().typeText(wc, text);
+    await this.deps.simulator().keyboard.typeText(wc, text);
     this.deps.status.idle();
     this.deps.bumpRevision();
     return `Typed text (${text.length} chars) with variable human cadence`;
