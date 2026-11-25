@@ -154,9 +154,6 @@
       "main/search/search-engine.ts": {
         "function": 1
       },
-      "main/shadow-walk/tab-walk.ts": {
-        "function": 1
-      },
       "main/snapshots/rendered-snapshot.ts": {
         "function": 1
       },

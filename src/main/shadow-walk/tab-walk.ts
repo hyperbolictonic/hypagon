@@ -128,9 +128,131 @@ function median(values: number[]): number | undefined {
   return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
 }
 
+/** The host the walk starts from: a selector's node, or whatever sits at x+y. */
+async function resolveHost(
+  dbg: any,
+  options: TabWalkOptions,
+): Promise<{ backend: number; tag?: string } | null> {
+  try {
+    if (options.selector) {
+      const doc = (await dbg.sendCommand('DOM.getDocument', { depth: 0 })) as any;
+      const queried = (await dbg.sendCommand('DOM.querySelector', {
+        nodeId: doc.root.nodeId,
+        selector: options.selector,
+      })) as any;
+      if (!queried?.nodeId) return null;
+      const described = (await dbg.sendCommand('DOM.describeNode', { nodeId: queried.nodeId })) as any;
+      const backend = Number(described?.node?.backendNodeId) || 0;
+      if (!backend) return null;
+      return { backend, tag: String(described?.node?.nodeName || '').toLowerCase() };
+    }
+
+    const hit = (await dbg.sendCommand('DOM.getNodeForLocation', {
+      x: Number(options.x),
+      y: Number(options.y),
+      includeUserAgentShadowDOM: false,
+    })) as any;
+    const backend = Number(hit?.backendNodeId) || 0;
+    if (!backend) return null;
+    const described = (await dbg.sendCommand('DOM.describeNode', { backendNodeId: backend })) as any;
+    return { backend, tag: String(described?.node?.nodeName || '').toLowerCase() };
+  } catch (err: any) {
+    throw Object.assign(new Error(`Could not resolve the focus host: ${err?.message || err}`), { code: 'NO_TARGET' });
+  }
+}
+
+/** The host's subtree, closed roots included; null when CDP cannot describe it. */
+async function hostSubtree(dbg: any, hostBackend: number): Promise<Set<number> | null> {
+  // `describeNode(pierce)` sees what page JavaScript cannot.
+  try {
+    const described = (await dbg.sendCommand('DOM.describeNode', {
+      backendNodeId: hostBackend,
+      depth: -1,
+      pierce: true,
+    })) as any;
+    return collectBackendIds(described?.node);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A delegatesFocus host is already on its inner control the moment it is focused. That
+ * is a real landing, not a Tab step, so it is recorded before the first key press.
+ */
+async function initialLanding(
+  send: (method: string, params?: Record<string, unknown>) => Promise<any>,
+  hostBackend: number,
+  inside: Set<number>,
+): Promise<TabWalkStep | null> {
+  bump('cdp.ax');
+  const ax = await send('Accessibility.getFullAXTree');
+  const initial = focusedNode(ax);
+  const backend = Number(initial?.backendDOMNodeId);
+  if (!initial || !backend || backend === hostBackend || !inside.has(backend) || !INTERACTIVE.has(axRole(initial))) {
+    return null;
+  }
+  return {
+    index: 0,
+    role: axRole(initial),
+    name: String(initial.name?.value || ''),
+    rect: await nodeRect(send, backend),
+    gapMs: 0,
+  };
+}
+
+/** Press Tab (or Shift+Tab) until the budget is spent or focus leaves the host. */
+async function walkSteps(args: {
+  send: (method: string, params?: Record<string, unknown>) => Promise<any>;
+  pressKey: (key: string) => Promise<void>;
+  key: string;
+  maxSteps: number;
+  inside: Set<number>;
+}): Promise<{ steps: TabWalkStep[]; reason: TabWalkResult['reason'] }> {
+  const { send, pressKey, key, maxSteps, inside } = args;
+  const steps: TabWalkStep[] = [];
+  let reason: TabWalkResult['reason'] = 'max-steps';
+
+  for (let i = 0; i < maxSteps; i++) {
+    const startedAt = Date.now();
+    await pressKey(key);
+    // A keyboard user pauses between keys; this also gives AX a chance to update.
+    await sleep(90 + Math.floor(Math.random() * 50));
+
+    bump('cdp.ax');
+    const ax = await send('Accessibility.getFullAXTree');
+    const focused = focusedNode(ax);
+    if (!focused) {
+      reason = 'no-focus';
+      break;
+    }
+
+    const backend = Number(focused.backendDOMNodeId);
+    if (!backend || !inside.has(backend)) {
+      reason = 'left-host';
+      break;
+    }
+
+    steps.push({
+      index: i + 1,
+      role: axRole(focused),
+      name: String(focused.name?.value || ''),
+      rect: await nodeRect(send, backend),
+      gapMs: Date.now() - startedAt,
+    });
+    bump('tabwalk.steps');
+  }
+
+  return { steps, reason };
+}
+
 /**
  * Walk sequential focus from a host.
  * `pressKey` is supplied by the chassis so the same humanized transport is used as `act`.
+ *
+ * Why it reads as steps: resolving the host, collecting its closed subtree, focusing it,
+ * the delegatesFocus landing, the Tab loop and the restore-on-failure are each their own
+ * rule, so a change to one cannot perturb the others.
  */
 export async function runTabWalk(
   wc: WebContents,
@@ -161,49 +283,13 @@ export async function runTabWalk(
   await dbg.sendCommand('DOM.enable');
   await dbg.sendCommand('Page.enable').catch(() => undefined);
 
-  let hostBackend: number | undefined;
-  let hostTag: string | undefined;
-  try {
-    if (options.selector) {
-      const doc = (await dbg.sendCommand('DOM.getDocument', { depth: 0 })) as any;
-      const queried = (await dbg.sendCommand('DOM.querySelector', {
-        nodeId: doc.root.nodeId,
-        selector: options.selector,
-      })) as any;
-      if (!queried?.nodeId) return fail('no-target');
-      const described = (await dbg.sendCommand('DOM.describeNode', { nodeId: queried.nodeId })) as any;
-      hostBackend = Number(described?.node?.backendNodeId) || undefined;
-      hostTag = String(described?.node?.nodeName || '').toLowerCase();
-    } else {
-      const hit = (await dbg.sendCommand('DOM.getNodeForLocation', {
-        x: Number(options.x),
-        y: Number(options.y),
-        includeUserAgentShadowDOM: false,
-      })) as any;
-      hostBackend = Number(hit?.backendNodeId) || undefined;
-      if (hostBackend) {
-        const described = (await dbg.sendCommand('DOM.describeNode', { backendNodeId: hostBackend })) as any;
-        hostTag = String(described?.node?.nodeName || '').toLowerCase();
-      }
-    }
-  } catch (err: any) {
-    throw Object.assign(new Error(`Could not resolve the focus host: ${err?.message || err}`), { code: 'NO_TARGET' });
-  }
+  const host = await resolveHost(dbg, options);
+  if (!host) return fail('no-target');
+  const hostBackend = host.backend;
+  const hostTag = host.tag;
 
-  if (!hostBackend) return fail('no-target');
-
-  // The host's subtree, closed roots included. `describeNode(pierce)` sees what page JS cannot.
-  let inside = new Set<number>();
-  try {
-    const described = (await dbg.sendCommand('DOM.describeNode', {
-      backendNodeId: hostBackend,
-      depth: -1,
-      pierce: true,
-    })) as any;
-    inside = collectBackendIds(described?.node);
-  } catch {
-    return fail('no-target');
-  }
+  const inside = await hostSubtree(dbg, hostBackend);
+  if (!inside) return fail('no-target');
 
   try {
     if (!(await focusHostNode(dbg, hostBackend))) {
@@ -222,54 +308,12 @@ export async function runTabWalk(
     await send('Accessibility.enable');
     axEnabled = true;
 
-    // A delegatesFocus host is already on its inner control the moment it is focused. That is a
-    // real landing, not a Tab step, so record it before the first key press.
-    bump('cdp.ax');
-    const initialAx = await send('Accessibility.getFullAXTree');
-    const initial = focusedNode(initialAx);
-    const initialBackend = Number(initial?.backendDOMNodeId);
-    if (
-      initial &&
-      initialBackend &&
-      initialBackend !== hostBackend &&
-      inside.has(initialBackend) &&
-      INTERACTIVE.has(axRole(initial))
-    ) {
-      const rect = await nodeRect(send, initialBackend);
-      steps.push({ index: 0, role: axRole(initial), name: String(initial.name?.value || ''), rect, gapMs: 0 });
-    }
+    const initial = await initialLanding(send, hostBackend, inside);
+    if (initial) steps.push(initial);
 
-    for (let i = 0; i < maxSteps; i++) {
-      const startedAt = Date.now();
-      await pressKey(key);
-      // A keyboard user pauses between keys; this also gives AX a chance to update.
-      await sleep(90 + Math.floor(Math.random() * 50));
-
-      bump('cdp.ax');
-      const ax = await send('Accessibility.getFullAXTree');
-      const focused = focusedNode(ax);
-      if (!focused) {
-        reason = 'no-focus';
-        break;
-      }
-
-      const backend = Number(focused.backendDOMNodeId);
-      if (!backend || !inside.has(backend)) {
-        reason = 'left-host';
-        break;
-      }
-
-      const rect = await nodeRect(send, backend);
-
-      steps.push({
-        index: i + 1,
-        role: axRole(focused),
-        name: String(focused.name?.value || ''),
-        rect,
-        gapMs: Date.now() - startedAt,
-      });
-      bump('tabwalk.steps');
-    }
+    const walked = await walkSteps({ send, pressKey, key, maxSteps, inside });
+    steps.push(...walked.steps);
+    reason = walked.reason;
   } finally {
     if (axEnabled) await send('Accessibility.disable').catch(() => undefined);
   }
