@@ -14,6 +14,7 @@ import { session as electronSession } from 'electron';
 import { DEFAULT_RESEARCH_SETTINGS, type ResearchSettings } from './settings.js';
 import { engineHost } from '../search/search-engine.js';
 import type { HostBrowserProfile } from '../telemetry/host-fingerprint.js';
+import { applyStealthHeaders } from '../browser/stealth.js';
 
 /** When to use: declaring the error contract shared by the research surfaces. */
 export function researchError(code: string, message: string): Error & { code: string } {
@@ -131,12 +132,8 @@ export class ResearchSessionController {
 
     if (!this.sessionConfigured) {
       this.sessionConfigured = true;
-      researchSession.webRequest.onBeforeSendHeaders((details, callback) => {
-        details.requestHeaders['User-Agent'] = this.deps.hostProfile.userAgent;
-        details.requestHeaders['sec-ch-ua'] = this.deps.hostProfile.secChUa;
-        details.requestHeaders['sec-ch-ua-platform'] = this.deps.hostProfile.secChUaPlatform;
-        callback({ requestHeaders: details.requestHeaders });
-      });
+      // The research session keeps its header set (no mobile hint, no UA override).
+      applyStealthHeaders(researchSession, this.deps.hostProfile, { mobile: false });
     }
   }
 

@@ -242,7 +242,7 @@ export function createIpcSurface(host: ChassisHost): IpcSurface {
       status: () => host.human.status(),
     },
     nav: host.nav,
-    activeWebContents: () => host.tabSetup.manager?.getActiveTab()?.view?.webContents ?? null,
+    activeWebContents: () => host.tabSetup.manager?.registry.active()?.view?.webContents ?? null,
     tabs: {
       summary: () => host.tabSetup.manager?.getTabsSummary() ?? [],
       create: (url) => host.tabOps.create(url),

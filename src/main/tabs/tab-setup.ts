@@ -93,8 +93,8 @@ export class TabSetupSurface {
     this.viewport = new ViewportController({
       store: new DeviceProfileStore(this.deps.deviceProfilesPath()),
       available: () => this.bounds(),
-      getTab: (tabId) => this.manager?.getTab(tabId) ?? null,
-      getActiveTabId: () => this.manager?.getActiveTabId() ?? '',
+      getTab: (tabId) => this.manager?.registry.get(tabId) ?? null,
+      getActiveTabId: () => this.manager?.registry.activeId ?? '',
       applyZoom: (wc) => this.deps.applyZoom(wc),
       setInputScale: (wc, scale) => this.deps.setInputScale(wc, scale),
       relayout: () => this.manager?.updateActiveTabBounds(),

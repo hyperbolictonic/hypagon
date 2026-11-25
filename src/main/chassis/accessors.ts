@@ -29,14 +29,14 @@ export function setViewportVisibility(host: ChassisHost, visible: boolean): void
 
 /** The active tab's web contents, with the network tap attached. */
 export function activeWebContents(host: ChassisHost): WebContents {
-  const wc = host.tabSetup.requireManager().getActiveTab().view.webContents;
+  const wc = host.tabSetup.requireManager().registry.active().view.webContents;
   host.network.manager.attach(wc);
   return wc;
 }
 
 /** The live page identity, preferring the document over the cached state. */
 export function pageInfo(host: ChassisHost): PageInfo {
-  return readPageInfo(host.state, host.tabSetup.manager?.getActiveTab() ?? null);
+  return readPageInfo(host.state, host.tabSetup.manager?.registry.active() ?? null);
 }
 
 /** When to use: reading the page revision the bridge reports. */

@@ -50,7 +50,7 @@ export function createPageScriptSurface(host: ChassisHost): PageScriptSurface {
 export function createShadowWalkSurface(host: ChassisHost): ShadowWalkSurface {
   return new ShadowWalkSurface({
     activeWebContents: () => activeWebContents(host),
-    allTabs: () => host.tabSetup.manager?.allTabs() ?? [],
+    allTabs: () => host.tabSetup.manager?.registry.all() ?? [],
     log: host.log,
     pressKey: (wc, key) => host.input.simulator.keyboard.pressKey(wc, key),
     bumpRevision: () => bumpRevision(host),
@@ -152,7 +152,7 @@ export function createZoomController(host: ChassisHost): ZoomController {
     viewportState: () => host.tabSetup.viewport?.state() ?? null,
     isEmulated: (wc) => Boolean(host.tabSetup.viewport?.isEmulated(wc as never)),
     bounds: () => host.tabSetup.bounds(),
-    webContentsList: () => (host.tabSetup.manager?.allTabs() ?? []).map((tab) => ({ webContents: tab.view.webContents })),
+    webContentsList: () => (host.tabSetup.manager?.registry.all() ?? []).map((tab) => ({ webContents: tab.view.webContents })),
     onChanged: () => host.telemetry.broadcastState(),
   });
 }
@@ -264,8 +264,8 @@ export function createChromeSurfaces(host: ChassisHost): ChromeSurfaces {
 export function createTabEvents(host: ChassisHost): ReturnType<typeof createTabEventHandlers> {
   return createTabEventHandlers({
     state: host.state,
-    activeTabId: () => host.tabSetup.manager?.getActiveTabId(),
-    allTabs: () => host.tabSetup.manager?.allTabs() ?? [],
+    activeTabId: () => host.tabSetup.manager?.registry.activeId,
+    allTabs: () => host.tabSetup.manager?.registry.all() ?? [],
     broadcastState: () => host.telemetry.broadcastState(),
     bumpRevision: () => bumpRevision(host),
     reassertViewport: () => reassertViewport(host.getMainWindow(), () => host.deck.position(), host.tabSetup.manager),

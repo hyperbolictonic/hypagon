@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-378 modules, 1124 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+385 modules, 1137 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -20,6 +20,7 @@
 | `main/browser/frames.ts` | 3: listFrames, FrameRect, FrameInfo |
 | `main/browser/layout-viewport.ts` | 2: layoutViewport, ViewportRect |
 | `main/browser/page-script-surface.ts` | 2: PageScriptSurface, PageScriptSurfaceDeps |
+| `main/browser/stealth.ts` | 3: stealthHeaders, applyHostProfile, applyStealthHeaders |
 | `main/capabilities.ts` | 1: BRIDGE_CAPABILITIES |
 | `main/capture/screenshot-jpeg.ts` | 2: captureScreenshotJpeg, ScreenshotJpegDeps |
 | `main/chassis/accessors.ts` | 10: reassertChassisViewport, setViewportVisibility, activeWebContents, pageInfo, currentRevision, bumpRevision, queryChassisJson, prerenderLinks, … (10) |
@@ -125,8 +126,7 @@
 | `main/ipc/web-state-ipc.ts` | 1: registerWebStateIpc |
 | `main/ipc/wrap-ipc.ts` | 2: registerWrapIpc, WrapIpcDeps |
 | `main/jev/controller.ts` | 2: JevController, JevControllerDeps |
-| `main/jev/depth-store.ts` | 2: JevDepthStore, JevDepthStoreDeps |
 
-… and 253 more module(s) — grep the full index.
+… and 260 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

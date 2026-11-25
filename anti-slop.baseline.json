@@ -70,7 +70,7 @@
       "main/shadow-walk/tab-walk.ts": 3,
       "main/shield/shield-breaker.ts": 2,
       "main/snapshots/rendered-snapshot.ts": 3,
-      "main/tabs/tab-manager.ts": 3,
+      "main/tabs/tab-manager.ts": 1,
       "main/tabs/window-open-policy.ts": 1,
       "main/telemetry/action-ledger.ts": 6,
       "main/telemetry/chaos-kinematics.ts": 2,
@@ -162,10 +162,6 @@
         "function": 1
       },
       "main/snapshots/rendered-snapshot.ts": {
-        "function": 1
-      },
-      "main/tabs/tab-manager.ts": {
-        "class": 1,
         "function": 1
       },
       "main/telemetry/chaos-kinematics.ts": {

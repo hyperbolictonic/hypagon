@@ -187,7 +187,7 @@ export class BrowserChassis {
     send: (channel, payload) => this.bus.toSurfaces(channel, payload),
     zoomState: () => this.zoom.getState(),
     viewportState: () => this.tabSetup.viewport?.state(),
-    activeWebContents: () => this.tabSetup.manager?.getActiveTab()?.view?.webContents ?? null,
+    activeWebContents: () => this.tabSetup.manager?.registry.active()?.view?.webContents ?? null,
   });
 
   latestConstruct: HarvestedConstruct | null = null;

@@ -8,6 +8,7 @@
  */
 import { WebContentsView } from 'electron';
 import type { HostBrowserProfile } from '../telemetry/host-fingerprint.js';
+import { applyHostProfile } from '../browser/stealth.js';
 import type { PrerenderItem } from './types.js';
 
 /**
@@ -29,16 +30,8 @@ export function spawnPrerenderView(
   });
 
   const wc = view.webContents;
-  wc.setUserAgent(hostProfile.userAgent);
-
-  // Apply stealth request headers
-  wc.session.webRequest.onBeforeSendHeaders((details, callback) => {
-    details.requestHeaders['User-Agent'] = hostProfile.userAgent;
-    details.requestHeaders['sec-ch-ua'] = hostProfile.secChUa;
-    details.requestHeaders['sec-ch-ua-mobile'] = '?0';
-    details.requestHeaders['sec-ch-ua-platform'] = hostProfile.secChUaPlatform;
-    callback({ requestHeaders: details.requestHeaders });
-  });
+  // Apply the host profile: UA plus the client hints that go with it.
+  applyHostProfile(wc, hostProfile);
 
   // Suppress popups from prerendered views
   wc.setWindowOpenHandler(() => ({ action: 'deny' }));

@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 378 files, 1124 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 385 files, 1137 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (896)
+## Types (903)
 
 | File | Export | When to use |
 |---|---|---|
@@ -629,18 +629,25 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotResult` *(type)* | - |
 | `main/tabs/page-info.ts` | `readPageInfo` | When to use: reading the active page — prefers the live document over cached state. |
 | `main/tabs/page-info.ts` | `PageInfo` *(type)* | The page identity the primitives, JEV and HUD read. |
+| `main/tabs/popup-windows.ts` | `PopupWindows` | When to use: `TabManager` — one popup router per window. |
+| `main/tabs/popup-windows.ts` | `PopupWiringDeps` *(type)* | The wiring hooks plus the one callback only popups need. |
+| `main/tabs/tab-bounds.ts` | `boundsFor` | When to use: `switchTab`, relayout and viewport visibility. |
+| `main/tabs/tab-bounds.ts` | `HIDDEN_BOUNDS` | Tucked away, so the view paints nothing (never `hide()`: the page keeps running). |
+| `main/tabs/tab-bounds.ts` | `TabBounds` *(type)* | The rect a tab's view occupies. |
 | `main/tabs/tab-events.ts` | `createTabEventHandlers` | When to use: building the tab manager — the reaction set for its events. |
 | `main/tabs/tab-events.ts` | `ConsoleLine` *(type)* | One page console line. |
 | `main/tabs/tab-events.ts` | `TabEventDeps` *(type)* | The chassis callbacks the tab handlers read and write. |
 | `main/tabs/tab-events.ts` | `TabEventHandlers` *(type)* | The handlers a `TabManager` installs. |
-| `main/tabs/tab-manager.ts` | `TabManager` | - |
-| `main/tabs/tab-manager.ts` | `TabInstance` *(type)* | - |
-| `main/tabs/tab-manager.ts` | `TabManagerOptions` *(type)* | - |
 | `main/tabs/tab-setup.ts` | `TabSetupSurface` | The tab manager and responsive viewport controller, built once per window. |
 | `main/tabs/tab-setup.ts` | `ViewportBounds` *(type)* | The page viewport rect inside the shell window. |
 | `main/tabs/tab-setup.ts` | `TabSetupDeps` *(type)* | Dependencies the tab setup needs from the shell window and controllers. |
 | `main/tabs/tab-surface.ts` | `TabSurface` | The tab verbs behind the MCP tools, routes and renderer IPC. |
 | `main/tabs/tab-surface.ts` | `TabSurfaceDeps` *(type)* | Dependencies the tab surface needs from the chassis. |
+| `main/tabs/tab-types.ts` | `TabInstance` *(type)* | When to use: anywhere a tab is passed around (manager, registry, events). |
+| `main/tabs/tab-types.ts` | `TabManagerOptions` *(type)* | When to use: `new TabManager(...)` — the host window and the app's hooks. |
+| `main/tabs/tab-wiring.ts` | `attachTabContextMenu` | When to use: a WebContentsView has no default context menu, so every tab and |
+| `main/tabs/tab-wiring.ts` | `wireTab` | When to use: `createTab` — wire one tab view (fresh or promoted) in one call. |
+| `main/tabs/tab-wiring.ts` | `TabWiringDeps` *(type)* | When to use: `wireTab` — the app hooks and the manager's two callbacks. |
 | `main/tabs/window-open-policy.ts` | `isAuthPopupUrl` | True when the URL looks like an interactive sign-in or authorization endpoint. Used as a |
 | `main/tabs/window-open-policy.ts` | `isPopupWindowRequest` | True when this request needs a real window to keep its opener relationship intact. |
 | `main/tabs/window-open-policy.ts` | `popupWindowSize` | Window size requested by a `window.open` features string, clamped to something usable. |
@@ -925,7 +932,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (220)
+## Modules (226)
 
 | File | Export | When to use |
 |---|---|---|
@@ -935,6 +942,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/browser/frame-marks.ts` | `clearFrameMarks` | - |
 | `main/browser/frame-marks.ts` | `registerFrameMarks` | - |
 | `main/browser/frame-marks.ts` | `resolveFrameMark` | Resolve a frame mark to a live page-space target. Returns null when the frame navigated, the |
+| `main/browser/stealth.ts` | `stealthHeaders` | When to use: any request that must carry the host's client hints. |
+| `main/browser/stealth.ts` | `applyHostProfile` | When to use: a `WebContents` that must present as the host browser. |
+| `main/browser/stealth.ts` | `applyStealthHeaders` | When to use: a bare session (the research view) that only needs the headers. |
 | `main/browser-chassis.ts` | `BrowserChassis` | - |
 | `main/capabilities.ts` | `BRIDGE_CAPABILITIES` | The bridge capabilities advertised by `bridge_health`. |
 | `main/chassis/accessors.ts` | `reassertChassisViewport` | Re-assert the shell and tab views after a window/display transition. |
@@ -1072,6 +1082,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/sealed-targets.ts` | `clearSealedTokens` | - |
 | `main/shadow-walk/sealed-targets.ts` | `issueSealedToken` | - |
 | `main/shadow-walk/sealed-targets.ts` | `resolveSealedToken` | Resolve a sealed token to a live top-level viewport centre, scrolling the real node into view. |
+| `main/tabs/tab-manager.ts` | `TabManager` | - |
+| `main/tabs/tab-registry.ts` | `TabRegistry` | When to use: `TabManager` — one registry per window. |
+| `main/tabs/welcome-page.ts` | `welcomePagePath` | When to use: a tab with no URL, or the last tab being reset to the manual. |
 | `main/takeover-key.ts` | `isTakeoverShortcut` | When to use: a `before-input-event` handler that must fire the takeover toggle. |
 | `main/telemetry/bezier.ts` | `generateOrganicTrajectory` | Generates an organic, human-like trajectory between two coordinates. |
 | `main/telemetry/input/cdp-input.ts` | `CdpInput` | When to use: `HumanizedInputSimulator` — the pointer and keyboard controllers. |

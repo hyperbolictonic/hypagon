@@ -18,6 +18,7 @@ import { ScreenshotStore } from '../harvest/screenshots.js';
 import { NavigationSurface } from '../navigation/navigation-surface.js';
 import type { ConstructHarvester } from '../harvester/markdown.js';
 import { PrerenderEngine } from '../prerender/prerender-engine.js';
+import { welcomePagePath } from '../tabs/welcome-page.js';
 import { normalizePrerenderUrl } from '../prerender/url.js';
 import { cortex } from '../cortex/cortex-db.js';
 import { assertShadowSurface } from '../shadow-walk/guard.js';
@@ -91,7 +92,7 @@ export function createHarvestNavStack(host: ChassisHost): HarvestNavStack {
 
   const nav = new NavigationSurface({
     activeWebContents: () => activeWebContents(host),
-    welcomePagePath: () => host.tabSetup.manager?.getWelcomePagePath(),
+    welcomePagePath: () => welcomePagePath(),
     createTab: (url, view) => host.tabSetup.manager?.createTab(url, view),
     prerender: {
       normalizeUrl: (url) => normalizePrerenderUrl(url),

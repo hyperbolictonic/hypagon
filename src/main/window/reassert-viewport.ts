@@ -27,7 +27,7 @@ export function reassertViewport(
   } catch {
     // Window is closing.
   }
-  for (const tab of manager?.allTabs() ?? []) {
+  for (const tab of manager?.registry.all() ?? []) {
     try {
       if (!tab.view.webContents.isDestroyed()) tab.view.webContents.invalidate();
     } catch {
