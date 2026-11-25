@@ -1,11 +1,10 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BrowserWindow, app, ipcMain, clipboard, screen, session, WebContentsView, type WebContents } from 'electron';
+import { BrowserWindow, app, screen, session, WebContentsView, type WebContents } from 'electron';
 import type { AgentStatus, ChassisState, HarvestedConstruct, TelemetryEvent, TabSummary } from '../shared/types.js';
 import { DeviceProfileStore } from './viewport/profiles.js';
 import { ViewportController } from './viewport/controller.js';
 import { ZoomController } from './zoom/controller.js';
-import { loadInputProfile, saveInputProfile, type InputProfile } from './telemetry/input-profile.js';
 import { InputSurface } from './input/input-surface.js';
 import { TelemetrySurface } from './telemetry/telemetry-surface.js';
 import { HumanActivityMonitor, humanListenerScript, type HumanActivity } from './input/human-activity.js';
@@ -24,7 +23,7 @@ import { ConstructHarvester } from './harvester/markdown.js';
 import { JevController } from './jev/controller.js';
 import { DeckController } from './deck/controller.js';
 import { HarvestSurface } from './harvest/harvest-surface.js';
-import { readStoredDecisionConfig, saveDecisionConfig, decisionStatus, runDecision, onDecision, type DecisionEvent } from './decide/decision-client.js';
+import { decisionStatus, onDecision, type DecisionEvent } from './decide/decision-client.js';
 import { detectHostBrowserProfile, type HostBrowserProfile } from './telemetry/host-fingerprint.js';
 import { TabManager, type TabInstance } from './tabs/tab-manager.js';
 import { cortex } from './cortex/cortex-db.js';
@@ -63,6 +62,7 @@ import { RenderedSnapshotEngine } from './snapshots/rendered-snapshot.js';
 import { PrerenderEngine, type PrerenderOptions } from './prerender/prerender-engine.js';
 import { isTakeoverShortcut } from './takeover-key.js';
 import { HudWatchdog } from './boot/hud-watchdog.js';
+import { IpcSurface } from './ipc/ipc-surface.js';
 import { readPageInfo } from './tabs/page-info.js';
 import { LlmSurface } from './llm/llm-surface.js';
 import { ReadSurface } from './llm/read-surface.js';
@@ -166,6 +166,8 @@ export class BrowserChassis {
   private onCollaborationNote?: (input: { target: CollaborationTarget; text: string; tags: string[] }) => void;
   /** Page zoom policy: fit the page to the OS display scale, or honour Windows scale. */
   /** Explicit zoom from the toolbar or an agent; null means use the policy base. */
+  /** Renderer IPC channels. */
+  ipc!: IpcSurface;
   /** HUD heartbeat and viewport-recovery watchdog. */
   readonly hud = new HudWatchdog({
     window: () => this.mainWindow,
@@ -635,7 +637,8 @@ export class BrowserChassis {
       this.telemetry.emitSimpleEvent('harvest', `File Download Complete: ${record.filename}`);
     });
     this.setupTabManager();
-    this.registerIpcHandlers();
+    this.ipc = this.createIpcSurface();
+    this.ipc.register();
     this.deck.setup();
   }
 
@@ -1074,177 +1077,39 @@ export class BrowserChassis {
    * until `reset` or a mode switch.
    */
 
-  private registerIpcHandlers() {
-    this.registerCoreIpc();
-    this.registerTabViewportIpc();
-    this.registerDeckIpc();
-    this.registerCortexIpc();
-    this.registerSettingsIpc();
-  }
-
-  private registerCoreIpc() {
-    ipcMain.on('chassis:hud-heartbeat', () => {
-      this.hud.touch();
-    });
-    ipcMain.handle('chassis:get-state', () => this.state);
-    ipcMain.handle('chassis:get-latest-construct', () => this.latestConstruct);
-    ipcMain.handle('chassis:get-logs', () => this.telemetry.entries());
-    ipcMain.handle('chassis:take-over-human', () => this.takeOverHuman());
-    ipcMain.handle('chassis:resume-human', () => this.resumeHuman());
-    ipcMain.handle('chassis:get-human-status', () => this.getHumanStatus());
-
-    ipcMain.handle('chassis:navigate', async (_, url: string) => {
-      await this.nav.navigateTo(url);
-      return { success: true };
-    });
-
-    // Toolbar history controls. These are the same entry points the MCP `navigate_history` tool and
-    // the right-click menu use, so a human and an agent cannot drift apart.
-    ipcMain.handle('chassis:go-back', async () => ({ message: await this.nav.goBack() }));
-    ipcMain.handle('chassis:go-forward', async () => ({ message: await this.nav.goForward() }));
-    ipcMain.handle('chassis:reload', async () => ({ message: await this.nav.reload() }));
-    ipcMain.handle('chassis:get-nav-state', () => {
-      const wc = this.tabManager?.getActiveTab()?.view?.webContents;
-      const usable = wc && !wc.isDestroyed();
-      return {
-        canGoBack: usable ? wc.navigationHistory.canGoBack() : false,
-        canGoForward: usable ? wc.navigationHistory.canGoForward() : false,
-      };
-    });
-
-    // Human-input pacing (Settings → INPUT). IPC only: settings are never changed over HTTP.
-    ipcMain.handle('input:get-profile', () => loadInputProfile());
-    ipcMain.handle('input:save-profile', (_: any, patch: Partial<InputProfile>) => {
-      const result = saveInputProfile(patch || {});
-      if (result.ok) this.input.simulator.setProfile(result.profile);
-      return result;
-    });
-
-    ipcMain.handle('chassis:harvest', async () => {
-      return await this.harvest.harvestMarkdown();
-    });
-
-  }
-
-  private registerTabViewportIpc() {
-    // Tab IPC Handlers
-    ipcMain.handle('chassis:get-tabs', () => this.tabs.getTabsSummary());
-    ipcMain.handle('chassis:create-tab', (_, url?: string) => this.createTab(url));
-    ipcMain.handle('chassis:switch-tab', (_, tabId: string) => this.switchTab(tabId));
-    ipcMain.handle('chassis:close-tab', (_, tabId?: string) => this.closeTab(tabId));
-
-    // Page zoom: a runtime view control. The persisted mode is written from the
-    // main process IPC handler (`chassis:zoom:mode`) so the bridge cannot change
-    // a human setting by accident.
-    ipcMain.handle('chassis:zoom:get', () => this.zoom.getState());
-    ipcMain.handle('chassis:zoom:set', (_, input: { action?: 'status' | 'in' | 'out' | 'reset'; factor?: number } = {}) =>
-      this.zoom.setZoom(input),
-    );
-
-    // Responsive device emulation. The agent path is intentionally tiny (status/set/reset);
-    // profile management is a human-only convenience.
-    ipcMain.handle('chassis:viewport:get', () => this.viewport.state());
-    ipcMain.handle('chassis:viewport:set', (_, input: Parameters<ViewportController['set']>[0] = {}) =>
-      this.viewport.set(input),
-    );
-    ipcMain.handle('chassis:viewport:reset', () => this.viewport.reset());
-    ipcMain.handle('viewport:profile:save', (_, input: { name?: unknown; spec?: unknown }) =>
-      this.viewport.saveProfile(input ?? {}),
-    );
-    ipcMain.handle('viewport:profile:delete', (_, id: unknown) => this.viewport.deleteProfile(id));
-    ipcMain.handle('chassis:devtools:open', () => this.toggleDevTools());
-
-    const setVisibility = (_: any, visible: boolean) => {
-      this.tabManager?.setViewportVisibility(visible);
-      this.deck.setOverlayVisible(visible);
-    };
-
-    ipcMain.handle('chassis:set-viewport-visibility', setVisibility);
-    ipcMain.on('chassis:set-viewport-visibility', setVisibility);
-
-  }
-
-  private registerDeckIpc() {
-    ipcMain.handle('chassis:get-sidebar-mode', () => this.deck.getMode());
-    ipcMain.handle('chassis:get-sidebar-state', () => this.deck.surfaceState());
-    // TEMP instrumentation: live bounds for verifying collab-mode geometry.
-    ipcMain.handle('chassis:get-sidebar-bounds', () => this.deck.getView()?.getBounds() ?? null);
-    ipcMain.on('chassis:set-sidebar-mode', (_: any, mode: 'docked' | 'floating' | 'collapsed') =>
-      this.deck.setMode(mode),
-    );
-    ipcMain.on('chassis:toggle-sidebar-mode', () => this.deck.toggleMode());
-
-    // Orb drag choreography (only meaningful while collapsed).
-    ipcMain.on('chassis:set-sidebar-orb-edge', (_: any, edge: 'left' | 'right') => this.deck.setOrbEdge(edge));
-    // Live drag: forward pointer deltas, clamped inside the content area.
-    ipcMain.on('chassis:orbit-drag', (_: any, delta: { dx: number; dy: number }) => this.deck.dragOrb(delta));
-    ipcMain.on('chassis:orbit-drag-end', () => this.deck.endOrbDrag());
-
-    // Collab mode: toolbar pill, note cycling, concise list.
-    ipcMain.on('chassis:set-collab-mode', (_: any, open: boolean) => this.deck.setCollabMode(Boolean(open)));
-    ipcMain.on('chassis:collab-escape', () => this.deck.exitCollabUi());
-    ipcMain.on('chassis:collab-navigate', (_: any, delta: number) => this.deck.navigate(delta));
-    ipcMain.on('chassis:collab-toggle-list', (_: any, anchor?: { x: number; y: number; width: number; height: number }) =>
-      this.deck.toggleList(anchor));
-
-  }
-
-  private registerCortexIpc() {
-    // Cortex & Bookmarks IPC Handlers
-    ipcMain.handle('cortex:recall', async (_, query: string, options?: any) => {
-      return await cortex.recall(query, options);
-    });
-    ipcMain.handle('cortex:suggest-urls', async (_, query: string, options?: any) => {
-      return await cortex.suggestUrls(String(query || ''), options || {});
-    });
-    ipcMain.handle('cortex:get-history', async (_, options?: any) => {
-      return await cortex.getHistory(options);
-    });
-    ipcMain.handle('cortex:clear-history', async (_, olderThan?: string) => {
-      await cortex.clearHistory(olderThan);
-      return { success: true };
-    });
-    ipcMain.handle('cortex:add-bookmark', async (_, bookmark: any) => {
-      return await cortex.addBookmark(bookmark);
-    });
-    ipcMain.handle('cortex:list-bookmarks', async (_, options?: any) => {
-      return await cortex.listBookmarks(options);
-    });
-    ipcMain.handle('cortex:delete-bookmark', async (_, urlOrId: string) => {
-      return await cortex.deleteBookmark(urlOrId);
-    });
-    ipcMain.handle('cortex:is-bookmarked', async (_, url: string) => {
-      return await cortex.isBookmarked(url);
-    });
-
-  }
-
-  private registerSettingsIpc() {
-    // Settings → decision model (optional). The renderer reads/writes data/decision.json through
-    // these; the same file the bridge and the MCP server read, so there is one source of truth.
-    ipcMain.handle('settings:get-decision', async () => ({
-      stored: readStoredDecisionConfig(),
-      status: decisionStatus(),
-    }));
-    ipcMain.handle('settings:save-decision', async (_, config: any) => {
-      const result = await saveDecisionConfig(config);
-      this.sendToSurfaces('chassis:decision-status', decisionStatus());
-      return result;
-    });
-    ipcMain.handle('chassis:get-decisions', async () => this.decisionLog);
-    // Reliable text copy for the HUD: selecting text inside a WebContentsView shell is not always
-    // possible, and the clipboard is async in Electron 44.
-    ipcMain.handle('app:copy-text', async (_, text: string) => {
-      await clipboard.writeText(String(text ?? ''));
-      return { ok: true };
-    });
-    ipcMain.handle('settings:test-decision', async () => {
-      const started = Date.now();
-      const result = await runDecision({
-        state: { page: this.getPageInfo().url, note: 'connectivity probe from the Settings tab' },
-        questions: { reachable: { type: 'noul', instructions: 'Is this a page URL?' } },
-      });
-      return { ...result, totalMs: Date.now() - started };
+  /** The renderer IPC surface, wired to the chassis surfaces. */
+  private createIpcSurface(): IpcSurface {
+    return new IpcSurface({
+      state: this.state,
+      hud: this.hud,
+      logs: () => this.telemetry.entries(),
+      latestConstruct: () => this.latestConstruct,
+      human: {
+        takeOver: () => this.takeOverHuman(),
+        resume: () => this.resumeHuman(),
+        status: () => this.getHumanStatus(),
+      },
+      nav: this.nav,
+      activeWebContents: () => this.tabManager?.getActiveTab()?.view?.webContents ?? null,
+      tabs: {
+        summary: () => this.tabManager?.getTabsSummary() ?? [],
+        create: (url) => this.createTab(url),
+        switchTo: (id) => this.switchTab(id),
+        close: (id) => this.closeTab(id),
+      },
+      zoom: this.zoom,
+      viewport: this.viewport,
+      deck: this.deck,
+      toggleDevTools: () => this.toggleDevTools(),
+      setViewportVisibility: (visible) => {
+        this.tabManager?.setViewportVisibility(visible);
+        this.deck.setOverlayVisible(visible);
+      },
+      pageUrl: () => this.getPageInfo().url,
+      send: (channel, payload) => this.sendToSurfaces(channel, payload),
+      inputSetProfile: (profile) => this.input.simulator.setProfile(profile),
+      harvestMarkdown: () => this.harvest.harvestMarkdown(),
+      decisionsLog: () => this.decisionLog,
     });
   }
 

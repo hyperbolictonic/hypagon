@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-255 modules, 863 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+256 modules, 865 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -73,6 +73,7 @@
 | `main/input-actions.ts` | 3: InputActionsController, InputActionsStatus, InputActionsDeps |
 | `main/input/human-activity.ts` | 6: shouldCountAsHuman, humanListenerScript, SYNTHETIC_GRACE_MS, HUMAN_CONSOLE_PREFIX, HumanActivityMonitor, HumanActivity |
 | `main/input/input-surface.ts` | 2: InputSurface, InputSurfaceDeps |
+| `main/ipc/ipc-surface.ts` | 2: IpcSurface, IpcSurfaceDeps |
 | `main/jev/controller.ts` | 3: JevController, JevControllerDeps, JevPolicy |
 | `main/jev/engine.ts` | 5: JevEngine, JevSection, JevSession, JevStatus, JevSearchHit |
 | `main/jev/policy.ts` | 6: decideFunnel, DEFAULT_FUNNEL_MIN_TOKENS, FunnelBreaker, FunnelReason, FunnelInput, FunnelDecision |
@@ -125,8 +126,7 @@
 | `main/research/detached-view.ts` | 4: DetachedViewController, DetachedLoadOptions, DetachedLoadResult, DetachedViewDeps |
 | `main/research/research-session-surface.ts` | 2: ResearchSessionSurface, ResearchSessionSurfaceDeps |
 | `main/research/research-view-surface.ts` | 2: ResearchViewSurface, ResearchViewSurfaceDeps |
-| `main/research/researcher.ts` | 6: extractHighlights, Researcher, ResearchOptions, ResearchSource, ResearchOutcome, ResearcherDeps |
 
-… and 130 more module(s) — grep the full index.
+… and 131 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.
