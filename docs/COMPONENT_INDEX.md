@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 366 files, 1101 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 372 files, 1116 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (882)
+## Types (895)
 
 | File | Export | When to use |
 |---|---|---|
@@ -802,6 +802,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/zoom/controller.ts` | `ZoomControllerDeps` *(type)* | When to use: building the chassis — everything zoom reads through. |
 | `mcp/process-guard.ts` | `installProcessGuards` | When to use: at the top of a stdio MCP server entrypoint, before connecting |
 | `mcp/process-guard.ts` | `ProcessGuardOptions` *(type)* | Process resilience shared by the stdio MCP entrypoints. |
+| `mcp/server-surface.ts` | `registerHelpTool` | When to use: `createBridgeMcpServer` — register the `help` tool. |
+| `mcp/server-surface.ts` | `installToolSurface` | When to use: `createBridgeMcpServer` — install the tools/list and tools/call |
+| `mcp/server-surface.ts` | `ToolSurfaceDeps` *(type)* | When to use: `createBridgeMcpServer` — what the interceptors report through. |
+| `mcp/skill-guide.ts` | `buildSkillGuide` | When to use: the `mark-eleven://skills/guide` resource and the help tool. |
+| `mcp/skill-guide.ts` | `RECOMMENDED_ORDER` | When to use: `mark-eleven://tools/recommended` and help(category:"recommended"). |
+| `mcp/skill-guide.ts` | `SkillGuideFlags` *(type)* | When to use: building the server — which reading path the guide should teach. |
 | `mcp/stdio-server.ts` | `startStdioServer` | Boot a stdio MCP server and exit non-zero on a fatal startup error. |
 | `mcp/stdio-server.ts` | `StdioServerHooks` *(type)* | Hooks for the shared stdio boot envelope. |
 | `mcp/tool-groups-data.ts` | `TOOL_GROUPS` | When to use: reading or extending the consolidated surface — the group table itself. |
@@ -814,6 +820,13 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/tool-renderers.ts` | `renderMediaPreview` | media_preview: text summary plus one image per visible frame. |
 | `mcp/tool-renderers.ts` | `renderFrames` | frames: text summary plus one cropped image per child frame. |
 | `mcp/tool-renderers.ts` | `ToolRenderer` *(type)* | When to use: the dispatcher — render a tool result, or null to take the default text path. |
+| `mcp/tool-surface.ts` | `planToolSurface` | When to use: `createBridgeMcpServer` — decide what the surface should be. |
+| `mcp/tool-surface.ts` | `describeTool` | When to use: `registerCatalogTools` — the advertised description for one tool. |
+| `mcp/tool-surface.ts` | `registerCatalogTools` | When to use: `createBridgeMcpServer` — register the advertised catalogue. |
+| `mcp/tool-surface.ts` | `JEV_TOOL_NAMES` | The reading-path tools whose placement and registration follow JEV. |
+| `mcp/tool-surface.ts` | `RECORDING_TOOL_NAMES` | When to use: the human-only recording switch — these are absent when it is off. |
+| `mcp/tool-surface.ts` | `ToolPreferences` *(type)* | The persisted tool surface, as the bridge reports it. |
+| `mcp/tool-surface.ts` | `ToolSurfacePlan` *(type)* | When to use: `registerCatalogTools` — everything the registry needs per call. |
 | `mcp/tools-catalog-types.ts` | `ToolCatalogItem` *(type)* | When to use: any surface that registers or inspects a catalog entry — the one item shape for the whole catalog. |
 | `preload/index.ts` | `ElectronAPI` *(type)* | When to use: the preload bridge surface — every renderer call goes through `window.electronAPI`. |
 | `renderer/cortex-panel.ts` | `initCortexPanel` | Wire the modal once, after the document has parsed. |
@@ -911,7 +924,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (211)
+## Modules (213)
 
 | File | Export | When to use |
 |---|---|---|
@@ -1074,7 +1087,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/browser-mcp.ts` | `flushLogSync` | Synchronous drain used only on shutdown paths, where async I/O cannot run. |
 | `mcp/browser-mcp.ts` | `logMcp` | - |
 | `mcp/browser-mcp.ts` | `createBridgeMcpServer` | - |
-| `mcp/browser-mcp.ts` | `normalizeIncomingParams` | - |
+| `mcp/help-content.ts` | `HELP_CATEGORIES` | When to use: the `help` tool, when the caller names a category. |
+| `mcp/mcp-resources.ts` | `registerBridgeResources` | When to use: `createBridgeMcpServer` — register every `mark-eleven://` resource. |
+| `mcp/normalize-params.ts` | `normalizeIncomingParams` | When to use: the tools/call interceptor — one call's parameters, normalized. |
 | `mcp/tool-args.ts` | `normaliseUrl` | When to use: a navigation tool payload — normalise the URL aliases and add a |
 | `mcp/tool-args.ts` | `requireUrl` | When to use: a navigation tool that cannot work without a URL — normalise the |
 | `mcp/tool-groups.ts` | `groupAction` | - |

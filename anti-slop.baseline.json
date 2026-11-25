@@ -101,7 +101,7 @@
       "main/wrap/store.ts": 2,
       "main/wrap/types.ts": 10,
       "main/wrap/validate-wrapper.ts": 3,
-      "mcp/browser-mcp.ts": 3,
+      "mcp/browser-mcp.ts": 2,
       "mcp/tool-groups.ts": 3,
       "mcp/tools-catalog.ts": 2,
       "mcp/wrap-server.ts": 1,
@@ -195,10 +195,6 @@
         "class": 1
       },
       "main/wrap/validate-wrapper.ts": {
-        "function": 2
-      },
-      "mcp/browser-mcp.ts": {
-        "file": 1,
         "function": 2
       },
       "mcp/remote-server.ts": {
