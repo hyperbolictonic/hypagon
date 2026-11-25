@@ -163,9 +163,6 @@
       },
       "main/wrap/anyapi/executor.ts": {
         "function": 1
-      },
-      "mcp/remote-server.ts": {
-        "function": 1
       }
     }
   }
