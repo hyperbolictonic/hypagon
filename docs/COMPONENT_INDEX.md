@@ -2,9 +2,16 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 285 files, 933 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 286 files, 937 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
+
+## Layouts (2)
+
+| File | Export | When to use |
+|---|---|---|
+| `main/browser/layout-viewport.ts` | `layoutViewport` | When to use: reading `Page.getLayoutMetrics` for the top-level viewport size. |
+| `main/browser/layout-viewport.ts` | `ViewportRect` *(type)* | A viewport rect in CSS pixels, origin at the top-left of the page. |
 
 ## Utils (6)
 
@@ -17,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (774)
+## Types (776)
 
 | File | Export | When to use |
 |---|---|---|
@@ -26,7 +33,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/boot/window-boot.ts` | `WindowBootSurface` | The shell-window boot sequence, bound once. |
 | `main/boot/window-boot.ts` | `DownloadNotice` *(type)* | A finished download, as the boot hook reports it. |
 | `main/boot/window-boot.ts` | `WindowBootDeps` *(type)* | Dependencies the boot sequence needs from the chassis surfaces. |
-| `main/browser/frame-eval.ts` | `evaluateInFrames` | - |
+| `main/browser/frame-eval.ts` | `evaluateInFrames` | Evaluate `expression` in the main frame and up to `maxFrames` child frames. |
 | `main/browser/frame-eval.ts` | `FrameEvalOptions` *(type)* | - |
 | `main/browser/frame-eval.ts` | `FrameEvalResult` *(type)* | - |
 | `main/browser/frame-tree.ts` | `discoverFrames` | - |
@@ -35,6 +42,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/browser/frames-inventory.ts` | `inventoryFrames` | When to use: the chassis frames route — walk the frame tree, attach control facts and per-frame screenshots. |
 | `main/browser/frames-inventory.ts` | `FrameInventoryResult` *(type)* | When to use: the frames result — one row per frame, with controls and screenshots attached. |
 | `main/browser/frames-inventory.ts` | `FramesInventoryDeps` *(type)* | When to use: the inventory reads through these two collaborators. |
+| `main/browser/frames-inventory.ts` | `FrameShot` *(type)* | One cropped frame screenshot, already encoded for the bridge response. |
+| `main/browser/frames-inventory.ts` | `FramesInventoryOptions` *(type)* | When to use: the inventory options, before settings and bounds are applied. |
 | `main/browser/frames.ts` | `listFrames` | List the main frame and its children with top-level content-box rects. |
 | `main/browser/frames.ts` | `FrameRect` *(type)* | - |
 | `main/browser/frames.ts` | `FrameInfo` *(type)* | - |

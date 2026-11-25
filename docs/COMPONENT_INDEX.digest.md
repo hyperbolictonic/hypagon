@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-285 modules, 933 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+286 modules, 937 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -14,8 +14,9 @@
 | `main/browser/frame-eval.ts` | 3: evaluateInFrames, FrameEvalOptions, FrameEvalResult |
 | `main/browser/frame-marks.ts` | 3: clearFrameMarks, registerFrameMarks, resolveFrameMark |
 | `main/browser/frame-tree.ts` | 3: discoverFrames, FrameHandle, FrameContext |
-| `main/browser/frames-inventory.ts` | 3: inventoryFrames, FrameInventoryResult, FramesInventoryDeps |
+| `main/browser/frames-inventory.ts` | 5: inventoryFrames, FrameInventoryResult, FramesInventoryDeps, FrameShot, FramesInventoryOptions |
 | `main/browser/frames.ts` | 3: listFrames, FrameRect, FrameInfo |
+| `main/browser/layout-viewport.ts` | 2: layoutViewport, ViewportRect |
 | `main/browser/page-script-surface.ts` | 2: PageScriptSurface, PageScriptSurfaceDeps |
 | `main/capabilities.ts` | 1: BRIDGE_CAPABILITIES |
 | `main/capture/screenshot-jpeg.ts` | 2: captureScreenshotJpeg, ScreenshotJpegDeps |
@@ -125,8 +126,7 @@
 | `main/navigation-error.ts` | 2: classifyNavigationFailure, NavigationFailure |
 | `main/navigation/navigation-surface.ts` | 2: NavigationSurface, NavigationSurfaceDeps |
 | `main/network/impersonate.ts` | 7: resolveCurlBinaryPath, hostPlatformHeaders, impersonateAvailable, isChallenge, fetchStatic, StaticFetchResult, StaticFetchOutcome |
-| `main/network/network-interceptor.ts` | 5: NetworkInterceptor, CapturedNetworkRequest, RealtimeStream, StreamMessage, NetworkFilter |
 
-… and 160 more module(s) — grep the full index.
+… and 161 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

@@ -3,7 +3,7 @@
   "docs": {
     "files": {
       "main/browser-chassis.ts": 1,
-      "main/browser/frame-eval.ts": 3,
+      "main/browser/frame-eval.ts": 2,
       "main/browser/frame-marks.ts": 2,
       "main/browser/frame-tree.ts": 3,
       "main/browser/frames.ts": 2,
@@ -150,18 +150,6 @@
   },
   "modularity": {
     "files": {
-      "main/browser/frame-eval.ts": {
-        "function": 1
-      },
-      "main/browser/frame-tree.ts": {
-        "function": 1
-      },
-      "main/browser/frames-inventory.ts": {
-        "function": 1
-      },
-      "main/browser/frames.ts": {
-        "function": 1
-      },
       "main/cortex/cortex-db.ts": {
         "class": 1,
         "file": 1,

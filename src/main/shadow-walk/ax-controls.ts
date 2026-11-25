@@ -21,6 +21,7 @@
 import type { WebContents } from 'electron';
 import { bump } from '../metrics.js';
 import { listFrames, type FrameInfo } from '../browser/frames.js';
+import { layoutViewport } from '../browser/layout-viewport.js';
 import { normalizeSurface, type ComponentSurface } from './component-signature.js';
 import { loadShadowWalkSettings } from './settings.js';
 import { clearSealedTokens, issueSealedToken } from './sealed-targets.js';
@@ -152,16 +153,6 @@ function actionsFor(role: string, focusable: boolean): string[] {
 
 function lower(value: any): string {
   return String(value ?? '').toLowerCase();
-}
-
-function viewportOf(metrics: any): SealedRect {
-  const layout = metrics?.cssLayoutViewport || metrics?.layoutViewport || {};
-  return {
-    x: 0,
-    y: 0,
-    width: Number(layout.clientWidth) || 0,
-    height: Number(layout.clientHeight) || 0,
-  };
 }
 
 /** Walk a DOM tree (already pierced) and index everything under a closed shadow root. */
@@ -348,7 +339,7 @@ export async function findSealedControls(
       }
 
       const metrics = await send(undefined, 'Page.getLayoutMetrics').catch(() => null);
-      const viewport = viewportOf(metrics);
+      const viewport = layoutViewport(metrics);
 
       const docs = new Map<number, any>();
       for (let i = 0; i < frames.length; i++) {
@@ -543,7 +534,7 @@ export async function findSealedControls(
     }
 
     const out: SealedControl[] = [];
-    const viewport = viewportOf(await send(undefined, 'Page.getLayoutMetrics').catch(() => null));
+    const viewport = layoutViewport(await send(undefined, 'Page.getLayoutMetrics').catch(() => null));
     for (const id of filtered) {
       if (out.length >= limit) break;
       const frame = frames[id.frameIndex];

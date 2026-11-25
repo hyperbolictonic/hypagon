@@ -13,7 +13,7 @@
  * Reuse (Phase 2+): marks, consent, extract. Keep it dependency-free.
  */
 import type { WebContents } from 'electron';
-import { discoverFrames } from './frame-tree.js';
+import { discoverFrames, type FrameContext, type FrameHandle } from './frame-tree.js';
 
 export interface FrameEvalOptions {
   /** Frames to visit, breadth-first including the main frame (default 8). */
@@ -74,10 +74,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
-/**
- * Evaluate `expression` in the main frame and up to `maxFrames` child frames.
- * Never throws: a frame that fails (detached, sandboxed, timed out) is reported with `ok:false`.
- */
+/** A frame with no document of its own: skipped unless the caller asked for blanks. */
+function isBlankFrame(frame: FrameHandle): boolean {
+  return !frame.url || frame.url === 'about:blank' || frame.url === 'about:srcdoc';
+}
+
 /** One result row: the frame facts plus the ok/error-or-value outcome. */
 function frameResult(
   frame: { frameId: string; url: string; name: string; depth: number; oopif: boolean },
@@ -95,6 +96,92 @@ function frameResult(
   };
 }
 
+/** The expression this frame runs: the shared one, or the caller's per-index override. */
+function expressionFor(
+  frame: FrameHandle,
+  index: number,
+  expression: string,
+  options: FrameEvalOptions,
+): string {
+  if (!options.expressionForFrame) return expression;
+  return options.expressionForFrame(
+    { frameId: frame.frameId, url: frame.url, name: frame.name, depth: frame.depth, oopif: frame.oopif },
+    index,
+  );
+}
+
+/**
+ * The isolated world for this frame, created on first use and reused until the document changes.
+ * OOPIF sessions are detached after every call, so their context ids never outlive the scan.
+ */
+async function executionContextFor(
+  ctx: FrameContext,
+  frame: FrameHandle,
+  cache: Map<string, FrameCacheEntry>,
+  sessionId: string | undefined,
+  timeoutMs: number,
+): Promise<number> {
+  let entry = sessionId ? undefined : cache.get(frame.frameId);
+  // A new loaderId means the document (and therefore the isolated world) is gone.
+  if (!entry || (frame.loaderId && entry.loaderId && entry.loaderId !== frame.loaderId)) {
+    const world = (await withTimeout(
+      ctx.send(sessionId, 'Page.createIsolatedWorld', {
+        frameId: frame.frameId,
+        worldName: 'kuang-probe',
+        grantUniveralAccess: false,
+      }),
+      timeoutMs,
+      'Page.createIsolatedWorld'
+    )) as any;
+    entry = { loaderId: frame.loaderId || '', contextId: Number(world?.executionContextId) || 0 };
+    if (entry.contextId && !sessionId) cache.set(frame.frameId, entry);
+  }
+  if (!entry?.contextId) throw new Error('no execution context');
+  return entry.contextId;
+}
+
+/** Evaluate one frame; a stale context is dropped so the next call re-creates it. */
+async function evaluateFrame(
+  ctx: FrameContext,
+  frame: FrameHandle,
+  frameExpression: string,
+  cache: Map<string, FrameCacheEntry>,
+  timeoutMs: number,
+): Promise<FrameEvalResult> {
+  const sessionId = ctx.sessionFor(frame.frameId);
+  try {
+    const contextId = await executionContextFor(ctx, frame, cache, sessionId, timeoutMs);
+    const evaluated = (await withTimeout(
+      ctx.send(sessionId, 'Runtime.evaluate', {
+        expression: frameExpression,
+        contextId,
+        returnByValue: true,
+        awaitPromise: true,
+        userGesture: false,
+      }),
+      timeoutMs,
+      'Runtime.evaluate'
+    )) as any;
+
+    if (evaluated?.exceptionDetails) {
+      const detail = evaluated.exceptionDetails;
+      return frameResult(frame, {
+        ok: false,
+        error: detail?.exception?.description || detail?.text || 'frame exception',
+      });
+    }
+    return frameResult(frame, { ok: true, value: evaluated?.result?.value });
+  } catch (err: any) {
+    // A stale context is normal after a frame swaps document; drop it so the next call re-creates.
+    cache.delete(frame.frameId);
+    return frameResult(frame, { ok: false, error: String(err?.message || err) });
+  }
+}
+
+/**
+ * Evaluate `expression` in the main frame and up to `maxFrames` child frames.
+ * Never throws: a frame that fails (detached, sandboxed, timed out) is reported with `ok:false`.
+ */
 export async function evaluateInFrames(
   wc: WebContents,
   expression: string,
@@ -120,66 +207,12 @@ export async function evaluateInFrames(
 
   try {
     for (const [index, frame] of ctx.frames.entries()) {
-      const blank = !frame.url || frame.url === 'about:blank' || frame.url === 'about:srcdoc';
-      if (blank && !includeBlank) {
+      if (isBlankFrame(frame) && !includeBlank) {
         results.push(frameResult(frame, { ok: false, error: 'blank frame skipped' }));
         continue;
       }
-
-      const frameExpression = options.expressionForFrame
-        ? options.expressionForFrame(
-            { frameId: frame.frameId, url: frame.url, name: frame.name, depth: frame.depth, oopif: frame.oopif },
-            index
-          )
-        : expression;
-
-      const sessionId = ctx.sessionFor(frame.frameId);
-      try {
-        // An OOPIF session is detached after every call, so its context ids do not outlive the
-        // scan. Same-process frames keep their world until the document changes.
-        let entry = sessionId ? undefined : cache.get(frame.frameId);
-        // A new loaderId means the document (and therefore the isolated world) is gone.
-        if (!entry || (frame.loaderId && entry.loaderId && entry.loaderId !== frame.loaderId)) {
-          const world = (await withTimeout(
-            ctx.send(sessionId, 'Page.createIsolatedWorld', {
-              frameId: frame.frameId,
-              worldName: 'kuang-probe',
-              grantUniveralAccess: false,
-            }),
-            timeoutMs,
-            'Page.createIsolatedWorld'
-          )) as any;
-          entry = { loaderId: frame.loaderId || '', contextId: Number(world?.executionContextId) || 0 };
-          if (entry.contextId && !sessionId) cache.set(frame.frameId, entry);
-        }
-        if (!entry?.contextId) throw new Error('no execution context');
-
-        const evaluated = (await withTimeout(
-          ctx.send(sessionId, 'Runtime.evaluate', {
-            expression: frameExpression,
-            contextId: entry.contextId,
-            returnByValue: true,
-            awaitPromise: true,
-            userGesture: false,
-          }),
-          timeoutMs,
-          'Runtime.evaluate'
-        )) as any;
-
-        if (evaluated?.exceptionDetails) {
-          const detail = evaluated.exceptionDetails;
-          results.push(frameResult(frame, {
-            ok: false,
-            error: detail?.exception?.description || detail?.text || 'frame exception',
-          }));
-          continue;
-        }
-        results.push(frameResult(frame, { ok: true, value: evaluated?.result?.value }));
-      } catch (err: any) {
-        // A stale context is normal after a frame swaps document; drop it so the next call re-creates.
-        cache.delete(frame.frameId);
-        results.push(frameResult(frame, { ok: false, error: String(err?.message || err) }));
-      }
+      const frameExpression = expressionFor(frame, index, expression, options);
+      results.push(await evaluateFrame(ctx, frame, frameExpression, cache, timeoutMs));
     }
     return results;
   } finally {

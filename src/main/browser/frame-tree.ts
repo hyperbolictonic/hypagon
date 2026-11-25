@@ -59,6 +59,16 @@ interface Candidate {
   used: boolean;
 }
 
+/** The mutable state one discovery builds up before it is returned as a `FrameContext`. */
+interface Discovery {
+  byId: Map<string, FrameHandle>;
+  candidates: Candidate[];
+  order: { value: number };
+  orderById: Map<string, number>;
+}
+
+type Send = (sessionId: string | undefined, method: string, params?: Record<string, unknown>) => Promise<any>;
+
 const MAX_OOPIF_TARGETS = 16;
 
 function flatten(tree: any, parentId: string | undefined = undefined, depth = 0, out: LocalFrame[] = []): LocalFrame[] {
@@ -74,6 +84,84 @@ function flatten(tree: any, parentId: string | undefined = undefined, depth = 0,
   }
   for (const child of tree?.childFrames || []) flatten(child, frame?.id || parentId, depth + 1, out);
   return out;
+}
+
+/** The context a caller gets when there is no frame tree to walk. */
+function emptyContext(): FrameContext {
+  return {
+    frames: [],
+    sendFor: async () => {
+      throw new Error('frame discovery is unavailable');
+    },
+    send: async () => {
+      throw new Error('frame discovery is unavailable');
+    },
+    sessionFor: () => undefined,
+    release: async () => undefined,
+  };
+}
+
+/** One CDP sender for every session; bumps the shared metric so a scan is visible in the counters. */
+function createSender(dbg: Electron.Debugger): Send {
+  return async (sessionId, method, params = {}) => {
+    bump('cdp.frame');
+    return sessionId
+      ? (dbg.sendCommand(method as any, params as any, sessionId) as Promise<any>)
+      : (dbg.sendCommand(method as any, params as any) as Promise<any>);
+  };
+}
+
+/** Add the same-process frames, then rebuild depth from the parent links `flatten` returns. */
+function addMainTargetFrames(tree: any, discovery: Discovery): void {
+  for (const frame of flatten(tree)) {
+    discovery.byId.set(frame.id, {
+      frameId: frame.id,
+      parentFrameId: frame.parentId,
+      depth: 0,
+      url: frame.url,
+      name: frame.name,
+      loaderId: frame.loaderId,
+      oopif: false,
+    });
+  }
+
+  for (const frame of discovery.byId.values()) {
+    let depth = 0;
+    let cursor: FrameHandle | undefined = frame;
+    const seen = new Set<string>();
+    while (cursor?.parentFrameId && !seen.has(cursor.frameId)) {
+      seen.add(cursor.frameId);
+      cursor = discovery.byId.get(cursor.parentFrameId);
+      if (!cursor) break;
+      depth++;
+    }
+    frame.depth = depth;
+    discovery.orderById.set(frame.frameId, discovery.order.value++);
+  }
+}
+
+/** Attach every `iframe` target (capped) and read its frame tree. A vanished target is normal. */
+async function attachIframeTargets(send: Send, discovery: Discovery): Promise<void> {
+  const targets = ((await send(undefined, 'Target.getTargets')) as any)?.targetInfos || [];
+  const iframeTargets = targets.filter((target: any) => target?.type === 'iframe').slice(0, MAX_OOPIF_TARGETS);
+
+  for (const target of iframeTargets) {
+    try {
+      const attached = (await send(undefined, 'Target.attachToTarget', {
+        targetId: target.targetId,
+        flatten: true,
+      })) as any;
+      const sessionId = attached?.sessionId;
+      if (!sessionId) continue;
+      const candidate: Candidate = { targetId: String(target.targetId), sessionId, tree: null, used: false };
+      discovery.candidates.push(candidate);
+      await send(sessionId, 'Page.enable').catch(() => undefined);
+      await send(sessionId, 'DOM.enable').catch(() => undefined);
+      candidate.tree = (await send(sessionId, 'Page.getFrameTree')) as any;
+    } catch {
+      // A target that vanished between getTargets and attach is normal during navigation.
+    }
+  }
 }
 
 /**
@@ -116,42 +204,53 @@ function addOopifTree(
   return local.length > 0;
 }
 
+/**
+ * Resolve ancestry to a fixpoint: an OOPIF can only be placed once its parent frame is known,
+ * which also covers an OOPIF nested inside another OOPIF.
+ */
+function placeOopifCandidates(discovery: Discovery): void {
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const candidate of discovery.candidates) {
+      if (candidate.used || !candidate.tree?.frameTree?.frame) continue;
+      const rootParentId = candidate.tree.frameTree.frame.parentId
+        ? String(candidate.tree.frameTree.frame.parentId)
+        : undefined;
+      const parent = rootParentId ? discovery.byId.get(rootParentId) : undefined;
+      if (!parent) continue;
+      if (addOopifTree(candidate.tree.frameTree, parent, candidate, discovery.byId, discovery.order, discovery.orderById)) {
+        changed = true;
+      } else {
+        candidate.used = true; // nothing to place; never spin on an empty tree
+      }
+    }
+  }
+}
+
 export async function discoverFrames(
   wc: WebContents,
   options: { maxFrames?: number } = {}
 ): Promise<FrameContext> {
   const maxFrames = Math.max(1, Math.min(options.maxFrames ?? 8, 32));
   const dbg = wc?.debugger;
-  const empty: FrameContext = {
-    frames: [],
-    sendFor: async () => {
-      throw new Error('frame discovery is unavailable');
-    },
-    send: async () => {
-      throw new Error('frame discovery is unavailable');
-    },
-    sessionFor: () => undefined,
-    release: async () => undefined,
-  };
+  const empty = emptyContext();
   if (!wc || wc.isDestroyed() || !dbg?.isAttached()) return empty;
 
-  const byId = new Map<string, FrameHandle>();
-  const candidates: Candidate[] = [];
-  const order = { value: 0 };
-  const orderById = new Map<string, number>();
+  const discovery: Discovery = {
+    byId: new Map(),
+    candidates: [],
+    order: { value: 0 },
+    orderById: new Map(),
+  };
   let released = false;
 
-  const send = async (sessionId: string | undefined, method: string, params: Record<string, unknown> = {}) => {
-    bump('cdp.frame');
-    return sessionId
-      ? (dbg.sendCommand(method as any, params as any, sessionId) as Promise<any>)
-      : (dbg.sendCommand(method as any, params as any) as Promise<any>);
-  };
+  const send = createSender(dbg);
 
   const release = async () => {
     if (released) return;
     released = true;
-    for (const candidate of candidates) {
+    for (const candidate of discovery.candidates) {
       await dbg.sendCommand('Target.detachFromTarget', { sessionId: candidate.sessionId } as any).catch(() => undefined);
     }
   };
@@ -163,82 +262,25 @@ export async function discoverFrames(
     const mainRoot = mainTree?.frameTree?.frame;
     if (!mainRoot?.id) return { ...empty, release };
 
-    for (const frame of flatten(mainTree.frameTree)) {
-      byId.set(frame.id, {
-        frameId: frame.id,
-        parentFrameId: frame.parentId,
-        depth: 0,
-        url: frame.url,
-        name: frame.name,
-        loaderId: frame.loaderId,
-        oopif: false,
-      });
-    }
-    // flatten() does not carry depth; rebuild it from parent links.
-    for (const frame of byId.values()) {
-      let depth = 0;
-      let cursor: FrameHandle | undefined = frame;
-      const seen = new Set<string>();
-      while (cursor?.parentFrameId && !seen.has(cursor.frameId)) {
-        seen.add(cursor.frameId);
-        cursor = byId.get(cursor.parentFrameId);
-        if (!cursor) break;
-        depth++;
-      }
-      frame.depth = depth;
-      orderById.set(frame.frameId, order.value++);
-    }
+    addMainTargetFrames(mainTree.frameTree, discovery);
+    await attachIframeTargets(send, discovery);
+    placeOopifCandidates(discovery);
 
-    const targets = ((await send(undefined, 'Target.getTargets')) as any)?.targetInfos || [];
-    const iframeTargets = targets.filter((t: any) => t?.type === 'iframe').slice(0, MAX_OOPIF_TARGETS);
-
-    for (const target of iframeTargets) {
-      try {
-        const attached = (await send(undefined, 'Target.attachToTarget', {
-          targetId: target.targetId,
-          flatten: true,
-        })) as any;
-        const sessionId = attached?.sessionId;
-        if (!sessionId) continue;
-        const candidate: Candidate = { targetId: String(target.targetId), sessionId, tree: null, used: false };
-        candidates.push(candidate);
-        await send(sessionId, 'Page.enable').catch(() => undefined);
-        await send(sessionId, 'DOM.enable').catch(() => undefined);
-        candidate.tree = (await send(sessionId, 'Page.getFrameTree')) as any;
-      } catch {
-        // A target that vanished between getTargets and attach is normal during navigation.
-      }
-    }
-
-    // Resolve ancestry to a fixpoint: an OOPIF can only be placed once its parent frame is known,
-    // which also covers an OOPIF nested inside another OOPIF.
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const candidate of candidates) {
-        if (candidate.used || !candidate.tree?.frameTree?.frame) continue;
-        const rootParentId = candidate.tree.frameTree.frame.parentId
-          ? String(candidate.tree.frameTree.frame.parentId)
-          : undefined;
-        const parent = rootParentId ? byId.get(rootParentId) : undefined;
-        if (!parent) continue;
-        if (addOopifTree(candidate.tree.frameTree, parent, candidate, byId, order, orderById)) changed = true;
-        else candidate.used = true; // nothing to place; never spin on an empty tree
-      }
-    }
-
-    const frames = [...byId.values()]
-      .sort((a, b) => a.depth - b.depth || (orderById.get(a.frameId) ?? 0) - (orderById.get(b.frameId) ?? 0))
+    const frames = [...discovery.byId.values()]
+      .sort(
+        (a, b) =>
+          a.depth - b.depth || (discovery.orderById.get(a.frameId) ?? 0) - (discovery.orderById.get(b.frameId) ?? 0),
+      )
       .slice(0, maxFrames);
 
     return {
       frames,
       send,
-      sendFor: (frameId, method, params = {}) => send(byId.get(frameId)?.sessionId, method, params),
-      sessionFor: (frameId) => byId.get(frameId)?.sessionId,
+      sendFor: (frameId, method, params = {}) => send(discovery.byId.get(frameId)?.sessionId, method, params),
+      sessionFor: (frameId) => discovery.byId.get(frameId)?.sessionId,
       release,
     };
-  } catch (err: any) {
+  } catch {
     await release();
     return empty;
   }

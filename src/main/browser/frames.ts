@@ -18,7 +18,8 @@
  * Bounded and opt-in: a handful of CDP commands per frame. Never call this on a hot path.
  */
 import type { WebContents } from 'electron';
-import { discoverFrames } from './frame-tree.js';
+import { discoverFrames, type FrameContext, type FrameHandle } from './frame-tree.js';
+import { layoutViewport } from './layout-viewport.js';
 
 export interface FrameRect {
   x: number;
@@ -50,6 +51,8 @@ export interface FrameInfo {
   error?: string;
 }
 
+type Origin = { x: number; y: number };
+
 function originOf(url: string): string | null {
   try {
     return new URL(url).origin;
@@ -65,6 +68,98 @@ function intersect(rect: FrameRect, bounds: FrameRect): FrameRect | null {
   const bottom = Math.min(rect.y + rect.height, bounds.y + bounds.height);
   if (right - left < 2 || bottom - top < 2) return null;
   return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+/** The main frame covers the whole layout viewport by definition. */
+function mainFrameInfo(frame: FrameHandle, viewport: FrameRect): FrameInfo {
+  return {
+    frameId: frame.frameId,
+    depth: 0,
+    url: frame.url,
+    name: frame.name,
+    rect: { ...viewport },
+    visibleRect: viewport.width > 0 && viewport.height > 0 ? { ...viewport } : null,
+    crossOrigin: false,
+    oopif: false,
+    loaderId: frame.loaderId,
+  };
+}
+
+/** The skeleton every child frame starts from before it is measured. */
+function childFrameBase(frame: FrameHandle, mainOrigin: string | null): FrameInfo {
+  return {
+    frameId: frame.frameId,
+    parentFrameId: frame.parentFrameId,
+    depth: frame.depth,
+    url: frame.url,
+    name: frame.name,
+    rect: { x: 0, y: 0, width: 0, height: 0 },
+    visibleRect: null,
+    crossOrigin: !!mainOrigin && originOf(frame.url) !== null && originOf(frame.url) !== mainOrigin,
+    oopif: frame.oopif,
+    targetId: frame.targetId,
+    loaderId: frame.loaderId,
+  };
+}
+
+/**
+ * Measure one child frame through its owner element in the parent document. Returns the origin
+ * to compose grandchildren with, or a frame row that carries the reason it has no geometry.
+ */
+async function measureChildFrame(
+  ctx: FrameContext,
+  frame: FrameHandle,
+  parentOrigin: Origin,
+  mainOrigin: string | null,
+  viewport: FrameRect,
+): Promise<{ info: FrameInfo; origin?: Origin }> {
+  const base = childFrameBase(frame, mainOrigin);
+  const parentSession = frame.parentFrameId ? ctx.sessionFor(frame.parentFrameId) : undefined;
+
+  try {
+    const owner = (await ctx.send(parentSession, 'DOM.getFrameOwner', { frameId: frame.frameId })) as any;
+    if (!owner?.backendNodeId) throw new Error('frame has no owner element');
+
+    // Resolve the <iframe> in its parent's document and measure it there. This is the only
+    // way to get a cross-site frame's rect: the child is unreachable, its owner is not.
+    const resolved = (await ctx.send(parentSession, 'DOM.resolveNode', {
+      backendNodeId: owner.backendNodeId,
+    })) as any;
+    const objectId = resolved?.object?.objectId;
+    if (!objectId) throw new Error('owner element could not be resolved');
+
+    const measured = (await ctx.send(parentSession, 'Runtime.callFunctionOn', {
+      objectId,
+      functionDeclaration: `function () {
+        const r = this.getBoundingClientRect();
+        return {
+          x: r.left + (this.clientLeft || 0),
+          y: r.top + (this.clientTop || 0),
+          width: this.clientWidth || r.width,
+          height: this.clientHeight || r.height,
+          laidOut: r.width > 0 && r.height > 0,
+        };
+      }`,
+      returnByValue: true,
+    })) as any;
+
+    const local = measured?.result?.value;
+    if (!local?.laidOut) return { info: { ...base, error: 'frame is not laid out' } };
+
+    const rect: FrameRect = {
+      x: Math.round(parentOrigin.x + Number(local.x || 0)),
+      y: Math.round(parentOrigin.y + Number(local.y || 0)),
+      width: Math.round(Number(local.width) || 0),
+      height: Math.round(Number(local.height) || 0),
+    };
+    return {
+      info: { ...base, rect, visibleRect: intersect(rect, viewport) },
+      origin: { x: rect.x, y: rect.y },
+    };
+  } catch (err: any) {
+    // No origin fallback: a child of a failed frame must fail too, not silently inherit.
+    return { info: { ...base, error: String(err?.message || err) } };
+  }
 }
 
 /**
@@ -83,104 +178,28 @@ export async function listFrames(wc: WebContents, opts: { maxFrames?: number } =
   }
 
   try {
-    const metrics = (await ctx.send(undefined, 'Page.getLayoutMetrics')) as any;
-    const layout = metrics?.cssLayoutViewport || metrics?.layoutViewport || {};
-    const viewport: FrameRect = {
-      x: 0,
-      y: 0,
-      width: Number(layout.clientWidth) || 0,
-      height: Number(layout.clientHeight) || 0,
-    };
-
-    const mainUrl = ctx.frames.find((f) => f.depth === 0)?.url || '';
-    const mainOrigin = originOf(mainUrl);
+    const viewport = layoutViewport(await ctx.send(undefined, 'Page.getLayoutMetrics'));
+    const mainOrigin = originOf(ctx.frames.find((frame) => frame.depth === 0)?.url || '');
     // Absolute origin per frame. Parents precede children, so one pass composes.
-    const origins = new Map<string, { x: number; y: number }>();
+    const origins = new Map<string, Origin>();
     const out: FrameInfo[] = [];
 
     for (const frame of ctx.frames) {
       if (frame.depth === 0) {
         origins.set(frame.frameId, { x: 0, y: 0 });
-        out.push({
-          frameId: frame.frameId,
-          depth: 0,
-          url: frame.url,
-          name: frame.name,
-          rect: { ...viewport },
-          visibleRect: viewport.width > 0 && viewport.height > 0 ? { ...viewport } : null,
-          crossOrigin: false,
-          oopif: false,
-          loaderId: frame.loaderId,
-        });
+        out.push(mainFrameInfo(frame, viewport));
         continue;
       }
 
       const parentOrigin = frame.parentFrameId ? origins.get(frame.parentFrameId) : undefined;
-      const parentSession = frame.parentFrameId ? ctx.sessionFor(frame.parentFrameId) : undefined;
-      const base: FrameInfo = {
-        frameId: frame.frameId,
-        parentFrameId: frame.parentFrameId,
-        depth: frame.depth,
-        url: frame.url,
-        name: frame.name,
-        rect: { x: 0, y: 0, width: 0, height: 0 },
-        visibleRect: null,
-        crossOrigin: !!mainOrigin && originOf(frame.url) !== null && originOf(frame.url) !== mainOrigin,
-        oopif: frame.oopif,
-        targetId: frame.targetId,
-        loaderId: frame.loaderId,
-      };
-
       if (!parentOrigin) {
-        out.push({ ...base, error: 'parent frame has no geometry' });
+        out.push({ ...childFrameBase(frame, mainOrigin), error: 'parent frame has no geometry' });
         continue;
       }
 
-      try {
-        const owner = (await ctx.send(parentSession, 'DOM.getFrameOwner', { frameId: frame.frameId })) as any;
-        if (!owner?.backendNodeId) throw new Error('frame has no owner element');
-
-        // Resolve the <iframe> in its parent's document and measure it there. This is the only
-        // way to get a cross-site frame's rect: the child is unreachable, its owner is not.
-        const resolved = (await ctx.send(parentSession, 'DOM.resolveNode', {
-          backendNodeId: owner.backendNodeId,
-        })) as any;
-        const objectId = resolved?.object?.objectId;
-        if (!objectId) throw new Error('owner element could not be resolved');
-
-        const measured = (await ctx.send(parentSession, 'Runtime.callFunctionOn', {
-          objectId,
-          functionDeclaration: `function () {
-            const r = this.getBoundingClientRect();
-            return {
-              x: r.left + (this.clientLeft || 0),
-              y: r.top + (this.clientTop || 0),
-              width: this.clientWidth || r.width,
-              height: this.clientHeight || r.height,
-              laidOut: r.width > 0 && r.height > 0,
-            };
-          }`,
-          returnByValue: true,
-        })) as any;
-
-        const local = measured?.result?.value;
-        if (!local?.laidOut) {
-          out.push({ ...base, error: 'frame is not laid out' });
-          continue;
-        }
-
-        const rect: FrameRect = {
-          x: Math.round(parentOrigin.x + Number(local.x || 0)),
-          y: Math.round(parentOrigin.y + Number(local.y || 0)),
-          width: Math.round(Number(local.width) || 0),
-          height: Math.round(Number(local.height) || 0),
-        };
-        origins.set(frame.frameId, { x: rect.x, y: rect.y });
-        out.push({ ...base, rect, visibleRect: intersect(rect, viewport) });
-      } catch (err: any) {
-        // No origin fallback: a child of a failed frame must fail too, not silently inherit.
-        out.push({ ...base, error: String(err?.message || err) });
-      }
+      const measured = await measureChildFrame(ctx, frame, parentOrigin, mainOrigin, viewport);
+      if (measured.origin) origins.set(frame.frameId, measured.origin);
+      out.push(measured.info);
     }
 
     return out;
