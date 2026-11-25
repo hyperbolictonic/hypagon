@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 426 files, 1242 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 430 files, 1251 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (943)
+## Types (950)
 
 | File | Export | When to use |
 |---|---|---|
@@ -688,8 +688,15 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/tools/settings.ts` | `DEFAULT_TOOL_SETTINGS` | - |
 | `main/tools/settings.ts` | `ToolSettingsStore` | File-backed store. One instance is shared by the IPC handlers and the local bridge. |
 | `main/tools/settings.ts` | `ToolSettingsValidation` *(type)* | - |
+| `main/tray/close-to-tray.ts` | `CloseToTray` | When to use: `TrayManager.closeToTray` — one per tray. |
+| `main/tray/close-to-tray.ts` | `CloseToTrayDeps` *(type)* | When to use: `new TrayManager` — the window to watch plus the manager's callbacks. |
 | `main/tray/tray-manager.ts` | `TrayManager` | - |
 | `main/tray/tray-manager.ts` | `TrayManagerOptions` *(type)* | - |
+| `main/tray/tray-menu.ts` | `trayMenuTemplate` | When to use: `Menu.buildFromTemplate` in the tray manager. |
+| `main/tray/tray-menu.ts` | `TrayMenuState` *(type)* | When to use: `TrayManager.updateMenu` — the state the menu labels read. |
+| `main/tray/tray-menu.ts` | `TrayMenuActions` *(type)* | When to use: `TrayManager.updateMenu` — the actions the menu items invoke. |
+| `main/tray/window-visibility.ts` | `WindowVisibility` | When to use: `TrayManager.window` — one per tray. |
+| `main/tray/window-visibility.ts` | `WindowVisibilityDeps` *(type)* | When to use: `new TrayManager` — the window, the menu refresh and the app's own hooks. |
 | `main/updates/updater.ts` | `updaterDisabledReason` | Why updates are unavailable in this build, or null when they are enabled. |
 | `main/updates/updater.ts` | `updaterState` | - |
 | `main/updates/updater.ts` | `initUpdater` | Wire the updater and schedule checks. Safe to call once at startup. |
@@ -972,7 +979,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (291)
+## Modules (293)
 
 | File | Export | When to use |
 |---|---|---|
@@ -1140,6 +1147,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/tools/state.ts` | `sanitizeToolSettings` | - |
 | `main/tools/state.ts` | `buildToolManagerState` | - |
 | `main/tools/tool-order.ts` | `byConfiguredRank` | When to use: sort a tool list by the user's configured rank, with a stable |
+| `main/tray/notifications.ts` | `showDesktopNotification` | When to use: any surface that needs a silent desktop notification. |
+| `main/tray/notifications.ts` | `notifyTrayHidden` | When to use: the first time a close is intercepted — explain where the app went. |
 | `main/ui/menu-popup.ts` | `MenuPopup` | Themed, frameless dropdown hosted in its own small transparent window. |
 | `main/viewport/catalog.ts` | `ProfileCatalog` | When to use: `ViewportController` — one catalogue per controller. |
 | `main/viewport/profiles.ts` | `DeviceProfileStore` | - |

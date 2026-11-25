@@ -1,7 +1,17 @@
-import { app, BrowserWindow, Menu, Tray, Notification } from 'electron';
+/**
+ * The system tray: the icon, its context menu and the window's tray behaviour.
+ *
+ * Why this file is small: `window-visibility.ts` owns show/hide/toggle and the rule that a focused
+ * window toggles away, `close-to-tray.ts` owns the close interception and its three flags,
+ * `tray-menu.ts` builds the menu from state plus actions, and `notifications.ts` owns the one-time
+ * "still running" notice. This class owns the Tray instance and the status the menu displays.
+ */
+import { app, Menu, Tray, type BrowserWindow } from 'electron';
 import { brandIcon } from '../brand-icon.js';
-import path from 'node:path';
-import fs from 'node:fs';
+import { CloseToTray } from './close-to-tray.js';
+import { notifyTrayHidden } from './notifications.js';
+import { trayMenuTemplate } from './tray-menu.js';
+import { WindowVisibility } from './window-visibility.js';
 
 export interface TrayManagerOptions {
   mainWindow: BrowserWindow;
@@ -13,177 +23,74 @@ export interface TrayManagerOptions {
 
 export class TrayManager {
   private tray: Tray | null = null;
-  private mainWindow: BrowserWindow;
-  private isQuitting: boolean = false;
-  private closeToTray: boolean = false;
   private agentStatus: string = 'IDLE';
   private tabCount: number = 0;
   private hilPending: boolean = false;
-  private hasShownTrayNotice: boolean = false;
 
-  private onQuit?: () => void;
-  private onShow?: () => void;
-  private onHide?: () => void;
+  private readonly onQuit?: () => void;
+  private readonly window: WindowVisibility;
+  private readonly closeToTray: CloseToTray;
 
   constructor(options: TrayManagerOptions) {
-    this.mainWindow = options.mainWindow;
     this.onQuit = options.onQuit;
-    this.onShow = options.onShow;
-    this.onHide = options.onHide;
-    if (typeof options.closeToTrayDefault === 'boolean') {
-      this.closeToTray = options.closeToTrayDefault;
-    }
+    this.window = new WindowVisibility({
+      window: options.mainWindow,
+      onChange: () => this.updateMenu(),
+      onShow: options.onShow,
+      onHide: options.onHide,
+    });
+    this.closeToTray = new CloseToTray({
+      window: options.mainWindow,
+      enabled: options.closeToTrayDefault === true,
+      hide: () => this.hideWindow(),
+      onFirstHide: () => notifyTrayHidden(this.tray),
+    });
 
-    this.initTray();
-    this.setupWindowListeners();
-  }
-
-  private resolveIcon(): Electron.NativeImage {
-    return brandIcon(16);
-  }
-
-  private initTray(): void {
-    const icon = this.resolveIcon();
-    this.tray = new Tray(icon);
+    // The icon is created after the collaborators so the first menu already reads real state.
+    this.tray = new Tray(brandIcon(16));
     this.tray.setToolTip('Kuang Grade Mark Eleven // Cyberdeck');
-
-    this.tray.on('click', () => {
-      this.toggleWindow();
-    });
-
-    this.tray.on('double-click', () => {
-      this.showWindow();
-    });
-
+    this.tray.on('click', () => this.toggleWindow());
+    this.tray.on('double-click', () => this.showWindow());
     this.updateMenu();
   }
 
-  private setupWindowListeners(): void {
-    // Intercept window close to minimize to tray if enabled
-    this.mainWindow.on('close', (event) => {
-      if (!this.isQuitting && this.closeToTray) {
-        event.preventDefault();
-        this.hideWindow();
-
-        if (!this.hasShownTrayNotice) {
-          this.hasShownTrayNotice = true;
-          this.notifyTrayRunning();
-        }
-      }
-    });
-
-    // App before-quit lifecycle
-    app.on('before-quit', () => {
-      this.isQuitting = true;
-    });
-  }
-
-  private notifyTrayRunning(): void {
-    if (this.tray && process.platform === 'win32') {
-      try {
-        this.tray.displayBalloon({
-          title: 'Mark Eleven Minimized',
-          content: 'Kuang Grade Mark Eleven is continuing in the system tray. Click the tray icon to restore.',
-          iconType: 'info',
-        });
-      } catch {
-        // Fallback to desktop notification
-        this.showDesktopNotification('Mark Eleven Running', 'Cyberdeck minimized to system tray. Active tasks remain online.');
-      }
-    } else {
-      this.showDesktopNotification('Mark Eleven Running', 'Cyberdeck minimized to system tray. Active tasks remain online.');
-    }
-  }
-
-  private showDesktopNotification(title: string, body: string): void {
-    if (Notification.isSupported()) {
-      new Notification({
-        title,
-        body,
-        silent: true,
-      }).show();
-    }
-  }
-
+  /** Rebuild the context menu from the current status, skills and window state. */
   public updateMenu(): void {
     if (!this.tray) return;
-
-    const isVisible = this.mainWindow.isVisible() && !this.mainWindow.isMinimized();
-    const hilLabel = this.hilPending ? '⚠️ ACTION REQUIRED (Human Intervention)' : 'Human Intervention: None';
-
-    const contextMenu = Menu.buildFromTemplate([
-      {
-        label: 'Kuang Grade Mark Eleven',
-        enabled: false,
-      },
-      {
-        label: `Status: ${this.agentStatus} | Tabs: ${this.tabCount}`,
-        enabled: false,
-      },
-      ...(this.hilPending
-        ? [
-            {
-              label: '⚠️ Resolve Action Required',
-              click: () => {
-                this.showWindow();
-              },
-            },
-          ]
-        : []),
-      { type: 'separator' },
-      {
-        label: isVisible ? 'Hide to Tray' : 'Show Window',
-        click: () => {
-          this.toggleWindow();
+    const contextMenu = Menu.buildFromTemplate(
+      trayMenuTemplate(
+        {
+          visible: this.window.isVisible(),
+          closeToTray: this.closeToTray.isEnabled(),
+          hilPending: this.hilPending,
+          status: this.agentStatus,
+          tabCount: this.tabCount,
         },
-      },
-      {
-        label: 'Minimize to Tray on Close',
-        type: 'checkbox',
-        checked: this.closeToTray,
-        click: (item) => {
-          this.closeToTray = item.checked;
+        {
+          show: () => this.showWindow(),
+          toggle: () => this.toggleWindow(),
+          setCloseToTray: (enabled) => this.closeToTray.setEnabled(enabled),
+          quit: () => {
+            this.closeToTray.beginQuit();
+            if (this.onQuit) this.onQuit();
+            else app.quit();
+          },
         },
-      },
-      { type: 'separator' },
-      {
-        label: 'Quit Cyberdeck',
-        click: () => {
-          this.isQuitting = true;
-          if (this.onQuit) {
-            this.onQuit();
-          } else {
-            app.quit();
-          }
-        },
-      },
-    ]);
-
+      ),
+    );
     this.tray.setContextMenu(contextMenu);
   }
 
   public showWindow(): void {
-    if (this.mainWindow.isMinimized()) {
-      this.mainWindow.restore();
-    }
-    this.mainWindow.show();
-    this.mainWindow.focus();
-    this.updateMenu();
-    this.onShow?.();
+    this.window.show();
   }
 
   public hideWindow(): void {
-    this.mainWindow.hide();
-    this.updateMenu();
-    this.onHide?.();
+    this.window.hide();
   }
 
   public toggleWindow(): void {
-    if (this.mainWindow.isVisible() && !this.mainWindow.isMinimized() && this.mainWindow.isFocused()) {
-      this.hideWindow();
-    } else {
-      this.showWindow();
-    }
+    this.window.toggle();
   }
 
   public updateStatus(status: string, tabCount: number, hilPending: boolean = false): void {
@@ -194,16 +101,16 @@ export class TrayManager {
   }
 
   public setCloseToTray(enabled: boolean): void {
-    this.closeToTray = enabled;
+    this.closeToTray.setEnabled(enabled);
     this.updateMenu();
   }
 
   public isCloseToTray(): boolean {
-    return this.closeToTray;
+    return this.closeToTray.isEnabled();
   }
 
   public isWindowVisible(): boolean {
-    return this.mainWindow.isVisible() && !this.mainWindow.isMinimized();
+    return this.window.isVisible();
   }
 
   public destroy(): void {

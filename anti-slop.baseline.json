@@ -155,9 +155,6 @@
       "main/telemetry/host-fingerprint.ts": {
         "function": 1
       },
-      "main/tray/tray-manager.ts": {
-        "class": 1
-      },
       "main/wrap/anyapi/executor.ts": {
         "function": 1
       }
