@@ -139,9 +139,6 @@
   },
   "modularity": {
     "files": {
-      "main/snapshots/rendered-snapshot.ts": {
-        "function": 1
-      },
       "main/wrap/anyapi/executor.ts": {
         "function": 1
       }

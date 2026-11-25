@@ -35,80 +35,66 @@ const turndown = new TurndownService({
 // Clean up noisy tags from snapshot markdown
 turndown.remove(['script', 'style', 'noscript']);
 
+/** Force a repaint and wait for hydration idle, when asked. */
+async function settlePage(wc: WebContents, options: RenderedSnapshotOptions): Promise<void> {
+  if (options.forceRerender) {
+    await wc
+      .executeJavaScript(
+        `
+        new Promise((resolve) => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(resolve);
+          });
+        })
+      `,
+      )
+      .catch(() => {});
+  }
+
+  const waitIdle = options.waitUntilIdleMs !== undefined ? options.waitUntilIdleMs : 400;
+  if (waitIdle > 0) {
+    await new Promise((resolve) => setTimeout(resolve, waitIdle));
+  }
+}
+
+/** Write the snapshot under `<data>/snapshots` and return its path. */
+function saveSnapshot(
+  content: string,
+  format: RenderedSnapshotResult['format'],
+  title: string,
+  timestamp: number,
+): string {
+  const snapshotsDir = dataPath('snapshots');
+  if (!fs.existsSync(snapshotsDir)) {
+    fs.mkdirSync(snapshotsDir, { recursive: true });
+  }
+  const ext = format === 'html' ? 'html' : format === 'markdown' ? 'md' : 'txt';
+  const safeName = `snapshot_${timestamp}_${encodeURIComponent(title.slice(0, 30)).replace(/%/g, '')}.${ext}`;
+  const filePath = path.join(snapshotsDir, safeName);
+  fs.writeFileSync(filePath, content, 'utf8');
+  return filePath;
+}
+
 export class RenderedSnapshotEngine {
   /**
    * Captures a rendered or unrendered point-in-time snapshot of the given WebContents.
+   *
+   * Why it reads as steps: the settle (repaint + idle wait), the format read and the optional
+   * disk write each fail independently, so each is its own method.
    */
   public static async capture(
     wc: WebContents,
     options: RenderedSnapshotOptions = {}
   ): Promise<RenderedSnapshotResult> {
     const format = options.format || 'ax_tree';
-    const waitIdle = options.waitUntilIdleMs !== undefined ? options.waitUntilIdleMs : 400;
+    // The URL and title are read before any forced repaint: a re-render can change them.
     const url = wc.getURL();
     const title = wc.getTitle();
     const timestamp = Date.now();
 
-    // Force re-render / repaint if requested (non-destructive double-RAF to flush layout/compositor)
-    if (options.forceRerender) {
-      await wc.executeJavaScript(`
-        new Promise((resolve) => {
-          requestAnimationFrame(() => {
-            requestAnimationFrame(resolve);
-          });
-        })
-      `).catch(() => {});
-    }
-
-    // 1. Wait for render / hydration idle
-    if (waitIdle > 0) {
-      await new Promise((resolve) => setTimeout(resolve, waitIdle));
-    }
-
-    let content = '';
-    let nodeCount = 0;
-
-    switch (format) {
-      case 'unrendered_html': {
-        // Raw, pre-mutation unrendered HTML source
-        content = await wc.executeJavaScript('document.documentElement.outerHTML');
-        break;
-      }
-
-      case 'ax_tree': {
-        const axResult = await this.captureAxTree(wc);
-        content = axResult.outline;
-        nodeCount = axResult.nodeCount;
-        break;
-      }
-
-      case 'markdown': {
-        const renderedHtml = await this.captureRenderedHtml(wc, options.pierceShadowDom ?? true);
-        content = turndown.turndown(renderedHtml);
-        break;
-      }
-
-      case 'html':
-      default: {
-        content = await this.captureRenderedHtml(wc, options.pierceShadowDom ?? true);
-        break;
-      }
-    }
-
+    await settlePage(wc, options);
+    const { content, nodeCount } = await this.read(wc, format, options);
     const byteLength = Buffer.byteLength(content, 'utf8');
-    const estimatedTokens = Math.ceil(byteLength / 4);
-
-    let filePath: string | undefined;
-    if (options.saveToDisk) {
-      const snapshotsDir = dataPath('snapshots');
-      if (!fs.existsSync(snapshotsDir)) {
-        fs.mkdirSync(snapshotsDir, { recursive: true });
-      }
-      const ext = format === 'html' ? 'html' : format === 'markdown' ? 'md' : 'txt';
-      const safeName = `snapshot_${timestamp}_${encodeURIComponent(title.slice(0, 30)).replace(/%/g, '')}.${ext}`;
-      filePath = path.join(snapshotsDir, safeName);
-      fs.writeFileSync(filePath, content, 'utf8');
-    }
 
     return {
       format,
@@ -116,13 +102,40 @@ export class RenderedSnapshotEngine {
       title,
       timestamp,
       content,
-      filePath,
+      filePath: options.saveToDisk ? saveSnapshot(content, format, title, timestamp) : undefined,
       stats: {
         nodeCount: nodeCount || undefined,
         byteLength,
-        estimatedTokens,
+        estimatedTokens: Math.ceil(byteLength / 4),
       },
     };
+  }
+
+  /** Read the page in the requested format; only the AX tree reports a node count. */
+  private static async read(
+    wc: WebContents,
+    format: RenderedSnapshotResult['format'],
+    options: RenderedSnapshotOptions,
+  ): Promise<{ content: string; nodeCount: number }> {
+    switch (format) {
+      case 'unrendered_html':
+        // Raw, pre-mutation unrendered HTML source.
+        return { content: await wc.executeJavaScript('document.documentElement.outerHTML'), nodeCount: 0 };
+
+      case 'ax_tree': {
+        const axResult = await this.captureAxTree(wc);
+        return { content: axResult.outline, nodeCount: axResult.nodeCount };
+      }
+
+      case 'markdown': {
+        const renderedHtml = await this.captureRenderedHtml(wc, options.pierceShadowDom ?? true);
+        return { content: turndown.turndown(renderedHtml), nodeCount: 0 };
+      }
+
+      case 'html':
+      default:
+        return { content: await this.captureRenderedHtml(wc, options.pierceShadowDom ?? true), nodeCount: 0 };
+    }
   }
 
   /**
