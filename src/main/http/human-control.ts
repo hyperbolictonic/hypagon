@@ -32,7 +32,7 @@ export function refuseWhileHumanActive(
   pathname: string,
   sendJson: RouteTableContext['sendJson'],
 ): boolean {
-  if (!chassis.isHumanActive() || method === 'GET' || HUMAN_CONTROL_ALLOWED.has(pathname)) return false;
+  if (!chassis.human.isActive() || method === 'GET' || HUMAN_CONTROL_ALLOWED.has(pathname)) return false;
   sendJson(
     {
       success: false,

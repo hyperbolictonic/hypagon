@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 257 files, 867 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 258 files, 869 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (736)
+## Types (738)
 
 | File | Export | When to use |
 |---|---|---|
@@ -158,6 +158,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/input/human-activity.ts` | `HUMAN_CONSOLE_PREFIX` | Console prefix the page uses; anything else is ignored. |
 | `main/input/human-activity.ts` | `HumanActivityMonitor` | - |
 | `main/input/human-activity.ts` | `HumanActivity` *(type)* | Human takeover detection. |
+| `main/input/human-control.ts` | `HumanControlSurface` | The explicit human-takeover latch and its activity monitor. |
+| `main/input/human-control.ts` | `HumanControlDeps` *(type)* | Dependencies the latch needs from the agent status and telemetry. |
 | `main/input/input-surface.ts` | `InputSurface` | The humanized input path shared by the primitive actions and the bridge routes. |
 | `main/input/input-surface.ts` | `InputSurfaceDeps` *(type)* | Dependencies the input surface needs from the active tab and chassis state. |
 | `main/input-actions.ts` | `InputActionsController` | When to use: the chassis — own how input actions are performed over the active tab. |

@@ -46,7 +46,7 @@ const bridgeStatus = (ctx: HealthRouteContext) => {
     lastActionAt: lastActionAt(),
     window: { visible: chassis.window.isVisible(), focused: chassis.window.isFocused() },
     input: { transport: chassis.input.simulator.lastInputTransport },
-    human: { paused: chassis.isHumanActive(), ...chassis.getHumanStatus() },
+    human: { paused: chassis.human.isActive(), ...chassis.human.status() },
     metrics: summary(),
     shadowWalk: { ...shadowWalkStatus(), forceOpenArmed: chassis.shadow.forceOpenArmed() },
     zoom: chassis.zoom.getState(),
@@ -80,15 +80,15 @@ const ROUTES: Record<string, HealthHandler> = {
   },
 
   'GET /human/status': ({ chassis, sendJson }) => {
-    sendJson({ success: true, ...chassis.getHumanStatus() });
+    sendJson({ success: true, ...chassis.human.status() });
   },
 
   'POST /human/takeover': ({ chassis, sendJson }) => {
-    sendJson({ success: true, ...chassis.takeOverHuman() });
+    sendJson({ success: true, ...chassis.human.takeOver() });
   },
 
   'POST /human/resume': ({ chassis, sendJson }) => {
-    sendJson({ success: true, ...chassis.resumeHuman() });
+    sendJson({ success: true, ...chassis.human.resume() });
   },
 
   'POST /notify': async ({ chassis, readBody, sendJson }) => {
