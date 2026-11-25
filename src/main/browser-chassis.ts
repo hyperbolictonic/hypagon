@@ -117,32 +117,32 @@ export class BrowserChassis {
   /** Throttle for gate-triggered human hand-offs (one per URL per few minutes). */
   private lastGateHil: { url: string; at: number } | null = null;
   private tabManager: TabManager | null = null;
-  private simulator: HumanizedInputSimulator;
-  private harvester: ConstructHarvester;
+  private simulator!: HumanizedInputSimulator;
+  private harvester!: ConstructHarvester;
   /** JEV page compaction: surface index + in-memory depth store. */
-  private shieldBreaker: ShieldBreaker;
-  private downloadManager: DownloadManager;
-  private sessionVault: SessionVault;
-  private networkInterceptor: NetworkInterceptor;
-  private marksOverlay: MarksOverlay;
+  private shieldBreaker!: ShieldBreaker;
+  private downloadManager!: DownloadManager;
+  private sessionVault!: SessionVault;
+  private networkInterceptor!: NetworkInterceptor;
+  private marksOverlay!: MarksOverlay;
   readonly marks: MarksSurface;
   readonly harvest: HarvestSurface;
   readonly nav: NavigationSurface;
-  private scriptVault: ScriptVault;
+  private scriptVault!: ScriptVault;
   private trayManager: TrayManager | null = null;
-  private hilManager: HilManager;
-  private prerenderEngine: PrerenderEngine;
+  private hilManager!: HilManager;
+  private prerenderEngine!: PrerenderEngine;
   private hostProfile: HostBrowserProfile = detectHostBrowserProfile();
-  private primitives: Primitives;
-  private llmSurface: LlmSurface;
-  private researchLlmSurface: LlmSurface;
-  private searchHub: SearchHub;
+  private primitives!: Primitives;
+  private llmSurface!: LlmSurface;
+  private researchLlmSurface!: LlmSurface;
+  private searchHub!: SearchHub;
   /** The agent-facing read/search adapters; the transports stay private. */
   readonly llm: ReadSurface;
   readonly search: SearchSurface;
-  private crawler: Crawler;
-  private researcher: Researcher;
-  private actionLedger: ActionLedger;
+  private crawler!: Crawler;
+  private researcher!: Researcher;
+  private actionLedger!: ActionLedger;
   /** Reused off-screen view for detached reads (SERPs, Markdown alternates, crawls). */
   /** Origins a human has authenticated; skip the anonymous static tier for them. */
   /** Only one human hand-off at a time (the shared research view is serialized). */
@@ -209,6 +209,22 @@ export class BrowserChassis {
   private targetConsoleLogs: Array<{ level: string; message: string; line: number; sourceId: string; timestamp: number }> = [];
 
   constructor() {
+    this.subscribeToDecisions();
+    this.createInputSurfaces();
+    const harvestNav = this.createHarvestNavigationSurfaces();
+    this.marks = harvestNav.marks;
+    this.harvest = harvestNav.harvest;
+    this.nav = harvestNav.nav;
+    this.createInteractionSurfaces();
+    const readSearch = this.createLlmSurfaces();
+    this.llm = readSearch.llm;
+    this.search = readSearch.search;
+    this.createCrawlSurfaces();
+    this.startLoops();
+  }
+
+  /** Mirror every decision call into the HUD; the ring buffer lets a late renderer catch up. */
+  private subscribeToDecisions(): void {
     // Mirror every decision call into the HUD's DECISIONS tab. The listener is passive: it cannot
     // delay or fail a decision (see emitDecision), and the ring buffer lets a late-joining renderer
     // catch up.
@@ -217,7 +233,10 @@ export class BrowserChassis {
       if (this.decisionLog.length > 50) this.decisionLog.shift();
       this.sendToSurfaces('chassis:decision', event);
     });
+  }
 
+  /** Input simulation, downloads, sessions, the network tap and the script vault. */
+  private createInputSurfaces(): void {
     this.harvester = new ConstructHarvester();
     this.simulator = new HumanizedInputSimulator({
       onMouseMove: (point, velocity) => {
@@ -255,18 +274,27 @@ export class BrowserChassis {
     this.sessionVault = new SessionVault();
     this.networkInterceptor = new NetworkInterceptor();
     this.marksOverlay = new MarksOverlay();
-    this.marks = new MarksSurface({
+    this.scriptVault = new ScriptVault();
+  }
+
+  /** Marks, harvest and navigation, in dependency order (prerender before nav). */
+  private createHarvestNavigationSurfaces(): {
+    marks: MarksSurface;
+    harvest: HarvestSurface;
+    nav: NavigationSurface;
+  } {
+    const marks = new MarksSurface({
       activeWebContents: () => this.getActiveWebContents(),
       revision: () => this.revision,
       marksOverlay: this.marksOverlay,
       refuseShadow: (surface) => this.refuseShadow(surface),
       log: this.controllerLog,
     });
-    this.harvest = new HarvestSurface({
+    const harvest = new HarvestSurface({
       activeWebContents: () => this.getActiveWebContents(),
       viewportBounds: () => this.getViewportBounds(),
       zoomState: () => this.getZoomState(),
-      marks: this.marks,
+      marks,
       marksOverlay: this.marksOverlay,
       harvester: this.harvester,
       screenshotStore: this.screenshotStore,
@@ -286,7 +314,12 @@ export class BrowserChassis {
       log: this.controllerLog,
       indexPage: (url, title, content) => cortex.indexPage(url, title, content),
     });
-    this.nav = new NavigationSurface({
+    this.prerenderEngine = new PrerenderEngine(
+      this.hostProfile,
+      cortex,
+      (level, msg) => this.addLog(level, msg)
+    );
+    const nav = new NavigationSurface({
       activeWebContents: () => this.getActiveWebContents(),
       welcomePagePath: () => this.tabManager?.getWelcomePagePath(),
       createTab: (url, view) => {
@@ -309,14 +342,11 @@ export class BrowserChassis {
       bumpRevision: () => this.bumpRevision(),
       broadcastState: () => this.broadcastState(),
     });
-    this.scriptVault = new ScriptVault();
+    return { marks, harvest, nav };
+  }
 
-    this.prerenderEngine = new PrerenderEngine(
-      this.hostProfile,
-      cortex,
-      (level, msg) => this.addLog(level, msg)
-    );
-
+  /** HIL, the action ledger and the orthogonal primitives layer. */
+  private createInteractionSurfaces(): void {
     this.hilManager = new HilManager({
       getActiveWebContents: () => {
         try {
@@ -389,11 +419,14 @@ export class BrowserChassis {
       windowFocused: () => this.isWindowFocused(),
       recordTransition: (record) => this.actionLedger.record(record),
     });
+  }
 
+  /** LLM read/search surfaces and their shared activity hook. */
+  private createLlmSurfaces(): { llm: ReadSurface; search: SearchSurface } {
     // LLM-friendly site discovery (TODO_RESEARCH_CRAWL.md §5, Feature 6).
     // `net.fetch` runs on Chromium's network stack (session cookies/UA/TLS); per-page
     // alternates go through a real document navigation instead of a synthetic fetch.
-    this.llmSurface = new LlmSurface({
+    const llmSurface = new LlmSurface({
       getSession: () => this.getActiveWebContents().session,
       getActiveWebContents: () => {
         try {
@@ -405,29 +438,32 @@ export class BrowserChassis {
       ...this.llmSurfaceBase(),
       renderPage: (url) => this.readUrlRender(url),
     });
+    this.llmSurface = llmSurface;
 
-    this.researchLlmSurface = new LlmSurface({
+    const researchLlmSurface = new LlmSurface({
       getSession: () => this.getResearchSession(),
       ...this.llmSurfaceBase(),
     });
+    this.researchLlmSurface = researchLlmSurface;
 
     // Multi-engine web search (TODO_RESEARCH_CRAWL.md §5, Feature 5).
-    this.searchHub = new SearchHub({
+    const searchHub = new SearchHub({
       load: (url, script, opts) => this.loadDetached(url, script, opts),
       log: (level, msg) => this.addLog(level, msg),
     });
+    this.searchHub = searchHub;
 
-    this.llm = new ReadSurface({
-      probe: (url) => this.llmSurface.probe(url),
-      fetch: (opts) => this.llmSurface.fetch(opts),
-      readUrl: (opts) => this.llmSurface.readUrl(opts),
+    const llm = new ReadSurface({
+      probe: (url) => llmSurface.probe(url),
+      fetch: (opts) => llmSurface.fetch(opts),
+      readUrl: (opts) => llmSurface.readUrl(opts),
       renderMarkdown: (url) => this.readUrlRender(url),
       activity: this.surfaceActivity,
       log: this.controllerLog,
     });
 
-    this.search = new SearchSurface({
-      hub: this.searchHub,
+    const search = new SearchSurface({
+      hub: searchHub,
       settings: () => this.researchSettings,
       applyEnginePolicy: (effective) => this.applyResearchEnginePolicy(effective),
       isCooling: (host) => this.isResearchCooling(host),
@@ -438,6 +474,62 @@ export class BrowserChassis {
       log: this.controllerLog,
     });
 
+    return { llm, search };
+  }
+
+  /** The crawler's static tier: impersonating fetch, with warm-origin and thin-body guards. */
+  private async fetchStaticForCrawl(
+    url: string,
+    pageOpts?: { anchorsFor?: string },
+  ): Promise<
+    | { ok: true; title: string; markdown: string; status: number; anchors?: CitationAnchor[] }
+    | { ok: false; reason: string; disabled?: boolean }
+  > {
+    if (!this.researchSettings.preferStatic) {
+      return { ok: false, reason: 'static tier disabled in settings', disabled: true };
+    }
+    try {
+      if (this.citationController.originIsWarm(url)) {
+        // A human authenticated this origin in the real browser; keep the cookie and the
+        // browser together rather than replaying the session through a static client.
+        return {
+          ok: false,
+          reason: 'origin is using the human-authenticated browser session',
+          disabled: true,
+        };
+      }
+    } catch {
+      /* malformed URL falls through to the normal path */
+    }
+    const outcome = await fetchStatic(url);
+    if (outcome.kind === 'blocked') {
+      this.addLog('warn', `static fetch challenged for ${url} (${outcome.status}); escalating to render`);
+      return { ok: false, reason: `challenge page (${outcome.status})` };
+    }
+    if (outcome.kind === 'unavailable') return { ok: false, reason: outcome.reason, disabled: true };
+    if (outcome.kind === 'error') return { ok: false, reason: outcome.reason };
+    if (outcome.result.status >= 400) return { ok: false, reason: `HTTP ${outcome.result.status}` };
+
+    const harvested = this.harvester.harvest(outcome.result.body, url, url);
+    // A JS-only shell harvests to almost nothing; escalate rather than index a stub.
+    if (!harvested.content || harvested.content.trim().length < 200) {
+      return { ok: false, reason: 'content too thin (possible JS-only shell)' };
+    }
+    let anchors: CitationAnchor[] | undefined;
+    if (pageOpts?.anchorsFor) {
+      anchors = (await this.citationController.anchorFromHtml(url, outcome.result.body, pageOpts.anchorsFor)) ?? [];
+    }
+    return {
+      ok: true,
+      title: harvested.title,
+      markdown: harvested.content,
+      status: outcome.result.status,
+      anchors,
+    };
+  }
+
+  /** Crawl, research and the research orchestrator. */
+  private createCrawlSurfaces(): void {
     // Autonomous multi-page crawl (TODO_RESEARCH_CRAWL.md §5, Feature 1).
     // Cheap path first: content-negotiated Markdown/Text, else a detached render.
     this.crawler = new Crawler({
@@ -447,49 +539,7 @@ export class BrowserChassis {
         const r = await this.researchLlmSurface.fetch({ url, as: 'markdown' });
         return { content: r.content, via: r.via };
       },
-      fetchStatic: async (url, pageOpts) => {
-        if (!this.researchSettings.preferStatic) {
-          return { ok: false as const, reason: 'static tier disabled in settings', disabled: true };
-        }
-        try {
-          if (this.citationController.originIsWarm(url)) {
-            // A human authenticated this origin in the real browser; keep the cookie and the
-            // browser together rather than replaying the session through a static client.
-            return {
-              ok: false as const,
-              reason: 'origin is using the human-authenticated browser session',
-              disabled: true,
-            };
-          }
-        } catch {
-          /* malformed URL falls through to the normal path */
-        }
-        const outcome = await fetchStatic(url);
-        if (outcome.kind === 'blocked') {
-          this.addLog('warn', `static fetch challenged for ${url} (${outcome.status}); escalating to render`);
-          return { ok: false as const, reason: `challenge page (${outcome.status})` };
-        }
-        if (outcome.kind === 'unavailable') return { ok: false as const, reason: outcome.reason, disabled: true };
-        if (outcome.kind === 'error') return { ok: false as const, reason: outcome.reason };
-        if (outcome.result.status >= 400) return { ok: false as const, reason: `HTTP ${outcome.result.status}` };
-
-        const harvested = this.harvester.harvest(outcome.result.body, url, url);
-        // A JS-only shell harvests to almost nothing; escalate rather than index a stub.
-        if (!harvested.content || harvested.content.trim().length < 200) {
-          return { ok: false as const, reason: 'content too thin (possible JS-only shell)' };
-        }
-        let anchors: CitationAnchor[] | undefined;
-        if (pageOpts?.anchorsFor) {
-          anchors = (await this.citationController.anchorFromHtml(url, outcome.result.body, pageOpts.anchorsFor)) ?? [];
-        }
-        return {
-          ok: true as const,
-          title: harvested.title,
-          markdown: harvested.content,
-          status: outcome.result.status,
-          anchors,
-        };
-      },
+      fetchStatic: (url, pageOpts) => this.fetchStaticForCrawl(url, pageOpts),
       renderPage: (url, pageOpts) => this.crawlRenderPage(url, pageOpts),
       beforePage: (url) => this.assertResearchCooldown(url),
       indexPage: async (url, title, content) => {
@@ -521,7 +571,10 @@ export class BrowserChassis {
       },
       log: (level, message) => this.addLog(level, message),
     });
+  }
 
+  /** Uptime broadcast and HUD-health watchdog. */
+  private startLoops(): void {
     setInterval(() => {
       this.state.stats.uptimeSeconds++;
       this.broadcastState();
@@ -2141,7 +2194,7 @@ export class BrowserChassis {
   // The render-with-escalation pipeline, the BFS crawl and its research-workspace
   // event mirror, and the topic run live in CrawlOrchestrator.
 
-  private readonly crawlOrchestrator: CrawlOrchestrator;
+  private crawlOrchestrator!: CrawlOrchestrator;
 
   public async crawlRenderPage(url: string, opts: RenderCrawlOptions = {}): Promise<RenderCrawlResult> {
     return this.crawlOrchestrator.crawlRenderPage(url, opts);
