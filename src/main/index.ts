@@ -720,7 +720,7 @@ async function createWindow() {
       void activeRemoteService.maybeAutoUpdateCloudflared();
     }
   } catch (err: any) {
-    chassis.addLog('warn', `HTTP Bridge notice: ${err?.message || err}`);
+    chassis.telemetry.addLog('warn', `HTTP Bridge notice: ${err?.message || err}`);
   }
 }
 

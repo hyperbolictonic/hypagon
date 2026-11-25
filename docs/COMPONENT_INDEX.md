@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 231 files, 809 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 232 files, 812 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (684)
+## Types (687)
 
 | File | Export | When to use |
 |---|---|---|
@@ -472,6 +472,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/telemetry/input-profile.ts` | `InputProfile` *(type)* | - |
 | `main/telemetry/input-simulator.ts` | `HumanizedInputSimulator` | - |
 | `main/telemetry/input-simulator.ts` | `InputTelemetryReporter` *(type)* | - |
+| `main/telemetry/telemetry-surface.ts` | `TelemetrySurface` | The log ring, state broadcast and telemetry fan-out shared by every chassis surface. |
+| `main/telemetry/telemetry-surface.ts` | `LogEntry` *(type)* | One HUD log line; newest entries sit at the head of the ring. |
+| `main/telemetry/telemetry-surface.ts` | `TelemetrySurfaceDeps` *(type)* | Dependencies the telemetry surface needs from the chassis and its renderers. |
 | `main/tools/settings.ts` | `normalizeToolSettings` | - |
 | `main/tools/settings.ts` | `DEFAULT_TOOL_SETTINGS` | - |
 | `main/tools/settings.ts` | `ToolSettingsStore` | File-backed store. One instance is shared by the IPC handlers and the local bridge. |

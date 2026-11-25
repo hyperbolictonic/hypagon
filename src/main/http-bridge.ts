@@ -54,7 +54,7 @@ export function startHttpBridge(
       res,
       pathname,
       startTime,
-      addLog: (level, message) => chassis.addLog(level, message),
+      addLog: (level, message) => chassis.telemetry.addLog(level, message),
     });
 
     try {
@@ -86,11 +86,11 @@ export function startHttpBridge(
   });
 
   server.on('error', (err: any) => {
-    logListenError(port, err, (level, message) => chassis.addLog(level, message));
+    logListenError(port, err, (level, message) => chassis.telemetry.addLog(level, message));
   });
 
   server.listen(port, '127.0.0.1', () => {
-    announceListening(port, (level, message) => chassis.addLog(level, message));
+    announceListening(port, (level, message) => chassis.telemetry.addLog(level, message));
   });
 
   return server;

@@ -9,6 +9,7 @@ import { ViewportController } from './viewport/controller.js';
 import { ZoomController } from './zoom/controller.js';
 import { HumanizedInputSimulator } from './telemetry/input-simulator.js';
 import { loadInputProfile, saveInputProfile, type InputProfile } from './telemetry/input-profile.js';
+import { TelemetrySurface } from './telemetry/telemetry-surface.js';
 import { HumanActivityMonitor, humanListenerScript, type HumanActivity } from './input/human-activity.js';
 import { NavigationSurface } from './navigation/navigation-surface.js';
 import {
@@ -95,8 +96,8 @@ import { Researcher, type ResearchOptions, type ResearchOutcome } from './resear
 export class BrowserChassis {
   private mainWindow: BrowserWindow | null = null;
   /** Shared controller hooks: every controller config wires the same log and telemetry. */
-  private readonly controllerLog = (level: 'info' | 'warn' | 'action', message: string): void => this.addLog(level, message);
-  private readonly controllerTelemetry = (event: TelemetryEvent): void => this.emitTelemetry(event);
+  private readonly controllerLog = (level: 'info' | 'warn' | 'action', message: string): void => this.telemetry.addLog(level, message);
+  private readonly controllerTelemetry = (event: TelemetryEvent): void => this.telemetry.emitTelemetry(event);
   /** The research activity feed hook shared by the read/search surfaces. */
   private readonly surfaceActivity = <T>(
     tool: string,
@@ -196,8 +197,16 @@ export class BrowserChassis {
     },
   };
 
+  /** Log ring, state broadcasts and telemetry; every controller reports through it. */
+  readonly telemetry = new TelemetrySurface({
+    state: this.state,
+    send: (channel, payload) => this.sendToSurfaces(channel, payload),
+    zoomState: () => this.zoom.getState(),
+    viewportState: () => this.viewportController?.state(),
+    activeWebContents: () => this.tabManager?.getActiveTab()?.view?.webContents ?? null,
+  });
+
   private latestConstruct: HarvestedConstruct | null = null;
-  private logs: Array<{ id: string; time: string; level: 'info' | 'warn' | 'action'; message: string }> = [];
   private targetConsoleLogs: Array<{ level: string; message: string; line: number; sourceId: string; timestamp: number }> = [];
 
   constructor() {
@@ -233,15 +242,15 @@ export class BrowserChassis {
     this.simulator = new HumanizedInputSimulator({
       onMouseMove: (point, velocity) => {
         this.state.cursor = point;
-        this.emitPointEvent('mouse_move', point, `Velocity: ${velocity.toFixed(2)} px/ms`);
+        this.telemetry.emitPointEvent('mouse_move', point, `Velocity: ${velocity.toFixed(2)} px/ms`);
       },
       onClick: (point) => {
         this.state.stats.totalInteractions++;
-        this.emitPointEvent('click', point, 'Physical mouse switch actuated');
+        this.telemetry.emitPointEvent('click', point, 'Physical mouse switch actuated');
       },
       onKey: (char, delay) => {
         this.state.stats.totalInteractions++;
-        this.emitTelemetry({
+        this.telemetry.emitTelemetry({
           type: 'keystroke',
           key: char === ' ' ? 'SPACE' : char,
           durationMs: delay,
@@ -250,7 +259,7 @@ export class BrowserChassis {
         });
       },
       onScroll: (deltaY) => {
-        this.emitSimpleEvent('scroll', `Mousewheel impulse: ${deltaY}px`);
+        this.telemetry.emitSimpleEvent('scroll', `Mousewheel impulse: ${deltaY}px`);
       },
     });
 
@@ -292,7 +301,7 @@ export class BrowserChassis {
       screenshotStore: this.screenshotStore,
       beginHarvest: () => {
         this.state.agentStatus = 'HARVESTING';
-        this.broadcastState();
+        this.telemetry.broadcastState();
       },
       onConstruct: (construct) => {
         this.latestConstruct = construct;
@@ -301,15 +310,15 @@ export class BrowserChassis {
       addTokens: (tokens) => {
         this.state.stats.tokensHarvested += tokens;
       },
-      reportIdle: () => this.reportIdle(),
-      emitHarvest: (details) => this.emitSimpleEvent('harvest', details),
+      reportIdle: () => this.telemetry.reportIdle(),
+      emitHarvest: (details) => this.telemetry.emitSimpleEvent('harvest', details),
       log: this.controllerLog,
       indexPage: (url, title, content) => cortex.indexPage(url, title, content),
     });
     this.prerenderEngine = new PrerenderEngine(
       this.hostProfile,
       cortex,
-      (level, msg) => this.addLog(level, msg)
+      (level, msg) => this.telemetry.addLog(level, msg)
     );
     const nav = new NavigationSurface({
       activeWebContents: () => this.getActiveWebContents(),
@@ -324,7 +333,7 @@ export class BrowserChassis {
       },
       beginTraversal: () => {
         this.state.agentStatus = 'TRAVERSING';
-        this.broadcastState();
+        this.telemetry.broadcastState();
       },
       log: this.controllerLog,
       bumpNav: () => bump('nav'),
@@ -332,7 +341,7 @@ export class BrowserChassis {
       syncForceOpen: (wc) => this.syncForceOpenFor(wc),
       scheduleConsentSweep: () => this.consent.scheduleSweep(),
       bumpRevision: () => this.bumpRevision(),
-      broadcastState: () => this.broadcastState(),
+      broadcastState: () => this.telemetry.broadcastState(),
     });
     return { marks, harvest, nav };
   }
@@ -363,7 +372,7 @@ export class BrowserChassis {
           this.state.agentStatus = 'IDLE';
           this.state.activeAction = 'Standby - Awaiting MCP Uplink';
         }
-        this.broadcastState();
+        this.telemetry.broadcastState();
       },
     });
 
@@ -372,14 +381,14 @@ export class BrowserChassis {
     // it never leaves the machine and never stores typed text.
     this.actionLedger = new ActionLedger({
       dir: dataPath(),
-      log: (level, msg) => this.addLog(level, msg),
+      log: (level, msg) => this.telemetry.addLog(level, msg),
     });
 
     // Orthogonal primitives layer (observe / act / wait / extract / collect / find).
     // It borrows the chassis' real input + marks plumbing so it stays on the humanlike path.
     this.primitives = new Primitives({
       webContents: () => this.getActiveWebContents(),
-      log: (level, msg) => this.addLog(level, msg),
+      log: (level, msg) => this.telemetry.addLog(level, msg),
       evaluate: (script) => this.evaluateQuiet(script),
       harvest: (opts) => this.harvest.harvestMarkdown(opts),
     guardPageRead: (input) => this.jev.guardPageRead(input),
@@ -441,7 +450,7 @@ export class BrowserChassis {
     // Multi-engine web search (TODO_RESEARCH_CRAWL.md §5, Feature 5).
     const searchHub = new SearchHub({
       load: (url, script, opts) => this.loadDetached(url, script, opts),
-      log: (level, msg) => this.addLog(level, msg),
+      log: (level, msg) => this.telemetry.addLog(level, msg),
     });
     this.searchHub = searchHub;
 
@@ -495,7 +504,7 @@ export class BrowserChassis {
     }
     const outcome = await fetchStatic(url);
     if (outcome.kind === 'blocked') {
-      this.addLog('warn', `static fetch challenged for ${url} (${outcome.status}); escalating to render`);
+      this.telemetry.addLog('warn', `static fetch challenged for ${url} (${outcome.status}); escalating to render`);
       return { ok: false, reason: `challenge page (${outcome.status})` };
     }
     if (outcome.kind === 'unavailable') return { ok: false, reason: outcome.reason, disabled: true };
@@ -537,14 +546,14 @@ export class BrowserChassis {
       indexPage: async (url, title, content) => {
         await cortex.indexPage(url, title, content);
       },
-      log: (level, msg) => this.addLog(level, msg),
+      log: (level, msg) => this.telemetry.addLog(level, msg),
     });
 
     // Autonomous research mode (TODO_RESEARCH_CRAWL.md §5, Feature 3).
     this.researcher = new Researcher({
       search: (q, o) => this.searchHub.search(q, o),
       crawl: (o) => this.crawler.crawl(o),
-      log: (level, msg) => this.addLog(level, msg),
+      log: (level, msg) => this.telemetry.addLog(level, msg),
       events: (event) => this.broadcast('research:event', event),
     });
 
@@ -561,7 +570,7 @@ export class BrowserChassis {
           effective.delayMs = Math.max(Number(opts.delayMs ?? 0), this.researchSettings.delayMs);
         }
       },
-      log: (level, message) => this.addLog(level, message),
+      log: (level, message) => this.telemetry.addLog(level, message),
     });
   }
 
@@ -569,7 +578,7 @@ export class BrowserChassis {
   private startLoops(): void {
     setInterval(() => {
       this.state.stats.uptimeSeconds++;
-      this.broadcastState();
+      this.telemetry.broadcastState();
     }, 1000);
 
     // A renderer can stop painting without exiting. If the HUD heartbeat goes
@@ -597,8 +606,8 @@ export class BrowserChassis {
     });
     this.downloadManager.attachToSession(win.webContents.session);
     this.downloadManager.onDownloadComplete((record) => {
-      this.addLog('info', `Download Complete: "${record.filename}" (${record.totalBytes} bytes) saved to data/downloads/`);
-      this.emitSimpleEvent('harvest', `File Download Complete: ${record.filename}`);
+      this.telemetry.addLog('info', `Download Complete: "${record.filename}" (${record.totalBytes} bytes) saved to data/downloads/`);
+      this.telemetry.emitSimpleEvent('harvest', `File Download Complete: ${record.filename}`);
     });
     this.setupTabManager();
     this.registerIpcHandlers();
@@ -681,7 +690,7 @@ export class BrowserChassis {
     return {
       navigateForText: (url: string) => this.navigateForText(url),
       userAgent: this.hostProfile.userAgent,
-      log: (level: 'info' | 'warn' | 'action', msg: string) => this.addLog(level, msg),
+      log: (level: 'info' | 'warn' | 'action', msg: string) => this.telemetry.addLog(level, msg),
     };
   }
 
@@ -700,8 +709,8 @@ export class BrowserChassis {
       applyZoom: (wc) => this.applyZoom(wc),
       setInputScale: (wc, scale) => this.simulator.setViewportScale(wc, scale),
       relayout: () => this.tabManager?.updateActiveTabBounds(),
-      broadcast: () => this.broadcastState(),
-      log: (level, message) => this.addLog(level, message),
+      broadcast: () => this.telemetry.broadcastState(),
+      log: (level, message) => this.telemetry.addLog(level, message),
     });
   }
 
@@ -725,11 +734,11 @@ export class BrowserChassis {
       onTabCreated: (tab) => this.handleTabCreated(tab),
       onViewAdded: () => this.deck.bringToFront(),
       onTabClosed: (tabId) => this.viewportController?.unregisterTab(tabId),
-      onLog: (level, msg) => this.addLog(level, msg),
+      onLog: (level, msg) => this.telemetry.addLog(level, msg),
       onConsoleLog: (log) => this.handleConsoleLog(log),
     });
 
-    this.addLog('info', `Stealth Profile Active: Spoofing host ${this.hostProfile.name} v${this.hostProfile.version}`);
+    this.telemetry.addLog('info', `Stealth Profile Active: Spoofing host ${this.hostProfile.name} v${this.hostProfile.version}`);
 
     // Create initial default tab
     this.tabManager.createTab('about:blank');
@@ -767,7 +776,7 @@ export class BrowserChassis {
           this.state.pageTitle = tab.title;
           this.state.isLoading = tab.isLoading;
           this.state.activeTabId = tab.id;
-          this.broadcastState();
+          this.telemetry.broadcastState();
 
           if (!tab.isLoading) this.bumpRevision();
 
@@ -783,7 +792,7 @@ export class BrowserChassis {
 
   private handleTabsChanged(tabs: TabSummary[]): void {
         this.state.tabs = tabs;
-        this.broadcastState();
+        this.telemetry.broadcastState();
         this.trayManager?.updateStatus(this.state.agentStatus, tabs.length, !!this.hilManager.getActiveRequest());
         this.sendToSurfaces('chassis:tabs-updated', tabs);
   }
@@ -819,7 +828,7 @@ export class BrowserChassis {
             const payload = JSON.parse(log.message.slice(COLLABORATION_RESOLVE_PREFIX.length));
             if (typeof payload?.id === 'string') void this.deck.resolveNote(payload.id);
           } catch {
-            this.addLog('warn', 'Collaboration note resolve signal was invalid.');
+            this.telemetry.addLog('warn', 'Collaboration note resolve signal was invalid.');
           }
         }
         if (log.message.startsWith(COLLABORATION_NOTE_PREFIX)) {
@@ -889,7 +898,7 @@ export class BrowserChassis {
     popupPreloadPath: path.join(__dirname, '../preload/index.js'),
     activeWebContents: () => this.getActiveWebContents(),
     pageUrl: () => this.getPageInfo().url,
-    log: (level, message) => this.addLog(level, message),
+    log: (level, message) => this.telemetry.addLog(level, message),
     onModeChanged: () => this.tabManager?.updateActiveTabBounds(),
     sendToShell: (channel, payload) => this.sendToShellWindow(channel, payload),
     onPanelLoaded: () => this.deck.sendToPanel('chassis:decision-status', decisionStatus()),
@@ -955,7 +964,7 @@ export class BrowserChassis {
 
   private readonly researchSessionController = new ResearchSessionController({
     hostProfile: this.hostProfile,
-    log: (level, message) => this.addLog(level, message),
+    log: (level, message) => this.telemetry.addLog(level, message),
   });
 
   public async setResearchSettings(settings: ResearchSettings): Promise<void> {
@@ -1015,7 +1024,7 @@ export class BrowserChassis {
     /** The tab-op prologue: the manager, the directive log and the JEV purge. */
   private beginTabOperation(directive: string): NonNullable<BrowserChassis['tabManager']> {
     const tabManager = this.requireTabManager();
-    this.addLog('action', directive);
+    this.telemetry.addLog('action', directive);
     this.purgeJevDepthStore();
     return tabManager;
   }
@@ -1046,7 +1055,7 @@ export class BrowserChassis {
   public createTab(url?: string): TabSummary {
     this.purgeJevDepthStore();
     const tab = this.requireTabManager().createTab(url);
-    this.addLog('action', `MCP Directive: new_tab(${url || 'about:blank'})`);
+    this.telemetry.addLog('action', `MCP Directive: new_tab(${url || 'about:blank'})`);
     // A tab opened directly at a URL is a navigation too: arm the same late-consent sweep, or a
     // cookie wall on a freshly opened tab would never be dismissed.
     if (url && /^https?:/i.test(url)) this.consent.scheduleSweep();
@@ -1082,7 +1091,7 @@ export class BrowserChassis {
     isEmulated: (wc) => Boolean(this.viewportController?.isEmulated(wc as any)),
     bounds: () => this.getViewportBounds(),
     webContentsList: () => (this.tabManager?.allTabs() ?? []).map((tab) => ({ webContents: tab.view.webContents })),
-    onChanged: () => this.broadcastState(),
+    onChanged: () => this.telemetry.broadcastState(),
   });
 
 
@@ -1146,7 +1155,7 @@ export class BrowserChassis {
     });
     ipcMain.handle('chassis:get-state', () => this.state);
     ipcMain.handle('chassis:get-latest-construct', () => this.latestConstruct);
-    ipcMain.handle('chassis:get-logs', () => this.logs);
+    ipcMain.handle('chassis:get-logs', () => this.telemetry.entries());
     ipcMain.handle('chassis:take-over-human', () => this.takeOverHuman());
     ipcMain.handle('chassis:resume-human', () => this.resumeHuman());
     ipcMain.handle('chassis:get-human-status', () => this.getHumanStatus());
@@ -1338,7 +1347,7 @@ export class BrowserChassis {
       const buffer = out.toJPEG(quality);
       return { base64: buffer.toString('base64'), width: final.width, height: final.height };
     } catch (err: any) {
-      this.addLog('warn', `Screenshot capture failed: ${err?.message || err}`);
+      this.telemetry.addLog('warn', `Screenshot capture failed: ${err?.message || err}`);
       return null;
     }
   }
@@ -1390,8 +1399,8 @@ export class BrowserChassis {
     this.humanControlSince = Date.now();
     this.state.agentStatus = 'HUMAN_INPUT';
     this.state.activeAction = 'Human control — agent paused';
-    this.broadcastState();
-    this.addLog('warn', 'Human took control — synthetic input paused.');
+    this.telemetry.broadcastState();
+    this.telemetry.addLog('warn', 'Human took control — synthetic input paused.');
     try {
       const wc = this.getActiveWebContents();
       this.mainWindow?.focus();
@@ -1451,9 +1460,9 @@ export class BrowserChassis {
     if (this.state.agentStatus === 'HUMAN_INPUT') {
       this.state.agentStatus = 'IDLE';
       this.state.activeAction = 'Human handed back control';
-      this.broadcastState();
+      this.telemetry.broadcastState();
     }
-    if (wasHuman) this.addLog('info', 'Human handed control back — agent may act again.');
+    if (wasHuman) this.telemetry.addLog('info', 'Human handed control back — agent may act again.');
     return { resumed: true };
   }
 
@@ -1465,7 +1474,7 @@ export class BrowserChassis {
    */
   private noteHumanInput(activity: HumanActivity): void {
     if (activity.url && this.state.currentUrl && activity.url !== this.state.currentUrl) return; // stale tab
-    this.emitTelemetry({
+    this.telemetry.emitTelemetry({
       type: 'click',
       timestamp: activity.at,
       details: `HUMAN ${activity.kind}${activity.target ? ` on ${activity.target}` : ''} — agent still has control`,
@@ -1474,7 +1483,7 @@ export class BrowserChassis {
     const now = Date.now();
     if (now - this.lastHumanNoticeAt < 10_000) return;
     this.lastHumanNoticeAt = now;
-    this.addLog(
+    this.telemetry.addLog(
       'info',
       `Human input detected (${activity.kind}${activity.target ? `: ${activity.target}` : ''}) — agent still has control; click TAKE OVER to pause.`,
     );
@@ -1508,79 +1517,6 @@ export class BrowserChassis {
     void pending.catch(() => null); // resolves when the human acts; we do not block the HTTP call
     return id;
   }
-  private broadcastState() {
-    this.state.zoom = this.zoom.getState();
-    this.state.viewport = this.viewportController?.state();
-    // History availability is read at broadcast time, not cached on navigation: SPAs use pushState,
-    // which fires no navigation event, and a tab switch swaps the history stack under the toolbar.
-    try {
-      const wc = this.tabManager?.getActiveTab()?.view?.webContents;
-      if (wc && !wc.isDestroyed()) {
-        this.state.canGoBack = wc.navigationHistory.canGoBack();
-        this.state.canGoForward = wc.navigationHistory.canGoForward();
-      }
-    } catch {
-      // A tab mid-teardown has no usable history; leave the previous flags alone.
-    }
-    this.sendToSurfaces('chassis:state-updated', this.state);
-  }
-
-  /**
-   * The two states an agent-driven input action moves through. Every action
-   * begins acting and ends idle; the trailing per-action work (bumpRevision,
-   * telemetry, the returned summary) stays at the call site.
-   */
-  private reportActing(): void {
-    this.state.agentStatus = 'SIMULATING_INPUT';
-    this.broadcastState();
-  }
-
-  private reportIdle(): void {
-    this.state.agentStatus = 'IDLE';
-    this.broadcastState();
-  }
-
-/** The telemetry events that carry only a type and a details string. */
-  private emitSimpleEvent(type: TelemetryEvent['type'], details: string): void {
-    this.emitTelemetry({ type, timestamp: Date.now(), details });
-  }
-
-    private emitTelemetry(event: TelemetryEvent) {
-    this.sendToSurfaces('chassis:telemetry', event);
-  }
-
-  /** The point-shaped events (mouse_move, click) the simulator reports. */
-  private emitPointEvent(type: 'mouse_move' | 'click', point: { x: number; y: number }, details: string): void {
-    this.emitTelemetry({
-      type,
-      x: point.x,
-      y: point.y,
-      timestamp: Date.now(),
-      details,
-    });
-  }
-
-  /** The harvest-shaped events (session save/restore and the construct path). */
-  private emitHarvestDetails(details: string): void {
-    this.emitTelemetry({
-      type: 'harvest',
-      timestamp: Date.now(),
-      details,
-    });
-  }
-
-  public addLog(level: 'info' | 'warn' | 'action', message: string) {
-    const entry = {
-      id: Math.random().toString(36).substring(2, 9),
-      time: new Date().toLocaleTimeString(),
-      level,
-      message,
-    };
-    this.logs.unshift(entry);
-    if (this.logs.length > 100) this.logs.pop();
-
-    this.sendToSurfaces('chassis:log', entry);
-  }
 
 
 
@@ -1608,13 +1544,13 @@ export class BrowserChassis {
       acting: () => {
         this.state.agentStatus = 'SIMULATING_INPUT';
       },
-      idle: () => this.reportIdle(),
+      idle: () => this.telemetry.reportIdle(),
       error: () => {
         this.state.agentStatus = 'ERROR';
-        this.broadcastState();
+        this.telemetry.broadcastState();
       },
     },
-    log: (level, message) => this.addLog(level, message),
+    log: (level, message) => this.telemetry.addLog(level, message),
     bumpRevision: () => this.bumpRevision(),
   });
 
@@ -1649,7 +1585,7 @@ export class BrowserChassis {
 
   public async pressKey(key: string): Promise<string> {
     const wc = this.getActiveWebContents();
-    this.addLog('action', `MCP Directive: press_key("${key}")`);
+    this.telemetry.addLog('action', `MCP Directive: press_key("${key}")`);
     await this.simulator.pressKey(wc, key);
     this.bumpRevision();
     return `Pressed key: ${key}`;
@@ -1657,7 +1593,7 @@ export class BrowserChassis {
 
   public async evaluateJavaScript(script: string): Promise<any> {
     const wc = this.getActiveWebContents();
-    this.addLog('action', `MCP Directive: evaluate_javascript("${script.substring(0, 30)}...")`);
+    this.telemetry.addLog('action', `MCP Directive: evaluate_javascript("${script.substring(0, 30)}...")`);
     const result = await wc.executeJavaScript(script);
     return result;
   }
@@ -1668,7 +1604,7 @@ export class BrowserChassis {
    */
   public async evaluateInFrames(script: string, options?: FrameEvalOptions): Promise<FrameEvalResult[]> {
     const wc = this.getActiveWebContents();
-    this.addLog('action', `MCP Directive: evaluate_in_frames(${options?.maxFrames ?? 8} max)`);
+    this.telemetry.addLog('action', `MCP Directive: evaluate_in_frames(${options?.maxFrames ?? 8} max)`);
     return evaluateInFrames(wc, script, options);
   }
 
@@ -1748,7 +1684,7 @@ export class BrowserChassis {
       settings.shadow.tabWalkMaxSteps
     );
     const restore = options.restore ?? settings.shadow.tabWalkRestoreFocus;
-    this.addLog('action', `MCP Directive: focus_walk(${options.selector || `${options.x},${options.y}`}, ${options.direction || 'forward'})`);
+    this.telemetry.addLog('action', `MCP Directive: focus_walk(${options.selector || `${options.x},${options.y}`}, ${options.direction || 'forward'})`);
     const result = await runTabWalk(wc, { ...options, maxSteps, restore }, (key) => this.simulator.pressKey(wc, key));
     this.bumpRevision();
     return result;
@@ -1779,7 +1715,7 @@ export class BrowserChassis {
   } = {}): Promise<FrameInventoryResult> {
     this.refuseShadow('frames');
     return inventoryFrames(this.getActiveWebContents(), options, {
-      log: (level, message) => this.addLog(level, message),
+      log: (level, message) => this.telemetry.addLog(level, message),
       capturePage: (wc, bounds) => this.harvest.capturePageWithRetry(wc, bounds),
     });
   }
@@ -1827,22 +1763,22 @@ export class BrowserChassis {
   }
 
   public async readDownloadedDocument(filenameOrId: string) {
-    this.addLog('action', `MCP Directive: read_download("${filenameOrId}")`);
+    this.telemetry.addLog('action', `MCP Directive: read_download("${filenameOrId}")`);
     return await this.downloadManager.readDocumentContent(filenameOrId);
   }
 
   public async saveSession(name?: string) {
-    this.addLog('action', `MCP Directive: save_session("${name || 'auto'}")`);
+    this.telemetry.addLog('action', `MCP Directive: save_session("${name || 'auto'}")`);
     const result = await this.sessionVault.saveSession(this.getActiveWebContents().session, this.getActiveWebContents(), name);
-    this.emitHarvestDetails(`Saved session "${result.name}" with ${result.cookiesCount} cookies`);
+    this.telemetry.emitHarvestDetails(`Saved session "${result.name}" with ${result.cookiesCount} cookies`);
     return result;
   }
 
   public async restoreSession(name: string) {
-    this.addLog('action', `MCP Directive: restore_session("${name}")`);
+    this.telemetry.addLog('action', `MCP Directive: restore_session("${name}")`);
     const wc = this.getActiveWebContents();
     const result = await this.sessionVault.restoreSession(wc.session, wc, name);
-    this.emitHarvestDetails(`Restored session "${result.name}" (${result.cookiesRestored} cookies)`);
+    this.telemetry.emitHarvestDetails(`Restored session "${result.name}" (${result.cookiesRestored} cookies)`);
     return result;
   }
 
@@ -1851,7 +1787,7 @@ export class BrowserChassis {
   }
 
   public deleteSession(name: string) {
-    this.addLog('action', `MCP Directive: delete_session("${name}")`);
+    this.telemetry.addLog('action', `MCP Directive: delete_session("${name}")`);
     return this.sessionVault.deleteSession(name);
   }
 
@@ -1860,12 +1796,12 @@ export class BrowserChassis {
   }
 
   public getApiPayload(requestId: string) {
-    this.addLog('action', `MCP Directive: get_api_payload("${requestId}")`);
+    this.telemetry.addLog('action', `MCP Directive: get_api_payload("${requestId}")`);
     return this.networkInterceptor.getPayload(requestId);
   }
 
   public clearNetworkTraffic(): void {
-    this.addLog('action', 'MCP Directive: clear_network_traffic()');
+    this.telemetry.addLog('action', 'MCP Directive: clear_network_traffic()');
     this.networkInterceptor.clear();
   }
 
@@ -1879,12 +1815,12 @@ export class BrowserChassis {
     direction?: 'sent' | 'received';
     limit?: number;
   }): StreamMessage[] {
-    this.addLog('action', `MCP Directive: get_stream_messages(${options?.type || 'all'})`);
+    this.telemetry.addLog('action', `MCP Directive: get_stream_messages(${options?.type || 'all'})`);
     return this.networkInterceptor.getStreamMessages(options);
   }
 
   public clearStreamMessages(streamId?: string): void {
-    this.addLog('action', 'MCP Directive: clear_stream_messages()');
+    this.telemetry.addLog('action', 'MCP Directive: clear_stream_messages()');
     this.networkInterceptor.clearStreamMessages(streamId);
   }
 
@@ -1898,7 +1834,7 @@ export class BrowserChassis {
     maxStringLength?: number;
     filterPredicate?: string;
   }): JsonQueryResult {
-    this.addLog('action', `MCP Directive: query_json_data(${params.source}${params.sourceId ? `:${params.sourceId}` : ''}, view=${params.view || 'value'})`);
+    this.telemetry.addLog('action', `MCP Directive: query_json_data(${params.source}${params.sourceId ? `:${params.sourceId}` : ''}, view=${params.view || 'value'})`);
 
     let targetData: any = null;
 
@@ -1961,7 +1897,7 @@ export class BrowserChassis {
 
   public async prerenderLinks(options: PrerenderOptions = {}): Promise<{ prerendered: string[]; count: number }> {
     const wc = this.getActiveWebContents();
-    this.addLog('action', `MCP Directive: prerender_links(maxPages=${options.maxPages || 3})`);
+    this.telemetry.addLog('action', `MCP Directive: prerender_links(maxPages=${options.maxPages || 3})`);
     return await this.prerenderEngine.prerender(wc, options);
   }
 
@@ -2121,7 +2057,7 @@ export class BrowserChassis {
     viewportBounds: () => this.computeViewportBounds(),
     reassertViewport: () => this.reassertViewport(),
     activeWebContents: () => this.getActiveWebContents(),
-    log: (level, message) => this.addLog(level, message),
+    log: (level, message) => this.telemetry.addLog(level, message),
   });
 
   public async relocateCitation(opts: {
@@ -2173,7 +2109,7 @@ export class BrowserChassis {
     const economy = Boolean(opts.economy);
     const textOnly = Boolean(opts.textOnly);
     const includeOffscreen = Boolean(opts.includeOffscreen);
-    this.addLog('action', `MCP Directive: take_annotated_screenshot(${textOnly ? 'text_only' : economy ? 'economy' : 'full'}${includeOffscreen ? ', include_offscreen' : ''})`);
+    this.telemetry.addLog('action', `MCP Directive: take_annotated_screenshot(${textOnly ? 'text_only' : economy ? 'economy' : 'full'}${includeOffscreen ? ', include_offscreen' : ''})`);
 
     // Text-only: badges are only needed to populate the mark registry; no pixels are captured.
     if (textOnly) {
@@ -2256,7 +2192,7 @@ export class BrowserChassis {
    */
   private async focusMark(wc: WebContents, markId: number, settleMs = 0) {
     const target = await this.resolveMarkTarget(wc, markId);
-    this.reportActing();
+    this.telemetry.reportActing();
     await this.simulator.clickAt(wc, target.currentCenter);
     if (settleMs) await new Promise((r) => setTimeout(r, settleMs));
     return target;
@@ -2264,12 +2200,12 @@ export class BrowserChassis {
 
   public async clickMark(markId: number): Promise<string> {
     const wc = this.getActiveWebContents();
-    this.addLog('action', `MCP Directive: click_mark(#${markId})`);
+    this.telemetry.addLog('action', `MCP Directive: click_mark(#${markId})`);
     const target = await this.focusMark(wc, markId);
 
-    this.reportIdle();
+    this.telemetry.reportIdle();
 
-    this.emitPointEvent('click', target.currentCenter, `Set-of-Marks: Clicked mark #${markId} [${target.mark.tag}: "${target.mark.text}"]`);
+    this.telemetry.emitPointEvent('click', target.currentCenter, `Set-of-Marks: Clicked mark #${markId} [${target.mark.tag}: "${target.mark.text}"]`);
 
     this.bumpRevision();
     return `Clicked mark #${markId} (${target.mark.tag}: "${target.mark.text}")`;
@@ -2278,7 +2214,7 @@ export class BrowserChassis {
   public async typeMark(markId: number, text: string, opts: { secret?: boolean; clearFirst?: boolean } = {}): Promise<string> {
     const wc = this.getActiveWebContents();
     const shown = opts.secret ? `[REDACTED ${String(text).length} chars]` : `"${text}"`;
-    this.addLog('action', `MCP Directive: type_mark(#${markId}, ${shown}${opts.clearFirst ? ', clear_first' : ''})`);
+    this.telemetry.addLog('action', `MCP Directive: type_mark(#${markId}, ${shown}${opts.clearFirst ? ', clear_first' : ''})`);
     const target = await this.focusMark(wc, markId, 100);
 
     // A stray or occluded click silently sends keystrokes nowhere (sticky headers,
@@ -2298,7 +2234,7 @@ export class BrowserChassis {
           )
           .catch(() => true);
     if (focusedOk === false) {
-      this.addLog('warn', `type_mark(#${markId}): target did not take focus after click; retrying once.`);
+      this.telemetry.addLog('warn', `type_mark(#${markId}): target did not take focus after click; retrying once.`);
       const retry = await this.resolveMarkTarget(wc, markId).catch(() => null);
       if (retry) {
         await this.simulator.clickAt(wc, retry.currentCenter);
@@ -2314,7 +2250,7 @@ export class BrowserChassis {
 
     await this.simulator.typeText(wc, text);
 
-    this.reportIdle();
+    this.telemetry.reportIdle();
     this.bumpRevision();
 
     return opts.secret
@@ -2329,29 +2265,29 @@ export class BrowserChassis {
     domain?: string;
     tags?: string[];
   }): Promise<ScriptItem> {
-    this.addLog('action', `MCP Directive: save_script("${data.name}")`);
+    this.telemetry.addLog('action', `MCP Directive: save_script("${data.name}")`);
     const saved = await this.scriptVault.saveScript(data);
-    this.emitSimpleEvent('harvest', `Saved & indexed script "${saved.name}" in Cortex Vault`);
+    this.telemetry.emitSimpleEvent('harvest', `Saved & indexed script "${saved.name}" in Cortex Vault`);
     return saved;
   }
 
   public async recallScripts(query?: string, options?: { domain?: string; tag?: string; limit?: number }): Promise<ScriptItem[]> {
-    this.addLog('action', `MCP Directive: recall_scripts("${query || '*'}")`);
+    this.telemetry.addLog('action', `MCP Directive: recall_scripts("${query || '*'}")`);
     return await this.scriptVault.recallScripts(query, options);
   }
 
   public async runScript(name: string, args: Record<string, any> = {}) {
     const wc = this.getActiveWebContents();
-    this.addLog('action', `MCP Directive: run_script("${name}")`);
-    this.reportActing();
+    this.telemetry.addLog('action', `MCP Directive: run_script("${name}")`);
+    this.telemetry.reportActing();
 
     try {
       const res = await this.scriptVault.runScript(wc, name, args);
-      this.reportIdle();
-      this.emitSimpleEvent('harvest', `Executed macro "${name}" in ${res.executionDurationMs}ms`);
+      this.telemetry.reportIdle();
+      this.telemetry.emitSimpleEvent('harvest', `Executed macro "${name}" in ${res.executionDurationMs}ms`);
       return res;
     } catch (err: any) {
-      this.reportIdle();
+      this.telemetry.reportIdle();
       throw err;
     }
   }
@@ -2361,7 +2297,7 @@ export class BrowserChassis {
   }
 
   public async deleteScript(name: string): Promise<boolean> {
-    this.addLog('action', `MCP Directive: delete_script("${name}")`);
+    this.telemetry.addLog('action', `MCP Directive: delete_script("${name}")`);
     return await this.scriptVault.deleteScript(name);
   }
 
@@ -2413,8 +2349,8 @@ export class BrowserChassis {
     reason: string,
     options?: { url?: string; timeoutSeconds?: number; bringToFront?: boolean }
   ): Promise<HilResolution> {
-    this.addLog('warn', `⚠️ Human Intervention Requested: ${reason}`);
-    this.emitSimpleEvent('navigation', `HIL Intervention: ${reason}`);
+    this.telemetry.addLog('warn', `⚠️ Human Intervention Requested: ${reason}`);
+    this.telemetry.emitSimpleEvent('navigation', `HIL Intervention: ${reason}`);
     return this.hilManager.requestIntervention({
       reason,
       url: options?.url,
@@ -2426,7 +2362,7 @@ export class BrowserChassis {
   public resolveHumanIntervention(id?: string, notes?: string): boolean {
     const success = this.hilManager.resolveIntervention(id, notes);
     if (success) {
-      this.addLog('info', `Human intervention resolved: ${notes || 'User confirmed.'}`);
+      this.telemetry.addLog('info', `Human intervention resolved: ${notes || 'User confirmed.'}`);
     }
     return success;
   }
@@ -2449,7 +2385,7 @@ export class BrowserChassis {
     urgency?: 'normal' | 'critical' | 'low',
     sound?: boolean
   ): boolean {
-    this.addLog('info', `Desktop Notification Dispatched: [${title}] ${message}`);
+    this.telemetry.addLog('info', `Desktop Notification Dispatched: [${title}] ${message}`);
     return this.hilManager.sendNotification({ title, message, urgency, sound });
   }
 
