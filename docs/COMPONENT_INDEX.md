@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 229 files, 803 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 230 files, 805 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (672)
+## Types (674)
 
 | File | Export | When to use |
 |---|---|---|
@@ -177,6 +177,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/llm/read-surface.ts` | `ReadSurfaceDeps` *(type)* | Dependencies the read surface needs from the chassis transports. |
 | `main/marks/marks-overlay.ts` | `MarksOverlay` | - |
 | `main/marks/marks-overlay.ts` | `MarkItem` *(type)* | - |
+| `main/marks/marks-surface.ts` | `MarksSurface` | The agent-facing marks discovery surface over MarksOverlay. |
+| `main/marks/marks-surface.ts` | `MarksSurfaceDeps` *(type)* | Dependencies the marks surface needs from the active tab and policy. |
 | `main/media/binaries.ts` | `bundledYtDlpPath` | - |
 | `main/media/binaries.ts` | `writableYtDlpPath` | - |
 | `main/media/binaries.ts` | `readYtDlpVersion` | Run `<binary> --version`; null means it did not execute or printed nothing. |

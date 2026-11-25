@@ -41,7 +41,6 @@ import { evaluateInFrames, type FrameEvalOptions, type FrameEvalResult } from '.
 import { listFrames, type FrameInfo } from './browser/frames.js';
 import { resolveFrameMark } from './browser/frame-marks.js';
 import { inventoryFrames, type FrameInventoryResult } from './browser/frames-inventory.js';
-import { findSealedControls, type SealedFindOptions, type SealedFindResult } from './shadow-walk/ax-controls.js';
 import { runTabWalk, type TabWalkOptions, type TabWalkResult } from './shadow-walk/tab-walk.js';
 import { resolveSealedToken as resolveSealedTarget } from './shadow-walk/sealed-targets.js';
 import { ScreenshotStore, type ScreenshotPayload } from './harvest/screenshots.js';
@@ -64,6 +63,7 @@ import {
   type StreamMessage,
 } from './network/network-interceptor.js';
 import { MarksOverlay, type MarkItem } from './marks/marks-overlay.js';
+import { MarksSurface } from './marks/marks-surface.js';
 import { Primitives } from './primitives/primitives.js';
 import { ScriptVault } from './scripts/script-vault.js';
 import type { ScriptItem } from './cortex/cortex-db.js';
@@ -80,7 +80,7 @@ import {
   type PathStep,
 } from './telemetry/chaos-kinematics.js';
 import { JsonNavigator, type JsonQueryOptions, type JsonQueryResult } from './utils/json-navigator.js';
-import { RenderedSnapshotEngine, type RenderedSnapshotOptions, type RenderedSnapshotResult } from './snapshots/rendered-snapshot.js';
+import { RenderedSnapshotEngine } from './snapshots/rendered-snapshot.js';
 import { PrerenderEngine, type PrerenderOptions } from './prerender/prerender-engine.js';
 import { isTakeoverShortcut } from './takeover-key.js';
 import { LlmSurface } from './llm/llm-surface.js';
@@ -125,6 +125,7 @@ export class BrowserChassis {
   private sessionVault: SessionVault;
   private networkInterceptor: NetworkInterceptor;
   private marksOverlay: MarksOverlay;
+  readonly marks: MarksSurface;
   private scriptVault: ScriptVault;
   private trayManager: TrayManager | null = null;
   private hilManager: HilManager;
@@ -252,6 +253,13 @@ export class BrowserChassis {
     this.sessionVault = new SessionVault();
     this.networkInterceptor = new NetworkInterceptor();
     this.marksOverlay = new MarksOverlay();
+    this.marks = new MarksSurface({
+      activeWebContents: () => this.getActiveWebContents(),
+      revision: () => this.revision,
+      marksOverlay: this.marksOverlay,
+      refuseShadow: (surface) => this.refuseShadow(surface),
+      log: this.controllerLog,
+    });
     this.scriptVault = new ScriptVault();
 
     this.prerenderEngine = new PrerenderEngine(
@@ -305,9 +313,9 @@ export class BrowserChassis {
       harvest: (opts) => this.harvestMarkdown(opts),
     guardPageRead: (input) => this.jev.guardPageRead(input),
     precheckPageRead: (input) => this.jev.precheckPageRead(input),
-      injectMarks: (opts) => this.scanMarks(this.getActiveWebContents(), opts || {}),
+      injectMarks: (opts) => this.marks.scan(this.getActiveWebContents(), opts || {}),
       removeMarks: () => this.marksOverlay.removeMarks(this.getActiveWebContents()),
-      getMarks: () => this.getActiveMarks(),
+      getMarks: () => this.marks.getActive(),
       getMarkTarget: (id) =>
         Number(id) >= 100
           ? resolveFrameMark(this.getActiveWebContents(), Number(id))
@@ -319,13 +327,13 @@ export class BrowserChassis {
       typeMark: (id, text, opts) => this.typeMark(id, text, opts),
       clickElement: (selector, coords) => this.clickElement(selector, coords),
       typeText: (text, selector, opts) => this.typeText(text, selector, opts),
-      findSealed: (opts) => this.findSealed(opts),
+      findSealed: (opts) => this.marks.findSealed(opts),
       componentSurfaceEnabled: () => this.componentSurfaceEnabled(),
       insertText: (text) => this.simulator.insertText(this.getActiveWebContents(), text),
       pasteText: (text) => this.simulator.pasteText(this.getActiveWebContents(), text),
       moveMouseTo: (target) => this.moveMouse(target),
       pressKey: (key) => this.pressKey(key),
-      snapshotRenderedPage: (opts) => this.snapshotRenderedPage(opts),
+      snapshotRenderedPage: (opts) => this.marks.snapshotRenderedPage(opts),
       getNetworkTraffic: (filter) => this.getNetworkTraffic(filter),
       getPageInfo: () => this.getPageInfo(),
       revision: () => this.revision,
@@ -1746,7 +1754,7 @@ export class BrowserChassis {
 
     // Ensure interactive elements have data-mark-id stamps for grounded markdown
     if (opts.includeMarks !== false) {
-      await this.scanMarks(wc, { includeOffscreen: Boolean(opts.includeOffscreen) });
+      await this.marks.scan(wc, { includeOffscreen: Boolean(opts.includeOffscreen) });
       await this.marksOverlay.removeMarks(wc); // Strips visual badges, keeps data-mark-id
     }
 
@@ -1805,18 +1813,6 @@ export class BrowserChassis {
     return parseControlFacts(raw);
   }
 
-  /** Mark scan with the active Shadow Walk deep-open-roots policy applied. */
-  private async scanMarks(
-    wc: WebContents,
-    opts: { includeOffscreen?: boolean; deepOpenRoots?: boolean } = {}
-  ): Promise<MarkItem[]> {
-    const settings = loadShadowWalkSettings();
-    return this.marksOverlay.injectMarks(wc, {
-      ...opts,
-      deepOpenRoots: opts.deepOpenRoots ?? settings.shadow.deepOpenRoots,
-    });
-  }
-
   /** Throws a structured refusal when a Shadow Walk surface is disabled. */
   private refuseShadow(surface: ShadowWalkSurface): void {
     const refusal = shadowWalkRefusal(surface);
@@ -1865,14 +1861,6 @@ export class BrowserChassis {
   public async listFrames(options: { maxFrames?: number } = {}): Promise<FrameInfo[]> {
     this.refuseShadow('frames');
     return listFrames(this.getActiveWebContents(), options);
-  }
-
-  /** Closed-shadow-root discovery (opt-in, cached, rate-limited). */
-  public async findSealed(options: SealedFindOptions = {}): Promise<SealedFindResult> {
-    this.refuseShadow('sealed');
-    const wc = this.getActiveWebContents();
-    this.addLog('action', `MCP Directive: find(sealed=true${options.name ? `, name="${options.name}"` : ''})`);
-    return findSealedControls(wc, { ...options, revision: this.revision });
   }
 
   /** Whether component signatures are allowed by Settings → Shadow Walk. */
@@ -2134,12 +2122,6 @@ export class BrowserChassis {
     });
   }
 
-  public async snapshotRenderedPage(options: RenderedSnapshotOptions = {}): Promise<RenderedSnapshotResult> {
-    const wc = this.getActiveWebContents();
-    this.addLog('action', `MCP Directive: snapshot_rendered_page(format=${options.format || 'ax_tree'})`);
-    return await RenderedSnapshotEngine.capture(wc, options);
-  }
-
   public async prerenderLinks(options: PrerenderOptions = {}): Promise<{ prerendered: string[]; count: number }> {
     const wc = this.getActiveWebContents();
     this.addLog('action', `MCP Directive: prerender_links(maxPages=${options.maxPages || 3})`);
@@ -2358,7 +2340,7 @@ export class BrowserChassis {
 
     // Text-only: badges are only needed to populate the mark registry; no pixels are captured.
     if (textOnly) {
-      const textMarks = await this.scanMarks(wc, { includeOffscreen });
+      const textMarks = await this.marks.scan(wc, { includeOffscreen });
       await this.marksOverlay.removeMarks(wc);
       const viewport = this.getViewportBounds();
       const zoom = this.getZoomState();
@@ -2379,7 +2361,7 @@ export class BrowserChassis {
     }
 
     // 1. Inject visual badges into DOM
-    const marks = await this.scanMarks(wc, { includeOffscreen });
+    const marks = await this.marks.scan(wc, { includeOffscreen });
 
     // Wait a brief tick for render paint
     await new Promise((r) => setTimeout(r, 80));
@@ -2501,10 +2483,6 @@ export class BrowserChassis {
     return opts.secret
       ? `Focused mark #${markId} and typed ${String(text).length} chars (redacted)`
       : `Focused mark #${markId} and typed "${text}"`;
-  }
-
-  public getActiveMarks(): MarkItem[] {
-    return this.marksOverlay.getActiveMarks();
   }
 
   public async saveScript(data: {

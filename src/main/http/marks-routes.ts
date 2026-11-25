@@ -67,7 +67,7 @@ const ROUTES: Record<string, MarkHandler> = {
     });
   },
   'GET /marks/list': ({ chassis, sendJson }) => {
-    sendJson({ success: true, marks: chassis.getActiveMarks() });
+    sendJson({ success: true, marks: chassis.marks.getActive() });
   },
 };
 

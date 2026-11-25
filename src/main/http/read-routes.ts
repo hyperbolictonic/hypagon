@@ -181,7 +181,7 @@ const ROUTES: Record<string, ReadHandler> = {
 
   'POST /snapshot/rendered': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    const result = await chassis.snapshotRenderedPage({
+    const result = await chassis.marks.snapshotRenderedPage({
       format: body.format || body.mode,
       waitUntilIdleMs: body.waitUntilIdleMs ?? body.wait_until_idle_ms,
       pierceShadowDom: body.pierceShadowDom ?? body.pierce_shadow_dom,

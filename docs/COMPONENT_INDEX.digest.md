@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-229 modules, 803 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+230 modules, 805 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -72,6 +72,7 @@
 | `main/llm/read-surface.ts` | 2: ReadSurface, ReadSurfaceDeps |
 | `main/marks/format-mark.ts` | 1: formatMark |
 | `main/marks/marks-overlay.ts` | 2: MarksOverlay, MarkItem |
+| `main/marks/marks-surface.ts` | 2: MarksSurface, MarksSurfaceDeps |
 | `main/media/auth.ts` | 1: needsLogin |
 | `main/media/binaries.ts` | 8: bundledYtDlpPath, writableYtDlpPath, readYtDlpVersion, ensureYtDlp, isMediaBinary, MediaBinarySource, MediaBinary, MediaBinaryError |
 | `main/media/cookie-format.ts` | 1: toNetscape |
@@ -125,8 +126,7 @@
 | `main/shadow-walk/component-signature.ts` | 4: componentSignatureOf, normalizeSurface, COMPONENT_SIGNATURE_HELPERS, ComponentSurface |
 | `main/shadow-walk/force-open.ts` | 5: isForceOpenArmed, syncForceOpen, detectForceOpen, ForceOpenSyncResult, ForceOpenDetection |
 | `main/shadow-walk/part-highlight-css.ts` | 2: buildPartHighlightCss, PartHost |
-| `main/shadow-walk/part-highlight.ts` | 3: injectPartHighlight, removePartHighlight, withPartHighlight |
 
-… and 103 more module(s) — grep the full index.
+… and 104 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.
