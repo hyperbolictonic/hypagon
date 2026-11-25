@@ -12,8 +12,10 @@ Agents duplicate code because they don't know what already exists. This skill ma
 
 In order:
 
-1. **Read the inventory.** Read `docs/COMPONENT_INDEX.md` if it exists. If it does not
-   exist, generate it first:
+1. **Read the inventory.** The bounded `docs/COMPONENT_INDEX.digest.md` (one
+   line per module) is loaded into every session. Before shortlisting, grep the
+   full `docs/COMPONENT_INDEX.md` by concept for the "When to use" text. If
+   neither exists, generate them first:
    `node scripts/anti-slop/generate-component-index.mjs`
    (paths are relative to the repo root; adjust only if the repo uses different locations).
 2. **Search the tree.** Grep/glob the source directories for anything that already

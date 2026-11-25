@@ -20,8 +20,9 @@ jobs:
       - run: node scripts/anti-slop/check-docs.mjs
       - run: node scripts/anti-slop/check-duplicates.mjs
       - run: node scripts/anti-slop/check-encoding.mjs
-      # docs-links is pending this repo's link cleanup (site-relative .html links
-      # and escapes-root paths in CHANGELOG/developer docs) plus kit issue #27
-      # (inline code spans parsed as links). Run it locally as a report:
+      - run: node scripts/anti-slop/check-class-literals.mjs
+      # docs-links is pending this repo's link cleanup: untracked _site/ build
+      # output, site-relative .html links and escapes-root paths in
+      # CHANGELOG/developer docs. Run it locally as a report:
       #   node scripts/anti-slop/check-docs-links.mjs
       - run: node scripts/anti-slop/generate-component-index.mjs --check

@@ -30,7 +30,10 @@ Never weaken the check to make it pass. Repos with a committed
 `anti-slop.baseline.json` instead fail only on duplication newer than the
 baseline — do not update the baseline to absorb your new debt. If the total is
 unchanged after your change, you relocated debt rather than removing it: the
-clone still exists, now harder to find. Fix the structure.
+clone still exists, now harder to find. Fix the structure. The gate enforces
+this: `--update-baseline` refuses to grow the total and warns when the file set
+moves at an unchanged total; `--force` exists for a deliberate owner decision,
+not as a convenience.
 
 ## 3. Modularity check
 
@@ -102,7 +105,38 @@ task extracted components, merged duplicated flows, or moved rules between
 files, run the `abstraction-review` skill before reporting, and include its
 "Second-order opportunities" list in the report.
 
+If the task de-slopped **existing** code, also apply the `deslopping`
+redistribution test and include the band map in the report: a split whose
+membership came from the old file's comments or line order is slop
+redistribution, even when every gate is green.
+
 ## 8. Report
 
 End the task with a short summary: checks run, results, files touched, and any
 pre-existing issues you noticed but did not fix (report, don't drive-by-fix).
+
+### Flaws in the anti-slop system itself
+
+These rules are meant to be enforced, not trusted. If the **anti-slop system**
+is wrong — a rule misleads you, a gate reports a false positive or misses a real
+one, the installer crashes, a preset is wrong or inert, or the docs contradict
+the behaviour — the report belongs in the anti-slop system's own issue queue:
+
+**<https://github.com/hyperbolictonic/opencode-anti-slop/issues>**
+
+That is the kit's tracker, **not the project's tracker** and not this repo's
+issues. It is for flaws in the system (skills, commands, agents, gates,
+installer, presets, docs) — never for the project's own debt: a duplicated
+component, an oversized file, or disagreement with a threshold the user chose
+belongs in the task report or the user's own tracker.
+
+**Filing is a human decision, not an agent action:**
+
+1. **Draft, don't file.** Write the issue (title + body) and show it to the
+   user. Wait for an explicit "file it". A general "sounds good", silence, or
+   your own judgement is not approval.
+2. **Never include** their source, data, file paths, logs, env values or
+   secrets. Reduce it to a minimal generic fixture.
+3. **Search first** for an existing issue with the same symptom; comment on it
+   rather than duplicating.
+4. **If they decline,** record the finding in the task report and move on.

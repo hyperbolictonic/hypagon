@@ -175,57 +175,171 @@
         "file": 1,
         "function": 3
       },
+      "main/browser/frame-eval.ts": {
+        "function": 1
+      },
+      "main/browser/frame-tree.ts": {
+        "function": 1
+      },
+      "main/browser/frames-inventory.ts": {
+        "function": 1
+      },
+      "main/browser/frames.ts": {
+        "function": 1
+      },
       "main/collaboration/overlay.ts": {
-        "file": 1
+        "file": 1,
+        "function": 3
       },
       "main/cortex/cortex-db.ts": {
-        "file": 1
+        "class": 1,
+        "file": 1,
+        "function": 1
+      },
+      "main/crawl/crawler.ts": {
+        "function": 1
+      },
+      "main/decide/decision-client.ts": {
+        "function": 1
+      },
+      "main/decide/decision-guard.ts": {
+        "function": 1
+      },
+      "main/deck/collab.ts": {
+        "class": 1
+      },
+      "main/deck/controller.ts": {
+        "class": 1
+      },
+      "main/drive/driver.ts": {
+        "function": 1
       },
       "main/harvester/markdown.ts": {
-        "function": 1
+        "function": 2
+      },
+      "main/hil/hil-manager.ts": {
+        "class": 1
       },
       "main/index.ts": {
         "file": 1,
         "function": 1
       },
+      "main/input-actions.ts": {
+        "function": 1
+      },
+      "main/jev/controller.ts": {
+        "class": 1
+      },
       "main/llm/llm-surface.ts": {
-        "file": 1
+        "class": 1,
+        "file": 1,
+        "function": 1
       },
       "main/marks/marks-overlay.ts": {
-        "file": 1
+        "file": 1,
+        "function": 1
       },
       "main/media/jobs.ts": {
-        "file": 1
+        "class": 1,
+        "file": 1,
+        "function": 1
       },
       "main/media/service.ts": {
+        "class": 1,
         "file": 1
+      },
+      "main/media/transcript.ts": {
+        "function": 1
+      },
+      "main/media/updater.ts": {
+        "class": 1
       },
       "main/network/network-interceptor.ts": {
         "function": 1
       },
+      "main/prerender/prerender-engine.ts": {
+        "class": 1
+      },
+      "main/primitives/control-facts.ts": {
+        "function": 1
+      },
       "main/primitives/primitives.ts": {
-        "file": 1
+        "file": 1,
+        "function": 6
       },
       "main/remote/service.ts": {
+        "class": 1,
         "file": 1
+      },
+      "main/research/citation-controller.ts": {
+        "class": 1,
+        "function": 1
+      },
+      "main/research/crawl-orchestrator.ts": {
+        "function": 1
+      },
+      "main/research/session-controller.ts": {
+        "class": 1
+      },
+      "main/search/search-engine.ts": {
+        "function": 1
       },
       "main/shadow-walk/ax-controls.ts": {
-        "file": 1
+        "file": 1,
+        "function": 1
+      },
+      "main/shadow-walk/tab-walk.ts": {
+        "function": 1
+      },
+      "main/snapshots/rendered-snapshot.ts": {
+        "function": 1
       },
       "main/tabs/tab-manager.ts": {
-        "file": 1
+        "class": 1,
+        "file": 1,
+        "function": 1
+      },
+      "main/telemetry/chaos-kinematics.ts": {
+        "function": 1
+      },
+      "main/telemetry/host-fingerprint.ts": {
+        "function": 1
       },
       "main/telemetry/input-simulator.ts": {
-        "file": 1
+        "class": 1,
+        "file": 1,
+        "function": 2
+      },
+      "main/tray/tray-manager.ts": {
+        "class": 1
+      },
+      "main/utils/json-navigator.ts": {
+        "function": 1
+      },
+      "main/viewport/controller.ts": {
+        "class": 1
+      },
+      "main/wrap/anyapi/executor.ts": {
+        "function": 1
       },
       "main/wrap/executor.ts": {
-        "file": 1
+        "file": 1,
+        "function": 1
       },
       "main/wrap/secrets.ts": {
         "file": 1
       },
+      "main/wrap/store.ts": {
+        "class": 1
+      },
+      "main/wrap/validate-wrapper.ts": {
+        "function": 2
+      },
       "mcp/browser-mcp.ts": {
         "file": 1,
+        "function": 2
+      },
+      "mcp/remote-server.ts": {
         "function": 1
       },
       "mcp/wrap-server.ts": {
@@ -236,8 +350,17 @@
         "file": 1,
         "function": 1
       },
+      "renderer/recording.ts": {
+        "function": 1
+      },
       "renderer/research-panel.ts": {
         "file": 1,
+        "function": 2
+      },
+      "renderer/tools-panel.ts": {
+        "function": 2
+      },
+      "renderer/viewport-controls.ts": {
         "function": 1
       }
     }

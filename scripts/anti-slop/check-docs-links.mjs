@@ -70,14 +70,17 @@ export function headingSlugs(src) {
   return slugs;
 }
 
-/** Markdown links in the source, with fenced blocks excluded. */
+/** Markdown links in the source, with fenced blocks and inline code spans
+ * excluded: a JSDoc that documents `[text](href)` is describing syntax, not
+ * linking to a file called "href". */
 export function extractLinks(src) {
   const links = [];
   let inFence = false;
-  for (const line of src.split('\n')) {
+  for (const line of src.split(/\r?\n/)) {
     if (/^\s*```/.test(line)) { inFence = !inFence; continue; }
     if (inFence) continue;
-    for (const m of line.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)) {
+    const prose = line.replace(/`[^`]*`/g, '');
+    for (const m of prose.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)) {
       links.push(m[1]);
     }
   }

@@ -16,6 +16,13 @@
     "ignorePaths": [],
     "ignoreExports": []
   },
+  "classLiterals": {
+    "src": "src",
+    "minOccurrences": 4
+  },
+  "encoding": {
+    "ignorePaths": []
+  },
   "imports": {
     "src": "src",
     "deny": [

@@ -6,7 +6,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -101,5 +101,59 @@ test('gate: clean UTF-8 docs with real box-drawing and dashes pass', () => {
   const run = spawnSync(process.execPath, [GATE], { cwd: dir, encoding: 'utf8' });
   assert.equal(run.status, 0);
   assert.match(run.stdout, /\[ok\] Encoding check passed/);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('gate: build output (dist-electron) is skipped, source corruption still fails', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'antislop-enc-'));
+  mkdirSync(path.join(dir, 'src'), { recursive: true });
+  mkdirSync(path.join(dir, 'dist-electron', 'main'), { recursive: true });
+  writeFileSync(path.join(dir, 'src', 'clean.ts'), 'export const x = 1;\n');
+  writeFileSync(path.join(dir, 'dist-electron', 'main', 'bundle.js'), 'var s = "\uFFFD";\n');
+
+  const clean = spawnSync(process.execPath, [GATE], { cwd: dir, encoding: 'utf8' });
+  assert.equal(clean.status, 0, clean.stderr);
+
+  writeFileSync(path.join(dir, 'src', 'clean.ts'), 'export const x = "\uFFFD";\n');
+  const broken = spawnSync(process.execPath, [GATE], { cwd: dir, encoding: 'utf8' });
+  assert.equal(broken.status, 1);
+  assert.match(broken.stdout, /BROKEN .*: src\/clean\.ts/);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('gate: encoding.ignorePaths exempts and names the globs', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'antislop-enc-'));
+  mkdirSync(path.join(dir, 'generated'), { recursive: true });
+  writeFileSync(path.join(dir, 'generated', 'bad.md'), 'lost \uFFFD byte\n');
+  writeFileSync(
+    path.join(dir, 'anti-slop.config.json'),
+    JSON.stringify({ encoding: { ignorePaths: ['generated/**'] } }),
+  );
+  const run = spawnSync(process.execPath, [GATE], { cwd: dir, encoding: 'utf8' });
+  assert.equal(run.status, 0, run.stderr);
+  assert.match(run.stdout, /Ignoring 1 file\(s\) matching encoding\.ignorePaths/);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('gate: --help prints usage instead of starting a scan', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'antislop-enc-'));
+  const run = spawnSync(process.execPath, [GATE, '--help'], { cwd: dir, encoding: 'utf8' });
+  assert.equal(run.status, 0);
+  assert.match(run.stdout, /Usage: node check-encoding\.mjs/);
+  assert.match(run.stdout, /encoding" section/);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('gate: .opencode skills are scanned (they are products, not tooling)', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'antislop-enc-'));
+  mkdirSync(path.join(dir, '.opencode', 'skills', 'x'), { recursive: true });
+  writeFileSync(path.join(dir, '.opencode', 'skills', 'x', 'SKILL.md'), 'clean text\n');
+  const clean = spawnSync(process.execPath, [GATE], { cwd: dir, encoding: 'utf8' });
+  assert.equal(clean.status, 0, clean.stderr);
+
+  writeFileSync(path.join(dir, '.opencode', 'skills', 'x', 'SKILL.md'), 'rule \uFFFD broken\n');
+  const broken = spawnSync(process.execPath, [GATE], { cwd: dir, encoding: 'utf8' });
+  assert.equal(broken.status, 1);
+  assert.match(broken.stdout, /\.opencode\/skills\/x\/SKILL\.md/);
   rmSync(dir, { recursive: true, force: true });
 });

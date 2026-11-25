@@ -13,6 +13,9 @@ import path from 'node:path';
 export const EXCLUDE_DIRS = new Set([
   'node_modules', 'dist', 'build', 'out', '.next', '.turbo',
   'coverage', 'storybook-static', '__tests__', '__mocks__',
+  // Framework build output that is not namespaced under dist/ or build/:
+  // generated bundles legitimately contain mojibake-looking sequences.
+  'dist-electron', 'out-tsc', '.output', '.svelte-kit', '.nuxt', 'release', '_site',
 ]);
 /** Filename patterns never gated: test/spec/story files (any JS/TS extension incl. mjs/mts) and type declaration shims. */
 export const IGNORE_FILE = /(\.test|\.spec|\.stories|\.d)\.[mc]?[tj]sx?$/;
@@ -160,6 +163,99 @@ export function lineOf(stripped, idx) {
   return line;
 }
 
+const CONTROL_KEYWORDS = new Set(['if', 'for', 'while', 'switch', 'catch']);
+
+/**
+ * Limits a file may declare an exception for, via
+ *   // anti-slop: <limit> <value> — <reason>
+ * File-scoped limits apply anywhere; member-scoped limits must sit directly
+ * above the member they exempt (enforced by the gate).
+ */
+export const LIMIT_NAMES = new Set(['file-lines', 'function-lines', 'class-methods', 'exports']);
+
+/**
+ * Parse `// anti-slop: <limit> <value> — <reason>` declarations.
+ * Returns { exceptions: [{ limit, value, reason, line }], invalid: [{ line, why }] }.
+ * A reason is mandatory: an unexplained exemption is the lazy fix the kit bans,
+ * and a malformed directive fails loudly instead of being silently ignored.
+ */
+export function parseLimitExceptions(source) {
+  const exceptions = [];
+  const invalid = [];
+  source.split(/\r?\n/).forEach((text, i) => {
+    // Only a real line comment counts: prose/JSDoc that documents the syntax
+    // (` * // anti-slop: ...`) must not be mistaken for a malformed directive.
+    if (!/^\s*\/\/\s*anti-slop:/.test(text)) return;
+    const m = /^\/\/\s*anti-slop:\s*(file-lines|function-lines|class-methods|exports)\s+(\d+)\s*(?:[-—]\s*(.*))?$/.exec(text.trim());
+    if (!m) {
+      invalid.push({ line: i + 1, why: 'not `// anti-slop: <limit> <value> — <reason>`' });
+      return;
+    }
+    const reason = (m[3] ?? '').trim();
+    if (reason.length < 8) {
+      invalid.push({ line: i + 1, why: 'a reason (>= 8 chars) is required after the dash' });
+      return;
+    }
+    exceptions.push({ limit: m[1], value: Number(m[2]), reason, line: i + 1 });
+  });
+  return { exceptions, invalid };
+}
+
+/**
+ * True when the `{` at openBraceIdx opens a control-flow block (if/for/while/
+ * switch/catch): the nearest `)` before the brace belongs to a `(` that follows
+ * one of the control keywords. `foo(x) {` is NOT control flow.
+ */
+export function isControlFlow(stripped, openBraceIdx) {
+  let j = openBraceIdx - 1;
+  let depth = 0;
+  while (j >= 0) {
+    const ch = stripped[j];
+    if (ch === ')') depth++;
+    else if (ch === '(') {
+      depth--;
+      if (depth === 0) break;
+    }
+    j--;
+  }
+  if (j < 0) return false;
+  let k = j - 1;
+  while (k >= 0 && /\s/.test(stripped[k])) k--;
+  const end = k;
+  while (k >= 0 && /[\w$]/.test(stripped[k])) k--;
+  return CONTROL_KEYWORDS.has(stripped.slice(k + 1, end + 1));
+}
+
+/**
+ * True when the `{` at openBraceIdx opens a function/method body rather than a
+ * class, object literal, or control block. Covers:
+ *   name(params) {              method shorthand
+ *   public run(): Promise<T> {  typed signature — the brace follows the return
+ *                               type, not the `)`, which a `prev === ')'` check
+ *                               misses entirely
+ *   (x) => {                    arrow
+ *   function f<T>(x: T): T {    generics + return type
+ * while rejecting `if (x) {`, `class X {`, `else {`, `foo({`, `const x = {` and
+ * `useMemo(() => ({`.
+ *
+ * The signature head is the text since the last newline: semicolon-free code
+ * otherwise lets a previous statement's `)` leak into the window and turns
+ * every `const x: Config = {` into a phantom 100-line "function".
+ */
+export function isFunctionBody(stripped, openBraceIdx) {
+  const window = stripped.slice(Math.max(0, openBraceIdx - 400), openBraceIdx);
+  const head = window.slice(window.lastIndexOf('\n') + 1).trimEnd();
+  if (head.endsWith('=>')) return true;
+
+  // A function body follows its parameter list (possibly via a return type);
+  // it never follows an operator or an opening bracket.
+  const lastChar = head[head.length - 1];
+  if (lastChar && '=(:,[?!&|+-*/%'.includes(lastChar)) return false;
+  if (!head.includes(')')) return false;
+
+  return !isControlFlow(stripped, openBraceIdx);
+}
+
 /**
  * Returns the first line of the JSDoc/TSDoc block immediately preceding
  * source index `idx`, or null if there is none.
@@ -180,15 +276,20 @@ export function lineOf(stripped, idx) {
  * than borrowing a neighbouring comment.
  */
 export function jsdocBefore(source, idx) {
-  const slice = source.slice(0, idx);
-  const start = slice.lastIndexOf('/**');
-  if (start === -1) return null;
-  const end = slice.indexOf('*/', start);
-  if (end === -1) return null;
-  if (slice.slice(end + 2).trim() !== '') return null;
+  const slice = source.slice(0, idx).replace(/\s+$/, '');
+  const end = slice.lastIndexOf('*/');
+  if (end === -1 || end !== slice.length - 2) return null; // no block ends here
 
-  const lines = slice
-    .slice(start + 3, end)
+  // Look only at the region after the previous comment close, and take its
+  // FIRST line-start '/**'. A glob inside a doc (`"src/domain/**"`) is mid-line
+  // and is not mistaken for the opening; taking the LAST '/**' would find it.
+  const prevClose = slice.lastIndexOf('*/', end - 1);
+  const region = slice.slice(prevClose === -1 ? 0 : prevClose + 2, end);
+  const open = /(?:^|\n)[ \t]*\/\*\*/.exec(region);
+  if (!open) return null;
+
+  const lines = region
+    .slice(open.index + open[0].length)
     .split('\n')
     .map((l) => l.replace(/^\s*\*+\s?/, '').trim())
     .filter(Boolean);

@@ -39,7 +39,7 @@ mkdirSync(hooksDir, { recursive: true });
 
 const PRE_COMMIT = `#!/bin/sh
 # anti-slop pre-commit gate (installed by scripts/anti-slop/install-hooks.mjs)
-staged=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\\.(ts|tsx|js|jsx|mjs|mts)$')
+staged=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\\.(ts|tsx|js|jsx|mjs|mts)$' | grep -v '^scripts/anti-slop/')
 [ -z "$staged" ] && exit 0
 
 echo "[anti-slop] modularity check on staged files..."
@@ -72,6 +72,9 @@ node scripts/anti-slop/check-encoding.mjs || exit 1
 
 echo "[anti-slop] docs link gate (broken links, anchors, local-disk references)..."
 node scripts/anti-slop/check-docs-links.mjs || exit 1
+
+echo "[anti-slop] class-literal drift gate (re-spelled layout skeletons)..."
+node scripts/anti-slop/check-class-literals.mjs || exit 1
 
 echo "[anti-slop] project checks (lint/typecheck/test; skips are printed, not hidden)..."
 node scripts/anti-slop/run-project-checks.mjs || exit 1

@@ -22,6 +22,9 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { EXCLUDE_DIRS } from './lib.mjs';
+import { loadConfig } from './config.mjs';
+import { applyIgnorePaths } from './cli.mjs';
 
 const TEXT_EXT = /\.(md|mjs|json|ts|tsx|js|jsx|mts|cjs|txt|yml|yaml)$/;
 
@@ -122,13 +125,17 @@ export function hasUtf8Bom(text) {
   return text.charCodeAt(0) === 0xFEFF;
 }
 
+/** Directories never scanned: shared build-output list + this kit's log noise. */
+const SKIP_DIRS = new Set([...EXCLUDE_DIRS, 'data']);
+/** Dot-directories that ARE products (docs, skills, commands), not tooling. */
+const TRACKED_DOT_DIRS = new Set(['.github', '.opencode']);
+
 function textFiles(root) {
   const files = [];
-  const skip = new Set(['node_modules', '.git', 'data', '.next', 'dist']);
   (function walk(dir) {
     for (const e of readdirSync(dir, { withFileTypes: true })) {
-      if (e.name.startsWith('.') && e.name !== '.github') continue;
-      if (skip.has(e.name)) continue;
+      if (e.name.startsWith('.') && !TRACKED_DOT_DIRS.has(e.name)) continue;
+      if (SKIP_DIRS.has(e.name)) continue;
       const full = path.join(dir, e.name);
       if (statSync(full).isDirectory()) walk(full);
       else if (TEXT_EXT.test(e.name)) {
@@ -140,8 +147,25 @@ function textFiles(root) {
 }
 
 function main() {
+  const argv = process.argv.slice(2);
+  if (argv.includes('-h') || argv.includes('--help')) {
+    console.log(
+      'Usage: node check-encoding.mjs [--help]\n' +
+      'Checks every text file for double-encoded UTF-8 (mojibake), BOMs and\n' +
+      'corruption markers (control pictures, LRM/RLM, U+FFFD, C1 controls).\n' +
+      'Build output (dist/, dist-electron/, build/, .output/, ...) is skipped.\n' +
+      'Config: anti-slop.config.json "encoding" section (ignorePaths globs).',
+    );
+    process.exit(0);
+  }
+
   const root = process.cwd();
-  const files = textFiles(root);
+  const cfg = loadConfig();
+  const ignoreGlobs = Array.isArray(cfg.encoding?.ignorePaths) ? cfg.encoding.ignorePaths : [];
+  const files = applyIgnorePaths(textFiles(root), ignoreGlobs, {
+    label: 'encoding.ignorePaths',
+    src: '.',
+  });
   let broken = 0;
   for (const file of files) {
     const src = readFileSync(file.full, 'utf8');

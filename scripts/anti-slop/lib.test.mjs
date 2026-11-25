@@ -15,9 +15,11 @@ import path from 'node:path';
 
 import {
   extractExports,
+  isFunctionBody,
   isGenerated,
   jsdocBefore,
   lineOf,
+  parseLimitExceptions,
   stripNoise,
   tokenize,
   walk,
@@ -79,6 +81,19 @@ test('jsdocBefore: tag-only block is not a usage doc', () => {
   const src = '/** @internal */\nexport const x = 1';
   const idx = src.indexOf('export');
   assert.equal(jsdocBefore(src, idx), null);
+});
+
+test('jsdocBefore: a glob inside the doc does not break block detection', () => {
+  // Regression: loadConfig documents `"src/domain/**"`; lastIndexOf('/**')
+  // matched the glob and the index row became `" }] }`.
+  const src = [
+    '/**',
+    ' * Reads the config.',
+    ' * Example: { "from": "src/domain/**" }',
+    ' */',
+    'export const x = 1;',
+  ].join('\n');
+  assert.equal(jsdocBefore(src, src.indexOf('export')), 'Reads the config.');
 });
 
 test('jsdocBefore: no block at all -> null', () => {
@@ -186,4 +201,58 @@ test('isGenerated: payload-types and next-env, nothing else', () => {
   assert.ok(isGenerated('next-env.d.ts'));
   assert.ok(!isGenerated('src/lib/dbs.ts'));
   assert.ok(!isGenerated('types.ts'));
+});
+
+// --- isFunctionBody ----------------------------------------------------------
+
+/** Brace index that opens the body in `source` (the last `{`). */
+const bodyBrace = (source) => source.lastIndexOf('{');
+
+test('isFunctionBody: params, typed returns, generics and arrows', () => {
+  assert.ok(isFunctionBody('name(a, b) {', bodyBrace('name(a, b) {')));
+  assert.ok(isFunctionBody('public run(): Promise<void> {', bodyBrace('public run(): Promise<void> {')));
+  assert.ok(isFunctionBody('function f<T>(x: T): T {', bodyBrace('function f<T>(x: T): T {')));
+  assert.ok(isFunctionBody('const f = (x) => {', bodyBrace('const f = (x) => {')));
+  assert.ok(isFunctionBody('get foo() {', bodyBrace('get foo() {')));
+});
+
+test('isFunctionBody: control flow, classes, literals and calls are not bodies', () => {
+  assert.ok(!isFunctionBody('if (x) {', bodyBrace('if (x) {')));
+  assert.ok(!isFunctionBody('for (const x of xs) {', bodyBrace('for (const x of xs) {')));
+  assert.ok(!isFunctionBody('switch (x) {', bodyBrace('switch (x) {')));
+  assert.ok(!isFunctionBody('class X {', bodyBrace('class X {')));
+  assert.ok(!isFunctionBody('else {', bodyBrace('else {')));
+  assert.ok(!isFunctionBody('const x = {', bodyBrace('const x = {')));
+  assert.ok(!isFunctionBody('foo({', bodyBrace('foo({')));
+  assert.ok(!isFunctionBody('const x = useMemo(() => ({', bodyBrace('const x = useMemo(() => ({')));
+});
+
+test('isFunctionBody: semicolon-free code does not leak a previous line into the head', () => {  // Regression from a real Payload collection: no semicolons, and the previous
+  // line ends in `)`; `const X: CollectionConfig = {` was counted as a
+  // 119-line function.
+  const source = [
+    "const canWrite: Access = ({ req }) => hasAnyRole(getCurrentUser(req), ['admin'])",
+    '',
+    'export const CarePlans: CollectionConfig = {',
+  ].join('\n');
+  assert.ok(!isFunctionBody(source, source.lastIndexOf('{')));
+});
+
+// --- parseLimitExceptions ----------------------------------------------------
+
+test('parseLimitExceptions: values and reasons; malformed directives are reported', () => {
+  const src = [
+    '// anti-slop: file-lines 620 — generated parse table, one artifact',
+    '  // anti-slop: class-methods 12 — Payload adapter, one method per hook',
+    '// anti-slop: exports 30',
+    'const note = "// anti-slop: exports 5 — a string, not a directive";',
+  ].join('\n');
+  const { exceptions, invalid } = parseLimitExceptions(src);
+  assert.deepEqual(
+    exceptions.map((e) => [e.limit, e.value, e.line]),
+    [['file-lines', 620, 1], ['class-methods', 12, 2]],
+  );
+  assert.equal(invalid.length, 1);
+  assert.equal(invalid[0].line, 3);
+  assert.match(invalid[0].why, /reason/);
 });

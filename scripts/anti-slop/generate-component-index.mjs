@@ -51,6 +51,8 @@ const args = parseArgs(process.argv);
 
 const SRC_DIR = path.resolve(args.root, args.src);
 const OUT_FILE = path.resolve(args.root, args.out);
+/** Bounded companion to the full index; this is what opencode.json loads. */
+const DIGEST_FILE = path.resolve(args.root, path.join(path.dirname(args.out), 'COMPONENT_INDEX.digest.md'));
 
 if (!existsSync(SRC_DIR)) {
   console.error(`Source directory not found: ${SRC_DIR}`);
@@ -139,24 +141,63 @@ for (const kind of KIND_ORDER) {
 md += manualNotes ? `${manualNotes.trimEnd()}\n` : `## Manual Notes\n\n(Add notes here; they are preserved when the index is regenerated.)\n`;
 md = md.replace(/\n+$/, '\n');
 
+// --- digest (what is actually loaded into a session) -------------------------
+// The full index is unbounded: 168 exports is ~22k chars (~5.5k tokens) today,
+// and it grows with every export. Injecting that into every session is a tax on
+// work that never touches shared code. The digest is one line per MODULE
+// (bounded by file count, not export count) and points at the full index for
+// the "When to use" text the agent needs once it has a shortlist.
+const MAX_DIGEST_MODULES = 120;
+const MAX_NAMES_PER_MODULE = 8;
+
+const byModule = new Map();
+for (const list of index.values()) {
+  for (const e of list) {
+    if (!byModule.has(e.rel)) byModule.set(e.rel, []);
+    byModule.get(e.rel).push(e.name);
+  }
+}
+const moduleRels = [...byModule.keys()].sort();
+
+let digest = `# Component Index — digest\n\n`;
+digest += `<!-- generated: run \`node scripts/anti-slop/generate-component-index.mjs\` to regenerate -->\n\n`;
+digest += `${filtered.length} modules, ${totalExports} exports under \`${args.src}/\`. `;
+digest += `Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — `;
+digest += `grep it by concept before creating a component, hook, or utility (see \`reuse-before-create\`).\n\n`;
+digest += `| Module | Exports |\n|---|---|\n`;
+for (const rel of moduleRels.slice(0, MAX_DIGEST_MODULES)) {
+  const names = byModule.get(rel);
+  const shown = names.slice(0, MAX_NAMES_PER_MODULE).join(', ');
+  const more = names.length > MAX_NAMES_PER_MODULE ? `, … (${names.length})` : '';
+  digest += `| \`${rel}\` | ${names.length}: ${shown}${more} |\n`;
+}
+if (moduleRels.length > MAX_DIGEST_MODULES) {
+  digest += `\n… and ${moduleRels.length - MAX_DIGEST_MODULES} more module(s) — grep the full index.\n`;
+}
+digest += `\n> Capped at ${MAX_DIGEST_MODULES} modules so it can be loaded into every session; the full index is the source of truth.\n`;
+digest = digest.replace(/\n+$/, '\n');
+
 if (args.check) {
-  if (!existsSync(OUT_FILE)) {
-    console.error(`[x] Index check FAILED: ${OUT_FILE} does not exist. Run the generator without --check and commit the result.`);
-    process.exit(1);
+  for (const [file, expected] of [[OUT_FILE, md], [DIGEST_FILE, digest]]) {
+    if (!existsSync(file)) {
+      console.error(`[x] Index check FAILED: ${file} does not exist. Run the generator without --check and commit the result.`);
+      process.exit(1);
+    }
+    if (readFileSync(file, 'utf8').replace(/\n+$/, '\n') !== expected) {
+      console.error(`[x] Index check FAILED: ${file} is stale. Run \`node scripts/anti-slop/generate-component-index.mjs\` and commit the result.`);
+      process.exit(1);
+    }
   }
-  const onDisk = readFileSync(OUT_FILE, 'utf8').replace(/\n+$/, '\n');
-  if (onDisk === md) {
-    console.log(`[ok] Component index is up to date (${OUT_FILE}).`);
-    process.exit(0);
-  }
-  console.error(`[x] Index check FAILED: ${OUT_FILE} is stale. Run \`node scripts/anti-slop/generate-component-index.mjs\` and commit the result.`);
-  process.exit(1);
+  console.log(`[ok] Component index and digest are up to date (${OUT_FILE}, ${DIGEST_FILE}).`);
+  process.exit(0);
 }
 
 mkdirSync(path.dirname(OUT_FILE), { recursive: true });
 writeFileSync(OUT_FILE, md);
+writeFileSync(DIGEST_FILE, digest);
 
 console.log(`Wrote ${OUT_FILE}`);
+console.log(`Wrote ${DIGEST_FILE} (bounded summary — this is the file sessions load)`);
 console.log(`  ${filtered.length} source files, ${totalExports} exports across ${KIND_ORDER.filter((k) => index.has(k)).length} categories.`);
 if (missingDocs > 0) {
   console.log(`  [doc] ${missingDocs} export(s) have no JSDoc description. Shared components/hooks/utils must carry a one-line "/** When to use ... */" above the export.`);

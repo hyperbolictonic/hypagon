@@ -103,11 +103,22 @@ export function compareSets(current, baselineItems) {
   return { added, removed };
 }
 
+/** Total of a per-file map: numbers, or per-kind objects when kindCounts. */
+function sectionTotal(files, kindCounts) {
+  return Object.values(files ?? {}).reduce(
+    (n, v) => n + (kindCounts ? Object.values(v ?? {}).reduce((a, b) => a + b, 0) : v),
+    0,
+  );
+}
+
 /**
  * Shared ratchet flow for count-based gates (duplicates/docs/modularity).
  *
  * - `--update-baseline`: writes `{ [section]: { files: current, ...extra } }`
- *   and returns 'ok' (exit 0 in the gate).
+ *   and returns 'ok' (exit 0 in the gate). It refuses to grow the total
+ *   (`total` may only fall or stay level) unless `--force` is passed, and warns
+ *   when the total is unchanged but the file set moved — that is relocated
+ *   debt, not a cleanup.
  * - baseline file exists: fails only on NEW debt (unseen file or grown count)
  *   and returns 'fail'; otherwise 'ok' with an --update-baseline hint when
  *   files improved.
@@ -118,8 +129,33 @@ export function compareSets(current, baselineItems) {
 export function baselineGate({ args, section, current, kindCounts = false, extra = {}, unit, showKind = false, fixLine }) {
   if (args.updateBaseline) {
     const file = args.baseline ?? BASELINE_FILE;
+    const total = sectionTotal(current, kindCounts);
+    const previous = loadBaseline(args.baseline)?.[section];
+
+    if (previous?.files) {
+      const oldTotal = sectionTotal(previous.files, kindCounts);
+      const moved =
+        Object.keys(previous.files).sort().join('\n') !== Object.keys(current).sort().join('\n');
+
+      if (total > oldTotal) {
+        if (!args.force) {
+          console.error(
+            `[x] Refusing to update the baseline: ${section} would grow ${oldTotal} -> ${total} ${unit}.\n` +
+            '    The baseline records accepted debt; it must not absorb new debt.\n' +
+            '    Fix the new debt first. To accept it deliberately, re-run with --force.'
+          );
+          return 'fail';
+        }
+        console.error(`[warn] Baseline grows ${oldTotal} -> ${total} ${unit} (--force accepted).`);
+      } else if (total === oldTotal && moved) {
+        console.error(
+          `[warn] ${section} total unchanged (${total} ${unit}) but the files changed - ` +
+          'this looks like relocated debt (A -> B). The debt still exists; fix the move, not the baseline.'
+        );
+      }
+    }
+
     saveBaseline(file, { [section]: { files: current, ...extra } });
-    const total = Object.values(current).reduce((n, v) => n + (kindCounts ? Object.values(v).reduce((a, b) => a + b, 0) : v), 0);
     console.log(`[ok] Baseline written to ${file} (${total} ${unit} across ${Object.keys(current).length} file(s)).`);
     console.log('    Commit it. The gate now fails only on NEW debt; shrink the baseline as you clean up.');
     return 'ok';

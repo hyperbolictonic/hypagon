@@ -67,6 +67,20 @@ Anything selected by **line numbers** is a chunk, not a component.
 responsibilities and dependencies, it is a remix of the slop. Count
 responsibilities, not lines.
 
+### Band by domain before you cut
+
+Group members by shared **state**, **change reason**, **consumer**, or **data
+flow** — never by line ranges, file order, or the previous author's
+`// --- section ---` banners. Members of different bands must be able to change
+without touching each other; if a change to one forces a change in the other,
+they are one band or the cut is in the wrong place.
+
+When the file is existing code, the input is untrusted: comments and folder
+names are claims to verify against behavior, not boundaries to preserve. A
+mislabeled band is part of the slop — re-derive it and delete the false comment
+rather than carrying it into a new file. See `deslopping` for the evidence
+inventory, band map and redistribution test.
+
 ### Why the lazy fixes fail
 
 | Lazy fix | What it costs |
@@ -129,12 +143,27 @@ inventory.
 - File: <= ~500 lines.
 - Function/method: <= ~80 lines.
 - Class: <= ~10 public methods.
+- Declared exports per file: <= ~20 (re-exports belong to barrels; they are
+  not counted, so `export *` cannot hide a junk drawer).
 
-Exceeding a budget is a signal to split by responsibility — never to compress
-code, raise the budget, or exempt the file. There are no per-file overrides
-(`fileLineOverrides` is rejected); `modularity.ignorePaths` is for declarative
-framework files only, and the gate prints a notice naming every glob it
-exempts.
+Each limit has two bands: a **soft** band (80% of the cap) that prints a note
+and passes, and a hard cap that fails. The soft band exists so the budget
+applies pressure before it applies a wall — when it fires, look at the
+responsibility count, not just the number.
+
+A file that genuinely cannot fit may declare a **justified exception next to
+the code**:
+
+```ts
+// anti-slop: file-lines 620 — generated parse table, one artifact
+```
+
+Rules: the reason is mandatory; the declared number is the new ceiling (grow
+past it and the gate fails again); exceptions are per limit (a `file-lines`
+exception never excuses `class-methods`); every exception is printed on every
+run; and the repo allows 3 (`maxExceptions`) — more than that is a pattern, not
+an exception. Never raise the budget, add a per-file override, or exempt the
+file in config; those are the lazy fixes this skill rejects.
 
 ## Anti-patterns
 

@@ -19,6 +19,11 @@ When N pages share the same structural shape:
 2. Each page composes: page decides content, skeleton decides placement.
 3. Page-specific widgets are their own components, passed in via slots.
 
+This is enforced, not just advised: `check-class-literals.mjs` counts
+normalised `className` literals across components and fails when the same
+skeleton chrome is re-spelled 4+ times. Ordering and `${...}` interpolations are
+normalised away, so a copy hiding behind reordered classes still counts.
+
 ```tsx
 // Good: three pages, one skeleton
 <TwoColumnLayout sidebar={<AuditFilters />}>
@@ -50,7 +55,6 @@ Signals that a skeleton wants to exist:
   template.
 
 ## Design rules for skeletons
-
 - **Slots over config.** Named slots (`sidebar`, `header`, `actions`,
   `footer`) take JSX. Never pass booleans like `showSidebar` down a template —
   pass the content or don't render the slot.

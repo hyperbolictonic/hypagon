@@ -75,6 +75,31 @@ test('checkMarkdown: good relative links and anchors pass', () => {
   rmSync(dir, { recursive: true, force: true });
 });
 
+test('checkMarkdown: links inside inline code spans are documentation, not links', () => {
+  const dir = fixture({
+    'README.md': 'Resolves `[text](href)` against the page URL.\n',
+  });
+  assert.deepEqual(checkMarkdown(path.join(dir, 'README.md'), dir), []);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('checkMarkdown: a real link beside a code span is still checked', () => {
+  const dir = fixture({
+    'README.md': 'Syntax is `[text](href)`; full guide: [gone](nope.md)\n',
+  });
+  const problems = checkMarkdown(path.join(dir, 'README.md'), dir);
+  assert.deepEqual(problems, [{ link: 'nope.md', reason: 'missing-target' }]);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('checkMarkdown: a code span containing a real-looking path is ignored', () => {
+  const dir = fixture({
+    'README.md': 'Then `[docs](../secrets.md)` stays illustrative.\n',
+  });
+  assert.deepEqual(checkMarkdown(path.join(dir, 'README.md'), dir), []);
+  rmSync(dir, { recursive: true, force: true });
+});
+
 test('checkMarkdown: missing target and stale anchor are flagged', () => {
   const dir = fixture({ 'README.md': '[gone](nope.md) and [stale](#no-such-heading)' });
   const problems = checkMarkdown(path.join(dir, 'README.md'), dir);

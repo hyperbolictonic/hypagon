@@ -19,6 +19,13 @@ is a component (one responsibility, explicit deps, state moved first) rather
 than a chunk selected by line numbers. A chunk that passes this review is still
 a failed decomposition.
 
+Then check the **banding**: does each new module's membership follow shared
+state, change reason and consumers — or did it inherit the old file's
+`// --- section ---` boundaries? Boundaries that were wrong before are still
+wrong, now spread across more files: that is slop redistribution, not
+de-slopping (see `deslopping`). If the old banding was wrong, part of the review
+is naming it and saying which comments/names must change.
+
 ## 1. Misplaced logic — the load-bearing test
 
 Scan every file the task touched, especially anything under `components/` or

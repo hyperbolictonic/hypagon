@@ -28,7 +28,7 @@ import {
   matchesAnyGlob, gateArgs, resolveScanTarget,
 } from './cli.mjs';
 import { loadConfig, scanExtensions } from './config.mjs';
-import { baselineGate } from './baseline.mjs';
+import { baselineGate, loadBaseline } from './baseline.mjs';
 
 // --- args -------------------------------------------------------------------
 // Defaults < anti-slop.config.json < CLI flags.
@@ -184,6 +184,39 @@ const worst = [...dupLines.entries()]
 console.log('\nMost duplicated files:');
 for (const w of worst) console.log(`  ${w.rel}: ${w.dup}/${w.total} lines (${((w.dup / w.total) * 100).toFixed(1)}%)`);
 console.log(`\nTotal duplicated lines: ${totalDup}/${totalAll} (${pct.toFixed(1)}%)`);
+
+if (args.threshold > 0 && pct >= args.threshold * 0.9 && pct <= args.threshold) {
+  console.log(
+    `[note] approaching the duplication threshold (${pct.toFixed(1)}% of ${args.threshold}%). ` +
+    'This is a ratio: adding clean lines dilutes it, so watch maxDuplicatedLines too.',
+  );
+}
+
+// --- absolute guards ----------------------------------------------------------
+// The percentage is a ratio: adding a large *clean* file lowers it without
+// removing a clone. An absolute ceiling (config) and the baseline's stored
+// total are immune to that, so both are checked before the ratio.
+if (!args.updateBaseline) {
+  const failures = [];
+  const maxDup = cfgDups.maxDuplicatedLines;
+  if (typeof maxDup === 'number' && maxDup > 0 && totalDup > maxDup) {
+    failures.push(`absolute budget: ${totalDup} duplicated lines > maxDuplicatedLines ${maxDup}`);
+  }
+  const storedTotal = loadBaseline(args.baseline)?.duplicates?.totalDuplicatedLines;
+  if (typeof storedTotal === 'number' && totalDup > storedTotal) {
+    failures.push(`baseline total: ${totalDup} duplicated lines > accepted ${storedTotal}`);
+  }
+  if (failures.length > 0) {
+    console.error(
+      `\n[x] Duplicate-code check FAILED (absolute, not a ratio).\n` +
+      failures.map((f) => `    ${f}`).join('\n') + '\n' +
+      '    The percentage can be diluted by adding clean lines; an absolute total cannot.\n' +
+      '    Fix: extract the duplicates into existing shared modules (see the reuse-before-create skill).\n' +
+      '    Never raise the budget or re-baseline to absorb them.'
+    );
+    process.exit(1);
+  }
+}
 
 // --- baseline (ratchet) mode ---------------------------------------------------
 const perFileDup = {};

@@ -112,6 +112,22 @@ export function collectPathFiles(paths, opts = {}) {
 }
 
 /**
+ * Rewrite per-file `rel` to be relative to the scan root, matching what the
+ * full-tree walk produces. Git hooks pass staged paths, which collectPathFiles
+ * resolves repo-relative (`src/x.ts`); baselines are keyed scan-relative
+ * (`x.ts`), so without this every baselined file looks like new debt on commit.
+ * Files outside the scan root keep their repo-relative path (the full run never
+ * sees them).
+ */
+export function toScanRelative(files, src = 'src') {
+  const root = path.resolve(src);
+  return files.map((f) => {
+    const rel = path.relative(root, f.full).split(path.sep).join('/');
+    return rel.startsWith('../') || path.isAbsolute(rel) ? f : { ...f, rel };
+  });
+}
+
+/**
  * Resolve the scan root given to a gate (--src): accepts a directory (walked)
  * or a single file. Exits 1 when the path does not exist.
  * `opts.includeTests` opts in to test/spec files (duplicates.includeTests).
@@ -135,7 +151,11 @@ export function resolveScanTarget(src, opts = {}) {
  * (git-hook staged mode).
  */
 export function gateArgs({ argv, usage, spec, defaults, allowPositionals = false }) {
-  const { args, positionals } = bootstrapGate(argv, { usage, spec, defaults });
+  // `--force` is a universal escape hatch; only --update-baseline acts on it.
+  // Recognised here so every gate accepts it without duplicating the flag.
+  const { args, positionals } = bootstrapGate(argv, {
+    usage, spec: { '--force': 'flag', ...spec }, defaults,
+  });
   if (!allowPositionals && positionals.length > 0) {
     console.error(`Unexpected arguments: ${positionals.join(' ')} (this script takes flags only)`);
     process.exit(1);

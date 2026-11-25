@@ -17,7 +17,7 @@ import {
   bootstrapGate, globToRegex, matchesAnyGlob, parseFlags, gateArgs, applyIgnorePaths,
 } from './cli.mjs';
 import {
-  compareCounts, compareKindCounts, compareSets, loadBaseline, saveBaseline,
+  baselineGate, compareCounts, compareKindCounts, compareSets, loadBaseline, saveBaseline,
 } from './baseline.mjs';
 
 // --- parseFlags ----------------------------------------------------------------
@@ -235,7 +235,85 @@ test('config: unknown keys inside a section warn (typo guard)', () => {
 
 test('config: known keys produce no warning', () => {
   const stderr = configWarning({
-    modularity: { maxFileLines: 300, ignorePaths: ['src/generated/**'] },
+    modularity: { maxFileLines: 500, ignorePaths: ['src/generated/**'] },
   });
   assert.equal(stderr.trim(), '');
+});
+
+// --- baseline --update-baseline guard (relocated debt) -----------------------
+
+function captureErrors(fn) {
+  const original = console.error;
+  const lines = [];
+  console.error = (...args) => lines.push(args.join(' '));
+  try {
+    return { result: fn(), stderr: lines.join('\n') };
+  } finally {
+    console.error = original;
+  }
+}
+
+/** Run a duplicates-style --update-baseline and report what landed on disk. */
+function updateCase(snapshot, current, extraArgs = {}) {
+  const dir = mkdtempSync(path.join(tmpdir(), 'antislop-ratchet-'));
+  const file = path.join(dir, 'anti-slop.baseline.json');
+  if (snapshot) saveBaseline(file, snapshot);
+  const { result, stderr } = captureErrors(() => baselineGate({
+    args: { updateBaseline: true, baseline: file, ...extraArgs },
+    section: 'duplicates',
+    current,
+    unit: 'duplicated line(s)',
+  }));
+  const written = loadBaseline(file);
+  rmSync(dir, { recursive: true, force: true });
+  return { decision: result, stderr, files: written?.duplicates?.files };
+}
+
+test('baseline: --update-baseline refuses to grow the total', () => {
+  const { decision, stderr, files } = updateCase(
+    { duplicates: { files: { 'a.ts': 10 } } },
+    { 'a.ts': 12 },
+  );
+  assert.equal(decision, 'fail');
+  assert.match(stderr, /Refusing to update the baseline/);
+  assert.equal(files['a.ts'], 10, 'the baseline must not absorb new debt');
+});
+
+test('baseline: unchanged total with different files warns about relocation', () => {
+  const { decision, stderr, files } = updateCase(
+    { duplicates: { files: { 'a.ts': 10 } } },
+    { 'b.ts': 10 },
+  );
+  assert.equal(decision, 'ok');
+  assert.match(stderr, /total unchanged .* files changed/);
+  assert.match(stderr, /relocated debt/);
+  assert.equal(files['b.ts'], 10);
+});
+
+test('baseline: --force accepts growth deliberately', () => {
+  const { decision, stderr, files } = updateCase(
+    { duplicates: { files: { 'a.ts': 10 } } },
+    { 'a.ts': 12 },
+    { force: true },
+  );
+  assert.equal(decision, 'ok');
+  assert.match(stderr, /Baseline grows 10 -> 12/);
+  assert.equal(files['a.ts'], 12);
+});
+
+test('baseline: a genuine cleanup updates silently', () => {
+  const { decision, stderr, files } = updateCase(
+    { duplicates: { files: { 'a.ts': 10 } } },
+    { 'a.ts': 6 },
+  );
+  assert.equal(decision, 'ok');
+  assert.equal(stderr.trim(), '');
+  assert.equal(files['a.ts'], 6);
+});
+
+test('baseline: first-time adoption writes without --force', () => {
+  const { decision, stderr, files } = updateCase(null, { 'a.ts': 40 });
+  assert.equal(decision, 'ok');
+  assert.equal(stderr.trim(), '');
+  assert.equal(files['a.ts'], 40);
 });

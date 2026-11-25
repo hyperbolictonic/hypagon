@@ -29,15 +29,17 @@ export function scanExtensions(config) {
   return null;
 }
 
-const KNOWN_SECTIONS = new Set(['duplicates', 'modularity', 'docs', 'imports', 'scan', '$schema', '_comment']);
+const KNOWN_SECTIONS = new Set(['duplicates', 'modularity', 'docs', 'imports', 'classLiterals', 'encoding', 'scan', '$schema', '_comment']);
 
 /** Keys each section accepts. Anything else is a typo or an attempt to tune
  * the gate away; either way it must not be ignored silently. */
 const KNOWN_SECTION_KEYS = {
-  duplicates: new Set(['src', 'minTokens', 'threshold', 'ignore', 'includeTests']),
-  modularity: new Set(['src', 'maxFileLines', 'maxFunctionLines', 'maxClassMethods', 'ignorePaths']),
+  duplicates: new Set(['src', 'minTokens', 'threshold', 'maxDuplicatedLines', 'ignore', 'includeTests']),
+  modularity: new Set(['src', 'maxFileLines', 'maxFunctionLines', 'maxClassMethods', 'maxExportsPerFile', 'softFactor', 'maxExceptions', 'ignorePaths']),
   docs: new Set(['src', 'ignorePaths', 'ignoreExports']),
   imports: new Set(['src', 'deny']),
+  classLiterals: new Set(['src', 'minOccurrences', 'allow']),
+  encoding: new Set(['ignorePaths']),
   scan: new Set(['extensions']),
 };
 
@@ -84,14 +86,25 @@ function validateConfig(parsed) {
   };
   num('duplicates', 'minTokens');
   num('duplicates', 'threshold');
+  num('duplicates', 'maxDuplicatedLines');
   arr('duplicates', 'ignore');
   bool('duplicates', 'includeTests');
   num('modularity', 'maxFileLines');
   num('modularity', 'maxFunctionLines');
   num('modularity', 'maxClassMethods');
+  num('modularity', 'maxExportsPerFile');
+  num('modularity', 'maxExceptions');
+  num('modularity', 'softFactor');
+  const soft = parsed.modularity?.softFactor;
+  if (typeof soft === 'number' && (soft <= 0 || soft > 1)) {
+    warns.push('modularity.softFactor must be > 0 and <= 1 (a fraction of the hard cap)');
+  }
   arr('modularity', 'ignorePaths');
   arr('docs', 'ignorePaths');
   arr('docs', 'ignoreExports');
+  arr('encoding', 'ignorePaths');
+  num('classLiterals', 'minOccurrences');
+  arr('classLiterals', 'allow');
   arr('scan', 'extensions');
   if (parsed.imports?.deny !== undefined && !Array.isArray(parsed.imports.deny)) {
     warns.push('imports.deny must be an array of { from, forbid } rules');
