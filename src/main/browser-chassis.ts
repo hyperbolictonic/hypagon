@@ -60,6 +60,11 @@ import { HudWatchdog } from './boot/hud-watchdog.js';
 import { WindowBootSurface } from './boot/window-boot.js';
 import { ShellBus } from './shell/event-bus.js';
 import { createLlmStack } from './chassis/llm-stack.js';
+import {
+  createPageScriptSurface,
+  createResearchViewSurface,
+  createShadowWalkSurface,
+} from './chassis/surfaces.js';
 import { createInputStack } from './chassis/input-stack.js';
 import { createHarvestNavStack } from './chassis/harvest-nav-stack.js';
 import { createInteractionStack } from './chassis/interaction-stack.js';
@@ -88,13 +93,6 @@ export class BrowserChassis {
   /** The bound log entry point the composition roots may pass around without losing `this`. */
   readonly log = (level: 'info' | 'warn' | 'action', message: string): void => this.telemetry.addLog(level, message);
   private readonly controllerTelemetry = (event: TelemetryEvent): void => this.telemetry.emitTelemetry(event);
-  /** The research activity feed hook shared by the read/search surfaces. */
-  private readonly surfaceActivity = <T>(
-    tool: string,
-    summary: string,
-    describe: (result: T) => string,
-    run: () => Promise<T>,
-  ): Promise<T> => this.crawl.activity(tool, summary, describe, run);
   /** Decision log and the guard-driven human hand-off. */
   readonly decision = new DecisionSurface({
     hil: () => this.hil,
@@ -307,7 +305,7 @@ export class BrowserChassis {
     });
     this.boot = this.createWindowBoot();
     this.subscribeToDecisions();
-    this.page = this.createPageScriptSurface();
+    this.page = createPageScriptSurface(this);
     this.tabOps = new TabSurface({
       manager: () => this.requireTabManager(),
       activeWebContents: () => this.getActiveWebContents(),
@@ -325,8 +323,8 @@ export class BrowserChassis {
     this.sessions = inputStack.sessions;
     this.network = inputStack.network;
     this.scripts = inputStack.scripts;
-    this.research = this.createResearchSession();
-    this.researchView = this.createResearchViewSurface();
+    this.research = new ResearchSessionSurface({ hostProfile: this.hostProfile, log: this.log });
+    this.researchView = createResearchViewSurface(this);
     const harvestNav = createHarvestNavStack(this);
     this.marks = harvestNav.marks;
     this.harvest = harvestNav.harvest;
@@ -336,14 +334,14 @@ export class BrowserChassis {
     this.hil = interaction.hil;
     this.primitives = interaction.primitives;
     this.actionLedger = interaction.actionLedger;
-    const stack = this.createLlmStack();
+    const stack = createLlmStack(this);
     this.llmSurface = stack.llmSurface;
     this.researchLlmSurface = stack.researchLlmSurface;
     this.searchHub = stack.searchHub;
     this.llm = stack.llm;
     this.search = stack.search;
     this.crawl = stack.crawl;
-    this.shadow = this.createShadowWalkSurface();
+    this.shadow = createShadowWalkSurface(this);
     this.startLoops();
   }
 
@@ -355,93 +353,6 @@ export class BrowserChassis {
     onDecision((event) => {
       this.decision.record(event);
       this.bus.toSurfaces('chassis:decision', event);
-    });
-  }
-
-  /** The LLM/search/crawl stack, kept out of the constructor. */
-  private createLlmStack(): ReturnType<typeof createLlmStack> {
-    return createLlmStack({
-      activeSession: () => this.getActiveWebContents().session,
-      activeWebContents: () => {
-        try {
-          return this.getActiveWebContents();
-        } catch {
-          return null;
-        }
-      },
-      navigateForText: (url) => this.researchView.navigateForText(url),
-      userAgent: this.hostProfile.userAgent,
-      renderMarkdown: (url) => this.readUrlRender(url),
-      research: this.research,
-      researchView: this.researchView,
-      activity: this.surfaceActivity,
-      log: this.controllerLog,
-      harvester: () => this.harvester,
-      indexPage: (url, title, content) => cortex.indexPage(url, title, content),
-      broadcast: (channel, payload) => this.bus.broadcast(channel, payload),
-    });
-  }
-
-  /** Bounds of the browser viewport as actually laid out in the HUD (zoom-aware). */
-  private async computeViewportBounds(): Promise<{ x: number; y: number; width: number; height: number }> {
-    const win = this.mainWindow;
-    if (!win || win.isDestroyed()) return this.tabSetup.bounds();
-    try {
-      const rect = await win.webContents.executeJavaScript(
-        `(() => {
-          const el = document.getElementById('viewport-container');
-          if (!el) return null;
-          const r = el.getBoundingClientRect();
-          return { x: r.x, y: r.y, width: r.width, height: r.height };
-        })()`,
-      );
-      if (rect && rect.width > 0 && rect.height > 0) {
-        const zoom = win.webContents.getZoomFactor() || 1;
-        return {
-          x: Math.round(rect.x * zoom),
-          y: Math.round(rect.y * zoom),
-          width: Math.round(rect.width * zoom),
-          height: Math.round(rect.height * zoom),
-        };
-      }
-    } catch {
-      /* fall back to the static calculation */
-    }
-    return this.tabSetup.bounds();
-  }
-
-  /** The shared detached view plus citations and the human hand-off. */
-  private createResearchViewSurface(): ResearchViewSurface {
-    return new ResearchViewSurface({
-      userAgent: this.hostProfile.userAgent,
-      activate: (wc) => this.research.activateView(wc),
-      window: () => this.mainWindow,
-      hilManager: () => this.hil.manager,
-      researchSettings: () => this.research.settings(),
-      viewportBounds: () => this.computeViewportBounds(),
-      reassertViewport: () => this.reassertViewport(),
-      activeWebContents: () => this.getActiveWebContents(),
-      log: (level, message) => this.telemetry.addLog(level, message),
-    });
-  }
-
-  /** Script evaluation and control description over the active tab. */
-  private createPageScriptSurface(): PageScriptSurface {
-    return new PageScriptSurface({
-      activeWebContents: () => this.getActiveWebContents(),
-      log: (level, message) => this.telemetry.addLog(level, message),
-    });
-  }
-
-  /** Shadow Walk policy and frame reads over the active tab. */
-  private createShadowWalkSurface(): ShadowWalkSurface {
-    return new ShadowWalkSurface({
-      activeWebContents: () => this.getActiveWebContents(),
-      allTabs: () => this.tabSetup.manager?.allTabs() ?? [],
-      log: (level, message) => this.telemetry.addLog(level, message),
-      pressKey: (wc, key) => this.input.simulator.pressKey(wc, key),
-      bumpRevision: () => this.bumpRevision(),
-      capturePage: (wc, bounds) => this.harvest.capturePageWithRetry(wc, bounds),
     });
   }
 
@@ -533,13 +444,6 @@ export class BrowserChassis {
   // The stealth research session, its settings and the per-host cooldown live in
   // ResearchSessionSurface; the crawl and search surfaces read through it.
 
-  private createResearchSession(): ResearchSessionSurface {
-    return new ResearchSessionSurface({
-      hostProfile: this.hostProfile,
-      log: (level, message) => this.telemetry.addLog(level, message),
-    });
-  }
-
   /**
    * The tab manager, or the standard uninitialized failure. Every tab operation
    * begins with this check; the message is the contract agents retry on.
@@ -571,6 +475,11 @@ export class BrowserChassis {
     const wc = this.requireTabManager().getActiveTab().view.webContents;
     this.network.manager.attach(wc);
     return wc;
+  }
+
+  /** The shell window, or null before boot / after close. */
+  public getMainWindow(): BrowserWindow | null {
+    return this.mainWindow;
   }
 
   /** Install the persisted page-zoom policy (compensate vs Windows scale). */

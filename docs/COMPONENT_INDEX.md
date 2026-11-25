@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 271 files, 900 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 272 files, 902 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (768)
+## Types (767)
 
 | File | Export | When to use |
 |---|---|---|
@@ -50,7 +50,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/chassis/interaction-stack.ts` | `createInteractionStack` | When to use: the chassis constructor — build HIL, the ledger and primitives once. |
 | `main/chassis/interaction-stack.ts` | `InteractionStack` *(type)* | The built interaction surfaces. |
 | `main/chassis/llm-stack.ts` | `createLlmStack` | When to use: the chassis constructor — build the read/search/crawl stack once. |
-| `main/chassis/llm-stack.ts` | `LlmStackDeps` *(type)* | Dependencies the LLM stack needs from the chassis. |
 | `main/chassis/llm-stack.ts` | `LlmStack` *(type)* | The built LLM/read/search/crawl surfaces. |
 | `main/collaboration/overlay.ts` | `collaborationNoteDrawerScript` | Anchored note composer. The drawer is mounted next to the picked element, |
 | `main/collaboration/overlay.ts` | `collaborationPickerScript` | - |
@@ -790,7 +789,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (126)
+## Modules (129)
 
 | File | Export | When to use |
 |---|---|---|
@@ -801,6 +800,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/browser/frame-marks.ts` | `resolveFrameMark` | Resolve a frame mark to a live page-space target. Returns null when the frame navigated, the |
 | `main/browser-chassis.ts` | `BrowserChassis` | - |
 | `main/capabilities.ts` | `BRIDGE_CAPABILITIES` | The bridge capabilities advertised by `bridge_health`. |
+| `main/chassis/surfaces.ts` | `createPageScriptSurface` | When to use: the chassis constructor — the page-script surface over the host's tab. |
+| `main/chassis/surfaces.ts` | `createShadowWalkSurface` | When to use: the chassis constructor — Shadow Walk policy and frame reads over the host's tabs. |
+| `main/chassis/surfaces.ts` | `createResearchViewSurface` | When to use: the chassis constructor — the detached research view plus citations/hand-off. |
 | `main/collaboration/service.ts` | `CollaborationService` | - |
 | `main/data-paths.ts` | `dataRoot` | - |
 | `main/data-paths.ts` | `dataPath` | - |

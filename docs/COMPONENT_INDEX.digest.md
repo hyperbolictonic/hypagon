@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-271 modules, 900 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+272 modules, 902 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -22,7 +22,8 @@
 | `main/chassis/host.ts` | 1: ChassisHost |
 | `main/chassis/input-stack.ts` | 2: createInputStack, InputStack |
 | `main/chassis/interaction-stack.ts` | 2: createInteractionStack, InteractionStack |
-| `main/chassis/llm-stack.ts` | 3: createLlmStack, LlmStackDeps, LlmStack |
+| `main/chassis/llm-stack.ts` | 2: createLlmStack, LlmStack |
+| `main/chassis/surfaces.ts` | 3: createPageScriptSurface, createShadowWalkSurface, createResearchViewSurface |
 | `main/collaboration/overlay.ts` | 8: collaborationNoteDrawerScript, collaborationPickerScript, collaborationOverlayScript, COLLABORATION_NOTE_PREFIX, COLLABORATION_CLASS_PREFIX, COLLABORATION_RESOLVE_PREFIX, COLLABORATION_EXIT_PREFIX, CollaborationPickerOptions |
 | `main/collaboration/service.ts` | 1: CollaborationService |
 | `main/collaboration/store.ts` | 2: CollaborationStore, CreateThreadInput |
@@ -125,8 +126,7 @@
 | `main/recording/recording-service.ts` | 16: onRecordingStatus, setRecordingWindow, loadRecordingConfig, getRecordingConfig, saveRecordingConfig, getRecordingStatus, pickRecordingDir, startRecording, … (16) |
 | `main/remote/cloudflared.ts` | 1: findCloudflared |
 | `main/remote/ipc.ts` | 1: registerRemoteIpc |
-| `main/remote/oauth-client.ts` | 5: oauthClientFile, readOAuthClient, createOAuthClient, ensureOAuthClient, OAuthClientCredentials |
 
-… and 146 more module(s) — grep the full index.
+… and 147 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

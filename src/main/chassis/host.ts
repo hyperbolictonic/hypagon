@@ -8,6 +8,7 @@
  * literal.
  */
 import type { WebContents } from 'electron';
+import type { BrowserWindow } from 'electron';
 import type { ChassisState, HarvestedConstruct } from '../../shared/types.js';
 import type { HostBrowserProfile } from '../telemetry/host-fingerprint.js';
 import type { TelemetrySurface } from '../telemetry/telemetry-surface.js';
@@ -40,6 +41,7 @@ import type { Primitives } from '../primitives/primitives.js';
 import type { ActionLedger } from '../telemetry/action-ledger.js';
 import type { ConstructHarvester } from '../harvester/markdown.js';
 import type { TrayManager } from '../tray/tray-manager.js';
+import type { HilSurface } from '../hil/hil-surface.js';
 
 /** The chassis surfaces and accessors a composition root may read. */
 export interface ChassisHost {
@@ -70,6 +72,7 @@ export interface ChassisHost {
   readonly network: NetworkSurface;
   readonly decision: DecisionSurface;
   readonly consoleLogs: ConsoleLogBuffer;
+  readonly hil: HilSurface;
   readonly primitives: Primitives;
   readonly actionLedger: ActionLedger;
   readonly harvester: ConstructHarvester;
@@ -78,6 +81,12 @@ export interface ChassisHost {
   /** The tray, or null before the window is created. */
   trayManager: TrayManager | null;
   getActiveWebContents(): WebContents;
+  /** The shell window, or null before boot / after close. */
+  getMainWindow(): BrowserWindow | null;
+  /** Re-assert the native view bounds after a minimize/sleep/display change. */
+  reassertViewport(): void;
+  /** Render a URL to Markdown through the detached view (the read_url fallback). */
+  readUrlRender(url: string): Promise<{ markdown: string; title: string; status: number; contentType: string | null }>;
   /** Drop the JEV depth index before a tab change. */
   purgeJev(): void;
   /** The bound log entry point (safe to pass as a callback). */
