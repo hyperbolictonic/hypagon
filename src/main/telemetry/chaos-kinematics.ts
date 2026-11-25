@@ -153,23 +153,34 @@ function asymmetricMinimumJerk(t: number, skew: number = 0.72): number {
   return 10 * tau3 - 15 * tau4 + 6 * tau5;
 }
 
+/** The geometry one glide needs, decided once before the samples are walked. */
+interface PathPlan {
+  start: Point;
+  target: Point;
+  /** Where the ballistic phase aims: the target, or a little past it when overshooting. */
+  primaryTarget: Point;
+  cp1: Point;
+  cp2: Point;
+  /** Unit normal to the path, for the drift and tremor offsets. */
+  normalX: number;
+  normalY: number;
+  baseSteps: number;
+  shouldOvershoot: boolean;
+  features: {
+    pinkNoise: boolean;
+    asymmetricVelocity: boolean;
+    twoThirdsLaw: boolean;
+    chaoticAttractor: boolean;
+  };
+}
+
 /**
- * Generates an advanced bio-kinematic trajectory incorporating chaos math,
- * fractional Brownian motion, and biological human motor neuroscience.
+ * Decide the curve: the overshoot, the control points and the step count.
+ *
+ * The random draws here are ordered exactly as they were inline (overshoot, jitter,
+ * then the two control-point gaussians) so a seeded glide is byte-identical.
  */
-export function generateChaosTrajectory(
-  start: Point,
-  target: Point,
-  options: ChaosKinematicsOptions = {}
-): PathStep[] {
-  const dx = target.x - start.x;
-  const dy = target.y - start.y;
-  const distance = Math.hypot(dx, dy);
-
-  if (distance === 0) {
-    return [{ x: target.x, y: target.y, delayMs: 16, velocity: 0 }];
-  }
-
+function planPath(start: Point, target: Point, distance: number, options: ChaosKinematicsOptions): PathPlan {
   const enablePinkNoise = options.enablePinkNoise ?? true;
   const enableAsymmetricVelocity = options.enableAsymmetricVelocity ?? true;
   const enableTwoThirdsLaw = options.enableTwoThirdsLaw ?? true;
@@ -180,11 +191,9 @@ export function generateChaosTrajectory(
   const shouldOvershoot = enableOvershoot && distance > 130 && Math.random() < 0.75;
   const overshootDistance = shouldOvershoot ? 3 + Math.random() * 5 : 0;
 
-  // Direction vector
-  const unitDirX = dx / distance;
-  const unitDirY = dy / distance;
-
-  // Perpendicular normal vector
+  // Direction vector and its perpendicular normal
+  const unitDirX = (target.x - start.x) / distance;
+  const unitDirY = (target.y - start.y) / distance;
   const normalX = -unitDirY;
   const normalY = unitDirX;
 
@@ -204,130 +213,212 @@ export function generateChaosTrajectory(
   const curveMag1 = (gaussianRandom() * 0.4 - 0.15) * distance * deviation;
   const curveMag2 = (gaussianRandom() * 0.4 - 0.15) * distance * deviation;
 
-  const cp1: Point = {
-    x: start.x + dx * 0.28 + normalX * curveMag1,
-    y: start.y + dy * 0.28 + normalY * curveMag1,
+  return {
+    start,
+    target,
+    primaryTarget,
+    cp1: {
+      x: start.x + (target.x - start.x) * 0.28 + normalX * curveMag1,
+      y: start.y + (target.y - start.y) * 0.28 + normalY * curveMag1,
+    },
+    cp2: {
+      x: start.x + (target.x - start.x) * 0.72 + normalX * curveMag2,
+      y: start.y + (target.y - start.y) * 0.72 + normalY * curveMag2,
+    },
+    normalX,
+    normalY,
+    baseSteps,
+    shouldOvershoot,
+    features: {
+      pinkNoise: enablePinkNoise,
+      asymmetricVelocity: enableAsymmetricVelocity,
+      twoThirdsLaw: enableTwoThirdsLaw,
+      chaoticAttractor: enableChaoticAttractor,
+    },
   };
+}
 
-  const cp2: Point = {
-    x: start.x + dx * 0.72 + normalX * curveMag2,
-    y: start.y + dy * 0.72 + normalY * curveMag2,
-  };
+/** The state the chaos perturbations carry from sample to sample. */
+interface ChaosClock {
+  ou: OrnsteinUhlenbeckNoise;
+  duffing: DuffingAttractor;
+}
 
+/** The two chaos offsets for one sample: a Duffing wander and an OU tremor. */
+function perturbation(plan: PathPlan, clock: ChaosClock, rawT: number): { x: number; y: number } {
+  // Chaos Perturbation 1: Duffing Attractor Wandering (scaled to micro-pixels)
+  let chaosOffset = 0;
+  if (plan.features.chaoticAttractor) {
+    const attractorVal = clock.duffing.step(0.04);
+    // Wandering is higher mid-flight and settles at start/end
+    const envelope = Math.sin(rawT * Math.PI);
+    chaosOffset = attractorVal * envelope * 2.8;
+  }
+
+  // Chaos Perturbation 2: Ornstein-Uhlenbeck Pink Tremor Noise
+  let tremor: Point = { x: 0, y: 0 };
+  if (plan.features.pinkNoise) {
+    // Tremor dampens as the cursor hones into the target
+    const endDamping = Math.max(0.12, 1 - rawT * 0.85);
+    const rawTremor = clock.ou.next(0.4);
+    tremor = { x: rawTremor.x * endDamping, y: rawTremor.y * endDamping };
+  }
+
+  return { x: plan.normalX * chaosOffset + tremor.x, y: plan.normalY * chaosOffset + tremor.y };
+}
+
+/**
+ * One sample's timing: an asymmetric minimum-jerk speed profile, the two-thirds power
+ * law curvature adjustment and the braking phase, all in milliseconds.
+ */
+function sampleTiming(args: {
+  rawT: number;
+  index: number;
+  trajectory: PathStep[];
+  start: Point;
+  prevPoint: Point;
+  current: Point;
+  prevVelocity: number;
+  features: PathPlan['features'];
+}): { delayMs: number; velocity: number; acceleration: number } {
+  const { rawT, index, trajectory, start, prevPoint, current, prevVelocity, features } = args;
+  const stepDist = Math.hypot(current.x - prevPoint.x, current.y - prevPoint.y);
+
+  // Human Timing via Asymmetric Velocity & Two-Thirds Power Law
+  // Ballistic peak occurs around 30% progress
+  let speedProfile = Math.sin(Math.pow(rawT, 0.65) * Math.PI);
+  speedProfile = Math.max(0.15, speedProfile);
+
+  // Two-Thirds Power Law curvature adjustment
+  let curvatureFactor = 1.0;
+  if (features.twoThirdsLaw && index > 1) {
+    const v1 = { x: prevPoint.x - (trajectory[index - 2]?.x || start.x), y: prevPoint.y - (trajectory[index - 2]?.y || start.y) };
+    const v2 = { x: current.x - prevPoint.x, y: current.y - prevPoint.y };
+    const mag1 = Math.hypot(v1.x, v1.y) || 1;
+    const mag2 = Math.hypot(v2.x, v2.y) || 1;
+    const dot = (v1.x * v2.x + v1.y * v2.y) / (mag1 * mag2);
+    const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
+    const localCurvature = angle / (stepDist || 1);
+    // v ~ kappa^(-1/3) => delay ~ kappa^(1/3)
+    curvatureFactor = 1.0 + Math.pow(Math.min(localCurvature * 10, 2.5), 1 / 3) * 0.35;
+  }
+
+  // Base delay between 11ms and 26ms
+  let stepDelay = Math.max(9, Math.round((20 / (speedProfile + 0.3)) * curvatureFactor));
+
+  // Deceleration braking phase towards primary target
+  if (rawT > 0.85) {
+    stepDelay = Math.round(stepDelay * (1.1 + (rawT - 0.85) * 2));
+  }
+
+  const velocity = stepDelay > 0 ? parseFloat((stepDist / stepDelay).toFixed(2)) : 0;
+  const acceleration = parseFloat(((velocity - prevVelocity) / (stepDelay || 1)).toFixed(3));
+  return { delayMs: stepDelay, velocity, acceleration };
+}
+
+/**
+ * Phase 1: the ballistic reach.
+ *
+ * Each sample is the Bézier point plus the chaos offsets, timed by the profile above.
+ * The draws stay in their original order (Duffing, then tremor) so a seeded glide is
+ * reproducible.
+ */
+function reachPhase(plan: PathPlan): PathStep[] {
+  const { start, baseSteps } = plan;
   const trajectory: PathStep[] = [];
-  const ouNoise = new OrnsteinUhlenbeckNoise(0.7, 0.9);
-  const duffing = new DuffingAttractor();
+  const clock: ChaosClock = { ou: new OrnsteinUhlenbeckNoise(0.7, 0.9), duffing: new DuffingAttractor() };
 
   let prevPoint = start;
   let prevVelocity = 0;
 
-  // Phase 1: Ballistic Reach Trajectory
   for (let i = 0; i <= baseSteps; i++) {
     const rawT = i / baseSteps;
-    const progress = enableAsymmetricVelocity ? asymmetricMinimumJerk(rawT) : rawT * rawT * (3 - 2 * rawT);
+    const progress = plan.features.asymmetricVelocity ? asymmetricMinimumJerk(rawT) : rawT * rawT * (3 - 2 * rawT);
+    const basePoint = cubicBezier(start, plan.cp1, plan.cp2, plan.primaryTarget, progress);
+    const offset = perturbation(plan, clock, rawT);
 
-    const basePoint = cubicBezier(start, cp1, cp2, primaryTarget, progress);
-
-    // Chaos Perturbation 1: Duffing Attractor Wandering (scaled to micro-pixels)
-    let chaosOffset = 0;
-    if (enableChaoticAttractor) {
-      const attractorVal = duffing.step(0.04);
-      // Wandering is higher mid-flight and settles at start/end
-      const envelope = Math.sin(rawT * Math.PI);
-      chaosOffset = attractorVal * envelope * 2.8;
-    }
-
-    // Chaos Perturbation 2: Ornstein-Uhlenbeck Pink Tremor Noise
-    let tremor: Point = { x: 0, y: 0 };
-    if (enablePinkNoise) {
-      // Tremor dampens as the cursor hones into the target
-      const endDamping = Math.max(0.12, 1 - rawT * 0.85);
-      const rawTremor = ouNoise.next(0.4);
-      tremor = {
-        x: rawTremor.x * endDamping,
-        y: rawTremor.y * endDamping,
-      };
-    }
-
-    const currentX = Math.round(basePoint.x + normalX * chaosOffset + tremor.x);
-    const currentY = Math.round(basePoint.y + normalY * chaosOffset + tremor.y);
-
-    const stepDist = Math.hypot(currentX - prevPoint.x, currentY - prevPoint.y);
-
-    // Human Timing via Asymmetric Velocity & Two-Thirds Power Law
-    // Ballistic peak occurs around 30% progress
-    let speedProfile = Math.sin(Math.pow(rawT, 0.65) * Math.PI);
-    speedProfile = Math.max(0.15, speedProfile);
-
-    // Two-Thirds Power Law curvature adjustment
-    let curvatureFactor = 1.0;
-    if (enableTwoThirdsLaw && i > 1) {
-      const v1 = { x: prevPoint.x - (trajectory[i - 2]?.x || start.x), y: prevPoint.y - (trajectory[i - 2]?.y || start.y) };
-      const v2 = { x: currentX - prevPoint.x, y: currentY - prevPoint.y };
-      const mag1 = Math.hypot(v1.x, v1.y) || 1;
-      const mag2 = Math.hypot(v2.x, v2.y) || 1;
-      const dot = (v1.x * v2.x + v1.y * v2.y) / (mag1 * mag2);
-      const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
-      const localCurvature = angle / (stepDist || 1);
-      // v ~ kappa^(-1/3) => delay ~ kappa^(1/3)
-      curvatureFactor = 1.0 + Math.pow(Math.min(localCurvature * 10, 2.5), 1 / 3) * 0.35;
-    }
-
-    // Base delay between 11ms and 26ms
-    let stepDelay = Math.max(9, Math.round((20 / (speedProfile + 0.3)) * curvatureFactor));
-
-    // Deceleration braking phase towards primary target
-    if (rawT > 0.85) {
-      stepDelay = Math.round(stepDelay * (1.1 + (rawT - 0.85) * 2));
-    }
-
-    const velocity = stepDelay > 0 ? parseFloat((stepDist / stepDelay).toFixed(2)) : 0;
-    const accel = parseFloat(((velocity - prevVelocity) / (stepDelay || 1)).toFixed(3));
-
-    trajectory.push({
-      x: currentX,
-      y: currentY,
-      delayMs: stepDelay,
-      velocity,
-      acceleration: accel,
-      isCorrective: false,
+    const current = { x: Math.round(basePoint.x + offset.x), y: Math.round(basePoint.y + offset.y) };
+    const timing = sampleTiming({
+      rawT,
+      index: i,
+      trajectory,
+      start,
+      prevPoint,
+      current,
+      prevVelocity,
+      features: plan.features,
     });
 
-    prevPoint = { x: currentX, y: currentY };
-    prevVelocity = velocity;
+    trajectory.push({ ...current, ...timing, isCorrective: false });
+    prevPoint = current;
+    prevVelocity = timing.velocity;
   }
 
-  // Phase 2: Saccadic Micro-Correction Loop (if overshoot occurred)
-  if (shouldOvershoot) {
-    const recoilSteps = 8 + Math.floor(Math.random() * 5); // 8-12 corrective micro-steps (~40-80ms)
-    const overshootEnd = trajectory[trajectory.length - 1];
+  return trajectory;
+}
 
-    // Brief neural reaction pause (35-65ms) where eye detects overshoot
-    const hesitationDelay = 35 + Math.floor(Math.random() * 30);
+/**
+ * Phase 2: the saccadic micro-correction, when the ballistic phase overshot.
+ *
+ * An exponential pull back to the exact target after a short neural reaction pause.
+ */
+function correctionPhase(plan: PathPlan, trajectory: PathStep[]): void {
+  const { target } = plan;
+  const overshootEnd = trajectory[trajectory.length - 1];
+  const recoilSteps = 8 + Math.floor(Math.random() * 5); // 8-12 corrective micro-steps (~40-80ms)
+  // Brief neural reaction pause (35-65ms) where eye detects overshoot
+  const hesitationDelay = 35 + Math.floor(Math.random() * 30);
+  let prevX = overshootEnd.x;
+  let prevY = overshootEnd.y;
 
-    for (let j = 1; j <= recoilSteps; j++) {
-      const recoilT = j / recoilSteps;
-      // Exponential dampening pull back to exact target centroid
-      const recoilProgress = 1 - Math.exp(-3.5 * recoilT);
+  for (let j = 1; j <= recoilSteps; j++) {
+    const recoilT = j / recoilSteps;
+    // Exponential dampening pull back to exact target centroid
+    const recoilProgress = 1 - Math.exp(-3.5 * recoilT);
 
-      const rx = Math.round(overshootEnd.x + (target.x - overshootEnd.x) * recoilProgress);
-      const ry = Math.round(overshootEnd.y + (target.y - overshootEnd.y) * recoilProgress);
+    const rx = Math.round(overshootEnd.x + (target.x - overshootEnd.x) * recoilProgress);
+    const ry = Math.round(overshootEnd.y + (target.y - overshootEnd.y) * recoilProgress);
 
-      const rDist = Math.hypot(rx - prevPoint.x, ry - prevPoint.y);
-      const rDelay = j === 1 ? hesitationDelay : Math.max(8, Math.round(14 - j * 0.4));
-      const rVelocity = parseFloat((rDist / rDelay).toFixed(2));
+    const rDist = Math.hypot(rx - prevX, ry - prevY);
+    const rDelay = j === 1 ? hesitationDelay : Math.max(8, Math.round(14 - j * 0.4));
+    const rVelocity = parseFloat((rDist / rDelay).toFixed(2));
 
-      trajectory.push({
-        x: rx,
-        y: ry,
-        delayMs: rDelay,
-        velocity: rVelocity,
-        isCorrective: true,
-      });
+    trajectory.push({
+      x: rx,
+      y: ry,
+      delayMs: rDelay,
+      velocity: rVelocity,
+      isCorrective: true,
+    });
 
-      prevPoint = { x: rx, y: ry };
-    }
+    prevX = rx;
+    prevY = ry;
   }
+}
+
+/**
+ * Generates an advanced bio-kinematic trajectory incorporating chaos math,
+ * fractional Brownian motion, and biological human motor neuroscience.
+ *
+ * Why it reads as steps: the curve is planned once, the ballistic reach is walked, the
+ * saccadic correction follows only after an overshoot, and the last point is pinned to
+ * the target. Each step is a function, so a change to the timing cannot perturb the
+ * geometry (or the order of the random draws).
+ */
+export function generateChaosTrajectory(
+  start: Point,
+  target: Point,
+  options: ChaosKinematicsOptions = {}
+): PathStep[] {
+  const distance = Math.hypot(target.x - start.x, target.y - start.y);
+
+  if (distance === 0) {
+    return [{ x: target.x, y: target.y, delayMs: 16, velocity: 0 }];
+  }
+
+  const plan = planPath(start, target, distance, options);
+  const trajectory = reachPhase(plan);
+  if (plan.shouldOvershoot) correctionPhase(plan, trajectory);
 
   // Guarantee absolute precision at final coordinate
   if (trajectory.length > 0) {

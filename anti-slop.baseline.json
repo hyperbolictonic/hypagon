@@ -157,9 +157,6 @@
       "main/snapshots/rendered-snapshot.ts": {
         "function": 1
       },
-      "main/telemetry/chaos-kinematics.ts": {
-        "function": 1
-      },
       "main/telemetry/host-fingerprint.ts": {
         "function": 1
       },
