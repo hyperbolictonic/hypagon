@@ -40,9 +40,18 @@ export function isRecording(): boolean {
   return session !== null;
 }
 
-export async function beginRecording(payload: BeginPayload): Promise<void> {
-  if (session) return;
-
+/**
+ * Capture the desktop stream and start its preview element at the source's size.
+ *
+ * Why it is separate: Electron's `desktopCapturer` constraints are the one place that talks to
+ * `navigator.mediaDevices`, and a failure here must stop any stream it opened.
+ */
+async function openCaptureStream(payload: BeginPayload): Promise<{
+  stream: MediaStream;
+  video: HTMLVideoElement;
+  width: number;
+  height: number;
+}> {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: false,
     video: {
@@ -68,7 +77,21 @@ export async function beginRecording(payload: BeginPayload): Promise<void> {
 
   const width = video.videoWidth || payload.maxWidth;
   const height = video.videoHeight || Math.round((payload.maxWidth * 9) / 16);
+  return { stream, video, width, height };
+}
 
+/**
+ * Build the VP9 encoder, its muxer and the 2D canvas the frames are drawn onto.
+ *
+ * Why it is separate: the codec probe can refuse the whole feature, and the caller must stop the
+ * capture stream when it does.
+ */
+async function createEncoder(
+  payload: BeginPayload,
+  width: number,
+  height: number,
+  stream: MediaStream,
+): Promise<{ encoder: VideoEncoder; muxer: Muxer<ArrayBufferTarget>; target: ArrayBufferTarget; canvas: HTMLCanvasElement }> {
   const support = await VideoEncoder.isConfigSupported({
     codec: CODEC,
     width,
@@ -99,8 +122,16 @@ export async function beginRecording(payload: BeginPayload): Promise<void> {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext('2d', { alpha: false });
-  if (!ctx) throw new Error('Could not create a 2D context for recording.');
+  if (!canvas.getContext('2d', { alpha: false })) throw new Error('Could not create a 2D context for recording.');
+  return { encoder, muxer, target, canvas };
+}
+
+export async function beginRecording(payload: BeginPayload): Promise<void> {
+  if (session) return;
+
+  const { stream, video, width, height } = await openCaptureStream(payload);
+  const { encoder, muxer, target, canvas } = await createEncoder(payload, width, height, stream);
+  const ctx = canvas.getContext('2d', { alpha: false })!;
 
   const frameDurationUs = Math.round(1_000_000 / payload.fps);
   let frames = 0;
