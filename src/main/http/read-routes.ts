@@ -26,7 +26,7 @@ const ROUTES: Record<string, ReadHandler> = {
     const full = ['1', 'true'].includes((url.searchParams.get('full') || '').toLowerCase());
     // The hidden alias dumps the whole construct, so it passes through the same
     // hard funnel as observe(as:"markdown") with no budget or region.
-    const pre = await chassis.precheckJevPageRead({ as: 'markdown', full });
+    const pre = await chassis.jev.precheckPageRead({ as: 'markdown', full });
     if (pre.blocked) {
       sendJson(
         {
@@ -42,7 +42,7 @@ const ROUTES: Record<string, ReadHandler> = {
     const construct = await chassis.harvestMarkdown({ includeMarks, includeOffscreen });
     const guard: { allowed: boolean; note?: string; refusal?: Record<string, any> } = pre.note
       ? { allowed: true, note: pre.note }
-      : chassis.guardJevPageRead({
+      : chassis.jev.guardPageRead({
           as: 'markdown',
           full,
           pageTokens: construct.estimatedTokens || Math.ceil(String(construct.content || '').length / 4),

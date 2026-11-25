@@ -28,9 +28,9 @@ const ROUTES: Record<string, NavHandler> = {
     }
     const result = await chassis.navigateTo(targetUrl, autoDismiss);
     // Live nudge at the moment reading starts: the index is cheap, the dump is not.
-    const guided = chassis.isJevEnforced()
+    const guided = chassis.jev.isEnforced()
       ? `${result} | JEV ENFORCED: unscoped page reads are refused. Call jev_index, then read_section for only what you need.`
-      : chassis.isJevEnabled()
+      : chassis.jev.isEnabled()
         ? `${result} | JEV ACTIVE: call jev_index before reading this page, then read_section for only what you need.`
         : result;
     sendOk({ result: guided });

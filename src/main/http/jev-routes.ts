@@ -13,23 +13,23 @@ type JevHandler = (ctx: ChassisRouteContext) => Promise<void> | void;
 
 const ROUTES: Record<string, JevHandler> = {
   'GET /jev/stats': ({ chassis, sendJson }) => {
-    sendJson({ success: true, ...chassis.getJevStats(), status: chassis.getJevStatus() });
+    sendJson({ success: true, ...chassis.jev.getStats(), status: chassis.jev.getStatus() });
   },
 
   'GET /jev/index': async ({ chassis, sendJson }) => {
-    sendJson(await chassis.jevIndex());
+    sendJson(await chassis.jev.index());
   },
 
   'POST /jev/read': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
     const sectionId = String(body.section_id ?? body.sectionId ?? '');
     const includeChildren = body.include_children === true || body.includeChildren === true;
-    sendJson(chassis.jevReadSection(sectionId, includeChildren));
+    sendJson(chassis.jev.readSection(sectionId, includeChildren));
   },
 
   'POST /jev/search': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    sendJson(chassis.jevSearch(String(body.query ?? '')));
+    sendJson(chassis.jev.search(String(body.query ?? '')));
   },
 };
 

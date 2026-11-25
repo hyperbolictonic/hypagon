@@ -667,7 +667,7 @@ async function createWindow() {
     activeMediaService = media;
     media.startUpdater();
     chassis.setCollabEnabledProvider(() => experimentalSettings().get().collab);
-    chassis.setJevPolicyProvider(() => jevPolicy());
+    chassis.jev.setPolicyProvider(() => jevPolicy());
     // The deck toolbar's list + note cycling read exactly what the page overlay shows.
     chassis.setCollaborationThreadsProvider((filter) => collaboration.list(filter));
     chassis.setCollaborationOverlayRefresher(() => collaboration.refreshOverlay());

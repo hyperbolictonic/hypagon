@@ -26,8 +26,6 @@ import { bump } from './metrics.js';
 import { ActionLedger } from './telemetry/action-ledger.js';
 import { ConstructHarvester } from './harvester/markdown.js';
 import { fetchStatic } from './network/impersonate.js';
-import type { JevStatus } from './jev/engine.js';
-import type { GuardPageReadInput, GuardPageReadResult, PageReadRequest, PrecheckPageReadResult } from './jev/read-contract.js';
 import { JevController } from './jev/controller.js';
 import { DeckController } from './deck/controller.js';
 import { captureComposedDom } from './harvester/dom-serializer.js';
@@ -294,8 +292,8 @@ export class BrowserChassis {
       log: (level, msg) => this.addLog(level, msg),
       evaluate: (script) => this.evaluateQuiet(script),
       harvest: (opts) => this.harvestMarkdown(opts),
-    guardPageRead: (input) => this.guardJevPageRead(input),
-    precheckPageRead: (input) => this.precheckJevPageRead(input),
+    guardPageRead: (input) => this.jev.guardPageRead(input),
+    precheckPageRead: (input) => this.jev.precheckPageRead(input),
       injectMarks: (opts) => this.scanMarks(this.getActiveWebContents(), opts || {}),
       removeMarks: () => this.marksOverlay.removeMarks(this.getActiveWebContents()),
       getMarks: () => this.getActiveMarks(),
@@ -758,87 +756,15 @@ export class BrowserChassis {
   // The policy, funnel, loop breaker, stats and depth store live in JevController;
   // these delegations keep the chassis's public surface unchanged.
 
-  private readonly jevController = new JevController({
+  readonly jev = new JevController({
     policy: () => ({ available: false, enforce: false }),
     pageInfo: () => this.getPageInfo(),
     evaluate: (script) => this.evaluateQuiet(script),
     harvest: () => this.harvestMarkdown(),
   });
 
-  public setJevPolicyProvider(policy: () => { available: boolean; enforce: boolean }): void {
-    this.jevController.setPolicyProvider(policy);
-  }
-
-  public getJevPolicy(): { available: boolean; enforce: boolean } {
-    return this.jevController.getPolicy();
-  }
-
-  public isJevEnabled(): boolean {
-    return this.jevController.isEnabled();
-  }
-
-  public isJevEnforced(): boolean {
-    return this.jevController.isEnforced();
-  }
-
-  public getJevStats(): { blocked: number; precheck: number; bypassed: number; loopBreaker: number; blockedTokens: number; breaker: Array<{ url: string; refusals: number; firstAt: number }> } {
-    return this.jevController.getStats();
-  }
-
-  public getJevStatus(): JevStatus {
-    return this.jevController.getStatus();
-  }
-
-  public async precheckJevPageRead(input: {
-    as: string;
-    region?: unknown;
-    budget?: number;
-    cursor?: unknown;
-    full?: boolean;
-  }): Promise<{ blocked: boolean; note?: string; refusal?: Record<string, any> }> {
-    return this.jevController.precheckPageRead(input);
-  }
-
-  public guardJevPageRead(input: {
-    as: string;
-    region?: unknown;
-    budget?: number;
-    cursor?: unknown;
-    full?: boolean;
-    pageTokens: number;
-    url?: string;
-    title?: string;
-    content?: string;
-  }): {
-    allowed: boolean;
-    reason: string;
-    note?: string;
-    refusal?: {
-      page: { url: string; tokens: number; sections: number };
-      next: Array<Record<string, any>>;
-      override: Record<string, any>;
-    };
-  } {
-    return this.jevController.guardPageRead(input);
-  }
-
-  public async jevIndex(): Promise<{ ok: boolean; error?: string; index?: string; status?: JevStatus }> {
-    return this.jevController.index();
-  }
-
-  public jevReadSection(
-    sectionId: string,
-    includeChildren = false,
-  ): { ok: boolean; section_id?: string; tokens?: number; content?: string; folded?: string[]; error?: string } {
-    return this.jevController.readSection(sectionId, includeChildren);
-  }
-
-  public jevSearch(query: string): { ok: boolean; hits?: Array<{ section_id: string; heading: string; matches: number; snippet: string }>; error?: string } {
-    return this.jevController.search(query);
-  }
-
   private purgeJevDepthStore(): void {
-    this.jevController.purge();
+    this.jev.purge();
   }
 
 

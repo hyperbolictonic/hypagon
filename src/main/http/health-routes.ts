@@ -62,7 +62,7 @@ const ROUTES: Record<string, HealthHandler> = {
     const settings = toolSettings?.load() ?? DEFAULT_TOOL_SETTINGS;
     // JEV availability is live bridge state, not a saved preference: the MCP server reads it
     // to lead tools/list with the index/read path and to mark the full-page dump as a fallback.
-    const policy = chassis.getJevPolicy();
+    const policy = chassis.jev.getPolicy();
     sendJson({
       success: true,
       ...settings,
