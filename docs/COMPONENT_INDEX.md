@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 275 files, 925 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 280 files, 927 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (781)
+## Types (774)
 
 | File | Export | When to use |
 |---|---|---|
@@ -109,19 +109,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/crawl/crawler.ts` | `CrawlPage` *(type)* | - |
 | `main/crawl/crawler.ts` | `CrawlOutcome` *(type)* | - |
 | `main/crawl/crawler.ts` | `CrawlerDeps` *(type)* | - |
-| `main/decide/decision-client.ts` | `resolveDecisionConfig` | Resolve configuration (env overrides file). Returns null when nothing is configured. |
-| `main/decide/decision-client.ts` | `readStoredDecisionConfig` | Raw configuration as stored on disk (file values only — env is read at resolve time). |
-| `main/decide/decision-client.ts` | `saveDecisionConfig` | Persist (or clear) `data/decision.json`. Returns the resolved status so the caller can show |
-| `main/decide/decision-client.ts` | `decisionStatus` | Shape reported by `/health` and `help`, so an agent can tell whether `decide` will work. |
-| `main/decide/decision-client.ts` | `onDecision` | Subscribe to completed decision calls (the HUD mirrors this; it never gates the call). |
-| `main/decide/decision-client.ts` | `emitDecisionEvent` | - |
-| `main/decide/decision-client.ts` | `runDecision` | One decision call. Never throws: failures are returned as typed results. |
-| `main/decide/decision-client.ts` | `DecisionProtocol` *(type)* | - |
-| `main/decide/decision-client.ts` | `DecisionConfig` *(type)* | - |
-| `main/decide/decision-client.ts` | `DecisionCall` *(type)* | - |
-| `main/decide/decision-client.ts` | `DecisionFailureCode` *(type)* | - |
-| `main/decide/decision-client.ts` | `DecisionResult` *(type)* | - |
-| `main/decide/decision-client.ts` | `DecisionEvent` *(type)* | One completed decision call, for the HUD's DECISIONS tab. Never contains the API key. |
 | `main/decide/decision-guard.ts` | `validateAnswers` | Validate one answer set. Returns the offending (question, option) pairs so the caller can |
 | `main/decide/decision-guard.ts` | `decideGuarded` | Ask, validate, eliminate, repeat. `maxAttempts` includes the first call (default 3). |
 | `main/decide/decision-guard.ts` | `DecisionGuard` *(type)* | - |
@@ -134,6 +121,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/decide/sensitive-gate.ts` | `detectSensitiveGate` | Inspect the state Kuang is about to send. `state` may be the composed page text or the component |
 | `main/decide/sensitive-gate.ts` | `SensitiveGate` *(type)* | Sensitive gates — situations where the correct action is **a human**, never a click. |
 | `main/decide/sensitive-gate.ts` | `GateDetection` *(type)* | - |
+| `main/decide/types.ts` | `DecisionProtocol` *(type)* | When to use: naming the transport in config and results. |
+| `main/decide/types.ts` | `DecisionConfig` *(type)* | When to use: resolving what `decide` will call. |
+| `main/decide/types.ts` | `DecisionCall` *(type)* | When to use: passing a page state and typed questions to the model. |
+| `main/decide/types.ts` | `DecisionFailureCode` *(type)* | When to use: mapping a failure to its typed code. |
+| `main/decide/types.ts` | `DecisionResult` *(type)* | When to use: the entry point's return value. |
+| `main/decide/types.ts` | `DecisionEvent` *(type)* | When to use: the HUD's DECISIONS tab record. |
 | `main/deck/collab.ts` | `CollabController` | When to use: the deck surface — own the note cycle, list popup and overlay providers. |
 | `main/deck/collab.ts` | `CollabControllerDeps` *(type)* | When to use: building the deck — everything the collab cycle reads through. |
 | `main/deck/controller.ts` | `DeckController` | When to use: the chassis — own the deck panel view, its modes and orb geometry. |
@@ -803,7 +796,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (138)
+## Modules (147)
 
 | File | Export | When to use |
 |---|---|---|
@@ -829,6 +822,15 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/data-paths.ts` | `dataRoot` | - |
 | `main/data-paths.ts` | `dataPath` | - |
 | `main/data-paths.ts` | `writeJsonAtomic` | When to use: persisting a JSON settings/state file — mkdir, write to a temp |
+| `main/decide/config.ts` | `resolveDecisionConfig` | Resolve configuration (env overrides file). Returns null when nothing is configured. |
+| `main/decide/config.ts` | `readStoredDecisionConfig` | Raw configuration as stored on disk (file values only — env is read at resolve time). |
+| `main/decide/config.ts` | `saveDecisionConfig` | Persist (or clear) `data/decision.json`. Returns the resolved status so the caller can show |
+| `main/decide/config.ts` | `decisionStatus` | Shape reported by `/health` and `help`, so an agent can tell whether `decide` will work. |
+| `main/decide/decision-client.ts` | `runDecision` | One decision call. Never throws: failures are returned as typed results. |
+| `main/decide/events.ts` | `onDecision` | Subscribe to completed decision calls (the HUD mirrors this; it never gates the call). |
+| `main/decide/events.ts` | `emitDecisionEvent` | When to use: after a call completes — fan the record out to the HUD. |
+| `main/decide/local.ts` | `runLocalOnnx` | When to use: the local-onnx protocol. |
+| `main/decide/transport.ts` | `runTypesafe` | When to use: the typesafe protocol. |
 | `main/diagnostics/main-log.ts` | `mainLogFile` | - |
 | `main/diagnostics/main-log.ts` | `logMainEvent` | - |
 | `main/http/bookmarks-routes.ts` | `handleBookmarkRoutes` | When to use: the bridge request handler — dispatch `/bookmarks`. Returns |

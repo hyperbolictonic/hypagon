@@ -15,7 +15,6 @@
       "main/cortex/embedder.ts": 2,
       "main/crawl/crawler.ts": 6,
       "main/data-paths.ts": 2,
-      "main/decide/decision-client.ts": 6,
       "main/decide/decision-guard.ts": 3,
       "main/decide/sensitive-gate.ts": 1,
       "main/diagnostics/main-log.ts": 2,
@@ -173,12 +172,6 @@
         "function": 1
       },
       "main/crawl/crawler.ts": {
-        "function": 1
-      },
-      "main/decide/decision-client.ts": {
-        "function": 1
-      },
-      "main/decide/decision-guard.ts": {
         "function": 1
       },
       "main/deck/collab.ts": {

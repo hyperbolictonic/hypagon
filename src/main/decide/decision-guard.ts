@@ -173,6 +173,121 @@ function emitNoDecision(state: unknown, questions: Record<string, any>, reasons:
   });
 }
 
+/** A non-human failure ends the run without eliminations. */
+function terminalFailure(
+  result: DecisionResult,
+  attempt: number,
+  removed: Record<string, string[]>,
+  rejections: GuardRejection[],
+  reasons: string[],
+  started: number,
+): GuardedDecision {
+  return {
+    ok: false,
+    accepted: false,
+    protocol: result.protocol,
+    model: result.model,
+    attempts: attempt,
+    removed,
+    rejections,
+    reasons: [...reasons, result.error?.message || 'decision call failed'],
+    latencyMs: Date.now() - started,
+    error: result.error,
+  };
+}
+
+/** A sensitive gate stopped the call before the model: hand straight to the human. */
+function humanRequired(
+  result: DecisionResult,
+  attempt: number,
+  removed: Record<string, string[]>,
+  rejections: GuardRejection[],
+  started: number,
+): GuardedDecision {
+  return {
+    ok: false,
+    accepted: false,
+    fallback: 'human',
+    gate: result.gate,
+    protocol: result.protocol,
+    model: result.model,
+    attempts: attempt,
+    removed,
+    rejections,
+    reasons: [result.error?.message, result.error?.hint].filter(Boolean) as string[],
+    latencyMs: Date.now() - started,
+    error: result.error,
+  };
+}
+
+/** The model produced an answer the guard accepts. */
+function acceptedDecision(
+  result: DecisionResult,
+  attempt: number,
+  removed: Record<string, string[]>,
+  rejections: GuardRejection[],
+  reasons: string[],
+  started: number,
+): GuardedDecision {
+  return {
+    ok: true,
+    accepted: true,
+    protocol: result.protocol,
+    model: result.model,
+    answers: result.answers,
+    attempts: attempt,
+    removed,
+    rejections,
+    reasons,
+    latencyMs: Date.now() - started,
+    imageNote: result.imageNote,
+    gate: result.gate,
+  };
+}
+
+/** Every option was eliminated (or the attempt budget ran out): the agent decides. */
+function exhaustedDecision(args: {
+  attempt: number;
+  result?: DecisionResult;
+  removed: Record<string, string[]>;
+  rejections: GuardRejection[];
+  reasons: string[];
+  message: string;
+  started: number;
+}): GuardedDecision {
+  const { attempt, result, removed, rejections, reasons, message, started } = args;
+  return {
+    ok: true,
+    accepted: false,
+    exhausted: true,
+    fallback: 'agent',
+    protocol: result?.protocol,
+    model: result?.model,
+    answers: result?.answers,
+    attempts: attempt,
+    removed,
+    rejections,
+    reasons: [...reasons, message],
+    latencyMs: Date.now() - started,
+  };
+}
+
+/** Remove one rejected option; true when that question has no options left. */
+function eliminate(
+  rejection: GuardRejection,
+  questions: Record<string, any>,
+  removed: Record<string, string[]>,
+  reasons: string[],
+): boolean {
+  reasons.push(rejection.reason);
+  const question = questions[rejection.question];
+  if (!question) return false;
+  const next = withoutOption(question, rejection.option);
+  questions[rejection.question] = next;
+  (removed[rejection.question] ||= []).push(rejection.option);
+  return optionCount(next) < 1;
+}
+
 /**
  * Ask, validate, eliminate, repeat. `maxAttempts` includes the first call (default 3).
  */
@@ -190,100 +305,30 @@ export async function decideGuarded(opts: {
   const removed: Record<string, string[]> = {};
   const rejections: GuardRejection[] = [];
   const reasons: string[] = [];
-  let questions = clone(opts.questions || {});
+  const questions = clone(opts.questions || {});
   const started = Date.now();
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const result = await runDecision({ state: opts.state, questions, model: opts.model, assets: opts.assets, pageUrl: opts.pageUrl });
     if (!result.ok) {
       // A sensitive gate is not a failed attempt: no model was called, no option is elimable.
-      // Hand straight to the human.
-      if (result.error?.code === 'HUMAN_REQUIRED') {
-        return {
-          ok: false,
-          accepted: false,
-          fallback: 'human',
-          gate: result.gate,
-          protocol: result.protocol,
-          model: result.model,
-          attempts: attempt,
-          removed,
-          rejections,
-          reasons: [result.error.message, result.error.hint].filter(Boolean) as string[],
-          latencyMs: Date.now() - started,
-          error: result.error,
-        };
-      }
-      return {
-        ok: false,
-        accepted: false,
-        protocol: result.protocol,
-        model: result.model,
-        attempts: attempt,
-        removed,
-        rejections,
-        reasons: [...reasons, result.error?.message || 'decision call failed'],
-        latencyMs: Date.now() - started,
-        error: result.error,
-      };
+      if (result.error?.code === 'HUMAN_REQUIRED') return humanRequired(result, attempt, removed, rejections, started);
+      return terminalFailure(result, attempt, removed, rejections, reasons, started);
     }
 
     const verdict = validateAnswers(result.answers || {}, guard);
-    if (verdict.ok) {
-      return {
-        ok: true,
-        accepted: true,
-        protocol: result.protocol,
-        model: result.model,
-        answers: result.answers,
-        attempts: attempt,
-        removed,
-        rejections,
-        reasons,
-        latencyMs: Date.now() - started,
-        imageNote: (result as any).imageNote,
-        gate: (result as any).gate,
-      };
-    }
+    if (verdict.ok) return acceptedDecision(result, attempt, removed, rejections, reasons, started);
 
     rejections.push(...verdict.rejections);
     for (const rejection of verdict.rejections) {
-      reasons.push(rejection.reason);
-      const question = questions[rejection.question];
-      if (!question) continue;
-      const next = withoutOption(question, rejection.option);
-      questions[rejection.question] = next;
-      (removed[rejection.question] ||= []).push(rejection.option);
-      if (optionCount(next) < 1) {
-        emitNoDecision(opts.state, opts.questions, [...reasons, `every option for "${rejection.question}" was eliminated`], attempt, result.protocol, result.model);
-        return {
-          ok: true,
-          accepted: false,
-          exhausted: true,
-          fallback: 'agent',
-          protocol: result.protocol,
-          model: result.model,
-          answers: result.answers,
-          attempts: attempt,
-          removed,
-          rejections,
-          reasons: [...reasons, `every option for "${rejection.question}" was eliminated`],
-          latencyMs: Date.now() - started,
-        };
-      }
+      if (!eliminate(rejection, questions, removed, reasons)) continue;
+      const message = `every option for "${rejection.question}" was eliminated`;
+      emitNoDecision(opts.state, opts.questions, [...reasons, message], attempt, result.protocol, result.model);
+      return exhaustedDecision({ attempt, result, removed, rejections, reasons, message, started });
     }
   }
 
+  const message = `${maxAttempts} attempt(s) produced no acceptable answer — the agent decides`;
   emitNoDecision(opts.state, opts.questions, [...reasons, `${maxAttempts} attempt(s) produced no acceptable answer`], maxAttempts);
-  return {
-    ok: true,
-    accepted: false,
-    exhausted: true,
-    fallback: 'agent',
-    attempts: maxAttempts,
-    removed,
-    rejections,
-    reasons: [...reasons, `${maxAttempts} attempt(s) produced no acceptable answer — the agent decides`],
-    latencyMs: Date.now() - started,
-  };
+  return exhaustedDecision({ attempt: maxAttempts, removed, rejections, reasons, message, started });
 }

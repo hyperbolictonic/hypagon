@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-275 modules, 925 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+280 modules, 927 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -35,11 +35,16 @@
 | `main/cortex/embedder.ts` | 9: registerEmbeddingProvider, listEmbeddingProviders, setEmbeddingProvider, getEmbeddingProvider, embedText, generateEmbedding, DEFAULT_PROVIDER_ID, EMBEDDING_DIM, … (9) |
 | `main/crawl/crawler.ts` | 9: normalizeUrl, matchesAnyPattern, linksFromMarkdown, Crawler, HumanAssistInfo, CrawlOptions, CrawlPage, CrawlOutcome, … (9) |
 | `main/data-paths.ts` | 3: dataRoot, dataPath, writeJsonAtomic |
-| `main/decide/decision-client.ts` | 13: resolveDecisionConfig, readStoredDecisionConfig, saveDecisionConfig, decisionStatus, onDecision, emitDecisionEvent, runDecision, DecisionProtocol, … (13) |
+| `main/decide/config.ts` | 4: resolveDecisionConfig, readStoredDecisionConfig, saveDecisionConfig, decisionStatus |
+| `main/decide/decision-client.ts` | 1: runDecision |
 | `main/decide/decision-guard.ts` | 5: validateAnswers, decideGuarded, DecisionGuard, GuardRejection, GuardedDecision |
 | `main/decide/decision-questions.ts` | 2: summarizeQuestions, DecisionQuestionSummary |
 | `main/decide/decision-surface.ts` | 2: DecisionSurface, DecisionSurfaceDeps |
+| `main/decide/events.ts` | 2: onDecision, emitDecisionEvent |
+| `main/decide/local.ts` | 1: runLocalOnnx |
 | `main/decide/sensitive-gate.ts` | 3: detectSensitiveGate, SensitiveGate, GateDetection |
+| `main/decide/transport.ts` | 1: runTypesafe |
+| `main/decide/types.ts` | 6: DecisionProtocol, DecisionConfig, DecisionCall, DecisionFailureCode, DecisionResult, DecisionEvent |
 | `main/deck/collab.ts` | 2: CollabController, CollabControllerDeps |
 | `main/deck/controller.ts` | 3: DeckController, DeckMode, DeckControllerDeps |
 | `main/diagnostics/console-log.ts` | 2: ConsoleLogBuffer, ConsoleLogEntry |
@@ -121,12 +126,7 @@
 | `main/primitives/control-facts.ts` | 5: controlFactsExpression, parseControlFacts, ControlAction, ControlFacts, ControlFactsOptions |
 | `main/primitives/dom-targeting.ts` | 10: elementExpr, targetBoxScript, fieldFactsScript, focusControlScript, diagnosticsScript, inputProbeInstallScript, inputProbeReadScript, DEEP_DOM_HELPERS, … (10) |
 | `main/primitives/primitives.ts` | 14: DEFAULT_MARKDOWN_BUDGET, PrimitiveError, Primitives, PrimitivesHost, PrimitiveErrorCode, WaitCondition, ConditionResult, WaitResult, … (14) |
-| `main/primitives/text-target.ts` | 6: textTargetExpression, parseTextTargets, resolveTextTargets, TextTargetOptions, TextTargetMatch, TextTargetResult |
-| `main/recipes/compile.ts` | 3: compileDriveSteps, DriveStepLike, CompileOptions |
-| `main/recipes/recipe-store.ts` | 11: loadRecipes, originOf, recipesFor, saveRecipe, deleteRecipe, recordResult, retireRecipe, RecipeStep, … (11) |
-| `main/recipes/replay.ts` | 4: replayRecipe, RecipeRunner, ReplayStepResult, ReplayResult |
-| `main/recording/recording-service.ts` | 16: onRecordingStatus, setRecordingWindow, loadRecordingConfig, getRecordingConfig, saveRecordingConfig, getRecordingStatus, pickRecordingDir, startRecording, … (16) |
 
-… and 150 more module(s) — grep the full index.
+… and 155 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.
