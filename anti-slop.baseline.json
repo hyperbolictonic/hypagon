@@ -177,9 +177,6 @@
       "renderer/recording.ts": {
         "function": 1
       },
-      "renderer/tools-panel.ts": {
-        "function": 2
-      },
       "renderer/viewport-controls.ts": {
         "function": 1
       }
