@@ -33,7 +33,7 @@
       "main/media/cookies.ts": 1,
       "main/media/exec.ts": 2,
       "main/media/ffmpeg.ts": 6,
-      "main/media/jobs.ts": 9,
+      "main/media/jobs.ts": 1,
       "main/media/platform.ts": 2,
       "main/media/service.ts": 10,
       "main/media/settings.ts": 3,
@@ -166,11 +166,6 @@
       },
       "main/jev/controller.ts": {
         "class": 1
-      },
-      "main/media/jobs.ts": {
-        "class": 1,
-        "file": 1,
-        "function": 1
       },
       "main/media/service.ts": {
         "class": 1,

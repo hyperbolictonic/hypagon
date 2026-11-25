@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 307 files, 987 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 313 files, 996 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (810)
+## Types (813)
 
 | File | Export | When to use |
 |---|---|---|
@@ -293,18 +293,21 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/media/ffmpeg.ts` | `installManagedFfmpeg` | Download the pinned managed build for this platform. Idempotent while a |
 | `main/media/ffmpeg.ts` | `FfmpegSource` *(type)* | - |
 | `main/media/ffmpeg.ts` | `FfmpegInfo` *(type)* | - |
-| `main/media/jobs.ts` | `buildFormatSelector` | Format selector for one job. |
-| `main/media/jobs.ts` | `buildDownloadArgs` | yt-dlp arguments for a job. Every value is built here, never passed through. |
-| `main/media/jobs.ts` | `parseProgressLine` | Parse one `--newline` progress line. Returns null for lines that are not progress. |
+| `main/media/job-complete.ts` | `finishJob` | When to use: any terminal transition — sets state/error/time and persists. |
+| `main/media/job-complete.ts` | `completeJob` | When to use: the child closed — clean up, collect files or explain the failure. |
+| `main/media/job-complete.ts` | `CompletionDeps` *(type)* | When to use: `MediaJobs.run` — what completion needs from the queue. |
+| `main/media/job-process.ts` | `terminate` | Kill the whole process group; yt-dlp spawns ffmpeg as a child. |
+| `main/media/job-process.ts` | `startDownloadProcess` | When to use: `MediaJobs.run` — starts the download and returns the child so |
+| `main/media/job-process.ts` | `DownloadProcessDeps` *(type)* | When to use: `MediaJobs.run` — everything the process needs from the queue. |
+| `main/media/job-types.ts` | `MediaKind` *(type)* | What a job downloads: a video file, or the audio track only. |
+| `main/media/job-types.ts` | `MediaQuality` *(type)* | The requested ceiling; `best`/`worst` keep yt-dlp's own ranking. |
+| `main/media/job-types.ts` | `MediaJobState` *(type)* | Where a job is in its lifecycle. |
+| `main/media/job-types.ts` | `MediaJobFile` *(type)* | When to use: one finished file of a download job. |
+| `main/media/job-types.ts` | `MediaProgress` *(type)* | When to use: the parsed `--newline` progress of a running job. |
+| `main/media/job-types.ts` | `MediaJob` *(type)* | When to use: `media jobs` — one queued, running or finished download. |
+| `main/media/job-types.ts` | `MediaJobInput` *(type)* | When to use: the enqueue call the bridge makes. |
 | `main/media/jobs.ts` | `MediaJobs` | - |
-| `main/media/jobs.ts` | `MediaKind` *(type)* | - |
-| `main/media/jobs.ts` | `MediaQuality` *(type)* | - |
-| `main/media/jobs.ts` | `MediaJobState` *(type)* | - |
-| `main/media/jobs.ts` | `MediaJobFile` *(type)* | - |
-| `main/media/jobs.ts` | `MediaProgress` *(type)* | - |
-| `main/media/jobs.ts` | `MediaJob` *(type)* | - |
-| `main/media/jobs.ts` | `MediaJobInput` *(type)* | - |
-| `main/media/jobs.ts` | `MediaJobsOptions` *(type)* | - |
+| `main/media/jobs.ts` | `MediaJobsOptions` *(type)* | When to use: constructing the queue — paths, binary resolution and the cookie hook. |
 | `main/media/platform.ts` | `mediaPlatformKey` | `win32-x64`, `darwin-arm64`, `linux-x64` — matches `bin/media/<key>`. |
 | `main/media/platform.ts` | `ytDlpFileName` | - |
 | `main/media/platform.ts` | `ytdlpRuntimeOptions` | Point yt-dlp at Electron's own binary as a Node runtime. |
@@ -839,7 +842,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (169)
+## Modules (175)
 
 | File | Export | When to use |
 |---|---|---|
@@ -924,6 +927,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/marks/format-mark.ts` | `formatMark` | Renders one Set-of-Marks entry as a compact, accessibility-aware line: |
 | `main/media/auth.ts` | `needsLogin` | Does yt-dlp's output say the site wants a signed-in session? |
 | `main/media/cookie-format.ts` | `toNetscape` | Netscape cookie-file text for yt-dlp's `--cookies`. |
+| `main/media/job-files.ts` | `listFiles` | When to use: after a successful download — the real files, largest first. |
+| `main/media/job-format.ts` | `buildFormatSelector` | Format selector for one job. |
+| `main/media/job-format.ts` | `buildDownloadArgs` | yt-dlp arguments for a job. Every value is built here, never passed through. |
+| `main/media/job-format.ts` | `parseProgressLine` | Parse one `--newline` progress line. Returns null for lines that are not progress. |
+| `main/media/job-format.ts` | `blankProgress` | A progress row with no measurements yet, for the given stage. |
+| `main/media/job-store.ts` | `JobHistoryStore` | When to use: constructing `MediaJobs` — one history file per root directory. |
 | `main/media/settings.ts` | `normalizeMediaSettings` | - |
 | `main/media/settings.ts` | `DEFAULT_MEDIA_SETTINGS` | - |
 | `main/media/settings.ts` | `MediaSettingsStore` | - |
