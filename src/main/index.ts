@@ -614,7 +614,7 @@ async function createWindow() {
   void chassis.shadow.applySettings();
 
   // Warm Cortex so the first URL-bar suggestion does not pay table initialization on a keystroke.
-  void chassis.getCortex().initialize().catch(() => undefined);
+  void chassis.cortex.initialize().catch(() => undefined);
 
   // Handle external navigation
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -641,7 +641,7 @@ async function createWindow() {
         // Opt-in per recipe (`response.index: "cortex"`). Chunks land in the same
         // page_history table as browsed pages, so `recall_memory` finds them.
         indexDocuments: async (documents, context) => {
-          const cortex = chassis.getCortex();
+          const cortex = chassis.cortex;
           let chunks = 0;
           for (const document of documents) {
             chunks += await cortex.indexPage(context.url, document.title, document.markdown);

@@ -16,7 +16,7 @@ type PrimitiveHandler = (ctx: ChassisRouteContext) => Promise<void> | void;
 
 /** `GET` and `POST /page-state` are the same read; declared once so they cannot drift. */
 const pageState = async ({ chassis, sendOk }: ChassisRouteContext) => {
-  sendOk({ state: await chassis.getPrimitives().pageState() });
+  sendOk({ state: await chassis.primitives.pageState() });
 };
 
 /** Both wait-for and expect accept one condition or a list; normalize the alias once. */
@@ -64,7 +64,7 @@ const ROUTES: Record<string, PrimitiveHandler> = {
   'POST /diff': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
     const since = body?.since !== undefined && body.since !== null && body.since !== '' ? Number(body.since) : undefined;
-    const diff = await chassis.getPrimitives().diff(isNaN(Number(since)) ? undefined : since);
+    const diff = await chassis.primitives.diff(isNaN(Number(since)) ? undefined : since);
     sendOk(diff);
   },
 
@@ -75,7 +75,7 @@ const ROUTES: Record<string, PrimitiveHandler> = {
       sendJson({ success: false, error: 'Provide { conditions: [{type:"selector", selector:"..."}] }', code: 'BAD_REQUEST' }, 400);
       return;
     }
-    const result = await chassis.getPrimitives().waitFor(conditions, {
+    const result = await chassis.primitives.waitFor(conditions, {
       timeoutMs: body.timeout_ms ?? body.timeoutMs,
       pollMs: body.poll_ms ?? body.pollMs,
       require: body.require === 'all' ? 'all' : 'any',
@@ -85,7 +85,7 @@ const ROUTES: Record<string, PrimitiveHandler> = {
 
   'POST /expect': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
-    sendOk(await chassis.getPrimitives().expect(conditionsOf(body)));
+    sendOk(await chassis.primitives.expect(conditionsOf(body)));
   },
 
   'POST /focus_walk': async ({ chassis, readBody, sendOk }) => {
@@ -103,7 +103,7 @@ const ROUTES: Record<string, PrimitiveHandler> = {
 
   'POST /find': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
-    const data = await chassis.getPrimitives().find({
+    const data = await chassis.primitives.find({
       role: body?.role,
       name: body?.name,
       contains: body?.contains ?? body?.text,
@@ -132,7 +132,7 @@ const ROUTES: Record<string, PrimitiveHandler> = {
           : undefined;
     const x = body?.x !== undefined ? Number(body.x) : undefined;
     const y = body?.y !== undefined ? Number(body.y) : undefined;
-    const result = await chassis.getPrimitives().act({
+    const result = await chassis.primitives.act({
       markId: rawId !== undefined && rawId !== null ? Number(rawId) : undefined,
       selector,
       targetText,

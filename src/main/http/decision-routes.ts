@@ -36,7 +36,7 @@ async function buildDecisionState(
   let usedPageText = false;
   if (body?.include_page_text === true || (body?.include_page_text !== false && useGuard)) {
     try {
-      const page = await chassis.getPrimitives().observe({ as: 'text', budget: 4000 });
+      const page = await chassis.primitives.observe({ as: 'text', budget: 4000 });
       const pageText = typeof page?.text === 'string' ? page.text.slice(0, 4000) : '';
       if (pageText.trim()) {
         state = `${typeof state === 'string' ? state : JSON.stringify(state ?? '')}\n\nVisible page text:\n${pageText}`;
@@ -181,7 +181,7 @@ const ROUTES: Record<string, DecisionHandler> = {
         sendJson({ success: false, error: 'no recipe matched that id or url', code: 'NO_RECIPE' }, 404);
         return;
       }
-      const result = await replayRecipe(chassis.getPrimitives() as unknown as RecipeRunner, target, {
+      const result = await replayRecipe(chassis.primitives as unknown as RecipeRunner, target, {
         expectTimeoutMs: body?.expect_timeout_ms !== undefined ? Number(body.expect_timeout_ms) : undefined,
       });
       if (result.code === 'SIGNATURE_MISMATCH') {
@@ -208,7 +208,7 @@ const ROUTES: Record<string, DecisionHandler> = {
       sendJson({ success: false, error: 'No decision model is configured.', code: 'NOT_CONFIGURED' }, 400);
       return;
     }
-    const result = await driveTask(chassis.getPrimitives(), {
+    const result = await driveTask(chassis.primitives, {
       goal: String(body?.goal || ''),
       values: body?.values && typeof body.values === 'object' ? body.values : undefined,
       maxSteps: body?.max_steps ?? body?.maxSteps,

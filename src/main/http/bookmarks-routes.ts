@@ -14,7 +14,7 @@ type BookmarkHandler = (ctx: ChassisRouteContext) => Promise<void> | void;
 const ROUTES: Record<string, BookmarkHandler> = {
   'GET /bookmarks': async ({ chassis, url, sendJson }) => {
     const limitParam = url.searchParams.get('limit');
-    const bookmarks = await chassis.getCortex().listBookmarks({
+    const bookmarks = await chassis.cortex.listBookmarks({
       query: url.searchParams.get('q') || undefined,
       tag: url.searchParams.get('tag') || undefined,
       limit: limitParam ? parseInt(limitParam, 10) : undefined,
@@ -25,7 +25,7 @@ const ROUTES: Record<string, BookmarkHandler> = {
   'POST /bookmarks/add': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
     const activeUrl = chassis.tabs.getTabsSummary().find((t) => t.isActive)?.url || 'about:blank';
-    const bookmark = await chassis.getCortex().addBookmark({
+    const bookmark = await chassis.cortex.addBookmark({
       url: body.url || activeUrl,
       title: body.title,
       notes: body.notes,
@@ -36,12 +36,12 @@ const ROUTES: Record<string, BookmarkHandler> = {
 
   'POST /bookmarks/delete': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    const deleted = await chassis.getCortex().deleteBookmark(body.urlOrId);
+    const deleted = await chassis.cortex.deleteBookmark(body.urlOrId);
     sendJson({ success: true, deleted });
   },
 
   'GET /bookmarks/check': async ({ chassis, url, sendJson }) => {
-    const isBookmarked = await chassis.getCortex().isBookmarked(url.searchParams.get('url') || '');
+    const isBookmarked = await chassis.cortex.isBookmarked(url.searchParams.get('url') || '');
     sendJson({ success: true, isBookmarked });
   },
 };

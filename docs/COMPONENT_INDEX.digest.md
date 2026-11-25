@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-251 modules, 854 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+253 modules, 859 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -29,6 +29,7 @@
 | `main/decide/sensitive-gate.ts` | 3: detectSensitiveGate, SensitiveGate, GateDetection |
 | `main/deck/collab.ts` | 2: CollabController, CollabControllerDeps |
 | `main/deck/controller.ts` | 3: DeckController, DeckMode, DeckControllerDeps |
+| `main/diagnostics/console-log.ts` | 2: ConsoleLogBuffer, ConsoleLogEntry |
 | `main/diagnostics/main-log.ts` | 2: mainLogFile, logMainEvent |
 | `main/downloads/download-manager.ts` | 2: DownloadManager, DownloadRecord |
 | `main/downloads/download-surface.ts` | 2: DownloadSurface, DownloadSurfaceDeps |
@@ -125,8 +126,7 @@
 | `main/research/research-view-surface.ts` | 2: ResearchViewSurface, ResearchViewSurfaceDeps |
 | `main/research/researcher.ts` | 6: extractHighlights, Researcher, ResearchOptions, ResearchSource, ResearchOutcome, ResearcherDeps |
 | `main/research/session-controller.ts` | 3: researchError, ResearchSessionController, ResearchSessionDeps |
-| `main/research/settings.ts` | 7: normalizeResearchSettings, looksLikeChallenge, RESEARCH_ENGINES, DEFAULT_RESEARCH_SETTINGS, ResearchSettingsStore, ResearchSettings, ResearchSettingsResult |
 
-… and 126 more module(s) — grep the full index.
+… and 128 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

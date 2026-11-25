@@ -52,7 +52,7 @@ const ROUTES: Record<string, NetworkHandler> = {
 
   'POST /network/har': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    const har = chassis.getPrimitives().exportHar({
+    const har = chassis.primitives.exportHar({
       limit: body?.limit !== undefined ? Number(body.limit) : undefined,
       pattern: body?.pattern,
     });

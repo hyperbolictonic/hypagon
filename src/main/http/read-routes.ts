@@ -15,7 +15,7 @@ type ReadHandler = (ctx: ChassisRouteContext) => Promise<void> | void;
 
 /** `/console-logs` and its `/console/logs` alias read the same buffer. */
 const consoleLogs = ({ chassis, sendJson }: ChassisRouteContext) => {
-  const logs = chassis.getTargetConsoleLogs(50);
+  const logs = chassis.consoleLogs.tail(50);
   sendJson({ success: true, logs });
 };
 
@@ -146,7 +146,7 @@ const ROUTES: Record<string, ReadHandler> = {
   'GET /console/logs': consoleLogs,
 
   'GET /fingerprint': ({ chassis, sendJson }) => {
-    const profile = chassis.getFingerprintProfile();
+    const profile = chassis.hostProfile;
     sendJson({ success: true, profile });
   },
 

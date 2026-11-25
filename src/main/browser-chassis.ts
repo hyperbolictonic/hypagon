@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BrowserWindow, app, ipcMain, clipboard, powerMonitor, screen, session, WebContentsView, type WebContents } from 'electron';
@@ -28,7 +27,7 @@ import { HarvestSurface } from './harvest/harvest-surface.js';
 import { readStoredDecisionConfig, saveDecisionConfig, decisionStatus, runDecision, onDecision, type DecisionEvent } from './decide/decision-client.js';
 import { detectHostBrowserProfile, type HostBrowserProfile } from './telemetry/host-fingerprint.js';
 import { TabManager, type TabInstance } from './tabs/tab-manager.js';
-import { cortex, CortexDB } from './cortex/cortex-db.js';
+import { cortex } from './cortex/cortex-db.js';
 import { DownloadSurface } from './downloads/download-surface.js';
 import { ShieldBreaker, type ConsentPolicy } from './shield/shield-breaker.js';
 import { ConsentController } from './shield/consent-controller.js';
@@ -57,7 +56,9 @@ import { CrawlSurface } from './research/crawl-surface.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import { HilSurface } from './hil/hil-surface.js';
-import { JsonNavigator, type JsonQueryOptions, type JsonQueryResult } from './utils/json-navigator.js';
+import { queryJsonData, type JsonQueryParams } from './utils/json-query.js';
+import type { JsonQueryResult } from './utils/json-navigator.js';
+import { ConsoleLogBuffer } from './diagnostics/console-log.js';
 import { RenderedSnapshotEngine } from './snapshots/rendered-snapshot.js';
 import { PrerenderEngine, type PrerenderOptions } from './prerender/prerender-engine.js';
 import { isTakeoverShortcut } from './takeover-key.js';
@@ -106,8 +107,8 @@ export class BrowserChassis {
   /** Human-in-the-loop and desktop notifications. */
   readonly hil!: HilSurface;
   private prerenderEngine!: PrerenderEngine;
-  private hostProfile: HostBrowserProfile = detectHostBrowserProfile();
-  private primitives!: Primitives;
+  readonly hostProfile: HostBrowserProfile = detectHostBrowserProfile();
+  readonly primitives!: Primitives;
   private llmSurface!: LlmSurface;
   private researchLlmSurface!: LlmSurface;
   private searchHub!: SearchHub;
@@ -196,7 +197,8 @@ export class BrowserChassis {
   });
 
   private latestConstruct: HarvestedConstruct | null = null;
-  private targetConsoleLogs: Array<{ level: string; message: string; line: number; sourceId: string; timestamp: number }> = [];
+  /** Captured page console lines (bounded). */
+  readonly consoleLogs = new ConsoleLogBuffer();
 
   constructor() {
     this.subscribeToDecisions();
@@ -213,7 +215,9 @@ export class BrowserChassis {
     this.marks = harvestNav.marks;
     this.harvest = harvestNav.harvest;
     this.nav = harvestNav.nav;
-    this.hil = this.createInteractionSurfaces();
+    const interaction = this.createInteractionSurfaces();
+    this.hil = interaction.hil;
+    this.primitives = interaction.primitives;
     const readSearch = this.createLlmSurfaces();
     this.llm = readSearch.llm;
     this.search = readSearch.search;
@@ -379,7 +383,7 @@ export class BrowserChassis {
   }
 
   /** HIL, the action ledger and the orthogonal primitives layer. */
-  private createInteractionSurfaces(): HilSurface {
+  private createInteractionSurfaces(): { hil: HilSurface; primitives: Primitives } {
     const hil = new HilSurface({
       activeWebContents: () => {
         try {
@@ -420,7 +424,7 @@ export class BrowserChassis {
 
     // Orthogonal primitives layer (observe / act / wait / extract / collect / find).
     // It borrows the chassis' real input + marks plumbing so it stays on the humanlike path.
-    this.primitives = new Primitives({
+    const primitives = new Primitives({
       webContents: () => this.getActiveWebContents(),
       log: (level, msg) => this.telemetry.addLog(level, msg),
       evaluate: (script) => this.page.quiet(script),
@@ -454,7 +458,7 @@ export class BrowserChassis {
       windowFocused: () => this.window.isFocused(),
       recordTransition: (record) => this.actionLedger.record(record),
     });
-    return hil;
+    return { hil, primitives };
   }
 
   /** LLM read/search surfaces and their shared activity hook. */
@@ -832,8 +836,7 @@ export class BrowserChassis {
   }
 
   private handleConsoleLog(log: { level: string; message: string; line: number; sourceId: string; timestamp: number }): void {
-        this.targetConsoleLogs.push(log);
-        if (this.targetConsoleLogs.length > 200) this.targetConsoleLogs.shift();
+        this.consoleLogs.record(log);
         // Takeover channel: the page reports trusted pointer/key/wheel activity with a magic prefix.
         const human = this.humanMonitor.ingest(log.message);
         if (human) this.noteHumanInput(human);
@@ -1290,9 +1293,8 @@ export class BrowserChassis {
     });
   }
 
-  public getCortex(): CortexDB {
-    return cortex;
-  }
+  /** The shared Cortex database (bookmarks, history, recall). */
+  readonly cortex = cortex;
 
   /**
    * Capture the visible viewport as a baseline JPEG inside TypeSafe's image limits (longest side
@@ -1549,82 +1551,15 @@ export class BrowserChassis {
     };
   }
 
-  public getTargetConsoleLogs(limit: number = 50) {
-    return this.targetConsoleLogs.slice(-limit);
-  }
-
-  public getFingerprintProfile(): HostBrowserProfile {
-    return this.hostProfile;
-  }
-
-  public queryJsonData(params: {
-    source: 'network_payload' | 'stream_messages' | 'download_file' | 'inline_json';
-    sourceId?: string;
-    jsonString?: string;
-    path?: string;
-    view?: 'value' | 'schema' | 'keys' | 'summary';
-    limit?: number;
-    maxStringLength?: number;
-    filterPredicate?: string;
-  }): JsonQueryResult {
+  public queryJsonData(params: JsonQueryParams): JsonQueryResult {
     this.telemetry.addLog('action', `MCP Directive: query_json_data(${params.source}${params.sourceId ? `:${params.sourceId}` : ''}, view=${params.view || 'value'})`);
-
-    let targetData: any = null;
-
-    switch (params.source) {
-      case 'network_payload': {
-        if (!params.sourceId) throw new Error('Missing "sourceId" (requestId) for source "network_payload"');
-        const payload = this.network.manager.getPayload(params.sourceId);
-        targetData = payload.data;
-        break;
-      }
-
-      case 'stream_messages': {
-        const messages = this.network.manager.getStreamMessages({
-          streamId: params.sourceId,
-          limit: params.limit || 50,
-        });
-        targetData = messages.map(m => m.jsonData !== undefined ? m.jsonData : m.data);
-        break;
-      }
-
-      case 'download_file': {
-        if (!params.sourceId) throw new Error('Missing "sourceId" (filename) for source "download_file"');
-        const downloadsDir = dataPath('downloads');
-        const filePath = path.join(downloadsDir, path.basename(params.sourceId));
-        if (!fs.existsSync(filePath)) {
-          throw new Error(`Downloaded file not found: ${params.sourceId}`);
-        }
-        const raw = fs.readFileSync(filePath, 'utf8');
-        try {
-          targetData = JSON.parse(raw);
-        } catch {
-          targetData = raw;
-        }
-        break;
-      }
-
-      case 'inline_json': {
-        const raw = params.jsonString || params.sourceId;
-        if (!raw) throw new Error('Missing "jsonString" or raw json in "sourceId" for source "inline_json"');
-        try {
-          targetData = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        } catch (e: any) {
-          throw new Error(`Invalid inline JSON provided: ${e.message}`);
-        }
-        break;
-      }
-
-      default:
-        throw new Error(`Unsupported source: ${params.source}`);
-    }
-
-    return JsonNavigator.query(targetData, {
-      path: params.path,
-      view: params.view,
-      limit: params.limit,
-      maxStringLength: params.maxStringLength,
-      filterPredicate: params.filterPredicate,
+    return queryJsonData(params, {
+      payloadJson: (sourceId) => this.network.manager.getPayload(sourceId).data,
+      streamPayloads: (sourceId, limit) =>
+        this.network.manager
+          .getStreamMessages({ streamId: sourceId, limit })
+          .map((message) => (message.jsonData !== undefined ? message.jsonData : message.data)),
+      downloadsDir: () => dataPath('downloads'),
     });
   }
 
@@ -1661,10 +1596,6 @@ export class BrowserChassis {
   }
 
   // ---- Primitives layer (observe / act / wait / extract / collect / find) ----
-
-  public getPrimitives(): Primitives {
-    return this.primitives;
-  }
 
   public getRevision(): number {
     return this.revision;

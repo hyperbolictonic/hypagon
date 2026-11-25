@@ -2,19 +2,22 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 251 files, 854 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 253 files, 859 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
-## Utils (3)
+## Utils (6)
 
 | File | Export | When to use |
 |---|---|---|
 | `main/utils/json-navigator.ts` | `JsonNavigator` | - |
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
+| `main/utils/json-query.ts` | `queryJsonData` | When to use: the bridge route — resolve a JSON source and query it. |
+| `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
+| `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (726)
+## Types (728)
 
 | File | Export | When to use |
 |---|---|---|
@@ -101,6 +104,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/deck/controller.ts` | `DeckController` | When to use: the chassis — own the deck panel view, its modes and orb geometry. |
 | `main/deck/controller.ts` | `DeckMode` *(type)* | When to use: a surface that stores or compares the deck's panel state. |
 | `main/deck/controller.ts` | `DeckControllerDeps` *(type)* | When to use: building the chassis — everything the deck reads through. |
+| `main/diagnostics/console-log.ts` | `ConsoleLogBuffer` | The bounded, newest-last console buffer. |
+| `main/diagnostics/console-log.ts` | `ConsoleLogEntry` *(type)* | One captured page console line. |
 | `main/downloads/download-manager.ts` | `DownloadManager` | - |
 | `main/downloads/download-manager.ts` | `DownloadRecord` *(type)* | - |
 | `main/downloads/download-surface.ts` | `DownloadSurface` | The download list and downloaded-document reader. |

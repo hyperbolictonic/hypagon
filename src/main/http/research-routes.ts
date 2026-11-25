@@ -16,7 +16,7 @@ type ResearchHandler = (ctx: ChassisRouteContext) => Promise<void> | void;
 const ROUTES: Record<string, ResearchHandler> = {
   'POST /observe': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
-    const obs = await chassis.getPrimitives().observe({
+    const obs = await chassis.primitives.observe({
       as: body?.as || body?.format || 'markdown',
       region: body?.region,
       budget: body?.budget !== undefined ? Number(body.budget) : undefined,
@@ -32,7 +32,7 @@ const ROUTES: Record<string, ResearchHandler> = {
   'POST /extract': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
     const kind = body?.kind || 'list';
-    const data = await chassis.getPrimitives().extract({
+    const data = await chassis.primitives.extract({
       kind,
       ref: body?.ref !== undefined && body.ref !== null ? Number(body.ref) : undefined,
       selector: body?.selector,
@@ -137,7 +137,7 @@ const ROUTES: Record<string, ResearchHandler> = {
 
   'POST /collect': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
-    const data = await chassis.getPrimitives().collectAll({
+    const data = await chassis.primitives.collectAll({
       ref: body?.ref !== undefined && body.ref !== null ? Number(body.ref) : undefined,
       selector: body?.selector,
       scroll: body?.scroll === 'window' ? 'window' : 'container',
