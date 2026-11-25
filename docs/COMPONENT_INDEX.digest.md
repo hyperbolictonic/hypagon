@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-302 modules, 968 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+307 modules, 987 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -117,16 +117,16 @@
 | `main/jev/engine.ts` | 5: JevEngine, JevSection, JevSession, JevStatus, JevSearchHit |
 | `main/jev/policy.ts` | 6: decideFunnel, DEFAULT_FUNNEL_MIN_TOKENS, FunnelBreaker, FunnelReason, FunnelInput, FunnelDecision |
 | `main/jev/read-contract.ts` | 5: PageReadRequest, PrecheckPageReadResult, GuardPageReadInput, PageReadRefusal, GuardPageReadResult |
-| `main/llm/llm-surface.ts` | 10: LlmSurface, LlmSurfaceKind, LlmSurfaceScope, LlmSurfaceNext, LlmSurfaceEndpoint, LlmSurfaceLink, LlmSurfaceReport, LlmFetchResult, … (10) |
+| `main/llm/alternates.ts` | 1: readAlternates |
+| `main/llm/llm-surface.ts` | 1: LlmSurface |
+| `main/llm/probe-transport.ts` | 3: ProbeTransport, ProbeResponse, ProbeTransportDeps |
 | `main/llm/read-surface.ts` | 2: ReadSurface, ReadSurfaceDeps |
+| `main/llm/surface-probe.ts` | 2: SurfaceProbe, SurfaceProbeDeps |
+| `main/llm/surface-types.ts` | 18: coded, TEXT_ACCEPT, NEGOTIATE_ACCEPT, MARKDOWN_LINK_RE, TEXT_LINK_RE, DEFAULT_READ_CHARS, MAX_READ_CHARS, LlmSurfaceKind, … (18) |
+| `main/llm/surface-url.ts` | 4: isPageUrl, kindScope, resolveSurfaceUrl, normalizeUrl |
 | `main/marks/format-mark.ts` | 1: formatMark |
 | `main/marks/inject-script.ts` | 2: marksInjectorScript, MarksInjectorOptions |
-| `main/marks/marks-overlay.ts` | 2: MarksOverlay, MarkItem |
-| `main/marks/marks-surface.ts` | 2: MarksSurface, MarksSurfaceDeps |
-| `main/media/auth.ts` | 1: needsLogin |
-| `main/media/binaries.ts` | 8: bundledYtDlpPath, writableYtDlpPath, readYtDlpVersion, ensureYtDlp, isMediaBinary, MediaBinarySource, MediaBinary, MediaBinaryError |
-| `main/media/cookie-format.ts` | 1: toNetscape |
 
-… and 177 more module(s) — grep the full index.
+… and 182 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

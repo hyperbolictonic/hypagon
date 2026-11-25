@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 302 files, 968 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 307 files, 987 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (797)
+## Types (810)
 
 | File | Export | When to use |
 |---|---|---|
@@ -241,18 +241,31 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/jev/read-contract.ts` | `GuardPageReadInput` *(type)* | The guard adds the post-harvest facts (tokens, url, title, content). |
 | `main/jev/read-contract.ts` | `PageReadRefusal` *(type)* | What a refusal names: the page facts, the next call to make, the override. |
 | `main/jev/read-contract.ts` | `GuardPageReadResult` *(type)* | - |
-| `main/llm/llm-surface.ts` | `LlmSurface` | - |
-| `main/llm/llm-surface.ts` | `LlmSurfaceKind` *(type)* | A *fetchable* LLM-friendly representation. Deliberately excludes "rendered". |
-| `main/llm/llm-surface.ts` | `LlmSurfaceScope` *(type)* | Whether a representation covers the whole site (`origin`) or just the page (`page`). |
-| `main/llm/llm-surface.ts` | `LlmSurfaceNext` *(type)* | The machine-readable next action. `recommended: null` means "there is no |
-| `main/llm/llm-surface.ts` | `LlmSurfaceEndpoint` *(type)* | - |
-| `main/llm/llm-surface.ts` | `LlmSurfaceLink` *(type)* | - |
-| `main/llm/llm-surface.ts` | `LlmSurfaceReport` *(type)* | - |
-| `main/llm/llm-surface.ts` | `LlmFetchResult` *(type)* | - |
-| `main/llm/llm-surface.ts` | `ReadUrlResult` *(type)* | Result of the composite `read_url`: always Markdown text, paged for long documents. |
-| `main/llm/llm-surface.ts` | `LlmSurfaceDeps` *(type)* | - |
+| `main/llm/probe-transport.ts` | `ProbeTransport` | When to use: any `llm_surface` request — well-known files, a HEAD, or a gated fetch. |
+| `main/llm/probe-transport.ts` | `ProbeResponse` *(type)* | What one probe request returned. |
+| `main/llm/probe-transport.ts` | `ProbeTransportDeps` *(type)* | When to use: constructing the transport — the session comes from the chassis. |
 | `main/llm/read-surface.ts` | `ReadSurface` | The agent-facing read surface over LlmSurface. |
 | `main/llm/read-surface.ts` | `ReadSurfaceDeps` *(type)* | Dependencies the read surface needs from the chassis transports. |
+| `main/llm/surface-probe.ts` | `SurfaceProbe` | When to use: `LlmSurface.probe` — what LLM-friendly surfaces a site/page offers. |
+| `main/llm/surface-probe.ts` | `SurfaceProbeDeps` *(type)* | When to use: constructing the probe — the transport and the active tab come from the chassis. |
+| `main/llm/surface-types.ts` | `coded` | An `Error` with the bridge's typed `code` attached. |
+| `main/llm/surface-types.ts` | `TEXT_ACCEPT` | Accept header for a plain GET (well-known files, an advertised alternate). |
+| `main/llm/surface-types.ts` | `NEGOTIATE_ACCEPT` | Accept header for content negotiation: prefer Markdown, fall back to the page. |
+| `main/llm/surface-types.ts` | `MARKDOWN_LINK_RE` | Matches a link type or href that means Markdown. |
+| `main/llm/surface-types.ts` | `TEXT_LINK_RE` | Matches a link whose href is a plain-text document. |
+| `main/llm/surface-types.ts` | `DEFAULT_READ_CHARS` | Default page budget for `read_url` (a long ToS page exceeds a single call). |
+| `main/llm/surface-types.ts` | `MAX_READ_CHARS` | Hard ceiling for one `read_url` page, whatever the caller asks for. |
+| `main/llm/surface-types.ts` | `LlmSurfaceKind` *(type)* | A *fetchable* LLM-friendly representation. Deliberately excludes "rendered". |
+| `main/llm/surface-types.ts` | `LlmSurfaceScope` *(type)* | Whether a representation covers the whole site (`origin`) or just the page (`page`). |
+| `main/llm/surface-types.ts` | `LlmSurfaceNext` *(type)* | The machine-readable next action. `recommended: null` means "there is no |
+| `main/llm/surface-types.ts` | `LlmSurfaceEndpoint` *(type)* | When to use: reading one well-known endpoint's result in the report. |
+| `main/llm/surface-types.ts` | `LlmSurfaceLink` *(type)* | When to use: one advertised Markdown/Text alternate found on a page. |
+| `main/llm/surface-types.ts` | `LlmSurfaceReport` *(type)* | When to use: the `llm_surface` tool's answer. |
+| `main/llm/surface-types.ts` | `LlmFetchResult` *(type)* | When to use: the `llm_fetch` tool's answer. |
+| `main/llm/surface-types.ts` | `ReadUrlResult` *(type)* | Result of the composite `read_url`: always Markdown text, paged for long documents. |
+| `main/llm/surface-types.ts` | `LlmSurfaceDeps` *(type)* | Everything `LlmSurface` needs from the chassis. |
+| `main/llm/surface-types.ts` | `OriginProbe` *(type)* | The origin-level probe shape (well-known files only). |
+| `main/llm/surface-types.ts` | `PageProbe` *(type)* | The page-level probe shape (live DOM alternates + one negotiation HEAD). |
 | `main/marks/inject-script.ts` | `marksInjectorScript` | When to use: `MarksOverlay.injectMarks` — renders the page-side Set-of-Marks scan. |
 | `main/marks/inject-script.ts` | `MarksInjectorOptions` *(type)* | When to use: building one mark scan — the sticky anchors and the two scope flags. |
 | `main/marks/marks-overlay.ts` | `MarksOverlay` | - |
@@ -826,7 +839,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (163)
+## Modules (169)
 
 | File | Export | When to use |
 |---|---|---|
@@ -902,6 +915,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/ipc/media-ipc.ts` | `registerMediaIpc` | When to use: once at startup — reads the service lazily, because boot creates it. |
 | `main/ipc/recording-ipc.ts` | `registerRecordingIpc` | When to use: once at startup, before the first window exists. |
 | `main/ipc/web-state-ipc.ts` | `registerWebStateIpc` | When to use: once at startup — the handler reads the active tab on demand. |
+| `main/llm/alternates.ts` | `readAlternates` | When to use: `SurfaceProbe.probePage` — the live page's declared/anchored alternates. |
+| `main/llm/llm-surface.ts` | `LlmSurface` | - |
+| `main/llm/surface-url.ts` | `isPageUrl` | A URL with a non-root path is "a page", which should prefer a page-level representation. |
+| `main/llm/surface-url.ts` | `kindScope` | Origin-level kinds cover the whole site; markdown/text cover one page. |
+| `main/llm/surface-url.ts` | `resolveSurfaceUrl` | The URL the caller meant: the explicit one, or the active tab's. Anything |
+| `main/llm/surface-url.ts` | `normalizeUrl` | Cache key: the URL without its hash or a trailing slash. |
 | `main/marks/format-mark.ts` | `formatMark` | Renders one Set-of-Marks entry as a compact, accessibility-aware line: |
 | `main/media/auth.ts` | `needsLogin` | Does yt-dlp's output say the site wants a signed-in session? |
 | `main/media/cookie-format.ts` | `toNetscape` | Netscape cookie-file text for yt-dlp's `--cookies`. |

@@ -27,7 +27,7 @@
       "main/jev/engine.ts": 4,
       "main/jev/policy.ts": 4,
       "main/jev/read-contract.ts": 1,
-      "main/llm/llm-surface.ts": 6,
+      "main/llm/llm-surface.ts": 1,
       "main/marks/marks-overlay.ts": 2,
       "main/media/binaries.ts": 6,
       "main/media/cookies.ts": 1,
@@ -169,11 +169,6 @@
       },
       "main/jev/controller.ts": {
         "class": 1
-      },
-      "main/llm/llm-surface.ts": {
-        "class": 1,
-        "file": 1,
-        "function": 1
       },
       "main/media/jobs.ts": {
         "class": 1,
