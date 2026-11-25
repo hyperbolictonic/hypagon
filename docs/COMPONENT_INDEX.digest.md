@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-233 modules, 814 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+235 modules, 820 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -111,22 +111,22 @@
 | `main/research/anchor-store.ts` | 2: AnchorStore, StoredAnchor |
 | `main/research/anchors.ts` | 6: relocateCitation, relocateCitations, anchorHighlights, CitationAnchor, CitationCandidate, CitationRelocation |
 | `main/research/citation-controller.ts` | 4: CitationController, HumanHandoffResult, CitationControllerDeps, RevalidationSummary |
-| `main/research/crawl-orchestrator.ts` | 4: CrawlOrchestrator, CrawlOrchestratorDeps, RenderCrawlOptions, RenderCrawlResult |
+| `main/research/crawl-orchestrator.ts` | 5: CrawlOrchestrator, CrawlSessionPolicy, CrawlOrchestratorDeps, RenderCrawlOptions, RenderCrawlResult |
+| `main/research/crawl-surface.ts` | 2: CrawlSurface, CrawlSurfaceDeps |
 | `main/research/detached-view.ts` | 4: DetachedViewController, DetachedLoadOptions, DetachedLoadResult, DetachedViewDeps |
+| `main/research/research-session-surface.ts` | 2: ResearchSessionSurface, ResearchSessionSurfaceDeps |
 | `main/research/researcher.ts` | 6: extractHighlights, Researcher, ResearchOptions, ResearchSource, ResearchOutcome, ResearcherDeps |
 | `main/research/session-controller.ts` | 3: researchError, ResearchSessionController, ResearchSessionDeps |
 | `main/research/settings.ts` | 7: normalizeResearchSettings, looksLikeChallenge, RESEARCH_ENGINES, DEFAULT_RESEARCH_SETTINGS, ResearchSettingsStore, ResearchSettings, ResearchSettingsResult |
 | `main/research/surface-activity.ts` | 1: SurfaceActivityDeps |
 | `main/scripts/script-vault.ts` | 2: ScriptVault, SavedScriptMeta |
-| `main/search/search-engine.ts` | 7: KNOWN_ENGINES, DEFAULT_ENGINE_CHAIN, SearchHub, SearchResult, SearchAttempt, SearchOutcome, SearchHubDeps |
+| `main/search/search-engine.ts` | 8: engineHost, KNOWN_ENGINES, DEFAULT_ENGINE_CHAIN, SearchHub, SearchResult, SearchAttempt, SearchOutcome, SearchHubDeps |
 | `main/search/search-surface.ts` | 3: SearchSurface, SearchPolicyTarget, SearchSurfaceDeps |
 | `main/security/capability-token.ts` | 3: tokenPathIn, createCapabilityToken, readCapabilityToken |
 | `main/session/session-vault.ts` | 2: SessionVault, SessionSnapshot |
 | `main/settings/experimental.ts` | 1: ExperimentalSettingsStore |
 | `main/settings/jev.ts` | 4: DEFAULT_JEV_SETTINGS, JevSettingsStore, JevMode, JevSettings |
-| `main/settings/json-settings.ts` | 4: loadJsonSettings, saveJsonSettings, settingsSource, SettingsResult |
-| `main/shadow-walk/ax-controls.ts` | 6: findSealedControls, SealedRateLimitError, SealedRect, SealedControl, SealedFindOptions, SealedFindResult |
 
-… and 108 more module(s) — grep the full index.
+… and 110 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

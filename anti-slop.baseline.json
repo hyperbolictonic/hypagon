@@ -271,9 +271,6 @@
         "class": 1,
         "function": 1
       },
-      "main/research/crawl-orchestrator.ts": {
-        "function": 1
-      },
       "main/research/session-controller.ts": {
         "class": 1
       },

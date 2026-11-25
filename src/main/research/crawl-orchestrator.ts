@@ -12,18 +12,36 @@ import { randomUUID } from 'node:crypto';
 import { RenderedSnapshotEngine } from '../snapshots/rendered-snapshot.js';
 import { looksLikeChallenge } from './settings.js';
 import type { ResearchSettings } from './settings.js';
-import type { Crawler, CrawlOptions, CrawlOutcome, HumanAssistInfo } from '../crawl/crawler.js';
+import type { Crawler, CrawlOptions, CrawlOutcome, CrawlPage, HumanAssistInfo } from '../crawl/crawler.js';
 import type { Researcher, ResearchOptions, ResearchOutcome } from '../research/researcher.js';
 import type { CitationAnchor } from './anchors.js';
 import type { DetachedViewController } from './detached-view.js';
-import type { ResearchSessionController } from './session-controller.js';
 import type { CitationController } from './citation-controller.js';
 import { researchError } from './session-controller.js';
+
+/** The running totals of one BFS crawl, mirrored into the research feed. */
+interface CrawlTally {
+  tiers: Record<'llm' | 'static' | 'render', number>;
+  sources: number;
+  indexed: number;
+  bytes: number;
+  humans: number;
+  anchors: number;
+  escalations: number;
+  rank: number;
+}
+
+/** The session policy a crawl run needs: cooldown guards and engine defaults. */
+export interface CrawlSessionPolicy {
+  assertNotCooling(url: string): void;
+  markCooldown(host: string, reason: string): void;
+  applyEnginePolicy<T extends { engine?: string; engines?: string[]; urlTemplate?: string }>(effective: T): void;
+}
 
 /** When to use: building the chassis — the five collaborators a run composes. */
 export interface CrawlOrchestratorDeps {
   settings: () => ResearchSettings;
-  session: ResearchSessionController;
+  session: CrawlSessionPolicy;
   citation: CitationController;
   detachedView: DetachedViewController;
   crawler: Crawler;
@@ -154,14 +172,16 @@ export class CrawlOrchestrator {
     const runId = randomUUID();
     const startedAt = Date.now();
     const maxPages = effective.maxPages ?? 5;
-    const tiers: Record<'llm' | 'static' | 'render', number> = { llm: 0, static: 0, render: 0 };
-    let sources = 0;
-    let indexed = 0;
-    let bytes = 0;
-    let humans = 0;
-    let anchors = 0;
-    let escalations = 0;
-    let rank = 0;
+    const tally: CrawlTally = {
+      tiers: { llm: 0, static: 0, render: 0 },
+      sources: 0,
+      indexed: 0,
+      bytes: 0,
+      humans: 0,
+      anchors: 0,
+      escalations: 0,
+      rank: 0,
+    };
 
     this.deps.broadcast('research:event', {
       type: 'run-start',
@@ -174,62 +194,20 @@ export class CrawlOrchestrator {
     try {
       const outcome = await this.deps.crawler.crawl({
         ...effective,
-        onPage: (page) => {
-          rank += 1;
-          sources += 1;
-          bytes += page.bytes;
-          tiers[page.via] += 1;
-          if (page.indexed) indexed += 1;
-          if (page.humanAssisted) humans += 1;
-          if (page.anchors?.length) anchors += page.anchors.length;
-          if (page.escalation) escalations += 1;
-
-          const title = page.title || page.url;
-          this.deps.broadcast('research:event', {
-            type: 'source-start',
-            runId,
-            rank,
-            url: page.url,
-            title,
-            at: Date.now(),
-          });
-          this.deps.broadcast('research:event', {
-            type: 'source-done',
-            runId,
-            rank,
-            url: page.url,
-            title,
-            via: page.via,
-            bytes: page.bytes,
-            ms: page.ms ?? 0,
-            highlights: 0,
-            indexed: page.indexed,
-            humanAssisted: page.humanAssisted,
-            humanMs: page.humanMs,
-            anchors: page.anchors?.length ?? 0,
-            anchorDetails: (page.anchors ?? []).map((anchor) => ({
-              text: anchor.text,
-              path: anchor.path,
-              fingerprint: anchor.fingerprint as unknown as Record<string, unknown>,
-            })),
-            escalation: page.escalation,
-            error: page.error,
-            at: Date.now(),
-          });
-        },
+        onPage: (page) => this.mirrorPage(runId, tally, page),
       });
 
       this.deps.broadcast('research:event', {
         type: 'run-done',
         runId,
-        sources,
-        indexed,
-        bytes,
-        tiers,
-        humans,
-        anchors,
+        sources: tally.sources,
+        indexed: tally.indexed,
+        bytes: tally.bytes,
+        tiers: tally.tiers,
+        humans: tally.humans,
+        anchors: tally.anchors,
         elapsedMs: Date.now() - startedAt,
-        escalations,
+        escalations: tally.escalations,
         notes: [...outcome.notes],
         at: Date.now(),
       });
@@ -243,6 +221,51 @@ export class CrawlOrchestrator {
       });
       throw error;
     }
+  }
+
+  /** Mirror one crawled page into the research workspace as a source-start/done pair. */
+  private mirrorPage(runId: string, tally: CrawlTally, page: CrawlPage): void {
+    tally.rank += 1;
+    tally.sources += 1;
+    tally.bytes += page.bytes;
+    tally.tiers[page.via] += 1;
+    if (page.indexed) tally.indexed += 1;
+    if (page.humanAssisted) tally.humans += 1;
+    if (page.anchors?.length) tally.anchors += page.anchors.length;
+    if (page.escalation) tally.escalations += 1;
+
+    const title = page.title || page.url;
+    this.deps.broadcast('research:event', {
+      type: 'source-start',
+      runId,
+      rank: tally.rank,
+      url: page.url,
+      title,
+      at: Date.now(),
+    });
+    this.deps.broadcast('research:event', {
+      type: 'source-done',
+      runId,
+      rank: tally.rank,
+      url: page.url,
+      title,
+      via: page.via,
+      bytes: page.bytes,
+      ms: page.ms ?? 0,
+      highlights: 0,
+      indexed: page.indexed,
+      humanAssisted: page.humanAssisted,
+      humanMs: page.humanMs,
+      anchors: page.anchors?.length ?? 0,
+      anchorDetails: (page.anchors ?? []).map((anchor) => ({
+        text: anchor.text,
+        path: anchor.path,
+        fingerprint: anchor.fingerprint as unknown as Record<string, unknown>,
+      })),
+      escalation: page.escalation,
+      error: page.error,
+      at: Date.now(),
+    });
   }
 
   /** search → gather top sources → distill → index; returns cited extractive evidence (Feature 3). */

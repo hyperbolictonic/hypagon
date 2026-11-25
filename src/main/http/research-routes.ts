@@ -82,7 +82,7 @@ const ROUTES: Record<string, ResearchHandler> = {
   'POST /crawl/deep': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
     sendOk(
-      await chassis.deepCrawl({
+      await chassis.crawl.deepCrawl({
         startUrl: body?.url || body?.start_url || body?.startUrl,
         maxDepth: body?.max_depth ?? body?.maxDepth,
         maxPages: body?.max_pages ?? body?.maxPages,
@@ -101,7 +101,7 @@ const ROUTES: Record<string, ResearchHandler> = {
   'POST /research/topic': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
     sendOk(
-      await chassis.researchTopic({
+      await chassis.crawl.researchTopic({
         query: body?.query,
         maxSources: body?.max_sources ?? body?.maxSources,
         engine: body?.engine,

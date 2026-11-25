@@ -1,8 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { BrowserWindow, app, nativeImage, ipcMain, clipboard, powerMonitor, screen, session, WebContentsView, type Session, type WebContents } from 'electron';
+import { BrowserWindow, app, ipcMain, clipboard, powerMonitor, screen, session, WebContentsView, type WebContents } from 'electron';
 import type { AgentStatus, ChassisState, HarvestedConstruct, TelemetryEvent, TabSummary } from '../shared/types.js';
 import { DeviceProfileStore } from './viewport/profiles.js';
 import { ViewportController } from './viewport/controller.js';
@@ -23,7 +22,6 @@ import type { CollaborationTarget } from '../shared/collaboration.js';
 import { bump } from './metrics.js';
 import { ActionLedger } from './telemetry/action-ledger.js';
 import { ConstructHarvester } from './harvester/markdown.js';
-import { fetchStatic } from './network/impersonate.js';
 import { JevController } from './jev/controller.js';
 import { DeckController } from './deck/controller.js';
 import { HarvestSurface } from './harvest/harvest-surface.js';
@@ -66,9 +64,10 @@ import { Primitives } from './primitives/primitives.js';
 import { ScriptVault } from './scripts/script-vault.js';
 import type { ScriptItem } from './cortex/cortex-db.js';
 import { TrayManager } from './tray/tray-manager.js';
-import { looksLikeChallenge, type ResearchSettings } from './research/settings.js';
-import { researchError, ResearchSessionController } from './research/session-controller.js';
+import { researchError } from './research/session-controller.js';
 import { DetachedViewController } from './research/detached-view.js';
+import { ResearchSessionSurface } from './research/research-session-surface.js';
+import { CrawlSurface } from './research/crawl-surface.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import { HilManager, type HilRequest, type HilResolution, type NotificationOptions } from './hil/hil-manager.js';
@@ -78,13 +77,11 @@ import { PrerenderEngine, type PrerenderOptions } from './prerender/prerender-en
 import { isTakeoverShortcut } from './takeover-key.js';
 import { LlmSurface } from './llm/llm-surface.js';
 import { ReadSurface } from './llm/read-surface.js';
-import { SearchHub } from './search/search-engine.js';
+import { SearchHub, engineHost } from './search/search-engine.js';
 import { SearchSurface } from './search/search-surface.js';
-import { Crawler, type CrawlOptions, type CrawlOutcome, type HumanAssistInfo } from './crawl/crawler.js';
-import { type CitationAnchor, type CitationRelocation } from './research/anchors.js';
+import { type CitationRelocation } from './research/anchors.js';
 import { CitationController, type HumanHandoffResult, type RevalidationSummary } from './research/citation-controller.js';
-import { CrawlOrchestrator, type RenderCrawlOptions, type RenderCrawlResult } from './research/crawl-orchestrator.js';
-import { Researcher, type ResearchOptions, type ResearchOutcome } from './research/researcher.js';
+import type { HumanAssistInfo } from './crawl/crawler.js';
 
 
 export class BrowserChassis {
@@ -98,7 +95,7 @@ export class BrowserChassis {
     summary: string,
     describe: (result: T) => string,
     run: () => Promise<T>,
-  ): Promise<T> => this.withResearchActivity(tool, summary, describe, run);
+  ): Promise<T> => this.crawl.activity(tool, summary, describe, run);
   /** Recent decision-model calls, mirrored to the HUD (newest last, capped at 50). */
   private decisionLog: DecisionEvent[] = [];
   /** Throttle for gate-triggered human hand-offs (one per URL per few minutes). */
@@ -127,8 +124,10 @@ export class BrowserChassis {
   /** The agent-facing read/search adapters; the transports stay private. */
   readonly llm: ReadSurface;
   readonly search: SearchSurface;
-  private crawler!: Crawler;
-  private researcher!: Researcher;
+  /** Research session settings, cooldowns and the isolated session. */
+  readonly research!: ResearchSessionSurface;
+  /** Crawl, topic research and the research activity feed. */
+  readonly crawl!: CrawlSurface;
   private actionLedger!: ActionLedger;
   /** Reused off-screen view for detached reads (SERPs, Markdown alternates, crawls). */
   /** Origins a human has authenticated; skip the anonymous static tier for them. */
@@ -206,6 +205,7 @@ export class BrowserChassis {
   constructor() {
     this.subscribeToDecisions();
     this.input = this.createInputSurfaces();
+    this.research = this.createResearchSession();
     const harvestNav = this.createHarvestNavigationSurfaces();
     this.marks = harvestNav.marks;
     this.harvest = harvestNav.harvest;
@@ -214,7 +214,7 @@ export class BrowserChassis {
     const readSearch = this.createLlmSurfaces();
     this.llm = readSearch.llm;
     this.search = readSearch.search;
-    this.createCrawlSurfaces();
+    this.crawl = this.createCrawlSurface();
     this.startLoops();
   }
 
@@ -445,7 +445,7 @@ export class BrowserChassis {
     this.llmSurface = llmSurface;
 
     const researchLlmSurface = new LlmSurface({
-      getSession: () => this.getResearchSession(),
+      getSession: () => this.research.session(),
       ...this.llmSurfaceBase(),
     });
     this.researchLlmSurface = researchLlmSurface;
@@ -468,12 +468,12 @@ export class BrowserChassis {
 
     const search = new SearchSurface({
       hub: searchHub,
-      settings: () => this.researchSettings,
-      applyEnginePolicy: (effective) => this.applyResearchEnginePolicy(effective),
-      isCooling: (host) => this.isResearchCooling(host),
-      markCooldown: (host, reason) => this.markResearchCooldown(host, reason),
-      engineHost: (engine) => this.engineHost(engine),
-      error: (code, message) => this.researchError(code, message),
+      settings: () => this.research.settings(),
+      applyEnginePolicy: (effective) => this.research.applyEnginePolicy(effective),
+      isCooling: (host) => this.research.isCooling(host),
+      markCooldown: (host, reason) => this.research.markCooldown(host, reason),
+      engineHost: (engine) => engineHost(engine, this.research.settings().urlTemplate),
+      error: researchError,
       activity: this.surfaceActivity,
       log: this.controllerLog,
     });
@@ -481,102 +481,21 @@ export class BrowserChassis {
     return { llm, search };
   }
 
-  /** The crawler's static tier: impersonating fetch, with warm-origin and thin-body guards. */
-  private async fetchStaticForCrawl(
-    url: string,
-    pageOpts?: { anchorsFor?: string },
-  ): Promise<
-    | { ok: true; title: string; markdown: string; status: number; anchors?: CitationAnchor[] }
-    | { ok: false; reason: string; disabled?: boolean }
-  > {
-    if (!this.researchSettings.preferStatic) {
-      return { ok: false, reason: 'static tier disabled in settings', disabled: true };
-    }
-    try {
-      if (this.citationController.originIsWarm(url)) {
-        // A human authenticated this origin in the real browser; keep the cookie and the
-        // browser together rather than replaying the session through a static client.
-        return {
-          ok: false,
-          reason: 'origin is using the human-authenticated browser session',
-          disabled: true,
-        };
-      }
-    } catch {
-      /* malformed URL falls through to the normal path */
-    }
-    const outcome = await fetchStatic(url);
-    if (outcome.kind === 'blocked') {
-      this.telemetry.addLog('warn', `static fetch challenged for ${url} (${outcome.status}); escalating to render`);
-      return { ok: false, reason: `challenge page (${outcome.status})` };
-    }
-    if (outcome.kind === 'unavailable') return { ok: false, reason: outcome.reason, disabled: true };
-    if (outcome.kind === 'error') return { ok: false, reason: outcome.reason };
-    if (outcome.result.status >= 400) return { ok: false, reason: `HTTP ${outcome.result.status}` };
-
-    const harvested = this.harvester.harvest(outcome.result.body, url, url);
-    // A JS-only shell harvests to almost nothing; escalate rather than index a stub.
-    if (!harvested.content || harvested.content.trim().length < 200) {
-      return { ok: false, reason: 'content too thin (possible JS-only shell)' };
-    }
-    let anchors: CitationAnchor[] | undefined;
-    if (pageOpts?.anchorsFor) {
-      anchors = (await this.citationController.anchorFromHtml(url, outcome.result.body, pageOpts.anchorsFor)) ?? [];
-    }
-    return {
-      ok: true,
-      title: harvested.title,
-      markdown: harvested.content,
-      status: outcome.result.status,
-      anchors,
-    };
-  }
-
-  /** Crawl, research and the research orchestrator. */
-  private createCrawlSurfaces(): void {
-    // Autonomous multi-page crawl (TODO_RESEARCH_CRAWL.md §5, Feature 1).
-    // Cheap path first: content-negotiated Markdown/Text, else a detached render.
-    this.crawler = new Crawler({
-      tryLlm: async (url) => {
-        const report = await this.researchLlmSurface.probe(url);
-        if (!report.content_negotiation?.accepts_markdown) return null;
-        const r = await this.researchLlmSurface.fetch({ url, as: 'markdown' });
-        return { content: r.content, via: r.via };
-      },
-      fetchStatic: (url, pageOpts) => this.fetchStaticForCrawl(url, pageOpts),
-      renderPage: (url, pageOpts) => this.crawlRenderPage(url, pageOpts),
-      beforePage: (url) => this.assertResearchCooldown(url),
-      indexPage: async (url, title, content) => {
-        await cortex.indexPage(url, title, content);
-      },
-      log: (level, msg) => this.telemetry.addLog(level, msg),
-    });
-
-    // Autonomous research mode (TODO_RESEARCH_CRAWL.md §5, Feature 3).
-    this.researcher = new Researcher({
-      search: (q, o) => this.searchHub.search(q, o),
-      crawl: (o) => this.crawler.crawl(o),
-      log: (level, msg) => this.telemetry.addLog(level, msg),
-      events: (event) => this.broadcast('research:event', event),
-    });
-
-    this.crawlOrchestrator = new CrawlOrchestrator({
-      settings: () => this.researchSettings,
-      session: this.researchSessionController,
-      citation: this.citationController,
-      detachedView: this.detachedView,
-      crawler: this.crawler,
-      researcher: this.researcher,
+  /** Crawl, topic research and the activity feed over the research session. */
+  private createCrawlSurface(): CrawlSurface {
+    return new CrawlSurface({
+      researchLlm: () => this.researchLlmSurface,
+      search: (query, opts) => this.searchHub.search(query, opts),
+      settings: () => this.research.settings(),
+      session: this.research,
+      citation: () => this.citationController,
+      detachedView: () => this.detachedView,
+      harvester: () => this.harvester,
+      indexPage: (url, title, content) => cortex.indexPage(url, title, content),
       broadcast: (channel, payload) => this.broadcast(channel, payload),
-      applyDelayFloor: (effective, opts) => {
-        if (this.researchSettings.enabled) {
-          effective.delayMs = Math.max(Number(opts.delayMs ?? 0), this.researchSettings.delayMs);
-        }
-      },
       log: (level, message) => this.telemetry.addLog(level, message),
     });
   }
-
   /** Uptime broadcast and HUD-health watchdog. */
   private startLoops(): void {
     setInterval(() => {
@@ -961,58 +880,16 @@ export class BrowserChassis {
 
 
 
+
   // ---- Research session ---------------------------------------------------------------
-  // The stealth research session (own cookie jar, UA headers, proxy), the settings
-  // that configure it and the per-host cooldown live in ResearchSessionController.
+  // The stealth research session, its settings and the per-host cooldown live in
+  // ResearchSessionSurface; the crawl and search surfaces read through it.
 
-  private readonly researchSessionController = new ResearchSessionController({
-    hostProfile: this.hostProfile,
-    log: (level, message) => this.telemetry.addLog(level, message),
-  });
-
-  public async setResearchSettings(settings: ResearchSettings): Promise<void> {
-    await this.researchSessionController.setSettings(settings);
-  }
-
-  public getResearchSettings(): ResearchSettings {
-    return this.researchSessionController.getSettings();
-  }
-
-  /** The live research settings, as read by the search/crawl/research components. */
-  private get researchSettings(): ResearchSettings {
-    return this.researchSessionController.getSettings();
-  }
-
-  public async resetResearchSession(): Promise<void> {
-    await this.researchSessionController.reset();
-  }
-
-  private getResearchSession(): Session {
-    return this.researchSessionController.getSessionForComponents();
-  }
-
-  private async activateResearchView(wc: WebContents): Promise<void> {
-    await this.researchSessionController.activateView(wc);
-  }
-
-  private engineHost(engine: string): string {
-    return this.researchSessionController.engineHost(engine);
-  }
-
-  private isResearchCooling(host: string): boolean {
-    return this.researchSessionController.isCooling(host);
-  }
-
-  private markResearchCooldown(host: string, reason: string): void {
-    this.researchSessionController.markCooldown(host, reason);
-  }
-
-  private assertResearchCooldown(url: string): void {
-    this.researchSessionController.assertNotCooling(url);
-  }
-
-  private researchError(code: string, message: string): Error & { code: string } {
-    return researchError(code, message);
+  private createResearchSession(): ResearchSessionSurface {
+    return new ResearchSessionSurface({
+      hostProfile: this.hostProfile,
+      log: (level, message) => this.telemetry.addLog(level, message),
+    });
   }
 
   /**
@@ -1860,48 +1737,7 @@ export class BrowserChassis {
   // ---- LLM-friendly site discovery (TODO_RESEARCH_CRAWL.md §5, Feature 6) ----
 
 
-  /**
-   * Run a research tool with the activity events the research feed expects: a
-   * start broadcast, then a done broadcast carrying `ok`, duration and the
-   * caller-computed success summary (the failure summary is the start summary).
-   * Errors propagate after the failed broadcast.
-   */
-  private async withResearchActivity<T>(
-    tool: string,
-    summary: string,
-    describe: (result: T) => string,
-    run: () => Promise<T>,
-  ): Promise<T> {
-    const runId = randomUUID();
-    const startedAt = Date.now();
-    this.broadcast('research:event', { type: 'activity', runId, tool, status: 'start', summary, at: startedAt });
-    try {
-      const result = await run();
-      this.broadcast('research:event', {
-        type: 'activity',
-        runId,
-        tool,
-        status: 'done',
-        summary: describe(result),
-        ok: true,
-        ms: Date.now() - startedAt,
-        at: Date.now(),
-      });
-      return result;
-    } catch (error: any) {
-      this.broadcast('research:event', {
-        type: 'activity',
-        runId,
-        tool,
-        status: 'done',
-        summary,
-        ok: false,
-        ms: Date.now() - startedAt,
-        at: Date.now(),
-      });
-      throw error;
-    }
-  }
+
 
 
 
@@ -1941,7 +1777,7 @@ export class BrowserChassis {
 
   private readonly detachedView = new DetachedViewController({
     userAgent: this.hostProfile.userAgent,
-    activate: (wc) => this.activateResearchView(wc),
+    activate: (wc) => this.research.activateView(wc),
   });
 
   private async withUtilView<T>(task: () => Promise<T>): Promise<T> {
@@ -1965,12 +1801,7 @@ export class BrowserChassis {
    * Each engine is loaded in a detached view; if it yields nothing (bot-check/consent) the hub
    * falls back to the next. Results are plain URLs for `navigate_to` / `collect_all`.
    */
-  /** The Settings engine chain and custom template, applied unless the call overrides them. */
-  private applyResearchEnginePolicy<T extends { engine?: string; engines?: string[]; urlTemplate?: string }>(
-    effective: T,
-  ): void {
-    this.researchSessionController.applyEnginePolicy(effective);
-  }
+
 
 
   /** Bounds of the browser viewport as actually laid out in the HUD (zoom-aware). */
@@ -2009,7 +1840,7 @@ export class BrowserChassis {
     window: () => this.mainWindow,
     detachedView: this.detachedView,
     hilManager: () => this.hilManager,
-    researchSettings: () => this.researchSettings,
+    researchSettings: () => this.research.settings(),
     viewportBounds: () => this.computeViewportBounds(),
     reassertViewport: () => this.reassertViewport(),
     activeWebContents: () => this.getActiveWebContents(),
@@ -2034,27 +1865,6 @@ export class BrowserChassis {
     anchorsFor?: string,
   ): Promise<HumanHandoffResult> {
     return this.citationController.attemptHandoff(url, onHuman, anchorsFor);
-  }
-
-  /** Renders a page in a detached view and returns its Markdown + outgoing links (for deep_crawl). */
-  // ---- Crawl & research runs ----------------------------------------------------------
-  // The render-with-escalation pipeline, the BFS crawl and its research-workspace
-  // event mirror, and the topic run live in CrawlOrchestrator.
-
-  private crawlOrchestrator!: CrawlOrchestrator;
-
-  public async crawlRenderPage(url: string, opts: RenderCrawlOptions = {}): Promise<RenderCrawlResult> {
-    return this.crawlOrchestrator.crawlRenderPage(url, opts);
-  }
-
-  /** Depth/page-budgeted BFS crawl that indexes each page into Cortex (Feature 1). */
-  public async deepCrawl(opts: CrawlOptions): Promise<CrawlOutcome> {
-    return this.crawlOrchestrator.deepCrawl(opts);
-  }
-
-  /** search → gather top sources → distill → index; returns cited extractive evidence (Feature 3). */
-  public async researchTopic(opts: ResearchOptions): Promise<ResearchOutcome> {
-    return this.crawlOrchestrator.researchTopic(opts);
   }
 
   public async takeAnnotatedScreenshot(opts: { economy?: boolean; textOnly?: boolean; includeOffscreen?: boolean } = {}): Promise<{

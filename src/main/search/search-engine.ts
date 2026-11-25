@@ -138,6 +138,20 @@ const ENGINES: Record<string, EngineSpec> = {
   },
 };
 
+/** The host an engine loads in; the custom engine resolves the settings template. */
+export function engineHost(engine: string, urlTemplate: string): string {
+  if (engine === 'custom') {
+    if (!urlTemplate) return '';
+    try {
+      return new URL(urlTemplate.replace('{query}', 'test')).hostname;
+    } catch {
+      return '';
+    }
+  }
+  const spec = ENGINES[engine];
+  return spec ? new URL(spec.build('test')).hostname : '';
+}
+
 export class SearchHub {
   /** Engines that recently returned a bot-check are tried last for a while. */
   private blockedUntil = new Map<string, number>();

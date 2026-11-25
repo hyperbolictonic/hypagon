@@ -12,6 +12,7 @@
 import type { Session } from 'electron';
 import { session as electronSession } from 'electron';
 import { DEFAULT_RESEARCH_SETTINGS, type ResearchSettings } from './settings.js';
+import { engineHost } from '../search/search-engine.js';
 import type { HostBrowserProfile } from '../telemetry/host-fingerprint.js';
 
 /** When to use: declaring the error contract shared by the research surfaces. */
@@ -163,22 +164,7 @@ export class ResearchSessionController {
 
   /** The host an engine loads in; the custom engine resolves its template. */
   engineHost(engine: string): string {
-    if (engine === 'custom' && this.settings.urlTemplate) {
-      try {
-        return new URL(this.settings.urlTemplate.replace('{query}', 'test')).hostname;
-      } catch {
-        return '';
-      }
-    }
-    return (
-      {
-        google: 'www.google.com',
-        duckduckgo: 'html.duckduckgo.com',
-        bing: 'www.bing.com',
-        brave: 'search.brave.com',
-        startpage: 'www.startpage.com',
-      } as Record<string, string>
-    )[engine] || '';
+    return engineHost(engine, this.settings.urlTemplate);
   }
 
   isCooling(host: string): boolean {

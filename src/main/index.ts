@@ -250,7 +250,7 @@ ipcMain.handle('recording:stop', () => stopRecording());
 ipcMain.handle('recording:status', () => getRecordingStatus());
 
 // ---- research run IPC (streams events on 'research:event') --------------------------------
-ipcMain.handle('research:run', (_event, opts: any) => chassis.researchTopic(opts ?? {}));
+ipcMain.handle('research:run', (_event, opts: any) => chassis.crawl.researchTopic(opts ?? {}));
 ipcMain.handle('research:relocate', (_event, opts: any) => chassis.relocateCitation(opts ?? {}));
 ipcMain.handle('research:revalidate', (_event, opts: any) => chassis.revalidateStored(opts ?? {}));
 ipcMain.handle('recording:list', () => listRecordings());
@@ -336,7 +336,7 @@ ipcMain.handle('research:settings:get', () => {
 ipcMain.handle('research:settings:save', async (_event, settings: any) => {
   if (!activeResearchSettings) return { ok: false, settings: null, errors: ['Research settings are not ready yet.'] };
   const result = activeResearchSettings.save(settings);
-  if (result.ok) await chassis.setResearchSettings(result.settings);
+  if (result.ok) await chassis.research.setSettings(result.settings);
   return result;
 });
 
@@ -356,7 +356,7 @@ ipcMain.handle('shadowwalk:detect', () => chassis.detectShadowPatch());
 
 ipcMain.handle('research:session:reset', async () => {
   try {
-    await chassis.resetResearchSession();
+    await chassis.research.reset();
     return { ok: true };
   } catch (err: any) {
     return { ok: false, error: err?.message || String(err) };
@@ -625,7 +625,7 @@ async function createWindow() {
   // Start Autonomous HTTP Bridge
   try {
     activeResearchSettings = new ResearchSettingsStore(path.join(app.getPath('userData'), 'research-settings.json'));
-    await chassis.setResearchSettings(activeResearchSettings.load());
+    await chassis.research.setSettings(activeResearchSettings.load());
 
     const wrapStore = new WrapStore(wrapDir());
     activeWrapStore = wrapStore;
