@@ -51,7 +51,7 @@ const ROUTES: Record<string, MarkHandler> = {
   'POST /marks/click': async (ctx) => {
     const resolved = await resolveMark(ctx);
     if (!resolved) return;
-    ctx.sendJson({ success: true, result: await ctx.chassis.clickMark(resolved.id) });
+    ctx.sendJson({ success: true, result: await ctx.chassis.marks.clickMark(resolved.id) });
   },
 
   'POST /marks/type': async (ctx) => {
@@ -61,7 +61,7 @@ const ROUTES: Record<string, MarkHandler> = {
     const text = body.text ?? body.value ?? body.content ?? body.input ?? '';
     ctx.sendJson({
       success: true,
-      result: await ctx.chassis.typeMark(resolved.id, String(text), {
+      result: await ctx.chassis.marks.typeMark(resolved.id, String(text), {
         clearFirst: body?.clear_first === true || body?.clearFirst === true,
       }),
     });

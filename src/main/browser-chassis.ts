@@ -26,7 +26,6 @@ import { JevController } from './jev/controller.js';
 import { DeckController } from './deck/controller.js';
 import { HarvestSurface } from './harvest/harvest-surface.js';
 import { readStoredDecisionConfig, saveDecisionConfig, decisionStatus, runDecision, onDecision, type DecisionEvent } from './decide/decision-client.js';
-import { DEEP_DOM_HELPERS } from './primitives/dom-targeting.js';
 import { detectHostBrowserProfile, type HostBrowserProfile } from './telemetry/host-fingerprint.js';
 import { TabManager, type TabInstance } from './tabs/tab-manager.js';
 import { cortex, CortexDB } from './cortex/cortex-db.js';
@@ -289,8 +288,17 @@ export class BrowserChassis {
       activeWebContents: () => this.getActiveWebContents(),
       revision: () => this.revision,
       marksOverlay: this.marksOverlay,
+      simulator: {
+        clickAt: (wc, point) => this.input.simulator.clickAt(wc, point),
+        clearFocusedField: (wc) => this.input.simulator.clearFocusedField(wc),
+        typeText: (wc, text) => this.input.simulator.typeText(wc, text),
+      },
       refuseShadow: (surface) => assertShadowSurface(surface),
       log: this.controllerLog,
+      reportActing: () => this.telemetry.reportActing(),
+      reportIdle: () => this.telemetry.reportIdle(),
+      emitClick: (point, details) => this.telemetry.emitPointEvent('click', point, details),
+      bumpRevision: () => this.bumpRevision(),
     });
     const harvest = new HarvestSurface({
       activeWebContents: () => this.getActiveWebContents(),
@@ -404,8 +412,8 @@ export class BrowserChassis {
       getFrames: (opts) => this.shadow.getFrames(opts),
       evaluateInFrames: (script, opts) => this.page.evaluateInFrames(script, opts),
       resolveSealedToken: (token) => resolveSealedTarget(this.getActiveWebContents(), token),
-      clickMark: (id) => this.clickMark(id),
-      typeMark: (id, text, opts) => this.typeMark(id, text, opts),
+      clickMark: (id) => this.marks.clickMark(id),
+      typeMark: (id, text, opts) => this.marks.typeMark(id, text, opts),
       clickElement: (selector, coords) => this.input.clickElement(selector, coords),
       typeText: (text, selector, opts) => this.input.typeText(text, selector, opts),
       findSealed: (opts) => this.marks.findSealed(opts),
@@ -1754,93 +1762,6 @@ export class BrowserChassis {
     anchorsFor?: string,
   ): Promise<HumanHandoffResult> {
     return this.citationController.attemptHandoff(url, onHuman, anchorsFor);
-  }
-
-  /**
-   * Resolve a Set-of-Marks target: ids >= 100 live in iframes, the rest in the
-   * overlay. Throws the refresh hint agents already retry on when the mark is
-   * gone — the same failure for click, type and the focus retry.
-   */
-  private async resolveMarkTarget(wc: WebContents, markId: number) {
-    const target = markId >= 100
-      ? await resolveFrameMark(wc, markId)
-      : await this.marksOverlay.getMarkTarget(wc, markId);
-    if (!target) {
-      throw new Error(`Mark #${markId} not found. Call find(include_frames:true) or take_annotated_screenshot() to refresh marks.`);
-    }
-    return target;
-  }
-
-  /**
-   * Focus a mark: resolve it, report the agent as acting, click its centre and
-   * (optionally) settle — the shared prologue of click and type.
-   */
-  private async focusMark(wc: WebContents, markId: number, settleMs = 0) {
-    const target = await this.resolveMarkTarget(wc, markId);
-    this.telemetry.reportActing();
-    await this.input.simulator.clickAt(wc, target.currentCenter);
-    if (settleMs) await new Promise((r) => setTimeout(r, settleMs));
-    return target;
-  }
-
-  public async clickMark(markId: number): Promise<string> {
-    const wc = this.getActiveWebContents();
-    this.telemetry.addLog('action', `MCP Directive: click_mark(#${markId})`);
-    const target = await this.focusMark(wc, markId);
-
-    this.telemetry.reportIdle();
-
-    this.telemetry.emitPointEvent('click', target.currentCenter, `Set-of-Marks: Clicked mark #${markId} [${target.mark.tag}: "${target.mark.text}"]`);
-
-    this.bumpRevision();
-    return `Clicked mark #${markId} (${target.mark.tag}: "${target.mark.text}")`;
-  }
-
-  public async typeMark(markId: number, text: string, opts: { secret?: boolean; clearFirst?: boolean } = {}): Promise<string> {
-    const wc = this.getActiveWebContents();
-    const shown = opts.secret ? `[REDACTED ${String(text).length} chars]` : `"${text}"`;
-    this.telemetry.addLog('action', `MCP Directive: type_mark(#${markId}, ${shown}${opts.clearFirst ? ', clear_first' : ''})`);
-    const target = await this.focusMark(wc, markId, 100);
-
-    // A stray or occluded click silently sends keystrokes nowhere (sticky headers,
-    // lazy re-renders, a hidden window). Verify the target actually took focus and,
-    // if not, re-resolve its live centre and click once more before typing.
-    const focusedOk = markId >= 100
-      ? true
-      : await wc
-          .executeJavaScript(
-            `(() => {${DEEP_DOM_HELPERS}
-              const el = kqDeep('[data-mark-id="${markId}"]');
-              if (!el) return true;
-              const a = kqActive();
-              if (!a) return false;
-              return a === el || kqContainsComposed(el, a) || kqContainsComposed(a, el);
-            })()`
-          )
-          .catch(() => true);
-    if (focusedOk === false) {
-      this.telemetry.addLog('warn', `type_mark(#${markId}): target did not take focus after click; retrying once.`);
-      const retry = await this.resolveMarkTarget(wc, markId).catch(() => null);
-      if (retry) {
-        await this.input.simulator.clickAt(wc, retry.currentCenter);
-        await new Promise((r) => setTimeout(r, 100));
-      }
-    }
-
-    if (opts.clearFirst) {
-      // Replace rather than append: the target may already hold a value (e.g. a pre-filled
-      // origin/airport field), and appending silently corrupts it.
-      await this.input.simulator.clearFocusedField(wc);
-    }
-
-    await this.input.simulator.typeText(wc, text);
-
-    this.telemetry.reportIdle();
-    this.bumpRevision();
-
-    return opts.secret
-      ? `Focused mark #${markId} and typed ${String(text).length} chars (redacted)`
-      : `Focused mark #${markId} and typed "${text}"`;
   }
 
   public async saveScript(data: {
