@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 351 files, 1074 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 353 files, 1080 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -416,18 +416,18 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/primitives/dom-targeting.ts` | `TargetBox` *(type)* | - |
 | `main/primitives/frame-controls.ts` | `addressedFrameControls` | When to use: turning a `getFrames({ includeControls: true })` result into |
 | `main/primitives/frame-controls.ts` | `AddressedFrameControl` *(type)* | One addressable control plus the frame it lives in. |
+| `main/primitives/options.ts` | `WaitCondition` *(type)* | When to use: wait_for and expect — one declarative readiness condition. |
+| `main/primitives/options.ts` | `ExtractOptions` *(type)* | When to use: extract() — which structure to read and where. |
+| `main/primitives/options.ts` | `CollectOptions` *(type)* | When to use: collect_all() — which container to scroll and how far. |
 | `main/primitives/primitives.ts` | `DEFAULT_MARKDOWN_BUDGET` | Default view size for `observe(as:"markdown")` when the caller gives no budget. |
 | `main/primitives/primitives.ts` | `PrimitiveError` | - |
 | `main/primitives/primitives.ts` | `Primitives` | - |
 | `main/primitives/primitives.ts` | `PrimitivesHost` *(type)* | Primitives — the orthogonal observe / act / wait layer. |
 | `main/primitives/primitives.ts` | `PrimitiveErrorCode` *(type)* | - |
-| `main/primitives/primitives.ts` | `WaitCondition` *(type)* | - |
 | `main/primitives/primitives.ts` | `ConditionResult` *(type)* | - |
 | `main/primitives/primitives.ts` | `WaitResult` *(type)* | - |
 | `main/primitives/primitives.ts` | `PageState` *(type)* | - |
 | `main/primitives/primitives.ts` | `ObserveOptions` *(type)* | - |
-| `main/primitives/primitives.ts` | `ExtractOptions` *(type)* | - |
-| `main/primitives/primitives.ts` | `CollectOptions` *(type)* | - |
 | `main/primitives/primitives.ts` | `FindOptions` *(type)* | - |
 | `main/primitives/primitives.ts` | `ActOptions` *(type)* | A target can be addressed three ways, in order of preference: |
 | `main/primitives/text-target.ts` | `textTargetExpression` | Deepest visible element whose trimmed text matches. "Deepest" matters: a card <div> and its |
@@ -902,7 +902,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (193)
+## Modules (199)
 
 | File | Export | When to use |
 |---|---|---|
@@ -1013,6 +1013,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/prerender/prerender-engine.ts` | `PrerenderEngine` | When to use: the chassis — own the warm views and the background harvest. |
 | `main/prerender/url.ts` | `normalizePrerenderUrl` | When to use: comparing a requested URL to a pooled one (query order-insensitive). |
 | `main/prerender/view-factory.ts` | `spawnPrerenderView` | When to use: `PrerenderEngine.prerender` — one warm view for `targetUrl`, |
+| `main/primitives/page-scripts.ts` | `buildWaitProbe` | When to use: wait_for and expect — the declarative condition probe. |
+| `main/primitives/page-scripts.ts` | `buildExtractScript` | When to use: extract() and observe(list\|table\|app_data). |
+| `main/primitives/page-scripts.ts` | `buildCollectScript` | When to use: collect_all — the scroll-and-dedupe collector (bindings, then the loop). |
+| `main/primitives/page-scripts.ts` | `SIGNATURE_SCRIPT` | When to use: pageState and diff — one cheap signature round trip, no DOM mutation. |
+| `main/primitives/page-scripts.ts` | `STABILITY_SCRIPT` | When to use: the `stable` wait condition — the height/text/nodes triple it compares. |
+| `main/primitives/page-scripts.ts` | `PROBE_HELPERS` | When to use: every probe that needs clean / isVisible / accName / resolveRoot. |
 | `main/remote/cloudflared.ts` | `findCloudflared` | Find cloudflared without installing or downloading it. |
 | `main/remote/ipc.ts` | `registerRemoteIpc` | When to use: main-process startup — register every `remote:*` channel. The |
 | `main/security/capability-token.ts` | `tokenPathIn` | The token file path inside a capability directory. |
