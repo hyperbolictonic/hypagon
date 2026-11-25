@@ -339,6 +339,34 @@ function formatSecrets(data: any): string {
   ) + warning;
 }
 
+/** The wrapper write tools report a validation failure the same way. */
+function wrapperRejection(response: BridgeResponse): string | undefined {
+  if (response.data?.success) return undefined;
+  const errors = Array.isArray(response.data?.errors)
+    ? response.data.errors
+    : [response.data?.error || `HTTP ${response.status}`];
+  return `Wrapper rejected:\n- ${errors.join('\n- ')}`;
+}
+
+/** Both write tools refresh the generated tools and describe the saved wrapper. */
+async function wrapperSaved(
+  data: any,
+  created: boolean,
+  refresh: () => Promise<{ cap: number; exposed: string[] }>,
+): Promise<string> {
+  const saved = data.wrapper;
+  const sync = await refresh();
+  const next = created ? 'Call wrap_test with dryRun first, then wrap_run.' : 'Run wrap_test with dryRun to verify the change.';
+  return `${created ? 'Created' : 'Updated'} ${saved?.id}. ${next}${generatedWarning(saved, sync)}`;
+}
+
+/**
+ * The failure text for a non-ok bridge response; every wrap tool reports it the same way.
+ */
+function bridgeError(response: BridgeResponse): string | undefined {
+  return response.ok ? undefined : errorText(response.data?.code, response.data?.error || `HTTP ${response.status}`);
+}
+
 /**
  * One tool-call envelope shared by the wrap tools: call the bridge, let `fail`
  * name the failure text (or return undefined to proceed), render the success
@@ -476,7 +504,7 @@ export async function createWrapMcpServer() {
     () =>
       bridgeTool(
         () => callBridge('/wrap/manifest'),
-        (r) => (r.ok ? undefined : errorText(r.data?.code, r.data?.error || `HTTP ${r.status}`)),
+        bridgeError,
         (data) => formatManifest(data),
       ),
   );
@@ -500,7 +528,7 @@ export async function createWrapMcpServer() {
     () =>
       bridgeTool(
         () => callBridge('/wrap/secrets'),
-        (r) => (r.ok ? undefined : errorText(r.data?.code, r.data?.error || `HTTP ${r.status}`)),
+        bridgeError,
         (data) => formatSecrets(data),
       ),
   );
@@ -535,16 +563,8 @@ export async function createWrapMcpServer() {
     ({ wrapper }) =>
       bridgeTool(
         () => callBridge('/wrap/wrappers', 'POST', { action: 'create', wrapper: asObject(wrapper) }),
-        (r) => {
-          if (r.data?.success) return undefined;
-          const errors = Array.isArray(r.data?.errors) ? r.data.errors : [r.data?.error || `HTTP ${r.status}`];
-          return `Wrapper rejected:\n- ${errors.join('\n- ')}`;
-        },
-        async (data) => {
-          const saved = data.wrapper;
-          const sync = await refreshGeneratedTools();
-          return `Created ${saved?.id}. Call wrap_test with dryRun first, then wrap_run.${generatedWarning(saved, sync)}`;
-        },
+        wrapperRejection,
+        (data) => wrapperSaved(data, true, refreshGeneratedTools),
       ),
   );
 
@@ -557,16 +577,8 @@ export async function createWrapMcpServer() {
     ({ wrapper }) =>
       bridgeTool(
         () => callBridge('/wrap/wrappers', 'POST', { action: 'update', wrapper: asObject(wrapper) }),
-        (r) => {
-          if (r.data?.success) return undefined;
-          const errors = Array.isArray(r.data?.errors) ? r.data.errors : [r.data?.error || `HTTP ${r.status}`];
-          return `Wrapper rejected:\n- ${errors.join('\n- ')}`;
-        },
-        async (data) => {
-          const updated = data.wrapper;
-          const sync = await refreshGeneratedTools();
-          return `Updated ${updated?.id}. Run wrap_test with dryRun to verify the change.${generatedWarning(updated, sync)}`;
-        },
+        wrapperRejection,
+        (data) => wrapperSaved(data, false, refreshGeneratedTools),
       ),
   );
 
@@ -642,7 +654,7 @@ export async function createWrapMcpServer() {
     () =>
       bridgeTool(
         () => callBridge('/wrap/manifest'),
-        (r) => (r.ok ? undefined : errorText(r.data?.code, r.data?.error || `HTTP ${r.status}`)),
+        bridgeError,
         async (data) => {
           await refreshGeneratedTools();
           return formatManifest(data);
