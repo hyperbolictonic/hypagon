@@ -610,20 +610,20 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/sealed-types.ts` | `SealedFindResult` *(type)* | When to use: the `find(sealed:true)` result. |
 | `main/shadow-walk/sealed-types.ts` | `SealedIdentity` *(type)* | One control as the AX tree describes it, before any geometry is measured. |
 | `main/shadow-walk/sealed-types.ts` | `SealedCacheEntry` *(type)* | When to use: the per-tab cache entry the scan writes and the next call reads. |
-| `main/shadow-walk/settings.ts` | `normalizeShadowWalkSettings` | - |
-| `main/shadow-walk/settings.ts` | `loadShadowWalkSettings` | - |
-| `main/shadow-walk/settings.ts` | `saveShadowWalkSettings` | - |
-| `main/shadow-walk/settings.ts` | `shadowWalkStatus` | - |
+| `main/shadow-walk/settings.ts` | `normalizeShadowWalkSettings` | When to use: loading or saving the file — coerce an untrusted object into the shape the guards read. |
+| `main/shadow-walk/settings.ts` | `loadShadowWalkSettings` | When to use: any Shadow Walk path — the levers with the two environment overrides applied. |
+| `main/shadow-walk/settings.ts` | `saveShadowWalkSettings` | When to use: Settings → Shadow Walk save (IPC only; there is no HTTP write route). |
+| `main/shadow-walk/settings.ts` | `shadowWalkStatus` | When to use: the status broadcast and the settings panel read. |
 | `main/shadow-walk/settings.ts` | `shadowWalkRefusal` | Structured refusal for a guarded surface, or null when the call may proceed. |
-| `main/shadow-walk/settings.ts` | `SHADOW_WALK_SETTINGS_FILE` | - |
-| `main/shadow-walk/settings.ts` | `DEFAULT_SHADOW_WALK_SETTINGS` | - |
-| `main/shadow-walk/settings.ts` | `shadowWalkSettings` | - |
-| `main/shadow-walk/settings.ts` | `ShadowWalkSettingsStore` | - |
-| `main/shadow-walk/settings.ts` | `ShadowWalkSettings` *(type)* | - |
-| `main/shadow-walk/settings.ts` | `ShadowWalkSettingsResult` *(type)* | - |
-| `main/shadow-walk/settings.ts` | `ShadowWalkSurface` *(type)* | - |
-| `main/shadow-walk/settings.ts` | `ShadowWalkRefusal` *(type)* | - |
-| `main/shadow-walk/settings.ts` | `ShadowWalkStatus` *(type)* | - |
+| `main/shadow-walk/settings.ts` | `SHADOW_WALK_SETTINGS_FILE` | When to use: the store default, and a test that points it at a temp file. |
+| `main/shadow-walk/settings.ts` | `DEFAULT_SHADOW_WALK_SETTINGS` | When to use: a missing or corrupt settings file. |
+| `main/shadow-walk/settings.ts` | `shadowWalkSettings` | When to use: the app-wide store the IPC handlers share; tests build their own store instead. |
+| `main/shadow-walk/settings.ts` | `ShadowWalkSettingsStore` | When to use: one JSON file of Shadow Walk settings; construct with a temp path in tests. |
+| `main/shadow-walk/settings.ts` | `ShadowWalkSettings` *(type)* | When to use: a guard reading one lever, or the Settings form binding the whole document. |
+| `main/shadow-walk/settings.ts` | `ShadowWalkSettingsResult` *(type)* | When to use: the load/save reply — normalised settings, or the validation errors. |
+| `main/shadow-walk/settings.ts` | `ShadowWalkSurface` *(type)* | When to use: `shadowWalkRefusal` — the four guarded surfaces (sealed, Tab walk, frames, deep open roots). |
+| `main/shadow-walk/settings.ts` | `ShadowWalkRefusal` *(type)* | When to use: a guarded call that must tell the agent which switch is off, and why. |
+| `main/shadow-walk/settings.ts` | `ShadowWalkStatus` *(type)* | When to use: the status read the Settings panel and the HUD show — levers only, no file path. |
 | `main/shadow-walk/shadow-surface.ts` | `ShadowWalkSurface` | The Settings → Shadow Walk policy, frame reads and the trusted Tab walk. |
 | `main/shadow-walk/shadow-surface.ts` | `ShadowWalkSurfaceDeps` *(type)* | Dependencies the Shadow Walk surface needs from the tabs and page capture. |
 | `main/shadow-walk/tab-walk.ts` | `runTabWalk` | Walk sequential focus from a host. |
@@ -770,19 +770,19 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/pagination.ts` | `WrapIndexContext` *(type)* | Where an indexed document came from, for the indexer's metadata. |
 | `main/wrap/pagination.ts` | `PagePlan` *(type)* | The paging contract derived from `recipe.pagination` for one run. |
 | `main/wrap/render.ts` | `renderPayload` | Recipe rendering for one payload, with the legacy fallbacks. |
-| `main/wrap/render.ts` | `safeHost` | - |
+| `main/wrap/render.ts` | `safeHost` | When to use: an error or a preview that names a host — empty when the URL is malformed. |
 | `main/wrap/render.ts` | `previewUrl` | The preview URL for a plan. |
-| `main/wrap/render.ts` | `secretVariants` | - |
-| `main/wrap/render.ts` | `redactText` | - |
-| `main/wrap/render.ts` | `redactDeep` | - |
-| `main/wrap/render.ts` | `parseJson` | - |
-| `main/wrap/render.ts` | `toRecords` | - |
-| `main/wrap/render.ts` | `fence` | - |
-| `main/wrap/render.ts` | `clip` | - |
-| `main/wrap/render.ts` | `failure` | - |
-| `main/wrap/render.ts` | `isPlainObject` | - |
-| `main/wrap/render.ts` | `clampInt` | - |
-| `main/wrap/render.ts` | `Rendered` *(type)* | - |
+| `main/wrap/render.ts` | `secretVariants` | When to use: redaction — the stored value and its scheme-less form ("Bearer x" also matches "x"). |
+| `main/wrap/render.ts` | `redactText` | When to use: a response body or an error excerpt that may echo the credential. |
+| `main/wrap/render.ts` | `redactDeep` | When to use: a parsed payload that may echo the credential in a value or a key. |
+| `main/wrap/render.ts` | `parseJson` | When to use: a response body before rendering — parsed only when the content type or the shape says JSON. |
+| `main/wrap/render.ts` | `toRecords` | When to use: a JSON payload with no recipe — an array becomes rows, an object one row. |
+| `main/wrap/render.ts` | `fence` | When to use: a raw body with no recipe — wrap and clip it as one fenced block. |
+| `main/wrap/render.ts` | `clip` | When to use: any text the configured character budget caps. |
+| `main/wrap/render.ts` | `failure` | When to use: a run that failed before or during the request; the agent sees the code and message. |
+| `main/wrap/render.ts` | `isPlainObject` | When to use: telling a JSON object from an array or null while handling a payload. |
+| `main/wrap/render.ts` | `clampInt` | When to use: a numeric policy from the wrapper or the environment (timeouts, caps). |
+| `main/wrap/render.ts` | `Rendered` *(type)* | When to use: `renderPayload` — the markdown, records and optional documents one run returns. |
 | `main/wrap/rendering.ts` | `renderWrapped` | Render one page (or a merged selection) through the wrapper's recipe. |
 | `main/wrap/rendering.ts` | `Rendered` *(type)* | The markdown, records and documents a recipe produced for one or more pages. |
 | `main/wrap/resolve.ts` | `resolveWrapper` | When to use: `run` / `preview` / `test` on either executor core — resolve the |

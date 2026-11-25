@@ -18,8 +18,10 @@
 import { dataPath } from '../data-paths.ts';
 import { loadJsonSettings, saveJsonSettings, settingsSource } from '../settings/json-settings.ts';
 
+/** When to use: the store default, and a test that points it at a temp file. */
 export const SHADOW_WALK_SETTINGS_FILE = dataPath('shadow-walk.json');
 
+/** When to use: a guard reading one lever, or the Settings form binding the whole document. */
 export interface ShadowWalkSettings {
   schemaVersion: 1;
   enabled: boolean;
@@ -53,6 +55,7 @@ export interface ShadowWalkSettings {
   cloneLab: { enabled: boolean };
 }
 
+/** When to use: a missing or corrupt settings file. */
 export const DEFAULT_SHADOW_WALK_SETTINGS: ShadowWalkSettings = {
   schemaVersion: 1,
   enabled: true,
@@ -78,19 +81,23 @@ export const DEFAULT_SHADOW_WALK_SETTINGS: ShadowWalkSettings = {
   cloneLab: { enabled: false },
 };
 
+/** When to use: the load/save reply — normalised settings, or the validation errors. */
 export interface ShadowWalkSettingsResult {
   ok: boolean;
   settings: ShadowWalkSettings;
   errors: string[];
 }
 
+/** When to use: `shadowWalkRefusal` — the four guarded surfaces (sealed, Tab walk, frames, deep open roots). */
 export type ShadowWalkSurface = 'sealed' | 'tabWalk' | 'frames' | 'deepOpenRoots';
 
+/** When to use: a guarded call that must tell the agent which switch is off, and why. */
 export interface ShadowWalkRefusal {
   code: 'SHADOW_WALK_DISABLED' | 'SEALED_DISABLED' | 'TAB_WALK_DISABLED' | 'FRAMES_DISABLED' | 'DEEP_OPEN_ROOTS_DISABLED';
   message: string;
 }
 
+/** When to use: the status read the Settings panel and the HUD show — levers only, no file path. */
 export interface ShadowWalkStatus {
   enabled: boolean;
   axSealed: boolean;
@@ -132,6 +139,7 @@ function intInRange(value: unknown, fallback: number, min: number, max: number):
   return Math.round(Math.min(max, Math.max(min, n)));
 }
 
+/** When to use: loading or saving the file — coerce an untrusted object into the shape the guards read. */
 export function normalizeShadowWalkSettings(input: unknown): ShadowWalkSettingsResult {
   const source = settingsSource(input);
   if (!source) {
@@ -170,6 +178,7 @@ export function normalizeShadowWalkSettings(input: unknown): ShadowWalkSettingsR
   return { ok: true, settings, errors: [] };
 }
 
+/** When to use: one JSON file of Shadow Walk settings; construct with a temp path in tests. */
 export class ShadowWalkSettingsStore {
   readonly file: string;
 
@@ -194,16 +203,20 @@ export class ShadowWalkSettingsStore {
   }
 }
 
+/** When to use: the app-wide store the IPC handlers share; tests build their own store instead. */
 export const shadowWalkSettings = new ShadowWalkSettingsStore();
 
+/** When to use: any Shadow Walk path — the levers with the two environment overrides applied. */
 export function loadShadowWalkSettings(): ShadowWalkSettings {
   return shadowWalkSettings.load();
 }
 
+/** When to use: Settings → Shadow Walk save (IPC only; there is no HTTP write route). */
 export function saveShadowWalkSettings(input: unknown): ShadowWalkSettingsResult {
   return shadowWalkSettings.save(input);
 }
 
+/** When to use: the status broadcast and the settings panel read. */
 export function shadowWalkStatus(settings: ShadowWalkSettings = loadShadowWalkSettings()): ShadowWalkStatus {
   return {
     enabled: settings.enabled,

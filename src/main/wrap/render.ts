@@ -13,6 +13,7 @@ import { renderRecipe } from '../../../packages/recipe/src/index.ts';
 import type { Recipe, RenderMeta, RenderedDocument } from '../../../packages/recipe/src/index.ts';
 import type { WrapPreview, WrapRunResult, WrapWrapper } from './types.ts';
 
+/** When to use: `renderPayload` — the markdown, records and optional documents one run returns. */
 export interface Rendered {
   markdown: string;
   records: Record<string, unknown>[];
@@ -65,6 +66,7 @@ export function renderPayload(
   };
 }
 
+/** When to use: an error or a preview that names a host — empty when the URL is malformed. */
 export function safeHost(url: string): string {
   try {
     return new URL(url).hostname;
@@ -87,6 +89,7 @@ export function previewUrl(url: string, query: Readonly<Record<string, string>> 
   return search === '' ? url : `${url}${url.includes('?') ? '&' : '?'}${search}`;
 }
 
+/** When to use: redaction — the stored value and its scheme-less form ("Bearer x" also matches "x"). */
 export function secretVariants(value: string): string[] {
   const variants = new Set<string>();
   if (value) variants.add(value);
@@ -95,6 +98,7 @@ export function secretVariants(value: string): string[] {
   return [...variants];
 }
 
+/** When to use: a response body or an error excerpt that may echo the credential. */
 export function redactText(text: string, values: string[]): string {
   if (!text || values.length === 0) return text;
   let out = text;
@@ -104,6 +108,7 @@ export function redactText(text: string, values: string[]): string {
   return out;
 }
 
+/** When to use: a parsed payload that may echo the credential in a value or a key. */
 export function redactDeep(value: unknown, values: string[], depth = 0): unknown {
   if (values.length === 0) return value;
   if (depth > 100) return '<redacted-deep>';
@@ -119,6 +124,7 @@ export function redactDeep(value: unknown, values: string[], depth = 0): unknown
   return value;
 }
 
+/** When to use: a response body before rendering — parsed only when the content type or the shape says JSON. */
 export function parseJson(text: string, contentType: string): unknown {
   if (!text) return undefined;
   const looksJson = contentType.includes('json') || /^\s*[\[{]/.test(text);
@@ -130,6 +136,7 @@ export function parseJson(text: string, contentType: string): unknown {
   }
 }
 
+/** When to use: a JSON payload with no recipe — an array becomes rows, an object one row. */
 export function toRecords(json: unknown): Record<string, unknown>[] {
   if (Array.isArray(json)) {
     return json.map((item) => (isPlainObject(item) ? item : { value: item }));
@@ -138,17 +145,20 @@ export function toRecords(json: unknown): Record<string, unknown>[] {
   return [];
 }
 
+/** When to use: a raw body with no recipe — wrap and clip it as one fenced block. */
 export function fence(text: string, language: string, maxChars: number): string {
   const clipped = clip(text.trim(), maxChars);
   return clipped ? `\`\`\`${language}\n${clipped}\n\`\`\`` : '_Empty response._';
 }
 
+/** When to use: any text the configured character budget caps. */
 export function clip(text: string, maxChars: number): string {
   if (!text) return '';
   if (text.length <= maxChars) return text;
   return `${text.slice(0, Math.max(0, maxChars - 1))}…`;
 }
 
+/** When to use: a run that failed before or during the request; the agent sees the code and message. */
 export function failure(
   wrapper: { id: string; name: string },
   code: string,
@@ -167,10 +177,12 @@ export function failure(
   };
 }
 
+/** When to use: telling a JSON object from an array or null while handling a payload. */
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** When to use: a numeric policy from the wrapper or the environment (timeouts, caps). */
 export function clampInt(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, Math.floor(value)));
