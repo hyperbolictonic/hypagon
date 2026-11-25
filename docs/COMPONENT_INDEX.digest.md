@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-258 modules, 869 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+260 modules, 873 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -16,6 +16,7 @@
 | `main/browser/frames.ts` | 3: listFrames, FrameRect, FrameInfo |
 | `main/browser/page-script-surface.ts` | 2: PageScriptSurface, PageScriptSurfaceDeps |
 | `main/capabilities.ts` | 1: BRIDGE_CAPABILITIES |
+| `main/capture/screenshot-jpeg.ts` | 2: captureScreenshotJpeg, ScreenshotJpegDeps |
 | `main/collaboration/overlay.ts` | 8: collaborationNoteDrawerScript, collaborationPickerScript, collaborationOverlayScript, COLLABORATION_NOTE_PREFIX, COLLABORATION_CLASS_PREFIX, COLLABORATION_RESOLVE_PREFIX, COLLABORATION_EXIT_PREFIX, CollaborationPickerOptions |
 | `main/collaboration/service.ts` | 1: CollaborationService |
 | `main/collaboration/store.ts` | 2: CollaborationStore, CreateThreadInput |
@@ -27,6 +28,7 @@
 | `main/decide/decision-client.ts` | 13: resolveDecisionConfig, readStoredDecisionConfig, saveDecisionConfig, decisionStatus, onDecision, emitDecisionEvent, runDecision, DecisionProtocol, … (13) |
 | `main/decide/decision-guard.ts` | 5: validateAnswers, decideGuarded, DecisionGuard, GuardRejection, GuardedDecision |
 | `main/decide/decision-questions.ts` | 2: summarizeQuestions, DecisionQuestionSummary |
+| `main/decide/decision-surface.ts` | 2: DecisionSurface, DecisionSurfaceDeps |
 | `main/decide/sensitive-gate.ts` | 3: detectSensitiveGate, SensitiveGate, GateDetection |
 | `main/deck/collab.ts` | 2: CollabController, CollabControllerDeps |
 | `main/deck/controller.ts` | 3: DeckController, DeckMode, DeckControllerDeps |
@@ -124,9 +126,7 @@
 | `main/research/citation-controller.ts` | 4: CitationController, HumanHandoffResult, CitationControllerDeps, RevalidationSummary |
 | `main/research/crawl-orchestrator.ts` | 5: CrawlOrchestrator, CrawlSessionPolicy, CrawlOrchestratorDeps, RenderCrawlOptions, RenderCrawlResult |
 | `main/research/crawl-surface.ts` | 2: CrawlSurface, CrawlSurfaceDeps |
-| `main/research/detached-view.ts` | 4: DetachedViewController, DetachedLoadOptions, DetachedLoadResult, DetachedViewDeps |
-| `main/research/research-session-surface.ts` | 2: ResearchSessionSurface, ResearchSessionSurfaceDeps |
 
-… and 133 more module(s) — grep the full index.
+… and 135 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

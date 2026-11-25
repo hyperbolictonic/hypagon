@@ -88,7 +88,7 @@ function sendHumanDecisionRequired(ctx: DecisionResponseContext, body: any, resu
     if (criteria && typeof criteria === 'object') optionNames.push(...Object.keys(criteria));
   }
   const options = [...new Set(optionNames)];
-  const hilId = ctx.chassis.requestHumanForDecision(
+  const hilId = ctx.chassis.decision.requestForDecision(
     {
       question: typeof body?.state === 'string' ? body.state.split('\n')[0].slice(0, 140) : undefined,
       options,
@@ -126,7 +126,7 @@ function sendDecisionFailure(ctx: DecisionResponseContext, result: any): void {
     // Do NOT await the intervention: its promise resolves when the *human* acts, which can
     // take minutes. The request itself is registered synchronously before the first await,
     // so the caller gets 409 immediately with the banner already up.
-    void ctx.chassis.requestHumanForGate(
+    void ctx.chassis.decision.requestForGate(
       { kind: result.gate, reason: result.error?.message || 'Human required', evidence },
       ctx.chassis.getPageInfo().url,
     );
@@ -218,7 +218,7 @@ const ROUTES: Record<string, DecisionHandler> = {
       includePageText: body?.include_page_text !== false,
     });
     if (result.status === 'human_required') {
-      void chassis.requestHumanForGate({ kind: result.gate, reason: result.message, evidence: result.reasons }, result.url);
+      void chassis.decision.requestForGate({ kind: result.gate, reason: result.message, evidence: result.reasons }, result.url);
     }
     // Compile a verified run into a recipe on request: decide once, replay cheap next time.
     let recipe: any = null;

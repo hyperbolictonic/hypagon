@@ -24,7 +24,9 @@ import { ConstructHarvester } from './harvester/markdown.js';
 import { JevController } from './jev/controller.js';
 import { DeckController } from './deck/controller.js';
 import { HarvestSurface } from './harvest/harvest-surface.js';
-import { decisionStatus, onDecision, type DecisionEvent } from './decide/decision-client.js';
+import { decisionStatus, onDecision } from './decide/decision-client.js';
+import { DecisionSurface } from './decide/decision-surface.js';
+import { captureScreenshotJpeg } from './capture/screenshot-jpeg.js';
 import { detectHostBrowserProfile, type HostBrowserProfile } from './telemetry/host-fingerprint.js';
 import { TabManager, type TabInstance } from './tabs/tab-manager.js';
 import { cortex } from './cortex/cortex-db.js';
@@ -91,7 +93,11 @@ export class BrowserChassis {
     run: () => Promise<T>,
   ): Promise<T> => this.crawl.activity(tool, summary, describe, run);
   /** Recent decision-model calls, mirrored to the HUD (newest last, capped at 50). */
-  private decisionLog: DecisionEvent[] = [];
+  /** Decision log and the guard-driven human hand-off. */
+  readonly decision = new DecisionSurface({
+    hil: () => this.hil,
+    pageUrl: () => this.getPageInfo().url,
+  });
   /** Throttle for gate-triggered human hand-offs (one per URL per few minutes). */
   private lastGateHil: { url: string; at: number } | null = null;
   private tabManager: TabManager | null = null;
@@ -277,8 +283,7 @@ export class BrowserChassis {
     // delay or fail a decision (see emitDecision), and the ring buffer lets a late-joining renderer
     // catch up.
     onDecision((event) => {
-      this.decisionLog.push(event);
-      if (this.decisionLog.length > 50) this.decisionLog.shift();
+      this.decision.record(event);
       this.sendToSurfaces('chassis:decision', event);
     });
   }
@@ -1095,64 +1100,22 @@ export class BrowserChassis {
       send: (channel, payload) => this.sendToSurfaces(channel, payload),
       inputSetProfile: (profile) => this.input.simulator.setProfile(profile),
       harvestMarkdown: () => this.harvest.harvestMarkdown(),
-      decisionsLog: () => this.decisionLog,
+      decisionsLog: () => this.decision.events(),
     });
   }
 
   /** The shared Cortex database (bookmarks, history, recall). */
   readonly cortex = cortex;
 
-  /**
-   * Capture the visible viewport as a baseline JPEG inside TypeSafe's image limits (longest side
-   * ≤ 1568, shortest ≥ 280). Used by `decide(include_screenshot)` so the model can see the page.
-   */
-  public async captureScreenshotJpeg(maxSide = 1400, quality = 82): Promise<{ base64: string; width: number; height: number } | null> {
-    try {
-      const wc = this.getActiveWebContents();
-      const image = await this.harvest.capturePageWithRetry(wc, this.getViewportBounds());
-      if (!image || image.isEmpty()) return null;
-      const size = image.getSize();
-      if (!size.width || !size.height) return null;
-
-      const shrink = Math.min(1, maxSide / Math.max(size.width, size.height));
-      let out = shrink < 1
-        ? image.resize({ width: Math.round(size.width * shrink), height: Math.round(size.height * shrink), quality: 'good' })
-        : image;
-
-      const after = out.getSize();
-      const smallest = Math.min(after.width, after.height);
-      if (smallest > 0 && smallest < 280) {
-        const grow = 280 / smallest;
-        out = out.resize({ width: Math.round(after.width * grow), height: Math.round(after.height * grow), quality: 'good' });
-      }
-
-      const final = out.getSize();
-      const buffer = out.toJPEG(quality);
-      return { base64: buffer.toString('base64'), width: final.width, height: final.height };
-    } catch (err: any) {
-      this.telemetry.addLog('warn', `Screenshot capture failed: ${err?.message || err}`);
-      return null;
-    }
-  }
-
-  /**
-   * A sensitive gate needs a person. Raise the hand-off from Kuang itself rather than relying on the
-   * caller to do it: the rule already decided that a human is required, so waiting for another round
-   * trip only wastes the agent's turn. Throttled per URL, and skipped while a request is already open.
-   */
-  public async requestHumanForGate(gate: { kind?: string; reason: string; evidence?: string[] }, url?: string): Promise<void> {
-    // Only one request at a time: while one is open the human is already being asked. Once it is
-    // resolved, a fresh gate may ask again — that is the correct behaviour, not spam, because the
-    // human explicitly cleared the previous request.
-    if (this.hil.manager.getActiveRequest()) return;
-    const pageUrl = url || this.getPageInfo().url;
-    const detail = gate.evidence && gate.evidence.length ? ` — matched: ${gate.evidence.join(' | ')}` : '';
-    await this.hil.request(`${gate.reason}${detail}`, { url: pageUrl, bringToFront: true }).catch(() => null);
-  }
-
-  /** Recent decision-model calls, for `GET /decisions` and the HUD's DECISIONS tab. */
-  public getDecisionEvents(): DecisionEvent[] {
-    return this.decisionLog;
+  public captureScreenshotJpeg(maxSide = 1400, quality = 82) {
+    return captureScreenshotJpeg(
+      {
+        capturePage: () => this.harvest.capturePageWithRetry(this.getActiveWebContents(), this.getViewportBounds()),
+        log: (level, message) => this.telemetry.addLog(level, message),
+      },
+      maxSide,
+      quality,
+    );
   }
 
   public setOnCollaborationNote(
@@ -1185,37 +1148,6 @@ export class BrowserChassis {
       `);
     } catch {}
   }
-
-  /**
-   * A guarded decision that cannot clear its threshold is a HUMAN decision, not an agent guess.
-   * Raise the HIL banner (with the options) and hand the caller a `human_required` result so it
-   * stops instead of acting on a coin flip. Non-blocking: the request is registered synchronously,
-   * and the promise is left to resolve when the person acts or the request times out.
-   */
-  public requestHumanForDecision(
-    info: { question?: string; options?: string[]; confidence?: number; reasons?: string[] },
-    url?: string
-  ): string | null {
-    const existing = this.hil.manager.getActiveRequest();
-    if (existing) return existing.id; // already asking the human; do not stack requests
-
-    const pageUrl = url || this.getPageInfo().url;
-    const options = (info.options || []).map((o) => String(o).trim()).filter(Boolean).slice(0, 6);
-    const bits = [
-      info.question ? `Decision needed: ${info.question}` : 'Decision needed',
-      options.length ? `Options: ${options.map((o) => `"${o}"`).join(', ')}` : '',
-      typeof info.confidence === 'number' ? `(model confidence ${info.confidence.toFixed(2)})` : '',
-      info.reasons?.length ? `— ${info.reasons.slice(0, 2).join('; ')}` : '',
-    ].filter(Boolean);
-    const reason = bits.join(' ').slice(0, 400);
-
-    const pending = this.hil.request(reason, { url: pageUrl, bringToFront: true, timeoutSeconds: 300 });
-    const id = this.hil.manager.getActiveRequest()?.id ?? null;
-    void pending.catch(() => null); // resolves when the human acts; we do not block the HTTP call
-    return id;
-  }
-
-
 
   // ---- Consent sweep ------------------------------------------------------------------
   // The answered-origins memory, the timed sweep and the explicit dismiss live in

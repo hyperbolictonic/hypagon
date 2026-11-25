@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 258 files, 869 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 260 files, 873 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (738)
+## Types (742)
 
 | File | Export | When to use |
 |---|---|---|
@@ -37,6 +37,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/browser/frames.ts` | `FrameInfo` *(type)* | - |
 | `main/browser/page-script-surface.ts` | `PageScriptSurface` | The script-evaluation and control-description surface over the active tab. |
 | `main/browser/page-script-surface.ts` | `PageScriptSurfaceDeps` *(type)* | Dependencies the page-script surface needs from the active tab. |
+| `main/capture/screenshot-jpeg.ts` | `captureScreenshotJpeg` | When to use: `decide(include_screenshot)` — a bounded baseline JPEG of the viewport. |
+| `main/capture/screenshot-jpeg.ts` | `ScreenshotJpegDeps` *(type)* | Dependencies the capture needs from the active tab. |
 | `main/collaboration/overlay.ts` | `collaborationNoteDrawerScript` | Anchored note composer. The drawer is mounted next to the picked element, |
 | `main/collaboration/overlay.ts` | `collaborationPickerScript` | - |
 | `main/collaboration/overlay.ts` | `collaborationOverlayScript` | Pure in-page projection for collaboration threads. The overlay is read-only in |
@@ -98,6 +100,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/decide/decision-guard.ts` | `GuardedDecision` *(type)* | - |
 | `main/decide/decision-questions.ts` | `summarizeQuestions` | When to use: one call's questions, flattened for the event log. |
 | `main/decide/decision-questions.ts` | `DecisionQuestionSummary` *(type)* | When to use: recording what a decision call was asked. |
+| `main/decide/decision-surface.ts` | `DecisionSurface` | The decision log and the guard-driven human hand-off. |
+| `main/decide/decision-surface.ts` | `DecisionSurfaceDeps` *(type)* | Dependencies the decision surface needs from the HIL layer. |
 | `main/decide/sensitive-gate.ts` | `detectSensitiveGate` | Inspect the state Kuang is about to send. `state` may be the composed page text or the component |
 | `main/decide/sensitive-gate.ts` | `SensitiveGate` *(type)* | Sensitive gates — situations where the correct action is **a human**, never a click. |
 | `main/decide/sensitive-gate.ts` | `GateDetection` *(type)* | - |

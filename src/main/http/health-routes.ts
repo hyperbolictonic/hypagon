@@ -98,7 +98,7 @@ const ROUTES: Record<string, HealthHandler> = {
   },
 
   'GET /decisions': ({ chassis, sendJson }) => {
-    const decisions = chassis.getDecisionEvents();
+    const decisions = chassis.decision.events();
     sendJson({ success: true, count: decisions.length, decisions });
   },
 };
