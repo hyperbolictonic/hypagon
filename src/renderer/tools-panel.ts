@@ -1,5 +1,6 @@
 import type { ElectronAPI } from '../preload/index.js';
 import type { ToolManagerEntry, ToolManagerState, ToolSettings } from '../shared/tool-settings.js';
+import { byId } from './dom.js';
 
 const api = (window as unknown as { electronAPI?: ElectronAPI }).electronAPI;
 const TIERS: Array<{ tier: 1 | 2 | 3 | null; label: string }> = [
@@ -9,7 +10,7 @@ const TIERS: Array<{ tier: 1 | 2 | 3 | null; label: string }> = [
   { tier: null, label: 'OTHER' },
 ];
 
-const byId = <T extends HTMLElement>(id: string): T | null => document.getElementById(id) as T | null;
+
 
 let initialized = false;
 let entries: ToolManagerEntry[] = [];

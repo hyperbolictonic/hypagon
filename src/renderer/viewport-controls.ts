@@ -6,9 +6,10 @@
  */
 import type { ElectronAPI } from '../preload/index.js';
 import type { DeviceProfile, ViewportState } from '../shared/viewport.js';
+import { byId } from './dom.js';
 
 const api = (window as unknown as { electronAPI?: ElectronAPI }).electronAPI;
-const byId = <T extends HTMLElement>(id: string): T | null => document.getElementById(id) as T | null;
+
 
 export function initViewportControls(): void {
   const presetSelect = byId<HTMLSelectElement>('viewport-preset');

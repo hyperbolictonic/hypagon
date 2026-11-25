@@ -134,11 +134,9 @@
       "mcp/tools-catalog-research.ts": 30,
       "mcp/tools-catalog-workspace.ts": 21,
       "preload/index.ts": 14,
-      "renderer/research-panel.ts": 5,
-      "renderer/settings-clients.ts": 20,
-      "renderer/viewport-controls.ts": 4
+      "renderer/settings-clients.ts": 20
     },
-    "totalDuplicatedLines": 361
+    "totalDuplicatedLines": 352
   },
   "modularity": {
     "files": {
@@ -178,10 +176,6 @@
       },
       "renderer/recording.ts": {
         "function": 1
-      },
-      "renderer/research-panel.ts": {
-        "file": 1,
-        "function": 2
       },
       "renderer/tools-panel.ts": {
         "function": 2

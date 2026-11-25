@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 398 files, 1163 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 406 files, 1180 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (921)
+## Types (935)
 
 | File | Export | When to use |
 |---|---|---|
@@ -862,6 +862,20 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `renderer/recording.ts` | `beginRecording` | - |
 | `renderer/recording.ts` | `finishRecording` | - |
 | `renderer/recording.ts` | `BeginPayload` *(type)* | - |
+| `renderer/research/chrome.ts` | `wireFontScale` | When to use: `initResearchPanel` — the readability control, which zooms the whole |
+| `renderer/research/chrome.ts` | `ResearchChrome` | When to use: `initResearchPanel` — one chrome per panel. |
+| `renderer/research/chrome.ts` | `ResearchChromeDeps` *(type)* | When to use: `ResearchChrome` — the nodes it shows, hides and paints. |
+| `renderer/research/elements.ts` | `collectResearchElements` | When to use: `initResearchPanel` first — null means the surface is not in this page |
+| `renderer/research/elements.ts` | `ResearchElements` *(type)* | When to use: `initResearchPanel` — the panel's DOM. |
+| `renderer/research/handlers.ts` | `stopTicker` | Stop the elapsed-time ticker. |
+| `renderer/research/handlers.ts` | `beginRun` | When to use: a new run — clear the surface, zero the counters and start the clock. |
+| `renderer/research/handlers.ts` | `applyResearchEvent` | When to use: an event from `onResearchEvent`. |
+| `renderer/research/handlers.ts` | `ResearchContext` *(type)* | When to use: `applyResearchEvent` — the panel's collaborators and the run clock. |
+| `renderer/research/log-view.ts` | `ResearchLog` | When to use: `initResearchPanel` — one log per panel. |
+| `renderer/research/log-view.ts` | `ResearchLogDeps` *(type)* | When to use: `initResearchPanel` — the nodes the log writes into. |
+| `renderer/research/rows.ts` | `SourceRows` | When to use: `initResearchPanel` — one table per panel. |
+| `renderer/research/rows.ts` | `SourceRow` *(type)* | When to use: a row in the source table — its cells, kept for later events. |
+| `renderer/research/rows.ts` | `SourceRowsDeps` *(type)* | When to use: `SourceRows` — the table body and the bridge for the citation check. |
 | `renderer/settings-alert.ts` | `showAlert` | Show an inline result message; a missing element is a no-op. |
 | `renderer/settings-alert.ts` | `validationMessage` | The message a failed settings call reports: the validation errors, or the fallback. |
 | `renderer/settings-alert.ts` | `AlertKind` *(type)* | Shared alert chrome for the settings panels. |
@@ -950,7 +964,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (234)
+## Modules (237)
 
 | File | Export | When to use |
 |---|---|---|
@@ -1162,7 +1176,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/wrap-tool-schema.ts` | `wrapInputToZodShape` | Convert a wrapper input schema into a Zod raw shape (one entry per property). |
 | `mcp/wrap-tool-schema.ts` | `generatedToolName` | Deterministic MCP-safe name for a wrapper: `wrap_` + id with every character outside |
 | `mcp/wrap-tool-schema.ts` | `isToolName` | True when `name` is a legal MCP tool name (exported for tests). |
+| `renderer/dom.ts` | `byId` | When to use: resolving a control declared in index.html by its id. |
 | `renderer/menu-popup.ts` | `bootMenuPopup` | - |
+| `renderer/research/controls.ts` | `wireResearchControls` | When to use: `initResearchPanel` — wire the four controls once. |
+| `renderer/research/stats.ts` | `ResearchStats` | When to use: `initResearchPanel` — one strip per panel. |
 | `renderer/research-panel.ts` | `initResearchPanel` | - |
 | `renderer/settings-clients.ts` | `loadConnectPanel` | Read the connect info (once) and repaint the selected client snippet. |
 | `renderer/settings-clients.ts` | `initConnectPanel` | Wire the client picker once, after the settings modal markup exists. |
