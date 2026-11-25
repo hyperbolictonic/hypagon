@@ -171,9 +171,6 @@
         "file": 1,
         "function": 1
       },
-      "renderer/main.ts": {
-        "file": 1
-      },
       "renderer/recording.ts": {
         "function": 1
       }

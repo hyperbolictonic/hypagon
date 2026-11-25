@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 406 files, 1180 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 418 files, 1213 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (935)
+## Types (937)
 
 | File | Export | When to use |
 |---|---|---|
@@ -858,6 +858,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `renderer/cortex-panel.ts` | `initCortexPanel` | Wire the modal once, after the document has parsed. |
 | `renderer/cortex-panel.ts` | `updateActivePage` | Track the active page for the bookmark star and the save form. |
 | `renderer/cortex-panel.ts` | `CortexDeps` *(type)* | Callbacks the panel needs from the app shell. |
+| `renderer/deck/panel-tabs.ts` | `switchTab` | When to use: a tab button, a harvest, or a decision arriving. |
+| `renderer/deck/panel-tabs.ts` | `DeckTab` *(type)* | Which lower panel is on screen. |
 | `renderer/recording.ts` | `isRecording` | - |
 | `renderer/recording.ts` | `beginRecording` | - |
 | `renderer/recording.ts` | `finishRecording` | - |
@@ -964,7 +966,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (237)
+## Modules (268)
 
 | File | Export | When to use |
 |---|---|---|
@@ -1176,6 +1178,37 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/wrap-tool-schema.ts` | `wrapInputToZodShape` | Convert a wrapper input schema into a Zod raw shape (one entry per property). |
 | `mcp/wrap-tool-schema.ts` | `generatedToolName` | Deterministic MCP-safe name for a wrapper: `wrap_` + id with every character outside |
 | `mcp/wrap-tool-schema.ts` | `isToolName` | True when `name` is a legal MCP tool name (exported for tests). |
+| `renderer/deck/decisions.ts` | `setDecisionTabVisible` | When to use: the status broadcast, a settings save, and the first probe. |
+| `renderer/deck/decisions.ts` | `refreshDecisionTab` | When to use: after a settings change, and on the slow poll. |
+| `renderer/deck/decisions.ts` | `initDecisions` | When to use: the HUD boot — subscribe, wire the tab and start the ring-buffer sync. |
+| `renderer/deck/hil.ts` | `initHil` | When to use: the HUD boot — subscribe the HIL surfaces once. |
+| `renderer/deck/hud.ts` | `renderConstruct` | When to use: `getLatestConstruct` and a harvested construct. |
+| `renderer/deck/hud.ts` | `appendTelemetry` | When to use: a telemetry event from the bridge. |
+| `renderer/deck/hud.ts` | `appendLog` | When to use: a log event (the panel and `getLogs` both replay them here). |
+| `renderer/deck/hud.ts` | `clickHarvest` | When to use: Ctrl+H — the same path as the HARVEST button. |
+| `renderer/deck/hud.ts` | `initHud` | When to use: the HUD boot — wire the tabs, the copy buttons and the harvest action. |
+| `renderer/deck/hud.ts` | `renderStats` | When to use: `updateState` — the two token/interaction counters. |
+| `renderer/deck/mode.ts` | `MENU_POPUP_MODE` | `?menupopup=1` — the popup-menu renderer (no HUD work). |
+| `renderer/deck/mode.ts` | `SIDEBAR_MODE` | `?sidebar=1` — the native Command Deck overlay (no trail, no heartbeat). |
+| `renderer/deck/nav-bar.ts` | `hideUrlSuggestions` | When to use: any navigation submit or a keyboard dismiss. |
+| `renderer/deck/nav-bar.ts` | `renderZoom` | When to use: a state or zoom broadcast — the zoom button readout. |
+| `renderer/deck/nav-bar.ts` | `setZoomPinned` | When to use: a responsive device became active — page zoom is pinned to 100%. |
+| `renderer/deck/nav-bar.ts` | `setHistoryEnabled` | When to use: `updateState` — grey out the history buttons the tab cannot honour. |
+| `renderer/deck/nav-bar.ts` | `initNavBar` | When to use: the HUD boot — wire the URL bar, the history buttons, zoom and version. |
+| `renderer/deck/recording-panel.ts` | `loadRecordingSettings` | When to use: opening the Recording settings tab. |
+| `renderer/deck/recording-panel.ts` | `initRecordingPanel` | When to use: the HUD boot — wire the REC button, the settings form and the begin/stop events. |
+| `renderer/deck/settings-modal.ts` | `initSettingsModal` | When to use: the HUD boot — wire the dialog. |
+| `renderer/deck/sidebar.ts` | `applySidebarMode` | When to use: `applySidebarState`, the collapse/dock buttons and the boot restyle. |
+| `renderer/deck/sidebar.ts` | `applySidebarState` | When to use: the main process reports the deck's mode, collab flag and orb edge. |
+| `renderer/deck/sidebar.ts` | `markHilActive` | When to use: a human hand-off started or cleared — paints the orb's status light. |
+| `renderer/deck/sidebar.ts` | `applyExperimentalSettings` | Experimental flag UI: hide collab entry points unless the flag is on. |
+| `renderer/deck/sidebar.ts` | `initSidebar` | When to use: the HUD boot — wire the shell and paint its first state. |
+| `renderer/deck/tabs-strip.ts` | `renderTabs` | When to use: `getTabs`, `onTabsUpdated` and a state broadcast. |
+| `renderer/deck/tabs-strip.ts` | `initTabs` | When to use: the HUD boot — wire NEW TAB once. |
+| `renderer/deck/trail.ts` | `pushTrailPoint` | When to use: a telemetry event with coordinates — add its point to the trail. |
+| `renderer/deck/trail.ts` | `initTrail` | When to use: the HUD boot — size the canvas and start the loop. |
+| `renderer/deck/webstate.ts` | `refreshWebState` | When to use: the WEB STATE refresh button and the LOGS tab. |
+| `renderer/deck/webstate.ts` | `initWebState` | When to use: the HUD boot — wire the refresh button and the events disclosure. |
 | `renderer/dom.ts` | `byId` | When to use: resolving a control declared in index.html by its id. |
 | `renderer/menu-popup.ts` | `bootMenuPopup` | - |
 | `renderer/research/controls.ts` | `wireResearchControls` | When to use: `initResearchPanel` — wire the four controls once. |
