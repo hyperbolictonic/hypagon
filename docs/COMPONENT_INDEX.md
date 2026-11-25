@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 209 files, 745 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 212 files, 761 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (632)
+## Types (648)
 
 | File | Export | When to use |
 |---|---|---|
@@ -584,6 +584,22 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `renderer/recording.ts` | `beginRecording` | - |
 | `renderer/recording.ts` | `finishRecording` | - |
 | `renderer/recording.ts` | `BeginPayload` *(type)* | - |
+| `renderer/settings-alert.ts` | `showAlert` | Show an inline result message; a missing element is a no-op. |
+| `renderer/settings-alert.ts` | `validationMessage` | The message a failed settings call reports: the validation errors, or the fallback. |
+| `renderer/settings-alert.ts` | `AlertKind` *(type)* | Shared alert chrome for the settings panels. |
+| `renderer/settings-wrap-auth.ts` | `populateAuthOptions` | Repaint the credential dropdown from the current secret names. |
+| `renderer/settings-wrap-auth.ts` | `updateCredentialPanel` | Show the inline credential fields only when "+ New credential" is selected. |
+| `renderer/settings-wrap-auth.ts` | `resetCredentialPanel` | Clear the inline credential fields without touching the saved list. |
+| `renderer/settings-wrap-auth.ts` | `getSelectedAuth` | Current credential selection; `__new__` means the inline form is active. |
+| `renderer/settings-wrap-auth.ts` | `prefillCredentialHost` | Prefill the credential host when the wrapper URL changes. |
+| `renderer/settings-wrap-auth.ts` | `ensureCredential` | Create the inline credential and return the name the wrapper should reference. |
+| `renderer/settings-wrap-auth.ts` | `initWrapAuth` | Bind the picker's own change handlers; the wrapper form binds the URL field. |
+| `renderer/settings-wrap-auth.ts` | `WrapAuthDeps` *(type)* | Credential-picker dependencies: current names, reload, and the URL used to prefill a host. |
+| `renderer/settings-wrap-wrappers.ts` | `loadWrapWrappers` | Load the wrapper list from the main process and optionally open one. |
+| `renderer/settings-wrap-wrappers.ts` | `initWrapWrappers` | Wire the wrapper editor once, after the settings modal's DOM exists. |
+| `renderer/settings-wrap-wrappers.ts` | `refreshWrapperAuthOptions` | Repaint the credential picker after the credential list changed. |
+| `renderer/settings-wrap-wrappers.ts` | `closeWrapWrapperModal` | Close the editor when the settings modal itself closes. |
+| `renderer/settings-wrap-wrappers.ts` | `WrapWrapperDeps` *(type)* | Editor dependencies: the credential names and a reload after an inline create. |
 | `shared/collaboration.ts` | `CollaborationTargetKind` *(type)* | - |
 | `shared/collaboration.ts` | `CollaborationTarget` *(type)* | - |
 | `shared/collaboration.ts` | `CollaborationMessageKind` *(type)* | - |

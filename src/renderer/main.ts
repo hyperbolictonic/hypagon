@@ -7,6 +7,13 @@ import { refreshToolsPanel } from './tools-panel';
 import { initResearchPanel } from './research-panel';
 import { initViewportControls } from './viewport-controls';
 import { bootMenuPopup } from './menu-popup';
+import { showAlert, validationMessage } from './settings-alert';
+import {
+  closeWrapWrapperModal,
+  initWrapWrappers,
+  loadWrapWrappers,
+  refreshWrapperAuthOptions,
+} from './settings-wrap-wrappers';
 
 declare global {
   interface Window {
@@ -1196,9 +1203,7 @@ function formatElapsed(ms: number): string {
 }
 
 function showRecResult(kind: 'success' | 'error' | 'info', text: string) {
-  if (!settingsRecResult) return;
-  settingsRecResult.className = `alert alert-${kind} alert-sm font-mono text-xs`;
-  settingsRecResult.textContent = text;
+  showAlert(settingsRecResult, kind, text);
 }
 
 function stopRecordTicker() {
@@ -1655,14 +1660,9 @@ const researchHilTimeoutEl = document.getElementById('settings-research-hil-time
   const shadowResultEl = document.getElementById('settings-shadow-result') as HTMLElement;
   let shadowLoaded: any = null;
 
-  /** The message a failed settings call reports: the validation errors, or the fallback. */
-const validationMessage = (result: any, fallback = 'Save failed.'): string =>
-  (result?.errors || []).join('; ') || fallback;
 
 const showShadowResult = (kind: 'success' | 'error' | 'info', text: string) => {
-    shadowResultEl.className = `alert alert-${kind} alert-sm font-mono text-xs`;
-    shadowResultEl.textContent = text;
-    shadowResultEl.classList.remove('hidden');
+    showAlert(shadowResultEl, kind, text);
   };
 
   const refreshShadowPatchChip = (settings?: any) => {
@@ -1795,9 +1795,7 @@ const showShadowResult = (kind: 'success' | 'error' | 'info', text: string) => {
     .catch(() => undefined);
 
   const showResearchResult = (kind: 'success' | 'error' | 'info', text: string) => {
-    researchResultEl.className = `alert alert-${kind} alert-sm font-mono text-xs`;
-    researchResultEl.textContent = text;
-    researchResultEl.classList.remove('hidden');
+    showAlert(researchResultEl, kind, text);
   };
 
   async function loadResearchSettings(): Promise<void> {
@@ -1897,76 +1895,14 @@ const showShadowResult = (kind: 'success' | 'error' | 'info', text: string) => {
   const wrapSubTabs = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-wrap-tab]'));
   const wrapSubPanels = Array.from(document.querySelectorAll<HTMLElement>('[data-wrap-panel]'));
 
-  const wrapWrapperModalEl = document.getElementById('wrap-wrapper-modal') as HTMLDialogElement;
-  const wrapWrapperCloseEl = document.getElementById('settings-wrap-wrapper-close') as HTMLButtonElement;
-  const wrapWrapperCancelEl = document.getElementById('settings-wrap-wrapper-cancel') as HTMLButtonElement;
-  const wrapWrapperListEl = document.getElementById('settings-wrap-wrapper-list') as HTMLElement;
-  const wrapWrapperFilterEl = document.getElementById('settings-wrap-wrapper-filter') as HTMLInputElement;
-  const wrapWrapperHeadingEl = document.getElementById('settings-wrap-wrapper-heading') as HTMLElement;
-  const wrapWrapperTitleEl = document.getElementById('settings-wrap-wrapper-title') as HTMLElement;
-  const wrapWrapperBadgeEl = document.getElementById('settings-wrap-wrapper-badge') as HTMLElement;
-  const wrapWrapperFormEl = document.getElementById('settings-wrap-wrapper-form') as HTMLFormElement;
-  const wrapWrapperResultEl = document.getElementById('settings-wrap-wrapper-result') as HTMLElement;
-  const wrapWrapperSaveEl = document.getElementById('settings-wrap-wrapper-save') as HTMLButtonElement;
-  const wrapWrapperDeleteEl = document.getElementById('settings-wrap-wrapper-delete') as HTMLButtonElement;
-  const wrapWrapperNewEl = document.getElementById('settings-wrap-wrapper-new') as HTMLButtonElement;
-  const wrapWrapperRefreshEl = document.getElementById('settings-wrap-wrapper-refresh') as HTMLButtonElement;
 
-  const wrapFieldNameEl = document.getElementById('settings-wrap-field-name') as HTMLInputElement;
-  const wrapFieldIdEl = document.getElementById('settings-wrap-field-id') as HTMLInputElement;
-  const wrapFieldDescriptionEl = document.getElementById('settings-wrap-field-description') as HTMLInputElement;
-  const wrapFieldMethodEl = document.getElementById('settings-wrap-field-method') as HTMLSelectElement;
-  const wrapFieldUrlEl = document.getElementById('settings-wrap-field-url') as HTMLInputElement;
-  const wrapFieldAuthEl = document.getElementById('settings-wrap-field-auth') as HTMLSelectElement;
-  const wrapFieldMutatingEl = document.getElementById('settings-wrap-field-mutating') as HTMLInputElement;
-
-  function selectedWrapMethods(): string[] {
-    return Array.from(wrapFieldMethodEl.selectedOptions).map((option) => option.value);
-  }
-
-  function setWrapMethods(methods: string[]): void {
-    const wanted = new Set(methods.length ? methods : ['GET']);
-    for (const option of Array.from(wrapFieldMethodEl.options)) {
-      option.selected = wanted.has(option.value);
-    }
-  }
-
-  function wrapperMethods(wrapper: any): string[] {
-    const methods = Array.isArray(wrapper?.request?.methods) ? wrapper.request.methods : [];
-    if (methods.length) return methods.map((method: string) => String(method).toUpperCase());
-    return [String(wrapper?.request?.method || 'GET').toUpperCase()];
-  }
-  const wrapCredentialPanelEl = document.getElementById('settings-wrap-credential-panel') as HTMLElement;
-  const wrapCredentialNameEl = document.getElementById('settings-wrap-credential-name') as HTMLInputElement;
-  const wrapCredentialValueEl = document.getElementById('settings-wrap-credential-value') as HTMLInputElement;
-  const wrapCredentialHostsEl = document.getElementById('settings-wrap-credential-hosts') as HTMLInputElement;
-  const wrapCredentialHeaderEl = document.getElementById('settings-wrap-credential-header') as HTMLInputElement;
-  const wrapCredentialPrefixEl = document.getElementById('settings-wrap-credential-prefix') as HTMLInputElement;
-  const wrapFieldInputSchemaEl = document.getElementById('settings-wrap-field-input-schema') as HTMLTextAreaElement;
-  const wrapFieldQueryEl = document.getElementById('settings-wrap-field-query') as HTMLTextAreaElement;
-  const wrapFieldHeadersEl = document.getElementById('settings-wrap-field-headers') as HTMLTextAreaElement;
-  const wrapFieldBodyEl = document.getElementById('settings-wrap-field-body') as HTMLTextAreaElement;
-  const wrapFieldBodyFormatEl = document.getElementById('settings-wrap-field-body-format') as HTMLSelectElement;
-  const wrapFieldResponseEl = document.getElementById('settings-wrap-field-response') as HTMLTextAreaElement;
-  const wrapFieldNotesEl = document.getElementById('settings-wrap-field-notes') as HTMLInputElement;
 
   let wrapSecretsAvailable = true;
-  let wrapWrappers: any[] = [];
   let wrapSecretNames: string[] = [];
-  let selectedWrapperId: string | null = null;
   let editingSecretName: string | null = null;
-  let wrapperIdTouched = false;
-
-  const DEFAULT_INPUT_SCHEMA = {
-    type: 'object',
-    properties: {},
-    additionalProperties: false,
-  };
 
   const showWrapResult = (kind: 'success' | 'error' | 'info', text: string) => {
-    wrapResultEl.className = `alert alert-${kind} alert-sm font-mono text-xs`;
-    wrapResultEl.textContent = text;
-    wrapResultEl.classList.remove('hidden');
+    showAlert(wrapResultEl, kind, text);
   };
 
   /** Show the OAuth2 fields only when that credential type is selected. */
@@ -1977,227 +1913,6 @@ const showShadowResult = (kind: 'success' | 'error' | 'info', text: string) => {
       ? 'client secret; it is never shown again'
       : 'paste the credential; it is never shown again';
   };
-
-  const showWrapperResult = (kind: 'success' | 'error' | 'info', text: string) => {
-    wrapWrapperResultEl.className = `alert alert-${kind} alert-sm font-mono text-xs mt-2`;
-    wrapWrapperResultEl.textContent = text;
-    wrapWrapperResultEl.classList.remove('hidden');
-  };
-
-  function renderWrapWrappers(): void {
-    wrapWrapperListEl.replaceChildren();
-    const query = wrapWrapperFilterEl.value.trim().toLowerCase();
-    const visible = query
-      ? wrapWrappers.filter((wrapper) =>
-          `${wrapper.id} ${wrapper.name} ${safeHostLabel(wrapper.request?.url)}`.toLowerCase().includes(query),
-        )
-      : wrapWrappers;
-
-    if (!visible.length) {
-      const empty = document.createElement('li');
-      empty.className = 'font-mono text-[11px] text-base-content/50 px-1 py-2';
-      empty.textContent = wrapWrappers.length
-        ? 'No wrappers match that filter.'
-        : 'No wrappers saved. Press NEW or ask an agent to create one.';
-      wrapWrapperListEl.append(empty);
-      return;
-    }
-
-    for (const wrapper of visible) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className =
-        'w-full text-left rounded-box border px-3 py-2 transition-colors ' +
-        (wrapper.id === selectedWrapperId
-          ? 'border-primary bg-primary/10'
-          : 'border-base-100 bg-base-200/60 hover:bg-base-200');
-      const id = document.createElement('div');
-      id.className = 'font-mono text-xs text-base-content truncate';
-      id.textContent = wrapper.id;
-      const meta = document.createElement('div');
-      meta.className = 'font-mono text-[10px] text-base-content/50 truncate';
-      meta.textContent = `${wrapper.name} · ${wrapperMethods(wrapper).join('/')} ${safeHostLabel(wrapper.request?.url)}`;
-      button.append(id, meta);
-      button.addEventListener('click', () => selectWrapWrapper(wrapper.id));
-      wrapWrapperListEl.append(button);
-    }
-  }
-
-  function safeHostLabel(url: unknown): string {
-    try {
-      return new URL(String(url || '')).host;
-    } catch {
-      return String(url || '');
-    }
-  }
-
-  function openWrapWrapperModal(): void {
-    if (!wrapWrapperModalEl.open) wrapWrapperModalEl.showModal();
-  }
-
-  function slugifyWrapperId(name: string): string {
-    return name
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9._-]+/g, '-')
-      .replace(/^[^a-z]+/, '')
-      .replace(/[._-]{2,}/g, '-')
-      .replace(/[._-]+$/g, '')
-      .slice(0, 80);
-  }
-
-  function hostFromUrl(url: string): string {
-    try {
-      return new URL(url).hostname;
-    } catch {
-      return '';
-    }
-  }
-
-  function prettyJson(value: unknown): string {
-    return value === undefined ? '' : JSON.stringify(value, null, 2);
-  }
-
-  function populateAuthOptions(selected?: string): void {
-    const current = selected !== undefined ? selected : wrapFieldAuthEl.value;
-    const names = [...wrapSecretNames];
-    if (current && current !== '__new__' && !names.includes(current)) names.unshift(current);
-
-    wrapFieldAuthEl.replaceChildren();
-    const none = document.createElement('option');
-    none.value = '';
-    none.textContent = 'No credential';
-    wrapFieldAuthEl.append(none);
-
-    for (const name of names) {
-      const option = document.createElement('option');
-      option.value = name;
-      option.textContent = wrapSecretNames.includes(name) ? name : `${name} (missing)`;
-      wrapFieldAuthEl.append(option);
-    }
-
-    const add = document.createElement('option');
-    add.value = '__new__';
-    add.textContent = '+ New credential…';
-    wrapFieldAuthEl.append(add);
-
-    wrapFieldAuthEl.value =
-      current === '__new__' || current === '' || names.includes(current) ? current : '';
-    updateCredentialPanel();
-  }
-
-  function updateCredentialPanel(): void {
-    const isNew = wrapFieldAuthEl.value === '__new__';
-    wrapCredentialPanelEl.classList.toggle('hidden', !isNew);
-    if (isNew && !wrapCredentialHostsEl.value) {
-      const host = hostFromUrl(wrapFieldUrlEl.value);
-      if (host) wrapCredentialHostsEl.value = host;
-    }
-  }
-
-  function resetCredentialPanel(): void {
-    wrapCredentialNameEl.value = '';
-    wrapCredentialValueEl.value = '';
-    wrapCredentialHostsEl.value = '';
-    wrapCredentialHeaderEl.value = 'Authorization';
-    wrapCredentialPrefixEl.value = 'Bearer ';
-  }
-
-  function setWrapperForm(wrapper: any | null): void {
-    wrapWrapperResultEl.classList.add('hidden');
-    resetCredentialPanel();
-
-    if (wrapper) {
-      selectedWrapperId = wrapper.id;
-      wrapWrapperHeadingEl.textContent = 'EDIT WRAPPER';
-      wrapWrapperTitleEl.textContent = wrapper.id;
-      const bits = [wrapperMethods(wrapper).join('/')];
-      if (wrapper.mutating) bits.push('mutating');
-      if (wrapper.request?.auth) bits.push(`secret: ${wrapper.request.auth}`);
-      wrapWrapperBadgeEl.textContent = bits.join(' · ');
-      wrapWrapperBadgeEl.className = 'badge badge-ghost badge-xs font-mono';
-
-      wrapFieldNameEl.value = wrapper.name || '';
-      wrapFieldIdEl.value = wrapper.id || '';
-      wrapFieldIdEl.disabled = true;
-      wrapperIdTouched = true;
-      wrapFieldDescriptionEl.value = wrapper.description || '';
-      setWrapMethods(wrapperMethods(wrapper));
-      wrapFieldUrlEl.value = wrapper.request?.url || '';
-      wrapFieldMutatingEl.checked = Boolean(wrapper.mutating);
-      wrapFieldInputSchemaEl.value = prettyJson(wrapper.inputSchema || DEFAULT_INPUT_SCHEMA);
-      wrapFieldQueryEl.value = prettyJson(wrapper.request?.query);
-      wrapFieldHeadersEl.value = prettyJson(wrapper.request?.headers);
-      wrapFieldBodyEl.value = prettyJson(wrapper.request?.body);
-      wrapFieldBodyFormatEl.value = wrapper.request?.bodyFormat || '';
-      wrapFieldResponseEl.value = prettyJson(wrapper.response);
-      wrapFieldNotesEl.value = wrapper.notes || '';
-      wrapWrapperDeleteEl.disabled = false;
-      populateAuthOptions(wrapper.request?.auth || '');
-    } else {
-      selectedWrapperId = null;
-      wrapWrapperHeadingEl.textContent = 'NEW WRAPPER';
-      wrapWrapperTitleEl.textContent = 'Not saved';
-      wrapWrapperBadgeEl.className = 'badge badge-ghost badge-xs font-mono hidden';
-      wrapFieldNameEl.value = '';
-      wrapFieldIdEl.value = '';
-      wrapFieldIdEl.disabled = false;
-      wrapperIdTouched = false;
-      wrapFieldDescriptionEl.value = '';
-      setWrapMethods(['GET']);
-      wrapFieldUrlEl.value = '';
-      wrapFieldMutatingEl.checked = false;
-      wrapFieldInputSchemaEl.value = prettyJson(DEFAULT_INPUT_SCHEMA);
-      wrapFieldQueryEl.value = '';
-      wrapFieldHeadersEl.value = '';
-      wrapFieldBodyEl.value = '';
-      wrapFieldBodyFormatEl.value = '';
-      wrapFieldResponseEl.value = '';
-      wrapFieldNotesEl.value = '';
-      wrapWrapperDeleteEl.disabled = true;
-      populateAuthOptions('');
-    }
-
-    wrapWrapperSaveEl.disabled = false;
-    renderWrapWrappers();
-  }
-
-  function selectWrapWrapper(id: string, open = true): void {
-    const wrapper = wrapWrappers.find((entry) => entry.id === id);
-    if (!wrapper) return;
-    setWrapperForm(wrapper);
-    if (open) openWrapWrapperModal();
-  }
-
-  function newWrapWrapper(): void {
-    setWrapperForm(null);
-    openWrapWrapperModal();
-    wrapFieldNameEl.focus();
-  }
-
-  async function loadWrapWrappers(selectId?: string, open = true): Promise<void> {
-    try {
-      const wrappers = await window.electronAPI?.listWrapWrappers();
-      if (!Array.isArray(wrappers)) return;
-      wrapWrappers = wrappers;
-      const wanted = selectId ?? selectedWrapperId;
-      const next = wanted ? wrappers.find((wrapper) => wrapper.id === wanted) : undefined;
-      if (next) {
-        selectWrapWrapper(next.id, open);
-      } else {
-        selectedWrapperId = null;
-        wrapWrapperHeadingEl.textContent = 'NEW WRAPPER';
-        wrapWrapperTitleEl.textContent = 'Not saved';
-        wrapWrapperBadgeEl.className = 'badge badge-ghost badge-xs font-mono hidden';
-        wrapWrapperDeleteEl.disabled = true;
-        wrapWrapperSaveEl.disabled = true;
-        if (wrapWrapperModalEl.open) wrapWrapperModalEl.close();
-        renderWrapWrappers();
-      }
-    } catch (err: any) {
-      showWrapperResult('error', `Could not load wrappers: ${err?.message || err}`);
-    }
-  }
 
   const renderWrapSecrets = (secrets: any[]) => {
     wrapListEl.replaceChildren();
@@ -2314,7 +2029,7 @@ const showShadowResult = (kind: 'success' | 'error' | 'info', text: string) => {
       if (wrapSaveEl) wrapSaveEl.disabled = !data.available;
       wrapSecretNames = (data.secrets || []).map((secret: any) => secret.name).filter(Boolean);
       renderWrapSecrets(data.secrets || []);
-      if (wrapWrapperModalEl.open) populateAuthOptions(wrapFieldAuthEl.value);
+      refreshWrapperAuthOptions();
     } catch (err: any) {
       showWrapResult('error', `Could not load secrets: ${err?.message || err}`);
     }
@@ -2392,198 +2107,12 @@ const showShadowResult = (kind: 'success' | 'error' | 'info', text: string) => {
   wrapCancelEditEl.addEventListener('click', resetSecretForm);
   wrapKindEl.addEventListener('change', syncWrapKind);
 
-  wrapWrapperFilterEl.addEventListener('input', renderWrapWrappers);
-
-  wrapWrapperCloseEl.addEventListener('click', () => wrapWrapperModalEl.close());
-  wrapWrapperCancelEl.addEventListener('click', () => wrapWrapperModalEl.close());
-  wrapWrapperModalEl.addEventListener('close', () => {
-    wrapWrapperResultEl.classList.add('hidden');
-    wrapCredentialValueEl.value = '';
+  initWrapWrappers({
+    getSecretNames: () => wrapSecretNames,
+    reloadSecrets: loadWrapSettings,
   });
 
-  wrapWrapperRefreshEl.addEventListener('click', () => {
-    void loadWrapWrappers(undefined, false);
-  });
 
-  wrapWrapperNewEl.addEventListener('click', newWrapWrapper);
-
-  wrapFieldNameEl.addEventListener('input', () => {
-    if (!wrapperIdTouched) wrapFieldIdEl.value = slugifyWrapperId(wrapFieldNameEl.value);
-  });
-
-  wrapFieldIdEl.addEventListener('input', () => {
-    wrapperIdTouched = wrapFieldIdEl.value.trim().length > 0;
-  });
-
-  wrapFieldMethodEl.addEventListener('change', () => {
-    const methods = selectedWrapMethods();
-    wrapFieldMutatingEl.checked = methods.some((method) => !['GET', 'HEAD'].includes(method));
-  });
-
-  wrapFieldAuthEl.addEventListener('change', updateCredentialPanel);
-
-  const prefillCredentialHost = () => {
-    if (wrapFieldAuthEl.value === '__new__' && !wrapCredentialHostsEl.value.trim()) {
-      const host = hostFromUrl(wrapFieldUrlEl.value);
-      if (host) wrapCredentialHostsEl.value = host;
-    }
-  };
-  wrapFieldUrlEl.addEventListener('input', prefillCredentialHost);
-  wrapFieldUrlEl.addEventListener('blur', prefillCredentialHost);
-
-  wrapCredentialHeaderEl.addEventListener('change', () => {
-    if (
-      wrapCredentialHeaderEl.value.trim().toLowerCase() !== 'authorization' &&
-      wrapCredentialPrefixEl.value === 'Bearer '
-    ) {
-      wrapCredentialPrefixEl.value = '';
-    }
-  });
-
-  function readJsonField(
-    element: HTMLTextAreaElement,
-    label: string,
-    fallback?: unknown,
-  ): { ok: true; value: unknown } | { ok: false; error: string } {
-    const text = element.value.trim();
-    if (!text) return { ok: true, value: fallback };
-    try {
-      return { ok: true, value: JSON.parse(text) };
-    } catch (err: any) {
-      return { ok: false, error: `${label}: ${err?.message || err}` };
-    }
-  }
-
-  wrapWrapperFormEl.addEventListener('submit', async (event) => {
-    event.preventDefault();
-
-    const name = wrapFieldNameEl.value.trim();
-    const id = wrapFieldIdEl.value.trim();
-    const url = wrapFieldUrlEl.value.trim();
-    const methods = selectedWrapMethods();
-    const description = wrapFieldDescriptionEl.value.trim();
-
-    const errors: string[] = [];
-    if (!name) errors.push('Name is required.');
-    if (!id) errors.push('ID is required.');
-    if (!url) errors.push('URL is required.');
-    if (methods.length === 0) errors.push('Select at least one HTTP method.');
-
-    const inputSchemaResult = readJsonField(wrapFieldInputSchemaEl, 'Input schema', DEFAULT_INPUT_SCHEMA);
-    const queryResult = readJsonField(wrapFieldQueryEl, 'Query template');
-    const headersResult = readJsonField(wrapFieldHeadersEl, 'Headers');
-    const bodyResult = readJsonField(wrapFieldBodyEl, 'Body template');
-    const responseResult = readJsonField(wrapFieldResponseEl, 'Response recipe');
-
-    for (const result of [inputSchemaResult, queryResult, headersResult, bodyResult, responseResult]) {
-      if (!result.ok) errors.push(result.error);
-    }
-
-    if (errors.length) {
-      showWrapperResult('error', errors.join(' '));
-      return;
-    }
-
-    const inputSchemaValue = inputSchemaResult.ok ? inputSchemaResult.value : DEFAULT_INPUT_SCHEMA;
-    const queryValue = queryResult.ok ? queryResult.value : undefined;
-    const headersValue = headersResult.ok ? headersResult.value : undefined;
-    const bodyValue = bodyResult.ok ? bodyResult.value : undefined;
-    const responseValue = responseResult.ok ? responseResult.value : undefined;
-
-    const original = selectedWrapperId ? wrapWrappers.find((wrapper) => wrapper.id === selectedWrapperId) : undefined;
-    const preferred = original?.request?.method;
-    const primaryMethod =
-      typeof preferred === 'string' && methods.includes(preferred.toUpperCase())
-        ? preferred.toUpperCase()
-        : methods[0];
-    const orderedMethods = [primaryMethod, ...methods.filter((method) => method !== primaryMethod)];
-    let auth = wrapFieldAuthEl.value;
-
-    wrapWrapperSaveEl.disabled = true;
-    wrapWrapperSaveEl.classList.add('loading');
-    try {
-      if (auth === '__new__') {
-        const credentialName = wrapCredentialNameEl.value.trim();
-        const credentialValue = wrapCredentialValueEl.value;
-        const allowedHosts = wrapCredentialHostsEl.value.trim() || hostFromUrl(url);
-        if (!credentialName || !credentialValue || !allowedHosts) {
-          showWrapperResult('error', 'New credential needs a name, value, and allowed host.');
-          return;
-        }
-
-        const header = wrapCredentialHeaderEl.value.trim() || 'Authorization';
-        const prefix =
-          header.toLowerCase() !== 'authorization' && wrapCredentialPrefixEl.value === 'Bearer '
-            ? ''
-            : wrapCredentialPrefixEl.value;
-        const credential = await window.electronAPI?.setWrapSecret({
-          name: credentialName,
-          value: credentialValue,
-          allowedHosts,
-          header,
-          prefix,
-        });
-        if (!credential?.ok) {
-          showWrapperResult('error', `Credential rejected: ${(credential?.errors || []).join('; ') || 'unknown error'}`);
-          return;
-        }
-
-        auth = credentialName;
-        await loadWrapSettings();
-        wrapFieldAuthEl.value = credentialName;
-        updateCredentialPanel();
-      }
-
-      const request: Record<string, unknown> = { method: primaryMethod, url };
-      if (orderedMethods.length > 1) request.methods = orderedMethods;
-      if (auth && auth !== '__new__') request.auth = auth;
-      if (queryValue !== undefined) request.query = queryValue;
-      if (headersValue !== undefined) request.headers = headersValue;
-      if (bodyValue !== undefined) request.body = bodyValue;
-      if (wrapFieldBodyFormatEl.value) request.bodyFormat = wrapFieldBodyFormatEl.value;
-      if (original?.request?.timeoutMs) request.timeoutMs = original.request.timeoutMs;
-
-      const wrapper: Record<string, unknown> = {
-        schemaVersion: 1,
-        id,
-        name,
-        request,
-        inputSchema: inputSchemaValue,
-        mutating: wrapFieldMutatingEl.checked,
-      };
-      if (description) wrapper.description = description;
-      if (responseValue !== undefined) wrapper.response = responseValue;
-      if (wrapFieldNotesEl.value.trim()) wrapper.notes = wrapFieldNotesEl.value.trim();
-      if (original?.exposeAsTool !== undefined) wrapper.exposeAsTool = original.exposeAsTool;
-      if (original?.lastVerified !== undefined) wrapper.lastVerified = original.lastVerified;
-
-      const result = await window.electronAPI?.saveWrapWrapper(wrapper);
-      if (result?.ok) {
-        const savedId = result.wrapper?.id || id;
-        await loadWrapWrappers(savedId, false);
-        wrapWrapperModalEl.close();
-      } else {
-        showWrapperResult('error', validationMessage(result));
-      }
-    } catch (err: any) {
-      showWrapperResult('error', `Save failed: ${err?.message || err}`);
-    } finally {
-      wrapWrapperSaveEl.disabled = false;
-      wrapWrapperSaveEl.classList.remove('loading');
-    }
-  });
-
-  wrapWrapperDeleteEl.addEventListener('click', async () => {
-    if (!selectedWrapperId) return;
-    if (!window.confirm(`Delete wrapper "${selectedWrapperId}"? Credentials are kept.`)) return;
-    const result = await window.electronAPI?.deleteWrapWrapper(selectedWrapperId);
-    if (result?.ok) {
-      await loadWrapWrappers(undefined, false);
-      wrapWrapperModalEl.close();
-    } else {
-      showWrapperResult('error', (result?.errors || []).join('; ') || 'Delete failed.');
-    }
-  });
 
   const showSettingsTab = (tab: string) => {
     for (const button of settingsTabs) {
@@ -2645,10 +2174,7 @@ const showShadowResult = (kind: 'success' | 'error' | 'info', text: string) => {
   const inputResult = document.getElementById('settings-input-result') as HTMLElement | null;
 
   function showInputResult(kind: 'success' | 'error' | 'info', text: string) {
-    if (!inputResult) return;
-    inputResult.className = `alert alert-${kind} alert-sm font-mono text-xs`;
-    inputResult.textContent = text;
-    inputResult.classList.remove('hidden');
+    showAlert(inputResult, kind, text);
   }
 
   function syncInputLabels() {
@@ -2703,8 +2229,7 @@ const showShadowResult = (kind: 'success' | 'error' | 'info', text: string) => {
   });
 
   const showResult = (kind: 'success' | 'error' | 'info', text: string) => {
-    resultEl.className = `alert alert-${kind} alert-sm font-mono text-xs`;
-    resultEl.textContent = text;
+    showAlert(resultEl, kind, text);
   };
 
   const jevToggle = document.getElementById('settings-jev-enabled') as HTMLInputElement | null;
@@ -2806,7 +2331,7 @@ const showShadowResult = (kind: 'success' | 'error' | 'info', text: string) => {
   });
 
   settingsModal.addEventListener('close', () => {
-    if (wrapWrapperModalEl.open) wrapWrapperModalEl.close();
+    closeWrapWrapperModal();
     window.electronAPI?.setViewportVisibility(true);
   });
 
@@ -3197,10 +2722,7 @@ const remoteCopyOAuthConfigEl = document.getElementById('settings-remote-copy-oa
 const remoteRotateOAuthEl = document.getElementById('settings-remote-rotate-oauth') as HTMLButtonElement | null;
 
 function showRemoteResult(kind: 'success' | 'error' | 'info', text: string): void {
-  if (!remoteResultEl) return;
-  remoteResultEl.className = `alert alert-${kind} alert-sm font-mono text-xs`;
-  remoteResultEl.textContent = text;
-  remoteResultEl.classList.remove('hidden');
+  showAlert(remoteResultEl, kind, text);
 }
 
 function renderRemoteStatus(status: { enabled: boolean; running: boolean; error?: string } | undefined): void {
