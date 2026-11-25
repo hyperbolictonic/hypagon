@@ -662,7 +662,7 @@ async function createWindow() {
     );
     activeCollaborationService = collaboration;
     const media = new MediaService({
-      notify: ({ title, message }) => chassis.sendNotification(title, message, 'normal', false),
+      notify: ({ title, message }) => chassis.hil.notify(title, message, 'normal', false),
     });
     activeMediaService = media;
     media.startUpdater();

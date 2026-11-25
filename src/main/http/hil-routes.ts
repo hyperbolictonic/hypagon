@@ -13,7 +13,7 @@ type HilHandler = (ctx: ChassisRouteContext) => Promise<void> | void;
 const ROUTES: Record<string, HilHandler> = {
   'POST /hil/request': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    const result = await chassis.requestHumanIntervention(body.reason, {
+    const result = await chassis.hil.request(body.reason, {
       url: body.url,
       timeoutSeconds: body.timeoutSeconds,
       bringToFront: body.bringToFront,
@@ -23,20 +23,20 @@ const ROUTES: Record<string, HilHandler> = {
 
   'POST /hil/resolve': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    sendJson({ success: true, resolved: chassis.resolveHumanIntervention(body.id, body.notes) });
+    sendJson({ success: true, resolved: chassis.hil.resolve(body.id, body.notes) });
   },
 
   'POST /hil/cancel': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    sendJson({ success: true, cancelled: chassis.cancelHumanIntervention(body.id) });
+    sendJson({ success: true, cancelled: chassis.hil.cancel(body.id) });
   },
 
   'GET /hil/active': ({ chassis, sendJson }) => {
-    sendJson({ success: true, active: chassis.getActiveHumanIntervention() });
+    sendJson({ success: true, active: chassis.hil.active() });
   },
 
   'GET /hil/history': ({ chassis, sendJson }) => {
-    sendJson({ success: true, history: chassis.getHumanInterventionHistory() });
+    sendJson({ success: true, history: chassis.hil.history() });
   },
 };
 

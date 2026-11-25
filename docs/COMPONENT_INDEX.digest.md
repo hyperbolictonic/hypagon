@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-244 modules, 841 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+245 modules, 843 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -36,6 +36,7 @@
 | `main/harvester/dom-serializer.ts` | 3: captureComposedDom, COMPOSE_DOM_SCRIPT, ComposedDom |
 | `main/harvester/markdown.ts` | 2: ConstructHarvester, HarvestStats |
 | `main/hil/hil-manager.ts` | 4: HilManager, HilRequest, HilResolution, NotificationOptions |
+| `main/hil/hil-surface.ts` | 2: HilSurface, HilSurfaceDeps |
 | `main/http-bridge.ts` | 1: startHttpBridge |
 | `main/http/bookmarks-routes.ts` | 1: handleBookmarkRoutes |
 | `main/http/bridge-errors.ts` | 1: sendBridgeError |
@@ -125,8 +126,7 @@
 | `main/research/surface-activity.ts` | 1: SurfaceActivityDeps |
 | `main/scripts/script-vault.ts` | 2: ScriptVault, SavedScriptMeta |
 | `main/search/search-engine.ts` | 8: engineHost, KNOWN_ENGINES, DEFAULT_ENGINE_CHAIN, SearchHub, SearchResult, SearchAttempt, SearchOutcome, SearchHubDeps |
-| `main/search/search-surface.ts` | 3: SearchSurface, SearchPolicyTarget, SearchSurfaceDeps |
 
-… and 119 more module(s) — grep the full index.
+… and 120 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

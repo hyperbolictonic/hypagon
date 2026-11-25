@@ -61,7 +61,7 @@ import { ResearchSessionSurface } from './research/research-session-surface.js';
 import { CrawlSurface } from './research/crawl-surface.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-import { HilManager, type HilRequest, type HilResolution, type NotificationOptions } from './hil/hil-manager.js';
+import { HilSurface } from './hil/hil-surface.js';
 import { JsonNavigator, type JsonQueryOptions, type JsonQueryResult } from './utils/json-navigator.js';
 import { RenderedSnapshotEngine } from './snapshots/rendered-snapshot.js';
 import { PrerenderEngine, type PrerenderOptions } from './prerender/prerender-engine.js';
@@ -103,7 +103,8 @@ export class BrowserChassis {
   readonly nav: NavigationSurface;
   private scriptVault!: ScriptVault;
   private trayManager: TrayManager | null = null;
-  private hilManager!: HilManager;
+  /** Human-in-the-loop and desktop notifications. */
+  readonly hil!: HilSurface;
   private prerenderEngine!: PrerenderEngine;
   private hostProfile: HostBrowserProfile = detectHostBrowserProfile();
   private primitives!: Primitives;
@@ -207,7 +208,7 @@ export class BrowserChassis {
     this.marks = harvestNav.marks;
     this.harvest = harvestNav.harvest;
     this.nav = harvestNav.nav;
-    this.createInteractionSurfaces();
+    this.hil = this.createInteractionSurfaces();
     const readSearch = this.createLlmSurfaces();
     this.llm = readSearch.llm;
     this.search = readSearch.search;
@@ -357,33 +358,35 @@ export class BrowserChassis {
   }
 
   /** HIL, the action ledger and the orthogonal primitives layer. */
-  private createInteractionSurfaces(): void {
-    this.hilManager = new HilManager({
-      getActiveWebContents: () => {
+  private createInteractionSurfaces(): HilSurface {
+    const hil = new HilSurface({
+      activeWebContents: () => {
         try {
           return this.getActiveWebContents();
         } catch {
           return null;
         }
       },
-      broadcastAll: (channel, payload) => {
+      broadcast: (channel, payload) => {
         try {
           this.broadcast(channel, payload);
         } catch {
           // Broadcasts must never break the hand-off flow itself.
         }
       },
-      onHilStateChanged: (pending, req) => {
+      onStateChanged: (pending, request) => {
         this.trayManager?.updateStatus(this.state.agentStatus, this.state.tabs?.length || 0, pending);
-        if (pending && req) {
+        if (pending && request) {
           this.state.agentStatus = 'AWAITING_INPUT';
-          this.state.activeAction = `⚠️ HUMAN ACTION REQUIRED: ${req.reason}`;
+          this.state.activeAction = `⚠️ HUMAN ACTION REQUIRED: ${request.reason}`;
         } else {
           this.state.agentStatus = 'IDLE';
           this.state.activeAction = 'Standby - Awaiting MCP Uplink';
         }
         this.telemetry.broadcastState();
       },
+      log: (level, message) => this.telemetry.addLog(level, message),
+      emitNavigation: (details) => this.telemetry.emitSimpleEvent('navigation', details),
     });
 
     // Action ledger — local, append-only record of executed actions and their outcomes
@@ -430,6 +433,7 @@ export class BrowserChassis {
       windowFocused: () => this.isWindowFocused(),
       recordTransition: (record) => this.actionLedger.record(record),
     });
+    return hil;
   }
 
   /** LLM read/search surfaces and their shared activity hook. */
@@ -537,7 +541,7 @@ export class BrowserChassis {
       userAgent: this.hostProfile.userAgent,
       activate: (wc) => this.research.activateView(wc),
       window: () => this.mainWindow,
-      hilManager: () => this.hilManager,
+      hilManager: () => this.hil.manager,
       researchSettings: () => this.research.settings(),
       viewportBounds: () => this.computeViewportBounds(),
       reassertViewport: () => this.reassertViewport(),
@@ -581,7 +585,7 @@ export class BrowserChassis {
   public setWindow(win: BrowserWindow) {
     this.mainWindow = win;
     this.hudLastHeartbeat = Date.now();
-    this.hilManager.setWindow(win);
+    this.hil.manager.setWindow(win);
     this.bindViewportRecovery(win);
     if (!this.hudShortcutBound) {
       this.hudShortcutBound = true;
@@ -785,7 +789,7 @@ export class BrowserChassis {
   private handleTabsChanged(tabs: TabSummary[]): void {
         this.state.tabs = tabs;
         this.telemetry.broadcastState();
-        this.trayManager?.updateStatus(this.state.agentStatus, tabs.length, !!this.hilManager.getActiveRequest());
+        this.trayManager?.updateStatus(this.state.agentStatus, tabs.length, !!this.hil.manager.getActiveRequest());
         this.sendToSurfaces('chassis:tabs-updated', tabs);
   }
 
@@ -1311,10 +1315,10 @@ export class BrowserChassis {
     // Only one request at a time: while one is open the human is already being asked. Once it is
     // resolved, a fresh gate may ask again — that is the correct behaviour, not spam, because the
     // human explicitly cleared the previous request.
-    if (this.hilManager.getActiveRequest()) return;
+    if (this.hil.manager.getActiveRequest()) return;
     const pageUrl = url || this.getPageInfo().url;
     const detail = gate.evidence && gate.evidence.length ? ` — matched: ${gate.evidence.join(' | ')}` : '';
-    await this.requestHumanIntervention(`${gate.reason}${detail}`, { url: pageUrl, bringToFront: true }).catch(() => null);
+    await this.hil.request(`${gate.reason}${detail}`, { url: pageUrl, bringToFront: true }).catch(() => null);
   }
 
   /** Recent decision-model calls, for `GET /decisions` and the HUD's DECISIONS tab. */
@@ -1449,7 +1453,7 @@ export class BrowserChassis {
     info: { question?: string; options?: string[]; confidence?: number; reasons?: string[] },
     url?: string
   ): string | null {
-    const existing = this.hilManager.getActiveRequest();
+    const existing = this.hil.manager.getActiveRequest();
     if (existing) return existing.id; // already asking the human; do not stack requests
 
     const pageUrl = url || this.getPageInfo().url;
@@ -1462,8 +1466,8 @@ export class BrowserChassis {
     ].filter(Boolean);
     const reason = bits.join(' ').slice(0, 400);
 
-    const pending = this.requestHumanIntervention(reason, { url: pageUrl, bringToFront: true, timeoutSeconds: 300 });
-    const id = this.hilManager.getActiveRequest()?.id ?? null;
+    const pending = this.hil.request(reason, { url: pageUrl, bringToFront: true, timeoutSeconds: 300 });
+    const id = this.hil.manager.getActiveRequest()?.id ?? null;
     void pending.catch(() => null); // resolves when the human acts; we do not block the HTTP call
     return id;
   }
@@ -1786,54 +1790,6 @@ export class BrowserChassis {
   public isCloseToTray(): boolean {
     return this.trayManager ? this.trayManager.isCloseToTray() : true;
   }
-
-  // Human-In-The-Loop & Notifications
-  public async requestHumanIntervention(
-    reason: string,
-    options?: { url?: string; timeoutSeconds?: number; bringToFront?: boolean }
-  ): Promise<HilResolution> {
-    this.telemetry.addLog('warn', `⚠️ Human Intervention Requested: ${reason}`);
-    this.telemetry.emitSimpleEvent('navigation', `HIL Intervention: ${reason}`);
-    return this.hilManager.requestIntervention({
-      reason,
-      url: options?.url,
-      timeoutSeconds: options?.timeoutSeconds,
-      bringToFront: options?.bringToFront,
-    });
-  }
-
-  public resolveHumanIntervention(id?: string, notes?: string): boolean {
-    const success = this.hilManager.resolveIntervention(id, notes);
-    if (success) {
-      this.telemetry.addLog('info', `Human intervention resolved: ${notes || 'User confirmed.'}`);
-    }
-    return success;
-  }
-
-  public cancelHumanIntervention(id?: string): boolean {
-    return this.hilManager.cancelIntervention(id);
-  }
-
-  public getActiveHumanIntervention(): HilRequest | null {
-    return this.hilManager.getActiveRequest();
-  }
-
-  public getHumanInterventionHistory(): HilRequest[] {
-    return this.hilManager.getHistory();
-  }
-
-  public sendNotification(
-    title: string,
-    message: string,
-    urgency?: 'normal' | 'critical' | 'low',
-    sound?: boolean
-  ): boolean {
-    this.telemetry.addLog('info', `Desktop Notification Dispatched: [${title}] ${message}`);
-    return this.hilManager.sendNotification({ title, message, urgency, sound });
-  }
-
-
-
 
   // ---- Primitives layer (observe / act / wait / extract / collect / find) ----
 

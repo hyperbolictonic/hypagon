@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 244 files, 841 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 245 files, 843 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (714)
+## Types (716)
 
 | File | Export | When to use |
 |---|---|---|
@@ -122,6 +122,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/hil/hil-manager.ts` | `HilRequest` *(type)* | - |
 | `main/hil/hil-manager.ts` | `HilResolution` *(type)* | - |
 | `main/hil/hil-manager.ts` | `NotificationOptions` *(type)* | - |
+| `main/hil/hil-surface.ts` | `HilSurface` | The agent-facing human-in-the-loop and notification surface. |
+| `main/hil/hil-surface.ts` | `HilSurfaceDeps` *(type)* | Dependencies the HIL surface needs from the tabs and agent status. |
 | `main/http/collaboration-routes.ts` | `handleCollaborationRoutes` | When to use: the bridge request handler — dispatch `/collaboration/*` before |
 | `main/http/collaboration-routes.ts` | `CollaborationRouteContext` *(type)* | When to use: building the collaboration dispatcher — the service plus the page context it reads. |
 | `main/http/dispatch.ts` | `dispatchBridgeRoutes` | When to use: the bridge request handler — run the family table until one |

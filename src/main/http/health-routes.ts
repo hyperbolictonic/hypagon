@@ -92,7 +92,7 @@ const ROUTES: Record<string, HealthHandler> = {
 
   'POST /notify': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    const sent = chassis.sendNotification(body.title, body.message, body.urgency, body.sound);
+    const sent = chassis.hil.notify(body.title, body.message, body.urgency, body.sound);
     sendJson({ success: true, sent });
   },
 
