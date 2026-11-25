@@ -12,6 +12,7 @@ import os from 'node:os';
 import { APP_VERSION } from '../../shared/version.js';
 import { tokenPathIn } from '../security/capability-token.js';
 import { dataPath } from '../data-paths.js';
+import type { ConnectInfo } from '../../shared/connect-info.js';
 
 /** When to use: once at startup — the path resolvers are owned by the entry point. */
 export interface ConnectInfoDeps {
@@ -24,7 +25,7 @@ export interface ConnectInfoDeps {
 
 /** When to use: once at startup, before the first window exists. */
 export function registerConnectInfoIpc(deps: ConnectInfoDeps): void {
-  ipcMain.handle('app:connect-info', () => {
+  ipcMain.handle('app:connect-info', (): ConnectInfo => {
     const serverPath = deps.mcpServerPath();
     const wrapServerPath = deps.wrapServerPath();
     const devlogsServerPath = deps.devlogsServerPath();

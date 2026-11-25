@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 338 files, 1047 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 341 files, 1054 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (851)
+## Types (858)
 
 | File | Export | When to use |
 |---|---|---|
@@ -414,6 +414,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/primitives/dom-targeting.ts` | `DEEP_DOM_HELPERS` | Shared helper functions, inlined into every script below. |
 | `main/primitives/dom-targeting.ts` | `TargetLocator` *(type)* | - |
 | `main/primitives/dom-targeting.ts` | `TargetBox` *(type)* | - |
+| `main/primitives/frame-controls.ts` | `addressedFrameControls` | When to use: turning a `getFrames({ includeControls: true })` result into |
+| `main/primitives/frame-controls.ts` | `AddressedFrameControl` *(type)* | One addressable control plus the frame it lives in. |
 | `main/primitives/primitives.ts` | `DEFAULT_MARKDOWN_BUDGET` | Default view size for `observe(as:"markdown")` when the caller gives no budget. |
 | `main/primitives/primitives.ts` | `PrimitiveError` | - |
 | `main/primitives/primitives.ts` | `Primitives` | - |
@@ -821,6 +823,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/collaboration.ts` | `CollaborationThread` *(type)* | - |
 | `shared/collaboration.ts` | `CollaborationFilter` *(type)* | - |
 | `shared/collaboration.ts` | `CollaborationResult` *(type)* | - |
+| `shared/connect-info.ts` | `ConnectInfo` *(type)* | When to use: any code that types the `app:connect-info` response. |
 | `shared/experimental.ts` | `normalizeExperimentalSettings` | - |
 | `shared/experimental.ts` | `DEFAULT_EXPERIMENTAL_SETTINGS` | - |
 | `shared/experimental.ts` | `ExperimentalSettings` *(type)* | Experimental features. Everything here is opt-in and may change or be removed. |
@@ -840,6 +843,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/research-events.ts` | `ResearchEscalation` *(type)* | - |
 | `shared/research-events.ts` | `ResearchAnchorDetail` *(type)* | - |
 | `shared/research-events.ts` | `ResearchEvent` *(type)* | - |
+| `shared/tool-instructions.ts` | `normalizeInstructionMap` | When to use: `instructions` — a name → text map from persisted settings or the bridge. |
+| `shared/tool-instructions.ts` | `normalizeActionInstructions` | When to use: `actionInstructions` — a tool → action → text map. |
+| `shared/tool-instructions.ts` | `InstructionLimits` *(type)* | When to use: the callers that need an allow-list and/or a length cap. |
+| `shared/tool-instructions.ts` | `ActionInstructionLimits` *(type)* | When to use: `actionInstructions` — each tool keeps its own action allow-list. |
 | `shared/tool-settings.ts` | `ToolSettings` *(type)* | Persisted overrides for the advertised browser MCP tool surface. |
 | `shared/tool-settings.ts` | `ToolManagerAction` *(type)* | - |
 | `shared/tool-settings.ts` | `ToolManagerEntry` *(type)* | - |

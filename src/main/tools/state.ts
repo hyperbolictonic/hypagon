@@ -5,6 +5,7 @@ import {
   TOOL_GROUPS,
 } from '../../mcp/tool-groups.js';
 import type { ToolManagerEntry, ToolManagerState, ToolSettings } from '../../shared/tool-settings.js';
+import { normalizeActionInstructions, normalizeInstructionMap } from '../../shared/tool-instructions.js';
 import { byConfiguredRank } from './tool-order.ts';
 
 const ADVERTISED_CATALOG = TOOLS_CATALOG.filter(
@@ -24,28 +25,14 @@ export function sanitizeToolSettings(input: unknown): ToolSettings {
     Array.isArray(value)
       ? [...new Set(value.filter((name): name is string => typeof name === 'string' && ADVERTISED_NAMES.has(name)))]
       : [];
-  const instructions: Record<string, string> = {};
-  if (source.instructions && typeof source.instructions === 'object' && !Array.isArray(source.instructions)) {
-    for (const [name, text] of Object.entries(source.instructions)) {
-      if (ADVERTISED_NAMES.has(name) && typeof text === 'string' && text.trim()) {
-        instructions[name] = text.trim().slice(0, 12_000);
-      }
-    }
-  }
-  const actionInstructions: Record<string, Record<string, string>> = {};
-  if (source.actionInstructions && typeof source.actionInstructions === 'object' && !Array.isArray(source.actionInstructions)) {
-    for (const [toolName, rawActions] of Object.entries(source.actionInstructions)) {
-      const allowed = GROUP_ACTIONS.get(toolName);
-      if (!allowed || !rawActions || typeof rawActions !== 'object' || Array.isArray(rawActions)) continue;
-      const actions: Record<string, string> = {};
-      for (const [actionName, text] of Object.entries(rawActions)) {
-        if (allowed.has(actionName) && typeof text === 'string' && text.trim()) {
-          actions[actionName] = text.trim().slice(0, 4_000);
-        }
-      }
-      if (Object.keys(actions).length) actionInstructions[toolName] = actions;
-    }
-  }
+  const instructions = normalizeInstructionMap(source.instructions, {
+    maxLength: 12_000,
+    allow: ADVERTISED_NAMES,
+  });
+  const actionInstructions = normalizeActionInstructions(source.actionInstructions, {
+    maxLength: 4_000,
+    allow: GROUP_ACTIONS,
+  });
   return {
     schemaVersion: 1,
     order: names(source.order),

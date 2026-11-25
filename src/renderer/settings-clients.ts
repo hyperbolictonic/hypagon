@@ -6,30 +6,12 @@
  * cannot drift from the running app.
  */
 import type { ElectronAPI } from '../preload/index.js';
+import type { ConnectInfo } from '../shared/connect-info.js';
 
 const api = (window as unknown as { electronAPI?: ElectronAPI }).electronAPI;
 
 type ConnectRuntime = 'bundled' | 'node';
 type ConnectServer = 'browser' | 'wrap' | 'devlogs' | 'legacy-browser' | 'legacy-wrap';
-
-interface ConnectInfo {
-  platform: string;
-  version: string;
-  bridgeUrl: string;
-  bridgePort: number;
-  serverPath: string;
-  serverExists: boolean;
-  wrapServerPath: string;
-  wrapServerExists: boolean;
-  devlogsServerPath: string;
-  devlogsServerExists: boolean;
-  devlogsDir: string;
-  devMode: boolean;
-  wrapTokenFile: string;
-  runtimePath: string;
-  packaged: boolean;
-  homedir: string;
-}
 
 interface ConnectClient {
   id: string;

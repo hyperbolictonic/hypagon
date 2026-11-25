@@ -16,6 +16,7 @@ import { APP_VERSION } from '../shared/version.js';
 import { BRAND } from '../shared/brand.js';
 import { decisionStatus } from '../main/decide/decision-client.js';
 import { byConfiguredRank } from '../main/tools/tool-order.js';
+import { normalizeActionInstructions, normalizeInstructionMap } from '../shared/tool-instructions.js';
 
 const BRIDGE_URL = process.env.HB_BRIDGE_URL || process.env.KUANG_BRIDGE_URL || 'http://127.0.0.1:4111';
 
@@ -160,23 +161,8 @@ async function loadToolPreferences(): Promise<ToolPreferences> {
     const disabled = Array.isArray(data?.disabled)
       ? data.disabled.filter((name: unknown): name is string => typeof name === 'string')
       : [];
-    const instructions: Record<string, string> = {};
-    if (data?.instructions && typeof data.instructions === 'object' && !Array.isArray(data.instructions)) {
-      for (const [name, text] of Object.entries(data.instructions)) {
-        if (typeof text === 'string' && text.trim()) instructions[name] = text.trim();
-      }
-    }
-    const actionInstructions: Record<string, Record<string, string>> = {};
-    if (data?.actionInstructions && typeof data.actionInstructions === 'object' && !Array.isArray(data.actionInstructions)) {
-      for (const [toolName, rawActions] of Object.entries(data.actionInstructions)) {
-        if (!rawActions || typeof rawActions !== 'object' || Array.isArray(rawActions)) continue;
-        const actions: Record<string, string> = {};
-        for (const [actionName, text] of Object.entries(rawActions)) {
-          if (typeof text === 'string' && text.trim()) actions[actionName] = text.trim();
-        }
-        if (Object.keys(actions).length) actionInstructions[toolName] = actions;
-      }
-    }
+    const instructions = normalizeInstructionMap(data?.instructions);
+    const actionInstructions = normalizeActionInstructions(data?.actionInstructions);
     const value = {
       order,
       disabled,

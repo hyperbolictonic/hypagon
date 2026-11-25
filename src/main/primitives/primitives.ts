@@ -22,6 +22,7 @@ import {
 } from './dom-targeting.js';
 import { detectSensitiveGate } from '../decide/sensitive-gate.js';
 import { controlFactsExpression, parseControlFacts } from './control-facts.js';
+import { addressedFrameControls } from './frame-controls.js';
 import { textTargetExpression, parseTextTargets } from './text-target.js';
 import type { SealedControl, SealedFindOptions, SealedFindResult } from '../shadow-walk/ax-controls.js';
 
@@ -977,27 +978,23 @@ export class Primitives {
         includeOffscreen: opts.includeOffscreen === true,
       });
       const marks: any[] = [];
-      for (const frame of data.frames || []) {
-        if (frame.depth === 0 || !Array.isArray(frame.controls)) continue;
-        for (const control of frame.controls) {
-          if (typeof control.id !== 'number' || control.id < 100) continue;
-          marks.push({
-            id: control.id,
-            tag: String(control.tag || '').toUpperCase(),
-            text: control.name || '',
-            role: control.role,
-            value: control.value,
-            actions: control.actions || [],
-            rect: control.rect,
-            center: {
-              x: Math.round(control.rect.x + control.rect.width / 2),
-              y: Math.round(control.rect.y + control.rect.height / 2),
-            },
-            frameId: frame.frameId,
-            frameUrl: frame.url,
-            component: control.component,
-          });
-        }
+      for (const { frame, control } of addressedFrameControls(data)) {
+        marks.push({
+          id: control.id,
+          tag: String(control.tag || '').toUpperCase(),
+          text: control.name || '',
+          role: control.role,
+          value: control.value,
+          actions: control.actions || [],
+          rect: control.rect,
+          center: {
+            x: Math.round(control.rect.x + control.rect.width / 2),
+            y: Math.round(control.rect.y + control.rect.height / 2),
+          },
+          frameId: frame.frameId,
+          frameUrl: frame.url,
+          component: control.component,
+        });
       }
       return {
         marks,
@@ -1254,43 +1251,39 @@ export class Primitives {
             includeOffscreen: opts.includeOffscreen !== false,
           });
           const wantRole = opts.role ? String(opts.role).toLowerCase() : '';
-          for (const frame of data.frames || []) {
-            if (frame.depth === 0 || !Array.isArray(frame.controls)) continue;
-            for (const control of frame.controls) {
-              if (typeof control.id !== 'number' || control.id < 100) continue;
-              const tag = String(control.tag || '').toUpperCase();
-              const role = String(control.role || '').toLowerCase();
-              const implied = tag === 'A' ? 'link' : tag === 'BUTTON' ? 'button' : '';
-              if (opts.tag && tag.toLowerCase() !== opts.tag.toLowerCase()) continue;
-              if (wantRole && role !== wantRole && implied !== wantRole) continue;
-              const hay = `${control.name || ''} ${control.value || ''}`.toLowerCase();
-              if (want && hay.indexOf(want) === -1) continue;
-              if (re && !re.test(`${control.name || ''} ${control.value || ''}`)) continue;
-              frameTotal += 1;
-              if (limited.length + frameMarks.length >= limit) continue;
-              const rect = control.rect;
-              frameMarks.push({
-                id: control.id,
-                tag,
-                text: control.name || '',
-                role: control.role,
-                actions: control.actions || [],
-                rect,
-                center: {
-                  x: Math.round(rect.x + rect.width / 2),
-                  y: Math.round(rect.y + rect.height / 2),
-                },
-                frameId: frame.frameId,
-                frameUrl: frame.url,
-                component: control.component,
-                facts: {
-                  visible: control.visible,
-                  occluded: control.occluded,
-                  disabled: control.disabled,
-                  region: 'frame',
-                },
-              });
-            }
+          for (const { frame, control } of addressedFrameControls(data)) {
+            const tag = String(control.tag || '').toUpperCase();
+            const role = String(control.role || '').toLowerCase();
+            const implied = tag === 'A' ? 'link' : tag === 'BUTTON' ? 'button' : '';
+            if (opts.tag && tag.toLowerCase() !== opts.tag.toLowerCase()) continue;
+            if (wantRole && role !== wantRole && implied !== wantRole) continue;
+            const hay = `${control.name || ''} ${control.value || ''}`.toLowerCase();
+            if (want && hay.indexOf(want) === -1) continue;
+            if (re && !re.test(`${control.name || ''} ${control.value || ''}`)) continue;
+            frameTotal += 1;
+            if (limited.length + frameMarks.length >= limit) continue;
+            const rect = control.rect;
+            frameMarks.push({
+              id: control.id,
+              tag,
+              text: control.name || '',
+              role: control.role,
+              actions: control.actions || [],
+              rect,
+              center: {
+                x: Math.round(rect.x + rect.width / 2),
+                y: Math.round(rect.y + rect.height / 2),
+              },
+              frameId: frame.frameId,
+              frameUrl: frame.url,
+              component: control.component,
+              facts: {
+                visible: control.visible,
+                occluded: control.occluded,
+                disabled: control.disabled,
+                region: 'frame',
+              },
+            });
           }
           if (!frameMarks.length) frameNote = 'No matching controls inside child frames.';
         } catch (err: any) {

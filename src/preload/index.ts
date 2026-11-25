@@ -10,6 +10,7 @@ import type { WebPageState } from '../shared/web-state.js';
 import type { ExperimentalSettings } from '../shared/experimental.js';
 import type { MediaSettings, MediaUpdaterState } from '../shared/media.js';
 import type { ResearchEvent } from '../shared/research-events.js';
+import type { ConnectInfo } from '../shared/connect-info.js';
 
 /**
  * Subscribe to a main-process event and return the unsubscribe function the
@@ -143,24 +144,7 @@ export interface ElectronAPI {
   pickFfmpegPath: () => Promise<string | null>;
   getFfmpegStatus: () => Promise<{ ok: boolean; ffmpeg?: unknown; error?: string }>;
   installFfmpeg: () => Promise<{ ok: boolean; ffmpeg?: unknown; error?: string }>;
-  getConnectInfo: () => Promise<{
-    platform: string;
-    version: string;
-    bridgeUrl: string;
-    bridgePort: number;
-    serverPath: string;
-    serverExists: boolean;
-    wrapServerPath: string;
-    wrapServerExists: boolean;
-    devlogsServerPath: string;
-    devlogsServerExists: boolean;
-    devlogsDir: string;
-    devMode: boolean;
-    wrapTokenFile: string;
-    runtimePath: string;
-    packaged: boolean;
-    homedir: string;
-  }>;
+  getConnectInfo: () => Promise<ConnectInfo>;
   saveRecordingConfig: (config: any) => Promise<any>;
   pickRecordingDir: () => Promise<string | null>;
   startRecording: (name?: string) => Promise<{ filename: string; config: any }>;
