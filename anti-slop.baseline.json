@@ -162,10 +162,6 @@
       "main/browser/frames.ts": {
         "function": 1
       },
-      "main/collaboration/overlay.ts": {
-        "file": 1,
-        "function": 3
-      },
       "main/cortex/cortex-db.ts": {
         "class": 1,
         "file": 1,

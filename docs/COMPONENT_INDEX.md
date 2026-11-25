@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 280 files, 927 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 285 files, 933 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -796,7 +796,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (147)
+## Modules (153)
 
 | File | Export | When to use |
 |---|---|---|
@@ -818,6 +818,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/chassis/accessors.ts` | `prerenderLinks` | Pre-render candidate links from the active page. |
 | `main/chassis/accessors.ts` | `readUrlRender` | A URL rendered to Markdown through the shared detached view (`read_url` fallback). |
 | `main/chassis/accessors.ts` | `captureScreenshotJpeg` | A baseline viewport JPEG for the decision model. |
+| `main/collaboration/assets/css.ts` | `COLLAB_CSS` | When to use: injecting the shared styling for either collaboration surface. |
+| `main/collaboration/assets/note-drawer-a.ts` | `NOTE_DRAWER_BODY_A` | When to use: composing the note-composer script — the DOM, drag and minimising half. |
+| `main/collaboration/assets/note-drawer-b.ts` | `NOTE_DRAWER_BODY_B` | When to use: composing the note-composer script — the comment and class-editor half. |
+| `main/collaboration/assets/overlay-body.ts` | `OVERLAY_BODY_A` | When to use: composing the overlay — the part before the exit-prefix line. |
+| `main/collaboration/assets/overlay-body.ts` | `OVERLAY_BODY_C` | When to use: composing the overlay — the part after the exit-prefix line. |
+| `main/collaboration/assets/picker-body.ts` | `PICKER_BODY` | When to use: composing the picker script after its drawer/inset head. |
 | `main/collaboration/service.ts` | `CollaborationService` | - |
 | `main/data-paths.ts` | `dataRoot` | - |
 | `main/data-paths.ts` | `dataPath` | - |

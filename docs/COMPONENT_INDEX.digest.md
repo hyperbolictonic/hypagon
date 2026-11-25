@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-280 modules, 927 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+285 modules, 933 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -26,6 +26,11 @@
 | `main/chassis/interaction-stack.ts` | 2: createInteractionStack, InteractionStack |
 | `main/chassis/llm-stack.ts` | 2: createLlmStack, LlmStack |
 | `main/chassis/surfaces.ts` | 14: createPageScriptSurface, createShadowWalkSurface, createResearchViewSurface, createHumanSurface, createDeckController, createJevController, createZoomController, createConsentController, … (14) |
+| `main/collaboration/assets/css.ts` | 1: COLLAB_CSS |
+| `main/collaboration/assets/note-drawer-a.ts` | 1: NOTE_DRAWER_BODY_A |
+| `main/collaboration/assets/note-drawer-b.ts` | 1: NOTE_DRAWER_BODY_B |
+| `main/collaboration/assets/overlay-body.ts` | 2: OVERLAY_BODY_A, OVERLAY_BODY_C |
+| `main/collaboration/assets/picker-body.ts` | 1: PICKER_BODY |
 | `main/collaboration/overlay.ts` | 8: collaborationNoteDrawerScript, collaborationPickerScript, collaborationOverlayScript, COLLABORATION_NOTE_PREFIX, COLLABORATION_CLASS_PREFIX, COLLABORATION_RESOLVE_PREFIX, COLLABORATION_EXIT_PREFIX, CollaborationPickerOptions |
 | `main/collaboration/service.ts` | 1: CollaborationService |
 | `main/collaboration/store.ts` | 2: CollaborationStore, CreateThreadInput |
@@ -121,12 +126,7 @@
 | `main/navigation/navigation-surface.ts` | 2: NavigationSurface, NavigationSurfaceDeps |
 | `main/network/impersonate.ts` | 7: resolveCurlBinaryPath, hostPlatformHeaders, impersonateAvailable, isChallenge, fetchStatic, StaticFetchResult, StaticFetchOutcome |
 | `main/network/network-interceptor.ts` | 5: NetworkInterceptor, CapturedNetworkRequest, RealtimeStream, StreamMessage, NetworkFilter |
-| `main/network/network-surface.ts` | 2: NetworkSurface, NetworkSurfaceDeps |
-| `main/prerender/prerender-engine.ts` | 3: PrerenderEngine, PrerenderItem, PrerenderOptions |
-| `main/primitives/control-facts.ts` | 5: controlFactsExpression, parseControlFacts, ControlAction, ControlFacts, ControlFactsOptions |
-| `main/primitives/dom-targeting.ts` | 10: elementExpr, targetBoxScript, fieldFactsScript, focusControlScript, diagnosticsScript, inputProbeInstallScript, inputProbeReadScript, DEEP_DOM_HELPERS, … (10) |
-| `main/primitives/primitives.ts` | 14: DEFAULT_MARKDOWN_BUDGET, PrimitiveError, Primitives, PrimitivesHost, PrimitiveErrorCode, WaitCondition, ConditionResult, WaitResult, … (14) |
 
-… and 155 more module(s) — grep the full index.
+… and 160 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.
