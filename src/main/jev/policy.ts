@@ -20,6 +20,7 @@ export type FunnelReason =
   | 'small-page'
   | 'unscoped';
 
+/** When to use: calling `decideFunnel` — the read shape and the page size it applies to. */
 export interface FunnelInput {
   enforce: boolean;
   as: string;
@@ -32,17 +33,20 @@ export interface FunnelInput {
   minTokens?: number;
 }
 
+/** When to use: the funnel verdict a read primitive acts on — allowed plus the reason. */
 export interface FunnelDecision {
   allowed: boolean;
   reason: FunnelReason;
 }
 
+/** When to use: the small-page exemption shared by the funnel and the settings UI. */
 export const DEFAULT_FUNNEL_MIN_TOKENS = 1500;
 
 const hasValue = (value: unknown): boolean => value !== undefined && value !== null && value !== '';
 const isPositiveNumber = (value: unknown): boolean =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
 
+/** When to use: the content-read gate — decide whether a read may bypass the JEV index, and why. */
 export function decideFunnel(input: FunnelInput): FunnelDecision {
   if (!input.enforce) return { allowed: true, reason: 'not-enforced' };
   if (input.as !== 'markdown' && input.as !== 'text') return { allowed: true, reason: 'not-content' };

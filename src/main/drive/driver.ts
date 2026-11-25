@@ -17,6 +17,7 @@
 import type { Primitives } from '../primitives/primitives.js';
 import { decideGuarded } from '../decide/decision-guard.js';
 
+/** When to use: reading a `drive` result — how the loop ended (done, blocked, needs input/agent, failed, cap). */
 export type DriveStatus =
   | 'done'
   | 'blocked'
@@ -27,6 +28,7 @@ export type DriveStatus =
   | 'max_steps'
   | 'error';
 
+/** When to use: one transcript row of a `drive` run — the operation, target, outcome and URL change. */
 export interface DriveStep {
   step: number;
   operation: string;
@@ -42,6 +44,7 @@ export interface DriveStep {
   note?: string;
 }
 
+/** When to use: the `drive` reply — status, transcript, stop message, and the field/gate when it stopped. */
 export interface DriveResult {
   status: DriveStatus;
   goal: string;
@@ -58,6 +61,7 @@ export interface DriveResult {
   durationMs: number;
 }
 
+/** When to use: calling `drive` — the goal, the values the caller supplies, and the step/threshold budget. */
 export interface DriveOptions {
   goal: string;
   /** Field name (or component id) → text to type. Jev decides *where*; you supply *what*. */

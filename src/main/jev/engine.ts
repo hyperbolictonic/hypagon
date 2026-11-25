@@ -19,6 +19,7 @@ export interface JevSection {
   children: string[];
 }
 
+/** When to use: the in-memory depth store for one page — its section map, order and token totals. */
 export interface JevSession {
   url: string;
   title: string;
@@ -28,6 +29,7 @@ export interface JevSession {
   totalTokens: number;
 }
 
+/** When to use: `jev_status` and the settings badge — availability, page stats and the funnel mode. */
 export interface JevStatus {
   enabled: boolean;
   ready: boolean;
@@ -42,6 +44,7 @@ export interface JevStatus {
   enforced?: boolean;
 }
 
+/** When to use: one `search_page` hit — section id, heading, match count and a snippet. */
 export interface JevSearchHit {
   section_id: string;
   heading: string;
@@ -75,6 +78,7 @@ function digestFor(lines: string[]): string {
   return sentence.length > 160 ? `${sentence.slice(0, 157)}…` : sentence;
 }
 
+/** When to use: `observe`, `read_page`, `search_page` and `read_section` — build the section index and serve depth reads. */
 export class JevEngine {
   private session: JevSession | null = null;
   private expanded = new Map<string, number>();

@@ -176,10 +176,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/downloads/download-surface.ts` | `DownloadSurface` | The download list and downloaded-document reader. |
 | `main/downloads/download-surface.ts` | `DownloadSurfaceDeps` *(type)* | Dependencies the download surface needs for directive logging. |
 | `main/drive/driver.ts` | `driveTask` | Run the loop until a stop condition. Never throws: every failure is a typed status. |
-| `main/drive/driver.ts` | `DriveStatus` *(type)* | - |
-| `main/drive/driver.ts` | `DriveStep` *(type)* | - |
-| `main/drive/driver.ts` | `DriveResult` *(type)* | - |
-| `main/drive/driver.ts` | `DriveOptions` *(type)* | - |
+| `main/drive/driver.ts` | `DriveStatus` *(type)* | When to use: reading a `drive` result — how the loop ended (done, blocked, needs input/agent, failed, cap). |
+| `main/drive/driver.ts` | `DriveStep` *(type)* | When to use: one transcript row of a `drive` run — the operation, target, outcome and URL change. |
+| `main/drive/driver.ts` | `DriveResult` *(type)* | When to use: the `drive` reply — status, transcript, stop message, and the field/gate when it stopped. |
+| `main/drive/driver.ts` | `DriveOptions` *(type)* | When to use: calling `drive` — the goal, the values the caller supplies, and the step/threshold budget. |
 | `main/harvest/harvest-surface.ts` | `HarvestSurface` | The agent-facing harvest and screenshot surface. |
 | `main/harvest/harvest-surface.ts` | `HarvestSurfaceDeps` *(type)* | Dependencies the harvest surface needs from the active tab and chassis state. |
 | `main/harvest/screenshots.ts` | `ScreenshotStore` | When to use: the chassis — own screenshot persistence: directory, retention, capture retry and the encode/save tail. |
@@ -255,21 +255,21 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/jev/controller.ts` | `JevControllerDeps` *(type)* | When to use: building the chassis — the collaborators JEV reads through. |
 | `main/jev/depth-store.ts` | `JevDepthStore` | When to use: `JevController` — own the depth store and the reads over it. |
 | `main/jev/depth-store.ts` | `JevDepthStoreDeps` *(type)* | When to use: constructing the controller — the policy and the page lookups. |
-| `main/jev/engine.ts` | `JevEngine` | - |
+| `main/jev/engine.ts` | `JevEngine` | When to use: `observe`, `read_page`, `search_page` and `read_section` — build the section index and serve depth reads. |
 | `main/jev/engine.ts` | `JevSection` *(type)* | Just-Enough-View (JEV) page compaction. |
-| `main/jev/engine.ts` | `JevSession` *(type)* | - |
-| `main/jev/engine.ts` | `JevStatus` *(type)* | - |
-| `main/jev/engine.ts` | `JevSearchHit` *(type)* | - |
+| `main/jev/engine.ts` | `JevSession` *(type)* | When to use: the in-memory depth store for one page — its section map, order and token totals. |
+| `main/jev/engine.ts` | `JevStatus` *(type)* | When to use: `jev_status` and the settings badge — availability, page stats and the funnel mode. |
+| `main/jev/engine.ts` | `JevSearchHit` *(type)* | When to use: one `search_page` hit — section id, heading, match count and a snippet. |
 | `main/jev/funnel.ts` | `JevFunnel` | When to use: `JevController` — own both funnels, the loop breaker and the counters. |
 | `main/jev/funnel.ts` | `JevFunnelDeps` *(type)* | When to use: constructing the controller — the policy, the page and the section count. |
 | `main/jev/policy-gate.ts` | `JevPolicyGate` | When to use: `JevController` — own the policy provider and its normalisation. |
 | `main/jev/policy-gate.ts` | `JevPolicy` *(type)* | When to use: declaring the optional JEV gate; wired by index.ts to the settings store + decision status. |
-| `main/jev/policy.ts` | `decideFunnel` | - |
-| `main/jev/policy.ts` | `DEFAULT_FUNNEL_MIN_TOKENS` | - |
+| `main/jev/policy.ts` | `decideFunnel` | When to use: the content-read gate — decide whether a read may bypass the JEV index, and why. |
+| `main/jev/policy.ts` | `DEFAULT_FUNNEL_MIN_TOKENS` | When to use: the small-page exemption shared by the funnel and the settings UI. |
 | `main/jev/policy.ts` | `FunnelBreaker` | Loop breaker: after two refusals for the same URL inside the window, the next |
 | `main/jev/policy.ts` | `FunnelReason` *(type)* | JEV hard-funnel policy. |
-| `main/jev/policy.ts` | `FunnelInput` *(type)* | - |
-| `main/jev/policy.ts` | `FunnelDecision` *(type)* | - |
+| `main/jev/policy.ts` | `FunnelInput` *(type)* | When to use: calling `decideFunnel` — the read shape and the page size it applies to. |
+| `main/jev/policy.ts` | `FunnelDecision` *(type)* | When to use: the funnel verdict a read primitive acts on — allowed plus the reason. |
 | `main/jev/read-contract.ts` | `PageReadRequest` *(type)* | A page read the agent asked for, before the JEV funnel judges it. |
 | `main/jev/read-contract.ts` | `PrecheckPageReadResult` *(type)* | Cheap pre-harvest check: refuse an obviously oversized read in ~30 ms. |
 | `main/jev/read-contract.ts` | `GuardPageReadInput` *(type)* | The guard adds the post-harvest facts (tokens, url, title, content). |
@@ -539,11 +539,11 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/research-view-surface.ts` | `ResearchViewSurface` | The detached research view and the citation/hand-off pipeline over it. |
 | `main/research/research-view-surface.ts` | `ResearchViewSurfaceDeps` *(type)* | Dependencies the research view needs from the window and the HIL manager. |
 | `main/research/researcher.ts` | `extractHighlights` | Extractive highlights: paragraphs of the source that mention the most query terms, best first. |
-| `main/research/researcher.ts` | `Researcher` | - |
-| `main/research/researcher.ts` | `ResearchOptions` *(type)* | - |
-| `main/research/researcher.ts` | `ResearchSource` *(type)* | - |
-| `main/research/researcher.ts` | `ResearchOutcome` *(type)* | - |
-| `main/research/researcher.ts` | `ResearcherDeps` *(type)* | - |
+| `main/research/researcher.ts` | `Researcher` | When to use: `research_topic` — search, then fetch and distill each source, then index it. |
+| `main/research/researcher.ts` | `ResearchOptions` *(type)* | When to use: `research_topic` — the query plus the source budget, engine chain and acquisition toggles. |
+| `main/research/researcher.ts` | `ResearchSource` *(type)* | When to use: one gathered source in the research feed — rank, tier, timing, highlights and anchors. |
+| `main/research/researcher.ts` | `ResearchOutcome` *(type)* | When to use: the `research_topic` reply — sources, Cortex counts, tier totals and search attempts. |
+| `main/research/researcher.ts` | `ResearcherDeps` *(type)* | When to use: wiring the researcher — the search hub, the crawler, logging and live run events. |
 | `main/research/session-controller.ts` | `ResearchSessionController` | When to use: the chassis — own the stealth research session, its settings and WAF cooldowns. |
 | `main/research/session-controller.ts` | `ResearchSessionDeps` *(type)* | When to use: building the chassis — the collaborators the research session reads through. |
 | `main/research/settings.ts` | `normalizeResearchSettings` | When to use: saving or loading the research settings — coerce and validate every field against its range. |
@@ -561,13 +561,13 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/scripts/scripts-surface.ts` | `ScriptsSurface` | The saved-script vault behind the script routes. |
 | `main/scripts/scripts-surface.ts` | `ScriptsSurfaceDeps` *(type)* | Dependencies the script surface needs from the active tab and telemetry. |
 | `main/search/search-engine.ts` | `engineHost` | The host an engine loads in; the custom engine resolves the settings template. |
-| `main/search/search-engine.ts` | `KNOWN_ENGINES` | - |
+| `main/search/search-engine.ts` | `KNOWN_ENGINES` | When to use: validating `engine`/`engines` and naming the custom template engine. |
 | `main/search/search-engine.ts` | `DEFAULT_ENGINE_CHAIN` | Default fallback chain: JS-free, consent-resistant providers first; Google last (it challenges often). |
-| `main/search/search-engine.ts` | `SearchHub` | - |
+| `main/search/search-engine.ts` | `SearchHub` | When to use: `search_web` — run a query in a detached view and fall back across engines. |
 | `main/search/search-engine.ts` | `SearchResult` *(type)* | `search_web` — a configurable, multi-engine search hub (TODO_RESEARCH_CRAWL.md §5, Feature 5). |
-| `main/search/search-engine.ts` | `SearchAttempt` *(type)* | - |
-| `main/search/search-engine.ts` | `SearchOutcome` *(type)* | - |
-| `main/search/search-engine.ts` | `SearchHubDeps` *(type)* | - |
+| `main/search/search-engine.ts` | `SearchAttempt` *(type)* | When to use: one engine try in the reply — result count, blocked flag and error. |
+| `main/search/search-engine.ts` | `SearchOutcome` *(type)* | When to use: the `search_web` reply — chosen engine, ranked results and every attempt. |
+| `main/search/search-engine.ts` | `SearchHubDeps` *(type)* | When to use: constructing the hub — the detached loader and the log sink. |
 | `main/search/search-surface.ts` | `SearchSurface` | The agent-facing web-search adapter over SearchHub. |
 | `main/search/search-surface.ts` | `SearchPolicyTarget` *(type)* | The subset of search options the engine policy rewrites. |
 | `main/search/search-surface.ts` | `SearchSurfaceDeps` *(type)* | Dependencies the search surface needs from the research policy and hub. |
@@ -752,11 +752,11 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/input-schema.ts` | `validateArgs` | - |
 | `main/wrap/input-schema.ts` | `isPlainObject` | - |
 | `main/wrap/input-schema.ts` | `ArgsValidation` *(type)* | - |
-| `main/wrap/interpolate.ts` | `buildRequest` | - |
-| `main/wrap/interpolate.ts` | `redactHeaders` | - |
-| `main/wrap/interpolate.ts` | `interpolateValue` | - |
-| `main/wrap/interpolate.ts` | `BuildRequestError` | - |
-| `main/wrap/interpolate.ts` | `BuiltRequest` *(type)* | - |
+| `main/wrap/interpolate.ts` | `buildRequest` | When to use: `wrap_run` and its preview — turn a wrapper plus arguments into the final request. |
+| `main/wrap/interpolate.ts` | `redactHeaders` | When to use: logging a request — mask auth/cookie headers and any wrapper-declared sensitive names. |
+| `main/wrap/interpolate.ts` | `interpolateValue` | When to use: filling `{{placeholders}}` in a body, query or header value while keeping whole-value JSON types. |
+| `main/wrap/interpolate.ts` | `BuildRequestError` | When to use: catching a wrapper request that cannot be built — `code` names the offending placeholder or shape. |
+| `main/wrap/interpolate.ts` | `BuiltRequest` *(type)* | When to use: sending or previewing a built wrapper request — method, URL, headers and optional body. |
 | `main/wrap/limits.ts` | `resolveWrapLimits` | When to use: constructing an executor core. Resolves the shared transport |
 | `main/wrap/limits.ts` | `WrapTransportOptions` *(type)* | Options every executor core accepts for transport safety. |
 | `main/wrap/limits.ts` | `WrapLimits` *(type)* | Resolved transport limits: every value present, environment defaults applied. |

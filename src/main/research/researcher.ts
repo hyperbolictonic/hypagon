@@ -17,6 +17,7 @@ import type { ResearchEvent, ResearchEscalation, ResearchTier } from '../../shar
 import type { SearchOutcome, SearchAttempt } from '../search/search-engine.js';
 import type { CrawlOptions, CrawlOutcome, HumanAssistInfo } from '../crawl/crawler.js';
 
+/** When to use: `research_topic` — the query plus the source budget, engine chain and acquisition toggles. */
 export interface ResearchOptions {
   query: string;
   /** Distinct sources to gather (default 5, max 8). */
@@ -38,6 +39,7 @@ export interface ResearchOptions {
   delayMs?: number;
 }
 
+/** When to use: one gathered source in the research feed — rank, tier, timing, highlights and anchors. */
 export interface ResearchSource {
   rank: number;
   title: string;
@@ -60,6 +62,7 @@ export interface ResearchSource {
   escalation?: ResearchEscalation;
 }
 
+/** When to use: the `research_topic` reply — sources, Cortex counts, tier totals and search attempts. */
 export interface ResearchOutcome {
   runId: string;
   query: string;
@@ -81,6 +84,7 @@ export interface ResearchOutcome {
   notes: string[];
 }
 
+/** When to use: wiring the researcher — the search hub, the crawler, logging and live run events. */
 export interface ResearcherDeps {
   search: (
     query: string,
@@ -142,6 +146,7 @@ export function extractHighlights(markdown: string, query: string, max = 3): str
   return pool.slice(0, max).map((s) => s.p.slice(0, 320));
 }
 
+/** When to use: `research_topic` — search, then fetch and distill each source, then index it. */
 export class Researcher {
   private deps: ResearcherDeps;
 
