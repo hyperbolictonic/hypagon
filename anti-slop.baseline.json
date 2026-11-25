@@ -138,10 +138,6 @@
     "totalDuplicatedLines": 352
   },
   "modularity": {
-    "files": {
-      "main/wrap/anyapi/executor.ts": {
-        "function": 1
-      }
-    }
+    "files": {}
   }
 }

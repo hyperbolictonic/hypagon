@@ -214,7 +214,37 @@ export class AnyApiWrapExecutor {
 
     if (options.dryRun) return wrapDryRun(identity, plan.value);
 
-    const host = new URL(plan.value.url).hostname;
+    return await this.send({
+      wrapper,
+      identity,
+      map,
+      operation,
+      args,
+      plan: plan.value,
+      request,
+      secrets,
+      options,
+    });
+  }
+
+  /**
+   * Send a planned run: build the transport options, execute, redact any echoed credential,
+   * render the payload and mark the wrapper verified.
+   */
+  private async send(input: {
+    wrapper: WrapWrapper;
+    identity: { id: string; name: string };
+    map: MapDocument;
+    operation: Operation;
+    args: Record<string, unknown>;
+    plan: DryRunPlan;
+    request: WrapPreview;
+    secrets: ReturnType<typeof createSecretAdapter> | undefined;
+    options: ExecuteOptions;
+  }): Promise<WrapRunResult> {
+    const { wrapper, identity, map, operation, args, plan, request, secrets, options } = input;
+
+    const host = new URL(plan.url).hostname;
     const secretValues = await this.secretValues(wrapper, host);
 
     const runOptions: RunOptions = {
@@ -229,7 +259,7 @@ export class AnyApiWrapExecutor {
       },
       ...(secrets === undefined
         ? {}
-        : { secrets: secrets.provider as SecretProvider, bindings: bindings as BindingTable }),
+        : { secrets: secrets.provider as SecretProvider, bindings: secrets.bindings as BindingTable }),
       lookup: this.transport.resolveHost ?? resolveHosts,
       ...(this.audit === undefined ? {} : { audit: this.auditSink(wrapper) }),
       store: this.payloadStore,
