@@ -173,7 +173,7 @@
       "main/browser-chassis.ts": {
         "class": 1,
         "file": 1,
-        "function": 3
+        "function": 2
       },
       "main/browser/frame-eval.ts": {
         "function": 1

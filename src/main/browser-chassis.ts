@@ -1035,6 +1035,14 @@ export class BrowserChassis {
   }
 
   private registerIpcHandlers() {
+    this.registerCoreIpc();
+    this.registerTabViewportIpc();
+    this.registerDeckIpc();
+    this.registerCortexIpc();
+    this.registerSettingsIpc();
+  }
+
+  private registerCoreIpc() {
     ipcMain.on('chassis:hud-heartbeat', () => {
       this.hudLastHeartbeat = Date.now();
     });
@@ -1076,6 +1084,9 @@ export class BrowserChassis {
       return await this.harvestMarkdown();
     });
 
+  }
+
+  private registerTabViewportIpc() {
     // Tab IPC Handlers
     ipcMain.handle('chassis:get-tabs', () => this.getTabsSummary());
     ipcMain.handle('chassis:create-tab', (_, url?: string) => this.createTab(url));
@@ -1111,6 +1122,9 @@ export class BrowserChassis {
     ipcMain.handle('chassis:set-viewport-visibility', setVisibility);
     ipcMain.on('chassis:set-viewport-visibility', setVisibility);
 
+  }
+
+  private registerDeckIpc() {
     ipcMain.handle('chassis:get-sidebar-mode', () => this.deck.getMode());
     ipcMain.handle('chassis:get-sidebar-state', () => this.deck.surfaceState());
     // TEMP instrumentation: live bounds for verifying collab-mode geometry.
@@ -1133,6 +1147,9 @@ export class BrowserChassis {
     ipcMain.on('chassis:collab-toggle-list', (_: any, anchor?: { x: number; y: number; width: number; height: number }) =>
       this.deck.toggleList(anchor));
 
+  }
+
+  private registerCortexIpc() {
     // Cortex & Bookmarks IPC Handlers
     ipcMain.handle('cortex:recall', async (_, query: string, options?: any) => {
       return await cortex.recall(query, options);
@@ -1160,6 +1177,9 @@ export class BrowserChassis {
       return await cortex.isBookmarked(url);
     });
 
+  }
+
+  private registerSettingsIpc() {
     // Settings → decision model (optional). The renderer reads/writes data/decision.json through
     // these; the same file the bridge and the MCP server read, so there is one source of truth.
     ipcMain.handle('settings:get-decision', async () => ({
