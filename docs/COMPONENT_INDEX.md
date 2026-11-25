@@ -451,17 +451,17 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/recipes/compile.ts` | `compileDriveSteps` | Map drive steps to recipe steps. Click steps always become `click`; a `type_text` step becomes a |
 | `main/recipes/compile.ts` | `DriveStepLike` *(type)* | - |
 | `main/recipes/compile.ts` | `CompileOptions` *(type)* | - |
-| `main/recipes/recipe-store.ts` | `loadRecipes` | - |
-| `main/recipes/recipe-store.ts` | `originOf` | - |
+| `main/recipes/recipe-store.ts` | `loadRecipes` | When to use: matching or mutating a recipe; a missing or malformed file reads as an empty store. |
+| `main/recipes/recipe-store.ts` | `originOf` | When to use: keying a recipe to its site — the URL's origin, or an empty string when the URL is not absolute. |
 | `main/recipes/recipe-store.ts` | `recipesFor` | Recipes for this URL, most-recently-verified first. |
-| `main/recipes/recipe-store.ts` | `saveRecipe` | - |
-| `main/recipes/recipe-store.ts` | `deleteRecipe` | - |
+| `main/recipes/recipe-store.ts` | `saveRecipe` | When to use: `recipe_save` — validate the described steps and upsert the recipe for an origin + path. |
+| `main/recipes/recipe-store.ts` | `deleteRecipe` | When to use: `recipe_delete` — remove a recipe by id or by origin+path. |
 | `main/recipes/recipe-store.ts` | `recordResult` | Record the outcome of a replay; a recipe is retired after RETIRE_AFTER_FAILURES consecutive misses. |
 | `main/recipes/recipe-store.ts` | `retireRecipe` | A structural change is not a flaky miss: retire immediately instead of burning three attempts. |
-| `main/recipes/recipe-store.ts` | `RecipeStep` *(type)* | - |
-| `main/recipes/recipe-store.ts` | `Recipe` *(type)* | - |
-| `main/recipes/recipe-store.ts` | `RecipeStore` *(type)* | - |
-| `main/recipes/recipe-store.ts` | `SaveRecipeInput` *(type)* | - |
+| `main/recipes/recipe-store.ts` | `RecipeStep` *(type)* | When to use: `recipe_save` and replay — one stored step: the visible-text anchor, the action, an optional typed value and the post-step conditions. |
+| `main/recipes/recipe-store.ts` | `Recipe` *(type)* | When to use: one stored navigation path and its record — origin, path glob, steps and the attempt/success counters that retire it. |
+| `main/recipes/recipe-store.ts` | `RecipeStore` *(type)* | When to use: reading or writing `data/recipes.json` — the `version: 1` document `loadRecipes` returns. |
+| `main/recipes/recipe-store.ts` | `SaveRecipeInput` *(type)* | When to use: calling `saveRecipe` — the target URL, the optional path/name override and the described steps. |
 | `main/recipes/replay.ts` | `replayRecipe` | - |
 | `main/recipes/replay.ts` | `RecipeRunner` *(type)* | - |
 | `main/recipes/replay.ts` | `ReplayStepResult` *(type)* | - |
@@ -490,11 +490,11 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/remote/cloudflared-panel.ts` | `CloudflaredPanelDeps` *(type)* | When to use: the service constructor — the data dir and the tunnel hooks. |
 | `main/remote/gateway-child.ts` | `RemoteGateway` | When to use: `RemoteService` — one child per service. |
 | `main/remote/gateway-child.ts` | `RemoteGatewayDeps` *(type)* | When to use: the service constructor — everything the child is launched with. |
-| `main/remote/oauth-client.ts` | `oauthClientFile` | - |
-| `main/remote/oauth-client.ts` | `readOAuthClient` | - |
-| `main/remote/oauth-client.ts` | `createOAuthClient` | - |
-| `main/remote/oauth-client.ts` | `ensureOAuthClient` | - |
-| `main/remote/oauth-client.ts` | `OAuthClientCredentials` *(type)* | - |
+| `main/remote/oauth-client.ts` | `oauthClientFile` | When to use: locating `oauth-client.json` under the remote data directory. |
+| `main/remote/oauth-client.ts` | `readOAuthClient` | When to use: reading the stored client; an invalid or missing file reads as undefined. |
+| `main/remote/oauth-client.ts` | `createOAuthClient` | When to use: minting the client on first run — an atomic 0600 write under the remote directory. |
+| `main/remote/oauth-client.ts` | `ensureOAuthClient` | When to use: the OAuth route's first request — read the stored client or mint one. |
+| `main/remote/oauth-client.ts` | `OAuthClientCredentials` *(type)* | When to use: the stored MCP OAuth client pair and the timestamp it was minted. |
 | `main/remote/service.ts` | `RemoteService` | When to use: the app — one service per process. |
 | `main/remote/service.ts` | `RemoteServiceOptions` *(type)* | When to use: the app bootstrap — the paths, port and bridge the gateway fronts. |
 | `main/remote/settings.ts` | `loadRemoteSettings` | - |
@@ -505,11 +505,11 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/anchor-store.ts` | `AnchorStore` | - |
 | `main/research/anchor-store.ts` | `StoredAnchor` *(type)* | - |
 | `main/research/anchors.ts` | `relocateCitation` | Revalidate a stored anchor against fresh HTML. |
-| `main/research/anchors.ts` | `relocateCitations` | - |
-| `main/research/anchors.ts` | `anchorHighlights` | - |
-| `main/research/anchors.ts` | `CitationAnchor` *(type)* | - |
-| `main/research/anchors.ts` | `CitationCandidate` *(type)* | - |
-| `main/research/anchors.ts` | `CitationRelocation` *(type)* | - |
+| `main/research/anchors.ts` | `relocateCitations` | When to use: `revalidate_citations` — re-check a page's stored anchors in small batches. |
+| `main/research/anchors.ts` | `anchorHighlights` | When to use: `research_topic` and the crawl feed — pick the query-relevant blocks and fingerprint them. |
+| `main/research/anchors.ts` | `CitationAnchor` *(type)* | When to use: storing one extracted highlight with the DOM fingerprint that lets a later run relocate it. |
+| `main/research/anchors.ts` | `CitationCandidate` *(type)* | When to use: a near-miss row in a `CitationRelocation` — structural score versus text similarity. |
+| `main/research/anchors.ts` | `CitationRelocation` *(type)* | When to use: the revalidation result for one anchor — found, score/path/text, ranked candidates and the fetch tier. |
 | `main/research/citation-anchors.ts` | `CitationAnchors` | When to use: `CitationController` — the anchors and the fetch it revalidates with. |
 | `main/research/citation-anchors.ts` | `RevalidationSummary` *(type)* | The outcome of revalidating stored anchors across URLs. |
 | `main/research/citation-controller.ts` | `CitationController` | When to use: the chassis — own the anchors, the hand-off and the fetch policy. |
@@ -546,13 +546,13 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/researcher.ts` | `ResearcherDeps` *(type)* | - |
 | `main/research/session-controller.ts` | `ResearchSessionController` | When to use: the chassis — own the stealth research session, its settings and WAF cooldowns. |
 | `main/research/session-controller.ts` | `ResearchSessionDeps` *(type)* | When to use: building the chassis — the collaborators the research session reads through. |
-| `main/research/settings.ts` | `normalizeResearchSettings` | - |
-| `main/research/settings.ts` | `looksLikeChallenge` | - |
-| `main/research/settings.ts` | `RESEARCH_ENGINES` | - |
-| `main/research/settings.ts` | `DEFAULT_RESEARCH_SETTINGS` | - |
-| `main/research/settings.ts` | `ResearchSettingsStore` | - |
-| `main/research/settings.ts` | `ResearchSettings` *(type)* | - |
-| `main/research/settings.ts` | `ResearchSettingsResult` *(type)* | - |
+| `main/research/settings.ts` | `normalizeResearchSettings` | When to use: saving or loading the research settings — coerce and validate every field against its range. |
+| `main/research/settings.ts` | `looksLikeChallenge` | When to use: the crawl and search tiers deciding whether a response is a WAF/CAPTCHA wall instead of a page. |
+| `main/research/settings.ts` | `RESEARCH_ENGINES` | When to use: validating `engineChain` and naming the `custom` engine's template requirement. |
+| `main/research/settings.ts` | `DEFAULT_RESEARCH_SETTINGS` | When to use: filling absent fields and showing the settings panel's initial values. |
+| `main/research/settings.ts` | `ResearchSettingsStore` | When to use: loading and saving the research settings through the shared JSON settings store. |
+| `main/research/settings.ts` | `ResearchSettings` *(type)* | When to use: the Research settings panel, and the search/crawl defaults read at run time. |
+| `main/research/settings.ts` | `ResearchSettingsResult` *(type)* | When to use: the save result — the normalized settings plus the human-readable validation errors. |
 | `main/research/stealth-session.ts` | `StealthSession` | When to use: `ResearchSessionController.stealth` — one per controller. |
 | `main/research/stealth-session.ts` | `StealthSessionDeps` *(type)* | When to use: `new ResearchSessionController` — the profile the session must present. |
 | `main/research/surface-activity.ts` | `SurfaceActivityDeps` *(type)* | The activity feed + directive log every research surface takes. |

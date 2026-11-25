@@ -10,8 +10,10 @@
 
 import { loadJsonSettings, saveJsonSettings, settingsSource } from '../settings/json-settings.ts';
 
+/** When to use: validating `engineChain` and naming the `custom` engine's template requirement. */
 export const RESEARCH_ENGINES = ['google', 'duckduckgo', 'bing', 'brave', 'startpage', 'custom'] as const;
 
+/** When to use: the Research settings panel, and the search/crawl defaults read at run time. */
 export interface ResearchSettings {
   schemaVersion: 1;
   enabled: boolean;
@@ -36,6 +38,7 @@ export interface ResearchSettings {
   searchMaxResults: number;
 }
 
+/** When to use: filling absent fields and showing the settings panel's initial values. */
 export const DEFAULT_RESEARCH_SETTINGS: ResearchSettings = {
   schemaVersion: 1,
   enabled: false,
@@ -55,12 +58,14 @@ export const DEFAULT_RESEARCH_SETTINGS: ResearchSettings = {
   searchMaxResults: 8,
 };
 
+/** When to use: the save result — the normalized settings plus the human-readable validation errors. */
 export interface ResearchSettingsResult {
   ok: boolean;
   settings: ResearchSettings;
   errors: string[];
 }
 
+/** When to use: loading and saving the research settings through the shared JSON settings store. */
 export class ResearchSettingsStore {
   readonly file: string;
 
@@ -77,6 +82,7 @@ export class ResearchSettingsStore {
   }
 }
 
+/** When to use: saving or loading the research settings — coerce and validate every field against its range. */
 export function normalizeResearchSettings(input: unknown): ResearchSettingsResult {
   const errors: string[] = [];
   const source = settingsSource(input);
@@ -243,6 +249,7 @@ const CHALLENGE_PATTERNS = [
   /before you continue/i,
 ];
 
+/** When to use: the crawl and search tiers deciding whether a response is a WAF/CAPTCHA wall instead of a page. */
 export function looksLikeChallenge(status: number, text: string): boolean {
   if (status === 403 || status === 429) return true;
   const sample = (text || '').slice(0, 4000);

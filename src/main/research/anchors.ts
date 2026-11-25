@@ -8,6 +8,7 @@
 import { Page, ratio, similarityScore } from 'hypagon-scrap';
 import type { Fingerprint } from 'hypagon-scrap';
 
+/** When to use: storing one extracted highlight with the DOM fingerprint that lets a later run relocate it. */
 export interface CitationAnchor {
   /** Human-readable excerpt, capped for result size. */
   text: string;
@@ -19,6 +20,7 @@ export interface CitationAnchor {
   fingerprint: Fingerprint;
 }
 
+/** When to use: a near-miss row in a `CitationRelocation` — structural score versus text similarity. */
 export interface CitationCandidate {
   score: number;
   /** Similarity of the candidate's own text to the anchored text (0-1). */
@@ -27,6 +29,7 @@ export interface CitationCandidate {
   text: string;
 }
 
+/** When to use: the revalidation result for one anchor — found, score/path/text, ranked candidates and the fetch tier. */
 export interface CitationRelocation {
   found: boolean;
   score: number | null;
@@ -117,6 +120,7 @@ export async function relocateCitation(
 }
 
 
+/** When to use: `revalidate_citations` — re-check a page's stored anchors in small batches. */
 export async function relocateCitations(
   html: string,
   fingerprints: Fingerprint[],
@@ -138,6 +142,7 @@ const MAX_HTML_BYTES = 2_000_000;
 const MIN_TEXT = 60;
 const MAX_TEXT = 2000;
 
+/** When to use: `research_topic` and the crawl feed — pick the query-relevant blocks and fingerprint them. */
 export async function anchorHighlights(
   html: string,
   query: string,

@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
+/** When to use: the stored MCP OAuth client pair and the timestamp it was minted. */
 export interface OAuthClientCredentials {
   clientId: string;
   clientSecret: string;
@@ -11,10 +12,12 @@ export interface OAuthClientCredentials {
 const CLIENT_ID_PATTERN = /^hg_[a-f0-9]{32}$/i;
 const SECRET_PATTERN = /^[a-f0-9]{64}$/i;
 
+/** When to use: locating `oauth-client.json` under the remote data directory. */
 export function oauthClientFile(remoteDir: string): string {
   return path.join(remoteDir, 'oauth-client.json');
 }
 
+/** When to use: reading the stored client; an invalid or missing file reads as undefined. */
 export function readOAuthClient(file: string): OAuthClientCredentials | undefined {
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as Partial<OAuthClientCredentials>;
@@ -36,6 +39,7 @@ export function readOAuthClient(file: string): OAuthClientCredentials | undefine
   }
 }
 
+/** When to use: minting the client on first run — an atomic 0600 write under the remote directory. */
 export function createOAuthClient(file: string): OAuthClientCredentials {
   const client: OAuthClientCredentials = {
     clientId: `hg_${crypto.randomBytes(16).toString('hex')}`,
@@ -54,6 +58,7 @@ export function createOAuthClient(file: string): OAuthClientCredentials {
   return client;
 }
 
+/** When to use: the OAuth route's first request — read the stored client or mint one. */
 export function ensureOAuthClient(file: string): OAuthClientCredentials {
   const existing = readOAuthClient(file);
   if (existing) return existing;

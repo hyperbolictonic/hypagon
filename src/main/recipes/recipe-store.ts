@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { dataPath } from '../data-paths.js';
 
+/** When to use: `recipe_save` and replay — one stored step: the visible-text anchor, the action, an optional typed value and the post-step conditions. */
 export interface RecipeStep {
   action: 'click' | 'type';
   /** Visible text anchor (or a form field's label / placeholder / name). */
@@ -25,6 +26,7 @@ export interface RecipeStep {
   signature?: string;
 }
 
+/** When to use: one stored navigation path and its record — origin, path glob, steps and the attempt/success counters that retire it. */
 export interface Recipe {
   id: string;
   name: string;
@@ -39,6 +41,7 @@ export interface Recipe {
   createdAt: number;
 }
 
+/** When to use: reading or writing `data/recipes.json` — the `version: 1` document `loadRecipes` returns. */
 export interface RecipeStore {
   version: 1;
   recipes: Recipe[];
@@ -52,6 +55,7 @@ function emptyStore(): RecipeStore {
   return { version: 1, recipes: [] };
 }
 
+/** When to use: matching or mutating a recipe; a missing or malformed file reads as an empty store. */
 export function loadRecipes(): RecipeStore {
   try {
     if (!fs.existsSync(FILE)) return emptyStore();
@@ -81,6 +85,7 @@ function normalisePath(input: string): string {
   }
 }
 
+/** When to use: keying a recipe to its site — the URL's origin, or an empty string when the URL is not absolute. */
 export function originOf(url: string): string {
   try {
     return new URL(url).origin;
@@ -104,6 +109,7 @@ export function recipesFor(url: string): Recipe[] {
     .sort((a, b) => (b.lastVerified || 0) - (a.lastVerified || 0));
 }
 
+/** When to use: calling `saveRecipe` — the target URL, the optional path/name override and the described steps. */
 export interface SaveRecipeInput {
   name?: string;
   url: string;
@@ -111,6 +117,7 @@ export interface SaveRecipeInput {
   steps: RecipeStep[];
 }
 
+/** When to use: `recipe_save` — validate the described steps and upsert the recipe for an origin + path. */
 export function saveRecipe(input: SaveRecipeInput): { ok: boolean; recipe?: Recipe; errors: string[] } {
   const errors: string[] = [];
   const origin = originOf(input.url);
@@ -171,6 +178,7 @@ export function saveRecipe(input: SaveRecipeInput): { ok: boolean; recipe?: Reci
   return { ok: true, recipe, errors: [] };
 }
 
+/** When to use: `recipe_delete` — remove a recipe by id or by origin+path. */
 export function deleteRecipe(idOrUrl: string): boolean {
   const store = loadRecipes();
   const before = store.recipes.length;
