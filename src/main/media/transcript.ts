@@ -130,22 +130,14 @@ function readInfo(dir: string): Record<string, any> | null {
   }
 }
 
-/**
- * Fetch captions (and optionally the thumbnail) into `dir`.
- *
- * `lang` is a yt-dlp subtitle selector; the caller normally derives it from the
- * metadata's available languages.
- */
-export async function fetchArtifacts(
-  binary: MediaBinary,
+/** The yt-dlp argument list for a caption-only fetch into `dir`. */
+function captionArgs(
+  runtime: { args: readonly string[] },
   url: string,
   dir: string,
   options: { lang: string; cookiesPath?: string; includeThumbnail?: boolean },
-): Promise<ArtifactResult> {
-  await fsp.mkdir(dir, { recursive: true });
-  const runtime = ytdlpRuntimeOptions();
-
-  const args = [
+): string[] {
+  return [
     ...runtime.args,
     '--ignore-config',
     '--no-playlist',
@@ -171,8 +163,47 @@ export async function fetchArtifacts(
     '--',
     url,
   ];
+}
 
-  const result = await runYtDlpProcess(binary.path, args, {
+/** What the caption-only fetch left in `dir`: the text, its track and any thumbnail. */
+function readArtifacts(dir: string, lang: string) {
+  const info = readInfo(dir);
+  const subtitleFile = pickSubtitle(dir);
+  const text = subtitleFile ? parseVtt(fs.readFileSync(subtitleFile, 'utf8')) : '';
+
+  const manualLanguages: string[] = Object.keys(info?.subtitles ?? {});
+  const autoLanguages: string[] = Object.keys(info?.automatic_captions ?? {});
+  const availableLanguages = [...new Set([...manualLanguages, ...autoLanguages])].sort();
+
+  const selected = subtitleFile ? path.basename(subtitleFile) : '';
+  const automatic = selected !== '' && !manualLanguages.some((code) => selected.includes(`.${code}.`));
+  const language = availableLanguages.find((code) => selected.includes(`.${code}.`)) ?? lang;
+
+  const images = fs.readdirSync(dir)
+    .filter((name) => /\.(jpe?g|png|webp|gif)$/iu.test(name))
+    .sort()
+    .slice(0, 2)
+    .map((name) => ({ name, path: path.join(dir, name), mimeType: mimeFor(name) }));
+
+  return { text, language, automatic, availableLanguages, images };
+}
+
+/**
+ * Fetch captions (and optionally the thumbnail) into `dir`.
+ *
+ * `lang` is a yt-dlp subtitle selector; the caller normally derives it from the
+ * metadata's available languages.
+ */
+export async function fetchArtifacts(
+  binary: MediaBinary,
+  url: string,
+  dir: string,
+  options: { lang: string; cookiesPath?: string; includeThumbnail?: boolean },
+): Promise<ArtifactResult> {
+  await fsp.mkdir(dir, { recursive: true });
+  const runtime = ytdlpRuntimeOptions();
+
+  const result = await runYtDlpProcess(binary.path, captionArgs(runtime, url, dir, options), {
     timeoutMs: SUBTITLE_TIMEOUT_MS,
     maxStdoutBytes: 2 * 1024 * 1024,
     env: runtime.env,
@@ -190,43 +221,17 @@ export async function fetchArtifacts(
   );
   if (failed) return failed;
 
-  const info = readInfo(dir);
-  const subtitleFile = pickSubtitle(dir);
-  const text = subtitleFile ? parseVtt(fs.readFileSync(subtitleFile, 'utf8')) : '';
-
-  const manualLanguages: string[] = Object.keys(info?.subtitles ?? {});
-  const autoLanguages: string[] = Object.keys(info?.automatic_captions ?? {});
-  const availableLanguages = [...new Set([...manualLanguages, ...autoLanguages])].sort();
-
-  const selected = subtitleFile ? path.basename(subtitleFile) : '';
-  const automatic = selected !== '' && !manualLanguages.some((code) => selected.includes(`.${code}.`));
-
-  const images = fs
-    .readdirSync(dir)
-    .filter((name) => /\.(jpe?g|png|webp|gif)$/iu.test(name))
-    .sort()
-    .slice(0, 2)
-    .map((name) => ({ name, path: path.join(dir, name), mimeType: mimeFor(name) }));
-
-  if (text === '' && images.length === 0) {
+  const artifacts = readArtifacts(dir, options.lang);
+  if (artifacts.text === '' && artifacts.images.length === 0) {
     return {
       ok: false,
       code: 'NO_TRANSCRIPT',
       error:
-        availableLanguages.length === 0
+        artifacts.availableLanguages.length === 0
           ? 'This video has no subtitles.'
-          : `No subtitles for "${options.lang}". Available: ${availableLanguages.slice(0, 8).join(', ')}`,
+          : `No subtitles for "${options.lang}". Available: ${artifacts.availableLanguages.slice(0, 8).join(', ')}`,
     };
   }
 
-  return {
-    ok: true,
-    artifacts: {
-      text,
-      language: selected === '' ? options.lang : (availableLanguages.find((code) => selected.includes(`.${code}.`)) ?? options.lang),
-      automatic,
-      availableLanguages,
-      images,
-    },
-  };
+  return { ok: true, artifacts };
 }

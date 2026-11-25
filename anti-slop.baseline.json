@@ -143,9 +143,6 @@
   },
   "modularity": {
     "files": {
-      "main/media/transcript.ts": {
-        "function": 1
-      },
       "main/network/network-interceptor.ts": {
         "function": 1
       },
