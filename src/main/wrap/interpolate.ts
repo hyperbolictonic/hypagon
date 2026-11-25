@@ -229,38 +229,34 @@ function interpolateText(
 
   const whole = template.match(WHOLE_PLACEHOLDER);
   if (whole) {
-    const placeholder = parsePlaceholder(whole[1]);
-    if (placeholder.rawPath && !allowRawPath) {
-      throw new BuildRequestError(
-        'INVALID_TEMPLATE',
-        'The "|raw" path modifier is only allowed in request.url.',
-      );
-    }
-    const value = getArg(args, placeholder.name);
-    if (value === undefined || value === null) return '';
-    return placeholder.rawPath
-      ? encodeRawPath(value)
-      : encode
-        ? encodeURIComponent(stringifyForTemplate(value))
-        : stringifyForTemplate(value);
+    return placeholderValue(parsePlaceholder(whole[1]), args, encode, allowRawPath);
   }
 
-  return template.replace(PLACEHOLDER, (_match, expression: string) => {
-    const placeholder = parsePlaceholder(expression);
-    if (placeholder.rawPath && !allowRawPath) {
-      throw new BuildRequestError(
-        'INVALID_TEMPLATE',
-        'The "|raw" path modifier is only allowed in request.url.',
-      );
-    }
-    const value = getArg(args, placeholder.name);
-    if (value === undefined || value === null) return '';
-    return placeholder.rawPath
-      ? encodeRawPath(value)
-      : encode
-        ? encodeURIComponent(stringifyForTemplate(value))
-        : stringifyForTemplate(value);
-  });
+  return template.replace(PLACEHOLDER, (_match, expression: string) =>
+    placeholderValue(parsePlaceholder(expression), args, encode, allowRawPath),
+  );
+}
+
+/** One placeholder's value, encoded according to its site and the `|raw` policy. */
+function placeholderValue(
+  placeholder: ReturnType<typeof parsePlaceholder>,
+  args: Record<string, unknown>,
+  encode: boolean,
+  allowRawPath: boolean,
+): string {
+  if (placeholder.rawPath && !allowRawPath) {
+    throw new BuildRequestError(
+      'INVALID_TEMPLATE',
+      'The "|raw" path modifier is only allowed in request.url.',
+    );
+  }
+  const value = getArg(args, placeholder.name);
+  if (value === undefined || value === null) return '';
+  return placeholder.rawPath
+    ? encodeRawPath(value)
+    : encode
+      ? encodeURIComponent(stringifyForTemplate(value))
+      : stringifyForTemplate(value);
 }
 
 /**

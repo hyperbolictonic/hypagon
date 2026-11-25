@@ -53,24 +53,25 @@ export class WrapStore {
   }
 
   create(input: unknown): StoreResult {
-    const validation = validateWrapper(input);
-    if (!validation.ok || !validation.wrapper) return { ok: false, errors: validation.errors };
-
-    const wrapper = validation.wrapper;
-    if (fs.existsSync(this.pathFor(wrapper.id)!)) {
-      return { ok: false, errors: [`wrapper "${wrapper.id}" already exists; use wrap_update`] };
-    }
-
-    return this.write(wrapper);
+    return this.saveValidated(input, false);
   }
 
   update(input: unknown): StoreResult {
+    return this.saveValidated(input, true);
+  }
+
+  /** Validate, enforce the create/update existence rule, then write. */
+  private saveValidated(input: unknown, mustExist: boolean): StoreResult {
     const validation = validateWrapper(input);
     if (!validation.ok || !validation.wrapper) return { ok: false, errors: validation.errors };
 
     const wrapper = validation.wrapper;
-    if (!fs.existsSync(this.pathFor(wrapper.id)!)) {
+    const exists = fs.existsSync(this.pathFor(wrapper.id)!);
+    if (mustExist && !exists) {
       return { ok: false, errors: [`wrapper "${wrapper.id}" does not exist; use wrap_create`] };
+    }
+    if (!mustExist && exists) {
+      return { ok: false, errors: [`wrapper "${wrapper.id}" already exists; use wrap_update`] };
     }
 
     return this.write(wrapper);

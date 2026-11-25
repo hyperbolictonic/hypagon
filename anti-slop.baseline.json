@@ -140,8 +140,6 @@
       "main/shadow-walk/sealed-targets.ts": 10,
       "main/shadow-walk/tab-walk.ts": 15,
       "main/tools/state.ts": 11,
-      "main/wrap/interpolate.ts": 30,
-      "main/wrap/store.ts": 12,
       "mcp/browser-mcp.ts": 18,
       "mcp/tool-groups-data.ts": 135,
       "mcp/tools-catalog-actuate.ts": 33,
@@ -158,7 +156,7 @@
       "renderer/settings-clients.ts": 38,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 638
+    "totalDuplicatedLines": 596
   },
   "modularity": {
     "files": {
