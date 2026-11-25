@@ -84,6 +84,6 @@ export class HilSurface {
     sound?: boolean,
   ): boolean {
     this.deps.log('info', `Desktop Notification Dispatched: [${title}] ${message}`);
-    return this.manager.sendNotification({ title, message, urgency, sound });
+    return this.manager.notifier.notify({ title, message, urgency, sound });
   }
 }

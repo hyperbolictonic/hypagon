@@ -1,56 +1,63 @@
-import { BrowserWindow, Notification, app, ipcMain } from 'electron';
-import { brandIcon } from '../brand-icon.js';
-import path from 'node:path';
-import fs from 'node:fs';
+/**
+ * Human-in-the-loop hand-offs.
+ *
+ * The manager owns the request lifecycle (one pending request at a time), the
+ * escalation to a human, and the teardown. Everything else is delegated:
+ *
+ *   - `hil-store.ts`    the request state machine (pending, timeout, resolve,
+ *                       cancel, history) — no Electron, so it is testable
+ *   - `hil-banner.ts`   the in-page banner script, injection, refresh and reload
+ *   - `hil-notifier.ts` the desktop notification, window summon, HUD broadcasts
+ *   - `hil-ipc.ts`      the four `hil:*` channels the HUD invokes
+ *   - `hil-types.ts`    the request/resolution shapes
+ */
+import type { BrowserWindow } from 'electron';
 import { BRAND } from '../../shared/brand.js';
+import { HilPageBanner } from './hil-banner.js';
+import { registerHilIpc } from './hil-ipc.js';
+import { HilNotifier } from './hil-notifier.js';
+import { HilRequestStore } from './hil-store.js';
+import type { HilRequest, HilResolution } from './hil-types.js';
 
-export interface HilRequest {
-  id: string;
-  reason: string;
-  url?: string;
-  requestedAt: number;
-  timeoutSeconds: number;
-  status: 'pending' | 'resolved' | 'timeout' | 'cancelled';
-  resolvedAt?: number;
-  notes?: string;
+export type { HilRequest, HilResolution, NotificationOptions } from './hil-types.js';
+
+/** When to use: the chassis — the window and the two fan-out hooks. */
+export interface HilManagerOptions {
+  mainWindow?: BrowserWindow;
+  getActiveWebContents?: () => Electron.WebContents | null;
+  onHilStateChanged?: (pending: boolean, req: HilRequest | null) => void;
+  broadcastAll?: (channel: string, payload?: unknown) => void;
 }
 
-export interface HilResolution {
-  status: 'resolved' | 'timeout' | 'cancelled';
-  elapsedSeconds: number;
-  notes?: string;
-}
-
-export interface NotificationOptions {
-  title: string;
-  message: string;
-  urgency?: 'normal' | 'critical' | 'low';
-  sound?: boolean;
-}
-
+/** When to use: the chassis — own the hand-off lifecycle and its delivery. */
 export class HilManager {
   private mainWindow: BrowserWindow | null = null;
-  private activeRequest: HilRequest | null = null;
-  private activeResolver: ((res: HilResolution) => void) | null = null;
-  private activeTimer: NodeJS.Timeout | null = null;
-  private requestHistory: HilRequest[] = [];
-  private inPageBannerEnabled = true;
-  private onHilStateChanged?: (pending: boolean, req: HilRequest | null) => void;
   private getActiveWebContents?: () => Electron.WebContents | null;
-  private broadcastAll?: (channel: string, payload?: unknown) => void;
+  private onHilStateChanged?: (pending: boolean, req: HilRequest | null) => void;
 
-  constructor(options?: {
-    mainWindow?: BrowserWindow;
-    getActiveWebContents?: () => Electron.WebContents | null;
-    onHilStateChanged?: (pending: boolean, req: HilRequest | null) => void;
-    broadcastAll?: (channel: string, payload?: unknown) => void;
-  }) {
+  private readonly store = new HilRequestStore();
+  /** The desktop/HUD delivery of a hand-off. */
+  readonly notifier: HilNotifier;
+  /** The in-page banner for the active hand-off. */
+  readonly banner: HilPageBanner;
+
+  constructor(options?: HilManagerOptions) {
     if (options?.mainWindow) this.mainWindow = options.mainWindow;
     this.getActiveWebContents = options?.getActiveWebContents;
     this.onHilStateChanged = options?.onHilStateChanged;
-    this.broadcastAll = options?.broadcastAll;
 
-    this.registerIpcHandlers();
+    this.notifier = new HilNotifier({ window: () => this.mainWindow, broadcastAll: options?.broadcastAll });
+    this.banner = new HilPageBanner({
+      getActiveWebContents: () => this.getActiveWebContents?.() ?? null,
+      activeRequest: () => this.store.activeRequest(),
+    });
+
+    registerHilIpc({
+      active: () => this.store.activeRequest(),
+      resolve: (id, notes) => this.resolveIntervention(id, notes),
+      cancel: (id) => this.cancelIntervention(id),
+      reload: () => this.banner.reload(),
+    });
   }
 
   public setWindow(win: BrowserWindow): void {
@@ -63,67 +70,6 @@ export class HilManager {
 
   public setOnHilStateChanged(cb: (pending: boolean, req: HilRequest | null) => void): void {
     this.onHilStateChanged = cb;
-  }
-
-  private registerIpcHandlers(): void {
-    ipcMain.handle('hil:get-active', () => {
-      return this.activeRequest;
-    });
-
-    ipcMain.handle('hil:resolve', (_event, data?: { id?: string; notes?: string }) => {
-      return this.resolveIntervention(data?.id, data?.notes);
-    });
-
-    ipcMain.handle('hil:cancel', (_event, data?: { id?: string }) => {
-      return this.cancelIntervention(data?.id);
-    });
-
-    ipcMain.handle('hil:reload', () => this.reloadActive());
-  }
-
-  private resolveIcon(): Electron.NativeImage {
-    return brandIcon(64);
-  }
-
-  /**
-   * Dispatches a native desktop OS notification.
-   */
-  public sendNotification(options: NotificationOptions): boolean {
-    try {
-      if (Notification.isSupported()) {
-        const notif = new Notification({
-          title: options.title || BRAND.product,
-          body: options.message,
-          icon: this.resolveIcon(),
-          urgency: options.urgency || 'normal',
-          silent: options.sound === false,
-        });
-
-        notif.on('click', () => {
-          this.bringWindowToFront();
-        });
-
-        notif.show();
-        return true;
-      }
-    } catch {
-      // Fallback
-    }
-    return false;
-  }
-
-  /**
-   * Summons and focuses the main cyberdeck window, flashing the taskbar.
-   */
-  public bringWindowToFront(): void {
-    if (!this.mainWindow || this.mainWindow.isDestroyed()) return;
-
-    if (this.mainWindow.isMinimized()) {
-      this.mainWindow.restore();
-    }
-    this.mainWindow.show();
-    this.mainWindow.focus();
-    this.mainWindow.flashFrame(true);
   }
 
   /**
@@ -139,15 +85,13 @@ export class HilManager {
     inPageBanner?: boolean;
   }): Promise<HilResolution> {
     // If a request is already active, cancel it before starting new one
-    if (this.activeRequest) {
+    if (this.store.activeRequest()) {
       this.cancelIntervention();
     }
 
     const timeoutSec = Math.max(5, Math.min(1800, options.timeoutSeconds ?? 180));
-    const reqId = `hil_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-
     const request: HilRequest = {
-      id: reqId,
+      id: `hil_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       reason: options.reason,
       url: options.url,
       requestedAt: Date.now(),
@@ -155,11 +99,18 @@ export class HilManager {
       status: 'pending',
     };
 
-    this.activeRequest = request;
+    this.banner.enabled = options.inPageBanner !== false;
+    const targetWc = this.getActiveWebContents?.();
+    const resolution = this.store.begin(request, () => {
+      this.banner.remove(targetWc);
+      this.notifier.clear();
+      this.onHilStateChanged?.(false, null);
+    });
+
     this.onHilStateChanged?.(true, request);
 
     // 1. Desktop Notification
-    this.sendNotification({
+    this.notifier.notify({
       title: `⚠️ Action Required: ${BRAND.deck}`,
       message: `${options.reason} (Window brought to front for input)`,
       urgency: 'critical',
@@ -168,95 +119,19 @@ export class HilManager {
 
     // 2. Bring window to front unless explicitly suppressed
     if (options.bringToFront !== false) {
-      this.bringWindowToFront();
+      this.notifier.summon();
     }
 
     // 3. Inject In-Page Cyberdeck Alert Banner into active WebContents
-    const targetWc = this.getActiveWebContents?.();
-    this.inPageBannerEnabled = options.inPageBanner !== false;
-    if (this.inPageBannerEnabled && targetWc && !targetWc.isDestroyed()) {
-      this.injectInPageBanner(targetWc, request);
+    if (this.banner.enabled && targetWc && !targetWc.isDestroyed()) {
+      this.banner.inject(request);
     }
 
     // 4. Notify Main Renderer HUD
-    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      this.mainWindow.webContents.send('hil:requested', request);
-    }
-    this.broadcastAll?.('hil:requested', request);
+    this.notifier.send('hil:requested', request);
 
     // 5. Return promise awaiting user resolution or timeout
-    return new Promise<HilResolution>((resolve) => {
-      this.activeResolver = resolve;
-
-      this.activeTimer = setTimeout(() => {
-        if (this.activeRequest?.id === reqId && this.activeRequest.status === 'pending') {
-          this.activeRequest.status = 'timeout';
-          this.activeRequest.resolvedAt = Date.now();
-          this.cleanup(targetWc);
-
-          const elapsed = Math.round((Date.now() - request.requestedAt) / 1000);
-          this.requestHistory.push(this.activeRequest);
-          this.activeRequest = null;
-          this.onHilStateChanged?.(false, null);
-
-          resolve({
-            status: 'timeout',
-            elapsedSeconds: elapsed,
-            notes: `Human intervention timed out after ${elapsed} seconds.`,
-          });
-        }
-      }, timeoutSec * 1000);
-    });
-  }
-
-  /**
-   * Close the pending request. Resolve and cancel share the whole teardown —
-   * the guards, timer, history, state broadcast and resolver release — and
-   * differ only in the status, the request notes and the resolver's message.
-   */
-  private closeIntervention(
-    id: string | undefined,
-    status: 'resolved' | 'cancelled',
-    requestNotes: string | undefined,
-    resolverNotes: string,
-  ): boolean {
-    if (!this.activeRequest || this.activeRequest.status !== 'pending') {
-      return false;
-    }
-
-    if (id && this.activeRequest.id !== id) {
-      return false;
-    }
-
-    if (this.activeTimer) {
-      clearTimeout(this.activeTimer);
-      this.activeTimer = null;
-    }
-
-    this.activeRequest.status = status;
-    this.activeRequest.resolvedAt = Date.now();
-    if (requestNotes !== undefined) this.activeRequest.notes = requestNotes;
-    const elapsed = Math.round((Date.now() - this.activeRequest.requestedAt) / 1000);
-    const closedReq = this.activeRequest;
-
-    const targetWc = this.getActiveWebContents?.();
-    this.cleanup(targetWc);
-
-    this.requestHistory.push(closedReq);
-    this.activeRequest = null;
-    this.onHilStateChanged?.(false, null);
-
-    if (this.activeResolver) {
-      const resolver = this.activeResolver;
-      this.activeResolver = null;
-      resolver({
-        status,
-        elapsedSeconds: elapsed,
-        notes: resolverNotes,
-      });
-    }
-
-    return true;
+    return resolution;
   }
 
   /**
@@ -264,145 +139,19 @@ export class HilManager {
    */
   public resolveIntervention(id?: string, notes?: string): boolean {
     const resolvedNotes = notes || 'User confirmed action completed.';
-    return this.closeIntervention(id, 'resolved', resolvedNotes, resolvedNotes);
+    return this.store.close(id, 'resolved', resolvedNotes, resolvedNotes);
   }
 
-  /**
-   * Cancels the active intervention request.
-   */
+  /** Cancels the active intervention request. */
   public cancelIntervention(id?: string): boolean {
-    return this.closeIntervention(id, 'cancelled', undefined, 'Human intervention was cancelled.');
+    return this.store.close(id, 'cancelled', undefined, 'Human intervention was cancelled.');
   }
 
   public getActiveRequest(): HilRequest | null {
-    return this.activeRequest;
-  }
-
-  /** Reloads the page under hand-off (a stale challenge often clears on refresh). */
-  public reloadActive(): boolean {
-    if (!this.activeRequest || this.activeRequest.status !== 'pending') return false;
-    const wc = this.getActiveWebContents?.();
-    if (!wc || wc.isDestroyed()) return false;
-    wc.reload();
-    return true;
-  }
-
-  /**
-   * Re-injects the banner into the active page. A challenge page usually navigates once solved,
-   * which wipes the original banner — without this the human loses the RESUME affordance.
-   */
-  public refreshBanner(): void {
-    if (!this.inPageBannerEnabled) return;
-    if (!this.activeRequest || this.activeRequest.status !== 'pending') return;
-    const wc = this.getActiveWebContents?.();
-    if (wc && !wc.isDestroyed()) this.injectInPageBanner(wc, this.activeRequest);
+    return this.store.activeRequest();
   }
 
   public getHistory(): HilRequest[] {
-    return [...this.requestHistory];
-  }
-
-  private cleanup(wc?: Electron.WebContents | null): void {
-    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      this.mainWindow.flashFrame(false);
-      this.mainWindow.webContents.send('hil:cleared');
-    }
-    this.broadcastAll?.('hil:cleared');
-
-    if (wc && !wc.isDestroyed()) {
-      this.removeInPageBanner(wc);
-    }
-  }
-
-  private injectInPageBanner(wc: Electron.WebContents, request: HilRequest): void {
-    const bannerScript = `
-      (function() {
-        try {
-          const old = document.getElementById('__kuang_hil_banner');
-          if (old) old.remove();
-
-          const container = document.createElement('div');
-          container.id = '__kuang_hil_banner';
-          container.setAttribute('style', [
-            'position: fixed',
-            'top: 14px',
-            'left: 50%',
-            'transform: translateX(-50%)',
-            'z-index: 2147483647',
-            'background: rgba(18, 18, 24, 0.96)',
-            'color: #f43f5e',
-            'border: 2px solid #f59e0b',
-            'box-shadow: 0 8px 32px rgba(245, 158, 11, 0.4), 0 0 12px rgba(245, 158, 11, 0.6)',
-            'border-radius: 8px',
-            'padding: 12px 20px',
-            'display: flex',
-            'align-items: center',
-            'gap: 16px',
-            'font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-            'font-size: 13px',
-            'max-width: 90vw',
-            'animation: __kuang_pulse 2s infinite ease-in-out'
-          ].join(';'));
-
-          const style = document.createElement('style');
-          style.id = '__kuang_hil_style';
-          style.textContent = \`
-            @keyframes __kuang_pulse {
-              0%, 100% { border-color: #f59e0b; box-shadow: 0 0 16px rgba(245, 158, 11, 0.5); }
-              50% { border-color: #ef4444; box-shadow: 0 0 24px rgba(239, 68, 68, 0.7); }
-            }
-          \`;
-          document.head.appendChild(style);
-
-          container.innerHTML = \`
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-size:18px;">⚠️</span>
-              <div>
-                <div style="font-weight:bold; color:#fbbf24; text-transform:uppercase; letter-spacing:1px; font-size:11px;">Human Intervention Required</div>
-                <div style="color:#ffffff; margin-top:2px;">\${request.reason.replace(/</g, '&lt;')}</div>
-              </div>
-            </div>
-            <div style="display:flex; align-items:center; gap:8px; margin-left:12px;">
-              <button id="__kuang_hil_done_btn" style="background:#10b981; color:#ffffff; border:none; padding:6px 14px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px; font-family:monospace; box-shadow:0 0 8px rgba(16,185,129,0.5);">
-                RESUME AGENT (DONE)
-              </button>
-            </div>
-          \`;
-
-          document.body.appendChild(container);
-
-          const doneBtn = document.getElementById('__kuang_hil_done_btn');
-          if (doneBtn) {
-            doneBtn.onclick = function() {
-              doneBtn.textContent = 'RESUMING...';
-              doneBtn.style.background = '#64748b';
-              fetch('http://127.0.0.1:4111/hil/resolve', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: '\${request.id}', notes: 'User confirmed via in-page banner' })
-              }).catch(() => {});
-            };
-          }
-        } catch (e) {
-          console.warn('[Kuang Grade] Banner injection notice:', e);
-        }
-      })();
-    `;
-
-    wc.executeJavaScript(bannerScript).catch(() => {});
-  }
-
-  private removeInPageBanner(wc: Electron.WebContents): void {
-    const removeScript = `
-      (function() {
-        try {
-          const b = document.getElementById('__kuang_hil_banner');
-          if (b) b.remove();
-          const s = document.getElementById('__kuang_hil_style');
-          if (s) s.remove();
-        } catch {}
-      })();
-    `;
-    wc.executeJavaScript(removeScript).catch(() => {});
+    return this.store.entries();
   }
 }

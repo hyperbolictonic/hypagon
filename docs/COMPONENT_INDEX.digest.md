@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-324 modules, 1027 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+329 modules, 1037 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -75,8 +75,13 @@
 | `main/harvest/screenshots.ts` | 3: ScreenshotStore, ScreenshotStoreDeps, ScreenshotPayload |
 | `main/harvester/dom-serializer.ts` | 3: captureComposedDom, COMPOSE_DOM_SCRIPT, ComposedDom |
 | `main/harvester/markdown.ts` | 2: ConstructHarvester, HarvestStats |
-| `main/hil/hil-manager.ts` | 4: HilManager, HilRequest, HilResolution, NotificationOptions |
+| `main/hil/hil-banner.ts` | 4: hilBannerScript, hilBannerRemovalScript, HilPageBanner, HilPageBannerDeps |
+| `main/hil/hil-ipc.ts` | 2: registerHilIpc, HilIpcTarget |
+| `main/hil/hil-manager.ts` | 2: HilManager, HilManagerOptions |
+| `main/hil/hil-notifier.ts` | 2: HilNotifier, HilNotifierDeps |
+| `main/hil/hil-store.ts` | 1: HilRequestStore |
 | `main/hil/hil-surface.ts` | 2: HilSurface, HilSurfaceDeps |
+| `main/hil/hil-types.ts` | 3: HilRequest, HilResolution, NotificationOptions |
 | `main/http-bridge.ts` | 1: startHttpBridge |
 | `main/http/bookmarks-routes.ts` | 1: handleBookmarkRoutes |
 | `main/http/bridge-errors.ts` | 1: sendBridgeError |
@@ -121,12 +126,7 @@
 | `main/ipc/wrap-ipc.ts` | 2: registerWrapIpc, WrapIpcDeps |
 | `main/jev/controller.ts` | 3: JevController, JevControllerDeps, JevPolicy |
 | `main/jev/engine.ts` | 5: JevEngine, JevSection, JevSession, JevStatus, JevSearchHit |
-| `main/jev/policy.ts` | 6: decideFunnel, DEFAULT_FUNNEL_MIN_TOKENS, FunnelBreaker, FunnelReason, FunnelInput, FunnelDecision |
-| `main/jev/read-contract.ts` | 5: PageReadRequest, PrecheckPageReadResult, GuardPageReadInput, PageReadRefusal, GuardPageReadResult |
-| `main/llm/alternates.ts` | 1: readAlternates |
-| `main/llm/llm-surface.ts` | 1: LlmSurface |
-| `main/llm/probe-transport.ts` | 3: ProbeTransport, ProbeResponse, ProbeTransportDeps |
 
-… and 199 more module(s) — grep the full index.
+… and 204 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

@@ -21,7 +21,6 @@
       "main/downloads/download-manager.ts": 2,
       "main/drive/driver.ts": 4,
       "main/harvester/markdown.ts": 2,
-      "main/hil/hil-manager.ts": 4,
       "main/http-bridge.ts": 1,
       "main/input/human-activity.ts": 1,
       "main/jev/engine.ts": 4,
@@ -149,9 +148,6 @@
   },
   "modularity": {
     "files": {
-      "main/hil/hil-manager.ts": {
-        "class": 1
-      },
       "main/jev/controller.ts": {
         "class": 1
       },

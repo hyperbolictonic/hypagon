@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 324 files, 1027 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 329 files, 1037 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (838)
+## Types (847)
 
 | File | Export | When to use |
 |---|---|---|
@@ -190,12 +190,21 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/harvester/dom-serializer.ts` | `ComposedDom` *(type)* | Composed-DOM serialisation for the Markdown harvester. |
 | `main/harvester/markdown.ts` | `ConstructHarvester` | - |
 | `main/harvester/markdown.ts` | `HarvestStats` *(type)* | - |
-| `main/hil/hil-manager.ts` | `HilManager` | - |
-| `main/hil/hil-manager.ts` | `HilRequest` *(type)* | - |
-| `main/hil/hil-manager.ts` | `HilResolution` *(type)* | - |
-| `main/hil/hil-manager.ts` | `NotificationOptions` *(type)* | - |
+| `main/hil/hil-banner.ts` | `hilBannerScript` | When to use: `inject` — the banner markup, wired to the local resolve route. |
+| `main/hil/hil-banner.ts` | `hilBannerRemovalScript` | When to use: `remove` — drop the banner and its keyframes. |
+| `main/hil/hil-banner.ts` | `HilPageBanner` | When to use: `HilManager` — own the page banner for the active hand-off. |
+| `main/hil/hil-banner.ts` | `HilPageBannerDeps` *(type)* | When to use: constructing the manager — the page lookups are injected. |
+| `main/hil/hil-ipc.ts` | `registerHilIpc` | When to use: the manager constructor — registers the hand-off channels once. |
+| `main/hil/hil-ipc.ts` | `HilIpcTarget` *(type)* | When to use: `HilManager` — the four operations the HUD can invoke. |
+| `main/hil/hil-manager.ts` | `HilManager` | When to use: the chassis — own the hand-off lifecycle and its delivery. |
+| `main/hil/hil-manager.ts` | `HilManagerOptions` *(type)* | When to use: the chassis — the window and the two fan-out hooks. |
+| `main/hil/hil-notifier.ts` | `HilNotifier` | When to use: `HilManager` — deliver a hand-off to the desktop and the HUD. |
+| `main/hil/hil-notifier.ts` | `HilNotifierDeps` *(type)* | When to use: constructing the manager — the window and the broadcast fan-out. |
 | `main/hil/hil-surface.ts` | `HilSurface` | The agent-facing human-in-the-loop and notification surface. |
 | `main/hil/hil-surface.ts` | `HilSurfaceDeps` *(type)* | Dependencies the HIL surface needs from the tabs and agent status. |
+| `main/hil/hil-types.ts` | `HilRequest` *(type)* | When to use: a hand-off waiting on (or previously answered by) a human. |
+| `main/hil/hil-types.ts` | `HilResolution` *(type)* | When to use: what `requestIntervention` resolves with. |
+| `main/hil/hil-types.ts` | `NotificationOptions` *(type)* | When to use: a desktop notification raised by the media surface or the HUD. |
 | `main/http/collaboration-routes.ts` | `handleCollaborationRoutes` | When to use: the bridge request handler — dispatch `/collaboration/*` before |
 | `main/http/collaboration-routes.ts` | `CollaborationRouteContext` *(type)* | When to use: building the collaboration dispatcher — the service plus the page context it reads. |
 | `main/http/dispatch.ts` | `dispatchBridgeRoutes` | When to use: the bridge request handler — run the family table until one |
@@ -867,7 +876,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (181)
+## Modules (182)
 
 | File | Export | When to use |
 |---|---|---|
@@ -919,6 +928,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/deck/page-script.ts` | `runInPage` | When to use: any collab in-page call — returns undefined when the tab is gone. |
 | `main/diagnostics/main-log.ts` | `mainLogFile` | - |
 | `main/diagnostics/main-log.ts` | `logMainEvent` | - |
+| `main/hil/hil-store.ts` | `HilRequestStore` | When to use: `HilManager` — one store per process. |
 | `main/http/bookmarks-routes.ts` | `handleBookmarkRoutes` | When to use: the bridge request handler — dispatch `/bookmarks`. Returns |
 | `main/http/bridge-errors.ts` | `sendBridgeError` | When to use: the bridge's catch block — translate a thrown error into the |
 | `main/http/bridge-log.ts` | `logBridge` | Write one bridge line to the console and to `data/logs/http-bridge.log`. |

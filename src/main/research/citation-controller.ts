@@ -332,7 +332,7 @@ export class CitationController {
       this.deps.log('warn', `Human hand-off requested for ${url}.`);
 
       // Solving a challenge usually navigates; re-inject the banner so RESUME stays reachable.
-      const refresh = () => setTimeout(() => this.deps.hilManager().refreshBanner(), 400);
+      const refresh = () => setTimeout(() => this.deps.hilManager().banner.refresh(), 400);
       wc.on('did-navigate', refresh);
       wc.on('did-finish-load', refresh);
 
