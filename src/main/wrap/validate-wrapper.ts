@@ -52,24 +52,7 @@ export function validateWrapper(input: unknown): WrapperValidation {
   if (!isPlainObject(input)) return { ok: false, errors: ['wrapper must be an object'] };
 
   const source = input as Record<string, unknown>;
-  if (source.schemaVersion !== undefined && source.schemaVersion !== 1) {
-    errors.push('schemaVersion must be 1');
-  }
-
-  const id = typeof source.id === 'string' ? source.id.trim() : '';
-  if (!id) errors.push('id is required');
-  else if (id.length > 80) errors.push('id must be 80 characters or fewer');
-  else if (!ID_PATTERN.test(id)) {
-    errors.push('id must start with a lowercase letter and use only lowercase letters, numbers, dot, dash, or underscore');
-  }
-
-  const name = typeof source.name === 'string' ? source.name.trim() : '';
-  if (!name) errors.push('name is required');
-  else if (name.length > 120) errors.push('name must be 120 characters or fewer');
-
-  const description = source.description;
-  if (description !== undefined && typeof description !== 'string') errors.push('description must be a string');
-  else if (typeof description === 'string' && description.length > 1000) errors.push('description must be 1000 characters or fewer');
+  const { id, name, description } = readIdentity(source, errors);
 
   const request = normalizeRequest(source.request, errors);
   const inputSchema = normalizeInputSchema(source.inputSchema, errors);
@@ -84,13 +67,7 @@ export function validateWrapper(input: unknown): WrapperValidation {
     }
   }
 
-  if (source.lastVerified !== undefined && typeof source.lastVerified !== 'string') {
-    errors.push('lastVerified must be a string');
-  }
-  if (source.notes !== undefined && typeof source.notes !== 'string') errors.push('notes must be a string');
-
-  const mutating = typeof source.mutating === 'boolean' ? source.mutating : undefined;
-  const exposeAsTool = typeof source.exposeAsTool === 'boolean' ? source.exposeAsTool : false;
+  const { mutating, exposeAsTool } = readFlags(source, errors);
 
   if (errors.length > 0 || !request) {
     return { ok: false, errors };
@@ -115,21 +92,68 @@ export function validateWrapper(input: unknown): WrapperValidation {
   if (typeof source.lastVerified === 'string') wrapper.lastVerified = source.lastVerified;
   if (typeof source.notes === 'string') wrapper.notes = source.notes;
 
-  if (request.methods && request.methods.length > 1) {
-    const properties = { ...(inputSchema.properties || {}) };
-    const existing = properties.method;
-    properties.method = {
-      ...(existing && typeof existing === 'object' ? existing : {}),
-      type: 'string',
-      enum: request.methods,
-      description:
-        existing?.description ||
-        `HTTP method for this call (allowed: ${request.methods.join(', ')}; default: ${request.method}).`,
-    };
-    inputSchema.properties = properties;
-  }
+  withMethodProperty(inputSchema, request);
 
   return { ok: true, wrapper, errors: [] };
+}
+
+/** The wrapper's identity: schema version, id, name and description. */
+function readIdentity(
+  source: Record<string, unknown>,
+  errors: string[],
+): { id: string; name: string; description: unknown } {
+  if (source.schemaVersion !== undefined && source.schemaVersion !== 1) {
+    errors.push('schemaVersion must be 1');
+  }
+
+  const id = typeof source.id === 'string' ? source.id.trim() : '';
+  if (!id) errors.push('id is required');
+  else if (id.length > 80) errors.push('id must be 80 characters or fewer');
+  else if (!ID_PATTERN.test(id)) {
+    errors.push('id must start with a lowercase letter and use only lowercase letters, numbers, dot, dash, or underscore');
+  }
+
+  const name = typeof source.name === 'string' ? source.name.trim() : '';
+  if (!name) errors.push('name is required');
+  else if (name.length > 120) errors.push('name must be 120 characters or fewer');
+
+  const description = source.description;
+  if (description !== undefined && typeof description !== 'string') errors.push('description must be a string');
+  else if (typeof description === 'string' && description.length > 1000) errors.push('description must be 1000 characters or fewer');
+
+  return { id, name, description };
+}
+
+/** The wrapper's annotations: lastVerified, notes, the mutating override and tool exposure. */
+function readFlags(
+  source: Record<string, unknown>,
+  errors: string[],
+): { mutating: boolean | undefined; exposeAsTool: boolean } {
+  if (source.lastVerified !== undefined && typeof source.lastVerified !== 'string') {
+    errors.push('lastVerified must be a string');
+  }
+  if (source.notes !== undefined && typeof source.notes !== 'string') errors.push('notes must be a string');
+
+  return {
+    mutating: typeof source.mutating === 'boolean' ? source.mutating : undefined,
+    exposeAsTool: typeof source.exposeAsTool === 'boolean' ? source.exposeAsTool : false,
+  };
+}
+
+/** A multi-method wrapper exposes `method` as an argument, defaulted to its primary. */
+function withMethodProperty(inputSchema: WrapInputSchema, request: WrapRequest): void {
+  if (!request.methods || request.methods.length <= 1) return;
+  const properties = { ...(inputSchema.properties || {}) };
+  const existing = properties.method;
+  properties.method = {
+    ...(existing && typeof existing === 'object' ? existing : {}),
+    type: 'string',
+    enum: request.methods,
+    description:
+      existing?.description ||
+      `HTTP method for this call (allowed: ${request.methods.join(', ')}; default: ${request.method}).`,
+  };
+  inputSchema.properties = properties;
 }
 
 function normalizeMethods(
@@ -195,71 +219,11 @@ function normalizeRequest(input: unknown, errors: string[]): WrapRequest | undef
     validateUrlShape(url, errors);
   }
 
-  let query: Record<string, unknown> | undefined;
-  if (source.query !== undefined) {
-    if (!isPlainObject(source.query)) {
-      errors.push('request.query must be an object');
-    } else {
-      query = source.query;
-      for (const key of Object.keys(query)) {
-        if (CREDENTIAL_QUERY_KEYS.has(key.toLowerCase())) {
-          errors.push(`request.query.${key} looks like a credential; query strings end up in logs and proxies — use request.auth (a secret) instead`);
-        }
-      }
-    }
-  }
-
-  let headers: Record<string, string> | undefined;
-  if (source.headers !== undefined) {
-    if (!isPlainObject(source.headers)) {
-      errors.push('request.headers must be an object');
-    } else {
-      headers = {};
-      for (const [key, value] of Object.entries(source.headers)) {
-        if (typeof value !== 'string') {
-          errors.push(`request.headers.${key} must be a string template`);
-          continue;
-        }
-        if (FORBIDDEN_HEADERS.has(key.toLowerCase())) {
-          errors.push(`request.headers.${key} cannot be set by a wrapper`);
-          continue;
-        }
-        headers[key] = value;
-      }
-    }
-  }
-
-  let body: unknown;
-  if (source.body !== undefined) {
-    body = source.body;
-    const bodyMethods = methods.filter((method) => method !== 'GET' && method !== 'HEAD');
-    if (bodyMethods.length === 0) errors.push(`request.body is not allowed on ${methods.join('/')}`);
-    try {
-      JSON.stringify(body);
-    } catch {
-      errors.push('request.body must be JSON-serialisable');
-    }
-  }
-
-  let bodyFormat: WrapRequest['bodyFormat'];
-  if (source.bodyFormat !== undefined) {
-    if (typeof source.bodyFormat !== 'string' || !BODY_FORMATS.has(source.bodyFormat)) {
-      errors.push('request.bodyFormat must be json, form, or text');
-    } else {
-      bodyFormat = source.bodyFormat as WrapRequest['bodyFormat'];
-    }
-  }
-
-  let timeoutMs: number | undefined;
-  if (source.timeoutMs !== undefined) {
-    if (typeof source.timeoutMs !== 'number' || !Number.isFinite(source.timeoutMs) || source.timeoutMs < 1000) {
-      errors.push('request.timeoutMs must be a number of at least 1000');
-    } else if (source.timeoutMs > 60_000) {
-      errors.push('request.timeoutMs must be at most 60000');
-    } else {
-      timeoutMs = Math.floor(source.timeoutMs);
-    }
-  }
+  const query = normalizeQuery(source.query, errors);
+  const headers = normalizeHeaders(source.headers, errors);
+  validateBody(source, methods, errors);
+  const bodyFormat = normalizeBodyFormat(source.bodyFormat, errors);
+  const timeoutMs = normalizeTimeout(source.timeoutMs, errors);
 
   if (!methodInfo || !url) return undefined;
 
@@ -267,11 +231,84 @@ function normalizeRequest(input: unknown, errors: string[]): WrapRequest | undef
   if (methods.length > 1) request.methods = methods;
   if (query) request.query = query;
   if (headers) request.headers = headers;
-  if (source.body !== undefined) request.body = body;
+  if (source.body !== undefined) request.body = source.body;
   if (bodyFormat) request.bodyFormat = bodyFormat;
   if (auth) request.auth = auth;
   if (timeoutMs) request.timeoutMs = timeoutMs;
   return request;
+}
+
+/** The query object, refusing credential-looking keys (they leak into logs and proxies). */
+function normalizeQuery(input: unknown, errors: string[]): Record<string, unknown> | undefined {
+  if (input === undefined) return undefined;
+  if (!isPlainObject(input)) {
+    errors.push('request.query must be an object');
+    return undefined;
+  }
+  for (const key of Object.keys(input)) {
+    if (CREDENTIAL_QUERY_KEYS.has(key.toLowerCase())) {
+      errors.push(`request.query.${key} looks like a credential; query strings end up in logs and proxies — use request.auth (a secret) instead`);
+    }
+  }
+  return input;
+}
+
+/** The header templates, refusing non-strings and headers the client owns. */
+function normalizeHeaders(input: unknown, errors: string[]): Record<string, string> | undefined {
+  if (input === undefined) return undefined;
+  if (!isPlainObject(input)) {
+    errors.push('request.headers must be an object');
+    return undefined;
+  }
+  const headers: Record<string, string> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (typeof value !== 'string') {
+      errors.push(`request.headers.${key} must be a string template`);
+      continue;
+    }
+    if (FORBIDDEN_HEADERS.has(key.toLowerCase())) {
+      errors.push(`request.headers.${key} cannot be set by a wrapper`);
+      continue;
+    }
+    headers[key] = value;
+  }
+  return headers;
+}
+
+/** A body is only meaningful on a method that has one, and it must serialise. */
+function validateBody(source: Record<string, unknown>, methods: WrapMethod[], errors: string[]): void {
+  if (source.body === undefined) return;
+  const bodyMethods = methods.filter((method) => method !== 'GET' && method !== 'HEAD');
+  if (bodyMethods.length === 0) errors.push(`request.body is not allowed on ${methods.join('/')}`);
+  try {
+    JSON.stringify(source.body);
+  } catch {
+    errors.push('request.body must be JSON-serialisable');
+  }
+}
+
+/** The body encoding, when the wrapper names one. */
+function normalizeBodyFormat(input: unknown, errors: string[]): WrapRequest['bodyFormat'] | undefined {
+  if (input === undefined) return undefined;
+  if (typeof input !== 'string' || !BODY_FORMATS.has(input)) {
+    errors.push('request.bodyFormat must be json, form, or text');
+    return undefined;
+  }
+  return input as WrapRequest['bodyFormat'];
+}
+
+/** A per-call timeout within the bridge's own ceiling. */
+function normalizeTimeout(input: unknown, errors: string[]): number | undefined {
+  if (input === undefined) return undefined;
+  if (typeof input !== 'number' || !Number.isFinite(input) || input < 1000) {
+    errors.push('request.timeoutMs must be a number of at least 1000');
+    return undefined;
+  }
+  if (input > 60_000) {
+    errors.push('request.timeoutMs must be at most 60000');
+    return undefined;
+  }
+  return Math.floor(input);
 }
 
 function normalizeInputSchema(input: unknown, errors: string[]): WrapInputSchema {
