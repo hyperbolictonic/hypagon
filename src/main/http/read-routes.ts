@@ -122,13 +122,13 @@ const ROUTES: Record<string, ReadHandler> = {
   // Iframes as first-class content: geometry, controls (offset to the top-level viewport)
   // and optional per-frame screenshots. Opt-in because it costs CDP commands per frame.
   'GET /frames': async ({ chassis, sendJson }) => {
-    const frames = await chassis.listFrames();
+    const frames = await chassis.shadow.listFrames();
     sendJson({ success: true, frames });
   },
 
   'POST /frames': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    const result = await chassis.getFrames({
+    const result = await chassis.shadow.getFrames({
       includeControls: body?.include_controls !== false,
       screenshots: body?.screenshots === true,
       maxFrames: body?.max_frames !== undefined ? Number(body.max_frames) : undefined,

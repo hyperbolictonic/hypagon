@@ -344,15 +344,15 @@ ipcMain.handle('research:settings:save', async (_event, settings: any) => {
 ipcMain.handle('shadowwalk:settings:get', () => loadShadowWalkSettings());
 ipcMain.handle('shadowwalk:settings:save', async (_event, settings: any) => {
   const result = saveShadowWalkSettings(settings);
-  if (result.ok) await chassis.applyShadowWalkSettings();
+  if (result.ok) await chassis.shadow.applySettings();
   return result;
 });
 ipcMain.handle('shadowwalk:settings:reset', async () => {
   const result = saveShadowWalkSettings(DEFAULT_SHADOW_WALK_SETTINGS);
-  if (result.ok) await chassis.applyShadowWalkSettings();
+  if (result.ok) await chassis.shadow.applySettings();
   return result;
 });
-ipcMain.handle('shadowwalk:detect', () => chassis.detectShadowPatch());
+ipcMain.handle('shadowwalk:detect', () => chassis.shadow.detectPatch());
 
 ipcMain.handle('research:session:reset', async () => {
   try {
@@ -611,7 +611,7 @@ async function createWindow() {
 
   // Apply the persisted Shadow Walk policy (including a force-open kill-switch override) to the
   // initial tab. Current documents are untouched; the patch lands on the next navigation.
-  void chassis.applyShadowWalkSettings();
+  void chassis.shadow.applySettings();
 
   // Warm Cortex so the first URL-bar suggestion does not pay table initialization on a keystroke.
   void chassis.getCortex().initialize().catch(() => undefined);

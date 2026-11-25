@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 240 files, 834 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 242 files, 837 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (708)
+## Types (710)
 
 | File | Export | When to use |
 |---|---|---|
@@ -449,6 +449,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/settings.ts` | `ShadowWalkSurface` *(type)* | - |
 | `main/shadow-walk/settings.ts` | `ShadowWalkRefusal` *(type)* | - |
 | `main/shadow-walk/settings.ts` | `ShadowWalkStatus` *(type)* | - |
+| `main/shadow-walk/shadow-surface.ts` | `ShadowWalkSurface` | The Settings → Shadow Walk policy, frame reads and the trusted Tab walk. |
+| `main/shadow-walk/shadow-surface.ts` | `ShadowWalkSurfaceDeps` *(type)* | Dependencies the Shadow Walk surface needs from the tabs and page capture. |
 | `main/shadow-walk/tab-walk.ts` | `runTabWalk` | Walk sequential focus from a host. |
 | `main/shadow-walk/tab-walk.ts` | `TabWalkOptions` *(type)* | - |
 | `main/shadow-walk/tab-walk.ts` | `TabWalkStep` *(type)* | - |
@@ -727,7 +729,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (123)
+## Modules (124)
 
 | File | Export | When to use |
 |---|---|---|
@@ -782,6 +784,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/security/capability-token.ts` | `createCapabilityToken` | Create (or rotate) the token in `dir`. The caller owns the directory. |
 | `main/security/capability-token.ts` | `readCapabilityToken` | Read and validate a token file. A missing, malformed or empty file returns undefined. |
 | `main/settings/experimental.ts` | `ExperimentalSettingsStore` | Experimental feature flags persisted next to the other user settings. |
+| `main/shadow-walk/guard.ts` | `assertShadowSurface` | When to use: before a surface that Settings → Shadow Walk can disable. |
 | `main/shadow-walk/part-highlight.ts` | `injectPartHighlight` | - |
 | `main/shadow-walk/part-highlight.ts` | `removePartHighlight` | - |
 | `main/shadow-walk/part-highlight.ts` | `withPartHighlight` | Run a screenshot capture with exported parts outlined when the lever is on. |

@@ -9,9 +9,9 @@ import type { NativeImage, WebContents } from 'electron';
 import type { HarvestedConstruct } from '../../shared/types.js';
 import type { ZoomState } from '../../shared/zoom.js';
 import type { ConstructHarvester } from '../harvester/markdown.js';
-import type { ScreenshotStore } from './screenshots.js';
+import type { ScreenshotStore, ScreenshotPayload } from './screenshots.js';
 import { captureComposedDom } from '../harvester/dom-serializer.js';
-import type { MarksOverlay } from '../marks/marks-overlay.js';
+import type { MarksOverlay, MarkItem } from '../marks/marks-overlay.js';
 import type { MarksSurface } from '../marks/marks-surface.js';
 import type { TabInstance } from '../tabs/tab-manager.js';
 
@@ -109,6 +109,80 @@ export class HarvestSurface {
       zoom,
       nativeSize,
     });
+  }
+
+  /** The annotated Set-of-Marks capture: badge the page, capture, then strip the badges. */
+  async takeAnnotatedScreenshot(opts: { economy?: boolean; textOnly?: boolean; includeOffscreen?: boolean } = {}): Promise<{
+    screenshot: ScreenshotPayload;
+    marks: MarkItem[];
+  }> {
+    const wc = this.deps.activeWebContents();
+    const economy = Boolean(opts.economy);
+    const textOnly = Boolean(opts.textOnly);
+    const includeOffscreen = Boolean(opts.includeOffscreen);
+    this.deps.log(
+      'action',
+      `MCP Directive: take_annotated_screenshot(${textOnly ? 'text_only' : economy ? 'economy' : 'full'}${includeOffscreen ? ', include_offscreen' : ''})`,
+    );
+
+    // Text-only: badges are only needed to populate the mark registry; no pixels are captured.
+    if (textOnly) {
+      const textMarks = await this.deps.marks.scan(wc, { includeOffscreen });
+      await this.deps.marksOverlay.removeMarks(wc);
+      const viewport = this.deps.viewportBounds();
+      const zoom = this.deps.zoomState();
+      return {
+        screenshot: {
+          base64Image: '',
+          filePath: '',
+          width: viewport.width,
+          height: viewport.height,
+          mimeType: 'image/png',
+          zoom,
+          nativeWidth: viewport.width,
+          nativeHeight: viewport.height,
+          coordinateScale: zoom.viewport.css.width > 0 ? viewport.width / zoom.viewport.css.width : 1,
+        },
+        marks: textMarks,
+      };
+    }
+
+    // 1. Inject visual badges into DOM
+    const marks = await this.deps.marks.scan(wc, { includeOffscreen });
+
+    // Wait a brief tick for render paint
+    await new Promise((r) => setTimeout(r, 80));
+
+    // 2. Capture annotated screenshot
+    const bounds = this.deps.viewportBounds();
+    const image = await this.capturePageWithRetry(wc, bounds);
+
+    // 3. Immediately clean up marks from DOM
+    await this.deps.marksOverlay.removeMarks(wc);
+    const zoom = this.deps.zoomState();
+    const nativeSize = image.getSize();
+
+    // Economy mode: downscale to max 640px wide and encode as JPEG (~10-20x smaller payload)
+    const ECONOMY_MAX_WIDTH = 640;
+    let outImage = image;
+    if (economy && image.getSize().width > ECONOMY_MAX_WIDTH) {
+      outImage = image.resize({ width: ECONOMY_MAX_WIDTH, quality: 'good' });
+    }
+
+    const screenshot = this.persistScreenshot({
+      image: outImage,
+      jpeg: economy,
+      quality: 45,
+      prefix: `annotated_${economy ? 'eco_' : ''}`,
+      details: (facts) => `Set-of-Marks: Tagged ${marks.length} interactive targets, saved to ${facts.filePath}`,
+      zoom,
+      nativeSize,
+    });
+
+    return {
+      screenshot,
+      marks,
+    };
   }
 
   async harvestMarkdown(opts: { includeMarks?: boolean; includeOffscreen?: boolean } = {}): Promise<HarvestedConstruct> {

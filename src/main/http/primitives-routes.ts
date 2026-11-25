@@ -89,7 +89,7 @@ const ROUTES: Record<string, PrimitiveHandler> = {
 
   'POST /focus_walk': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
-    const result = await chassis.focusWalk({
+    const result = await chassis.shadow.focusWalk({
       selector: body?.selector,
       x: body?.x !== undefined ? Number(body.x) : undefined,
       y: body?.y !== undefined ? Number(body.y) : undefined,

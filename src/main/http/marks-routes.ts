@@ -40,7 +40,7 @@ const resolveMark = async (
 
 const ROUTES: Record<string, MarkHandler> = {
   'GET /marks/screenshot': async ({ chassis, url, sendJson }) => {
-    const result = await chassis.takeAnnotatedScreenshot({
+    const result = await chassis.harvest.takeAnnotatedScreenshot({
       economy: flag(url, 'economy'),
       textOnly: flag(url, 'text_only'),
       includeOffscreen: flag(url, 'include_offscreen'),

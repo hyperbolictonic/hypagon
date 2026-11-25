@@ -34,19 +34,12 @@ import { DownloadManager, type DownloadRecord } from './downloads/download-manag
 import { ShieldBreaker, type ConsentPolicy } from './shield/shield-breaker.js';
 import { ConsentController } from './shield/consent-controller.js';
 import { evaluateInFrames, type FrameEvalOptions, type FrameEvalResult } from './browser/frame-eval.js';
-import { listFrames, type FrameInfo } from './browser/frames.js';
 import { resolveFrameMark } from './browser/frame-marks.js';
-import { inventoryFrames, type FrameInventoryResult } from './browser/frames-inventory.js';
-import { runTabWalk, type TabWalkOptions, type TabWalkResult } from './shadow-walk/tab-walk.js';
 import { resolveSealedToken as resolveSealedTarget } from './shadow-walk/sealed-targets.js';
-import { ScreenshotStore, type ScreenshotPayload } from './harvest/screenshots.js';
-import { loadShadowWalkSettings, shadowWalkRefusal, type ShadowWalkSurface } from './shadow-walk/settings.js';
-import {
-  syncForceOpen,
-  isForceOpenArmed,
-  detectForceOpen,
-  type ForceOpenDetection,
-} from './shadow-walk/force-open.js';
+import { ScreenshotStore } from './harvest/screenshots.js';
+import { loadShadowWalkSettings } from './shadow-walk/settings.js';
+import { assertShadowSurface } from './shadow-walk/guard.js';
+import { ShadowWalkSurface } from './shadow-walk/shadow-surface.js';
 import { controlFactsExpression, parseControlFacts, type ControlFacts, type ControlFactsOptions } from './primitives/control-facts.js';
 import { dataPath } from './data-paths.js';
 import { logMainEvent } from './diagnostics/main-log.js';
@@ -58,7 +51,7 @@ import {
   type RealtimeStream,
   type StreamMessage,
 } from './network/network-interceptor.js';
-import { MarksOverlay, type MarkItem } from './marks/marks-overlay.js';
+import { MarksOverlay } from './marks/marks-overlay.js';
 import { MarksSurface } from './marks/marks-surface.js';
 import { Primitives } from './primitives/primitives.js';
 import { ScriptVault } from './scripts/script-vault.js';
@@ -128,6 +121,8 @@ export class BrowserChassis {
   readonly research!: ResearchSessionSurface;
   /** Crawl, topic research and the research activity feed. */
   readonly crawl!: CrawlSurface;
+  /** Shadow Walk policy, frame reads and the trusted Tab walk. */
+  readonly shadow!: ShadowWalkSurface;
   private actionLedger!: ActionLedger;
   /** Reused off-screen view for detached reads (SERPs, Markdown alternates, crawls). */
   /** Origins a human has authenticated; skip the anonymous static tier for them. */
@@ -215,6 +210,7 @@ export class BrowserChassis {
     this.llm = readSearch.llm;
     this.search = readSearch.search;
     this.crawl = this.createCrawlSurface();
+    this.shadow = this.createShadowWalkSurface();
     this.startLoops();
   }
 
@@ -291,7 +287,7 @@ export class BrowserChassis {
       activeWebContents: () => this.getActiveWebContents(),
       revision: () => this.revision,
       marksOverlay: this.marksOverlay,
-      refuseShadow: (surface) => this.refuseShadow(surface),
+      refuseShadow: (surface) => assertShadowSurface(surface),
       log: this.controllerLog,
     });
     const harvest = new HarvestSurface({
@@ -341,7 +337,7 @@ export class BrowserChassis {
       log: this.controllerLog,
       bumpNav: () => bump('nav'),
       purgeJev: () => this.purgeJevDepthStore(),
-      syncForceOpen: (wc) => this.syncForceOpenFor(wc),
+      syncForceOpen: (wc) => this.shadow.syncForceOpen(wc),
       scheduleConsentSweep: () => this.consent.scheduleSweep(),
       bumpRevision: () => this.bumpRevision(),
       broadcastState: () => this.telemetry.broadcastState(),
@@ -403,7 +399,7 @@ export class BrowserChassis {
         Number(id) >= 100
           ? resolveFrameMark(this.getActiveWebContents(), Number(id))
           : this.marksOverlay.getMarkTarget(this.getActiveWebContents(), id),
-      getFrames: (opts) => this.getFrames(opts),
+      getFrames: (opts) => this.shadow.getFrames(opts),
       evaluateInFrames: (script, opts) => this.evaluateInFrames(script, opts),
       resolveSealedToken: (token) => resolveSealedTarget(this.getActiveWebContents(), token),
       clickMark: (id) => this.clickMark(id),
@@ -411,7 +407,7 @@ export class BrowserChassis {
       clickElement: (selector, coords) => this.input.clickElement(selector, coords),
       typeText: (text, selector, opts) => this.input.typeText(text, selector, opts),
       findSealed: (opts) => this.marks.findSealed(opts),
-      componentSurfaceEnabled: () => this.componentSurfaceEnabled(),
+      componentSurfaceEnabled: () => loadShadowWalkSettings().shadow.componentSurface,
       insertText: (text) => this.input.insertText(text),
       pasteText: (text) => this.input.simulator.pasteText(this.getActiveWebContents(), text),
       moveMouseTo: (target) => this.input.moveMouse(target),
@@ -496,6 +492,18 @@ export class BrowserChassis {
       log: (level, message) => this.telemetry.addLog(level, message),
     });
   }
+  /** Shadow Walk policy and frame reads over the active tab. */
+  private createShadowWalkSurface(): ShadowWalkSurface {
+    return new ShadowWalkSurface({
+      activeWebContents: () => this.getActiveWebContents(),
+      allTabs: () => this.tabManager?.allTabs() ?? [],
+      log: (level, message) => this.telemetry.addLog(level, message),
+      pressKey: (wc, key) => this.input.simulator.pressKey(wc, key),
+      bumpRevision: () => this.bumpRevision(),
+      capturePage: (wc, bounds) => this.harvest.capturePageWithRetry(wc, bounds),
+    });
+  }
+
   /** Uptime broadcast and HUD-health watchdog. */
   private startLoops(): void {
     setInterval(() => {
@@ -725,7 +733,7 @@ export class BrowserChassis {
         // A tab created while force-open is armed must be patched *before* its document runs.
         // onTabCreated fires before the first load, but CDP arming is async; if the first document
         // already started, reload once so the patch is actually present.
-        void this.syncForceOpenFor(tab.view.webContents).then((result) => {
+        void this.shadow.syncForceOpen(tab.view.webContents).then((result) => {
           if (result.changed && result.armed && !tab.view.webContents.isDestroyed()) {
             setTimeout(() => {
               try {
@@ -1446,111 +1454,10 @@ export class BrowserChassis {
    * One injected expression, no per-element round trips.
    */
   public async describeControls(options: ControlFactsOptions = {}): Promise<{ url?: string; controls: ControlFacts[] }> {
-    if (options.deep === true) this.refuseShadow('deepOpenRoots');
+    if (options.deep === true) assertShadowSurface('deepOpenRoots');
     const wc = this.getActiveWebContents();
     const raw = await wc.executeJavaScript(controlFactsExpression(options)).catch(() => null);
     return parseControlFacts(raw);
-  }
-
-  /** Throws a structured refusal when a Shadow Walk surface is disabled. */
-  private refuseShadow(surface: ShadowWalkSurface): void {
-    const refusal = shadowWalkRefusal(surface);
-    if (!refusal) return;
-    const err: any = new Error(refusal.message);
-    err.code = refusal.code;
-    throw err;
-  }
-
-  /** Arm/disarm the force-open patch for the next document in this tab. */
-  private async syncForceOpenFor(wc: WebContents): Promise<{ armed: boolean; changed: boolean; error?: string }> {
-    const settings = loadShadowWalkSettings();
-    return syncForceOpen(wc, settings.enabled && settings.shadow.forceOpen);
-  }
-
-  /**
-   * Apply the current Shadow Walk policy to every open tab. Existing documents are not patched;
-   * the patch applies on their next navigation (the UI says so).
-   */
-  public async applyShadowWalkSettings(): Promise<{ tabs: number; errors: string[] }> {
-    const settings = loadShadowWalkSettings();
-    const shouldArm = settings.enabled && settings.shadow.forceOpen;
-    const tabs = this.tabManager?.allTabs() || [];
-    const errors: string[] = [];
-    for (const tab of tabs) {
-      const result = await syncForceOpen(tab.view.webContents, shouldArm);
-      if (result.error) errors.push(result.error);
-    }
-    return { tabs: tabs.length, errors };
-  }
-
-  public forceOpenArmed(): boolean {
-    try {
-      return isForceOpenArmed(this.getActiveWebContents());
-    } catch {
-      return false;
-    }
-  }
-
-  /** A fingerprinting-style probe of the active document (read-only). */
-  public async detectShadowPatch(): Promise<ForceOpenDetection> {
-    return detectForceOpen(this.getActiveWebContents());
-  }
-
-  /** Frame tree + top-level geometry (no content scan). */
-  public async listFrames(options: { maxFrames?: number } = {}): Promise<FrameInfo[]> {
-    this.refuseShadow('frames');
-    return listFrames(this.getActiveWebContents(), options);
-  }
-
-  /** Whether component signatures are allowed by Settings → Shadow Walk. */
-  public componentSurfaceEnabled(): boolean {
-    return loadShadowWalkSettings().shadow.componentSurface;
-  }
-
-  /** Trusted Tab/Shift+Tab walk into a (possibly closed) shadow subtree. */
-  public async focusWalk(options: TabWalkOptions): Promise<TabWalkResult> {
-    this.refuseShadow('tabWalk');
-    const settings = loadShadowWalkSettings();
-    const wc = this.getActiveWebContents();
-    const maxSteps = Math.min(
-      options.maxSteps ?? settings.shadow.tabWalkMaxSteps,
-      settings.shadow.tabWalkMaxSteps
-    );
-    const restore = options.restore ?? settings.shadow.tabWalkRestoreFocus;
-    this.telemetry.addLog('action', `MCP Directive: focus_walk(${options.selector || `${options.x},${options.y}`}, ${options.direction || 'forward'})`);
-    const result = await runTabWalk(wc, { ...options, maxSteps, restore }, (key) => this.input.simulator.pressKey(wc, key));
-    this.bumpRevision();
-    return result;
-  }
-
-  /**
-   * A frame as first-class content: where it is, what is inside it, and (optionally) what it looks
-   * like. Frame-local control rects are offset into the top-level viewport, so the result can be
-   * clicked with act(x, y) or read coordinate-free.
-   *
-   * Opt-in and bounded: the frame walk costs CDP commands per frame, and screenshots cost one
-   * capture plus one crop per visible frame. `find(include_frames)` uses the same scan.
-   */
-  /**
-   * A frame as first-class content: where it is, what is inside it, and (optionally) what it looks
-   * like. The inventory pipeline lives in browser/frames-inventory.ts; the chassis keeps the
-   * Shadow Walk guard and the delegation.
-   */
-  public async getFrames(options: {
-    includeControls?: boolean;
-    screenshots?: boolean;
-    maxFrames?: number;
-    maxControls?: number;
-    selector?: string;
-    includeOffscreen?: boolean;
-    skipHitTest?: boolean;
-    maxSide?: number;
-  } = {}): Promise<FrameInventoryResult> {
-    this.refuseShadow('frames');
-    return inventoryFrames(this.getActiveWebContents(), options, {
-      log: (level, message) => this.telemetry.addLog(level, message),
-      capturePage: (wc, bounds) => this.harvest.capturePageWithRetry(wc, bounds),
-    });
   }
 
 
@@ -1865,76 +1772,6 @@ export class BrowserChassis {
     anchorsFor?: string,
   ): Promise<HumanHandoffResult> {
     return this.citationController.attemptHandoff(url, onHuman, anchorsFor);
-  }
-
-  public async takeAnnotatedScreenshot(opts: { economy?: boolean; textOnly?: boolean; includeOffscreen?: boolean } = {}): Promise<{
-    screenshot: ScreenshotPayload;
-    marks: MarkItem[];
-  }> {
-    const wc = this.getActiveWebContents();
-    const economy = Boolean(opts.economy);
-    const textOnly = Boolean(opts.textOnly);
-    const includeOffscreen = Boolean(opts.includeOffscreen);
-    this.telemetry.addLog('action', `MCP Directive: take_annotated_screenshot(${textOnly ? 'text_only' : economy ? 'economy' : 'full'}${includeOffscreen ? ', include_offscreen' : ''})`);
-
-    // Text-only: badges are only needed to populate the mark registry; no pixels are captured.
-    if (textOnly) {
-      const textMarks = await this.marks.scan(wc, { includeOffscreen });
-      await this.marksOverlay.removeMarks(wc);
-      const viewport = this.getViewportBounds();
-      const zoom = this.zoom.getState();
-      return {
-        screenshot: {
-          base64Image: '',
-          filePath: '',
-          width: viewport.width,
-          height: viewport.height,
-          mimeType: 'image/png',
-          zoom,
-          nativeWidth: viewport.width,
-          nativeHeight: viewport.height,
-          coordinateScale: zoom.viewport.css.width > 0 ? viewport.width / zoom.viewport.css.width : 1,
-        },
-        marks: textMarks,
-      };
-    }
-
-    // 1. Inject visual badges into DOM
-    const marks = await this.marks.scan(wc, { includeOffscreen });
-
-    // Wait a brief tick for render paint
-    await new Promise((r) => setTimeout(r, 80));
-
-    // 2. Capture annotated screenshot
-    const bounds = this.getViewportBounds();
-    const image = await this.harvest.capturePageWithRetry(wc, bounds);
-
-    // 3. Immediately clean up marks from DOM
-    await this.marksOverlay.removeMarks(wc);
-    const zoom = this.zoom.getState();
-    const nativeSize = image.getSize();
-
-    // Economy mode: downscale to max 640px wide and encode as JPEG (~10-20x smaller payload)
-    const ECONOMY_MAX_WIDTH = 640;
-    let outImage = image;
-    if (economy && image.getSize().width > ECONOMY_MAX_WIDTH) {
-      outImage = image.resize({ width: ECONOMY_MAX_WIDTH, quality: 'good' });
-    }
-
-    const screenshot = this.harvest.persistScreenshot({
-      image: outImage,
-      jpeg: economy,
-      quality: 45,
-      prefix: `annotated_${economy ? 'eco_' : ''}`,
-      details: (facts) => `Set-of-Marks: Tagged ${marks.length} interactive targets, saved to ${facts.filePath}`,
-      zoom,
-      nativeSize,
-    });
-
-    return {
-      screenshot,
-      marks,
-    };
   }
 
   /**
