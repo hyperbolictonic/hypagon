@@ -161,9 +161,6 @@
       "main/hil/hil-manager.ts": {
         "class": 1
       },
-      "main/input-actions.ts": {
-        "function": 1
-      },
       "main/jev/controller.ts": {
         "class": 1
       },

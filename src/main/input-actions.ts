@@ -34,6 +34,94 @@ export interface InputActionsDeps {
   bumpRevision: () => void;
 }
 
+/** Probe one field: where it is, what kind it is, and what it currently holds. */
+function fieldProbeScript(selector: string): string {
+  return `
+          (() => {
+            const el = document.querySelector(${JSON.stringify(selector)});
+            if (!el) return null;
+            el.scrollIntoView({ behavior: 'auto', block: 'center' });
+            const rect = el.getBoundingClientRect();
+            return {
+              tagName: el.tagName.toUpperCase(),
+              type: (el.getAttribute('type') || '').toLowerCase(),
+              currentVal: el.value,
+              x: Math.round(rect.left + rect.width / 2),
+              y: Math.round(rect.top + rect.height / 2),
+            };
+          })()
+        `;
+}
+
+/** Set a checkbox/radio to the requested state, firing change only when it moves. */
+function toggleScript(selector: string, value: unknown): string {
+  return `
+            (() => {
+              const el = document.querySelector(${JSON.stringify(selector)});
+              if (el && typeof el.checked === 'boolean') {
+                const target = ${JSON.stringify(Boolean(value))};
+                if (el.checked !== target) {
+                  el.click();
+                  el.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+              }
+            })()
+          `;
+}
+
+/** Pick an option by value on a select, in the way a human's change would. */
+function selectScript(selector: string, value: unknown): string {
+  return `
+            (() => {
+              const el = document.querySelector(${JSON.stringify(selector)});
+              if (el) {
+                el.value = ${JSON.stringify(String(value))};
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            })()
+          `;
+}
+
+/** Focus a text control and clear it, so typing appends to nothing. */
+function clearFieldScript(selector: string): string {
+  return `
+            (() => {
+              const el = document.querySelector(${JSON.stringify(selector)});
+              if (el) {
+                if (typeof el.focus === 'function') el.focus();
+                el.value = '';
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+            })()
+          `;
+}
+
+/** Fill one field with the branch its kind needs; returns the ledger line. */
+async function fillField(
+  simulator: HumanizedInputSimulator,
+  wc: WebContents,
+  selector: string,
+  value: string | boolean | number,
+): Promise<{ filled: boolean; detail: string }> {
+  const info = await wc.executeJavaScript(fieldProbeScript(selector));
+  if (!info) return { filled: false, detail: `Field skipped (not found): ${selector}` };
+
+  await simulator.clickAt(wc, { x: info.x, y: info.y });
+
+  if (info.type === 'checkbox' || info.type === 'radio') {
+    await wc.executeJavaScript(toggleScript(selector, value));
+    return { filled: true, detail: `Toggled ${info.type} [${selector}] -> ${value}` };
+  }
+  if (info.tagName === 'SELECT') {
+    await wc.executeJavaScript(selectScript(selector, value));
+    return { filled: true, detail: `Selected option [${selector}] -> "${value}"` };
+  }
+  await wc.executeJavaScript(clearFieldScript(selector));
+  await simulator.typeText(wc, String(value));
+  return { filled: true, detail: `Typed [${selector}] -> "${String(value)}"` };
+}
+
 /** When to use: the chassis — own how input actions are performed over the active tab. */
 export class InputActionsController {
   private readonly deps: InputActionsDeps;
@@ -138,72 +226,12 @@ export class InputActionsController {
 
     for (const [selector, value] of Object.entries(fields)) {
       try {
-        const info = await wc.executeJavaScript(`
-          (() => {
-            const el = document.querySelector(${JSON.stringify(selector)});
-            if (!el) return null;
-            el.scrollIntoView({ behavior: 'auto', block: 'center' });
-            const rect = el.getBoundingClientRect();
-            return {
-              tagName: el.tagName.toUpperCase(),
-              type: (el.getAttribute('type') || '').toLowerCase(),
-              currentVal: (el as any).value,
-              x: Math.round(rect.left + rect.width / 2),
-              y: Math.round(rect.top + rect.height / 2),
-            };
-          })()
-        `);
-
-        if (!info) {
-          details.push(`Field skipped (not found): ${selector}`);
-          continue;
+        const filled = await fillField(this.deps.simulator(), wc, selector, value);
+        details.push(filled.detail);
+        if (filled.filled) {
+          fieldsFilled++;
+          await new Promise((r) => setTimeout(r, 120 + Math.random() * 120));
         }
-
-        await this.deps.simulator().clickAt(wc, { x: info.x, y: info.y });
-
-        if (info.type === 'checkbox' || info.type === 'radio') {
-          await wc.executeJavaScript(`
-            (() => {
-              const el = document.querySelector(${JSON.stringify(selector)});
-              if (el && typeof (el as any).checked === 'boolean') {
-                const target = ${JSON.stringify(Boolean(value))};
-                if ((el as any).checked !== target) {
-                  (el as any).click();
-                  el.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-              }
-            })()
-          `);
-          details.push(`Toggled ${info.type} [${selector}] -> ${value}`);
-        } else if (info.tagName === 'SELECT') {
-          await wc.executeJavaScript(`
-            (() => {
-              const el = document.querySelector(${JSON.stringify(selector)});
-              if (el) {
-                (el as any).value = ${JSON.stringify(String(value))};
-                el.dispatchEvent(new Event('input', { bubbles: true }));
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-              }
-            })()
-          `);
-          details.push(`Selected option [${selector}] -> "${value}"`);
-        } else {
-          await wc.executeJavaScript(`
-            (() => {
-              const el = document.querySelector(${JSON.stringify(selector)});
-              if (el) {
-                if (typeof (el as any).focus === 'function') (el as any).focus();
-                (el as any).value = '';
-                el.dispatchEvent(new Event('input', { bubbles: true }));
-              }
-            })()
-          `);
-          await this.deps.simulator().typeText(wc, String(value));
-          details.push(`Typed [${selector}] -> "${String(value)}"`);
-        }
-
-        fieldsFilled++;
-        await new Promise((r) => setTimeout(r, 120 + Math.random() * 120));
       } catch (err: any) {
         details.push(`Error filling [${selector}]: ${err.message}`);
       }
@@ -221,14 +249,8 @@ export class InputActionsController {
     }
 
     this.deps.status.idle();
-
     this.deps.bumpRevision();
-    return {
-      success: fieldsFilled > 0,
-      fieldsFilled,
-      submitted,
-      details,
-    };
+    return { success: fieldsFilled > 0, fieldsFilled, submitted, details };
   }
 
   async scrollPage(direction: 'up' | 'down', amount: number = 400): Promise<string> {
