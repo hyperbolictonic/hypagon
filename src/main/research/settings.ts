@@ -8,9 +8,7 @@
  * They are deliberately stored in `<userData>`, not beside the repo.
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { writeJsonAtomic } from '../data-paths.ts';
+import { loadJsonSettings, saveJsonSettings, settingsSource } from '../settings/json-settings.ts';
 
 export const RESEARCH_ENGINES = ['google', 'duckduckgo', 'bing', 'brave', 'startpage', 'custom'] as const;
 
@@ -71,34 +69,20 @@ export class ResearchSettingsStore {
   }
 
   load(): ResearchSettings {
-    try {
-      const parsed = JSON.parse(fs.readFileSync(this.file, 'utf8'));
-      const normalized = normalizeResearchSettings(parsed);
-      return normalized.ok ? normalized.settings : { ...DEFAULT_RESEARCH_SETTINGS, engineChain: [...DEFAULT_RESEARCH_SETTINGS.engineChain] };
-    } catch {
-      return { ...DEFAULT_RESEARCH_SETTINGS, engineChain: [...DEFAULT_RESEARCH_SETTINGS.engineChain] };
-    }
+    return loadJsonSettings(this.file, normalizeResearchSettings, cloneDefaults);
   }
 
   save(input: unknown): ResearchSettingsResult {
-    const normalized = normalizeResearchSettings(input);
-    if (!normalized.ok) return normalized;
-    try {
-      writeJsonAtomic(this.file, normalized.settings);
-      return normalized;
-    } catch (err: any) {
-      return { ...normalized, ok: false, errors: [`Could not save research settings: ${err?.message || err}`] };
-    }
+    return saveJsonSettings(this.file, 'research settings', input, normalizeResearchSettings);
   }
 }
 
 export function normalizeResearchSettings(input: unknown): ResearchSettingsResult {
   const errors: string[] = [];
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+  const source = settingsSource(input);
+  if (!source) {
     return { ok: false, settings: cloneDefaults(), errors: ['settings must be an object'] };
   }
-
-  const source = input as Record<string, any>;
   const enabled = typeof source.enabled === 'boolean' ? source.enabled : DEFAULT_RESEARCH_SETTINGS.enabled;
   const activateView =
     typeof source.activateView === 'boolean' ? source.activateView : DEFAULT_RESEARCH_SETTINGS.activateView;

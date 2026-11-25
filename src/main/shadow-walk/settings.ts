@@ -15,10 +15,8 @@
  *   KUANG_SHADOW_WALK=off        disable every Shadow Walk path
  *   KUANG_FORCE_OPEN_SHADOW=1    arm the (not yet built) force-open patch
  */
-import fs from 'node:fs';
-import path from 'node:path';
 import { dataPath } from '../data-paths.ts';
-import { writeJsonAtomic } from '../data-paths.ts';
+import { loadJsonSettings, saveJsonSettings, settingsSource } from '../settings/json-settings.ts';
 
 export const SHADOW_WALK_SETTINGS_FILE = dataPath('shadow-walk.json');
 
@@ -135,10 +133,10 @@ function intInRange(value: unknown, fallback: number, min: number, max: number):
 }
 
 export function normalizeShadowWalkSettings(input: unknown): ShadowWalkSettingsResult {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+  const source = settingsSource(input);
+  if (!source) {
     return { ok: false, settings: cloneDefaults(), errors: ['settings must be an object'] };
   }
-  const source = input as Record<string, any>;
   const shadow = (source.shadow && typeof source.shadow === 'object' ? source.shadow : {}) as Record<string, any>;
   const frames = (source.frames && typeof source.frames === 'object' ? source.frames : {}) as Record<string, any>;
   const cloneLab = (source.cloneLab && typeof source.cloneLab === 'object' ? source.cloneLab : {}) as Record<string, any>;
@@ -180,14 +178,8 @@ export class ShadowWalkSettingsStore {
   }
 
   load(): ShadowWalkSettings {
-    let settings = cloneDefaults();
-    try {
-      const parsed = JSON.parse(fs.readFileSync(this.file, 'utf8'));
-      const normalized = normalizeShadowWalkSettings(parsed);
-      if (normalized.ok) settings = normalized.settings;
-    } catch {
-      // Missing or corrupt file: defaults keep the browser working.
-    }
+    // Missing or corrupt file: defaults keep the browser working.
+    const settings = loadJsonSettings(this.file, normalizeShadowWalkSettings, cloneDefaults);
 
     const master = String(process.env.KUANG_SHADOW_WALK || '').trim().toLowerCase();
     if (['off', '0', 'false', 'disabled'].includes(master)) settings.enabled = false;
@@ -198,14 +190,7 @@ export class ShadowWalkSettingsStore {
   }
 
   save(input: unknown): ShadowWalkSettingsResult {
-    const normalized = normalizeShadowWalkSettings(input);
-    if (!normalized.ok) return normalized;
-    try {
-      writeJsonAtomic(this.file, normalized.settings);
-      return normalized;
-    } catch (err: any) {
-      return { ...normalized, ok: false, errors: [`Could not save Shadow Walk settings: ${err?.message || err}`] };
-    }
+    return saveJsonSettings(this.file, 'Shadow Walk settings', input, normalizeShadowWalkSettings);
   }
 }
 

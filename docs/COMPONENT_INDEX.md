@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 232 files, 809 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 233 files, 813 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (678)
+## Types (682)
 
 | File | Export | When to use |
 |---|---|---|
@@ -397,6 +397,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/settings/jev.ts` | `JevSettingsStore` | JEV is an optional feature (not an experimental one): it is offered only when |
 | `main/settings/jev.ts` | `JevMode` *(type)* | - |
 | `main/settings/jev.ts` | `JevSettings` *(type)* | - |
+| `main/settings/json-settings.ts` | `loadJsonSettings` | Read and normalize a settings file; a missing or corrupt file yields defaults. |
+| `main/settings/json-settings.ts` | `saveJsonSettings` | Normalize and atomically write; a write failure is reported in the result. |
+| `main/settings/json-settings.ts` | `settingsSource` | The object-shape guard every settings normalizer shares; null means "not an object". |
+| `main/settings/json-settings.ts` | `SettingsResult` *(type)* | The result every settings normalizer returns. |
 | `main/shadow-walk/ax-controls.ts` | `findSealedControls` | Find interactive controls inside closed shadow roots. |
 | `main/shadow-walk/ax-controls.ts` | `SealedRateLimitError` | - |
 | `main/shadow-walk/ax-controls.ts` | `SealedRect` *(type)* | - |
