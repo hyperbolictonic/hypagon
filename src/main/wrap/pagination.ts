@@ -15,6 +15,14 @@ export interface WrapIndexDocument {
   markdown: string;
 }
 
+/** Where an indexed document came from, for the indexer's metadata. */
+export interface WrapIndexContext {
+  wrapperId: string;
+  wrapperName: string;
+  /** The URL the content came from (the first page of a paginated run). */
+  url: string;
+}
+
 /** The paging contract derived from `recipe.pagination` for one run. */
 export interface PagePlan {
   active: boolean;

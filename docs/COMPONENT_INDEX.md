@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 215 files, 773 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 216 files, 776 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (660)
+## Types (663)
 
 | File | Export | When to use |
 |---|---|---|
@@ -496,8 +496,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/core.ts` | `WrapRunOptions` *(type)* | - |
 | `main/wrap/core.ts` | `WrapTestInput` *(type)* | - |
 | `main/wrap/core.ts` | `WrapCore` *(type)* | - |
+| `main/wrap/execute-pipeline.ts` | `executeWrapper` | Run one wrapper call end to end. |
+| `main/wrap/execute-pipeline.ts` | `ExecuteOptions` *(type)* | Per-call switches: dry run, raw payload and the page override. |
+| `main/wrap/execute-pipeline.ts` | `ExecuteContext` *(type)* | Shared state every run step needs, assembled by the executor. |
 | `main/wrap/executor.ts` | `WrapExecutor` | - |
-| `main/wrap/executor.ts` | `WrapIndexContext` *(type)* | - |
 | `main/wrap/executor.ts` | `ExecutorOptions` *(type)* | - |
 | `main/wrap/factory.ts` | `wrapCoreMode` | - |
 | `main/wrap/factory.ts` | `createWrapExecutor` | - |
@@ -520,6 +522,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/pagination.ts` | `documentsToIndex` | What an opt-in indexer receives: one entry per rendered document when the recipe used |
 | `main/wrap/pagination.ts` | `sameOrigin` | Whether two URLs share an origin. |
 | `main/wrap/pagination.ts` | `WrapIndexDocument` *(type)* | One rendered document handed to an opt-in indexer (Cortex). |
+| `main/wrap/pagination.ts` | `WrapIndexContext` *(type)* | Where an indexed document came from, for the indexer's metadata. |
 | `main/wrap/pagination.ts` | `PagePlan` *(type)* | The paging contract derived from `recipe.pagination` for one run. |
 | `main/wrap/render.ts` | `renderPayload` | Recipe rendering for one payload, with the legacy fallbacks. |
 | `main/wrap/render.ts` | `safeHost` | - |

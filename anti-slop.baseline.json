@@ -96,7 +96,7 @@
       "main/wrap/audit.ts": 2,
       "main/wrap/auth.ts": 2,
       "main/wrap/core.ts": 3,
-      "main/wrap/executor.ts": 3,
+      "main/wrap/executor.ts": 2,
       "main/wrap/factory.ts": 3,
       "main/wrap/input-schema.ts": 3,
       "main/wrap/interpolate.ts": 5,
@@ -320,9 +320,6 @@
         "class": 1
       },
       "main/wrap/anyapi/executor.ts": {
-        "function": 1
-      },
-      "main/wrap/executor.ts": {
         "function": 1
       },
       "main/wrap/secrets.ts": {
