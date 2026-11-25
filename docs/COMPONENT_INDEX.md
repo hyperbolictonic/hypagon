@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 225 files, 796 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 226 files, 797 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -685,7 +685,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (127)
+## Modules (128)
 
 | File | Export | When to use |
 |---|---|---|
@@ -812,6 +812,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `renderer/settings-wrap-secrets.ts` | `activeWrapTab` | The wrap subtab the user last selected (credentials or wrappers). |
 | `renderer/tools-panel.ts` | `initToolsPanel` | - |
 | `renderer/tools-panel.ts` | `refreshToolsPanel` | - |
+| `renderer/update-banner.ts` | `initUpdateBanner` | Wire the banner and the install action once. |
 | `renderer/viewport-controls.ts` | `initViewportControls` | - |
 | `shared/brand.ts` | `BRAND` | Single source of truth for user-facing brand strings. |
 | `shared/brand.ts` | `LEGACY_USER_DATA_NAMES` | Directory names a previous release used for Electron's `userData`. |

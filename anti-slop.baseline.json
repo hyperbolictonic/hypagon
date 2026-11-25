@@ -162,12 +162,11 @@
       "mcp/tools-catalog-workspace.ts": 21,
       "mcp/wrap-server.ts": 66,
       "preload/index.ts": 32,
-      "renderer/main.ts": 16,
       "renderer/research-panel.ts": 5,
       "renderer/settings-clients.ts": 38,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 896
+    "totalDuplicatedLines": 880
   },
   "modularity": {
     "files": {
