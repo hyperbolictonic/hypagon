@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-231 modules, 807 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+232 modules, 809 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -90,6 +90,7 @@
 | `main/metrics.ts` | 4: bump, snapshot, summary, resetMetrics |
 | `main/migrate-user-data.ts` | 2: migrateLegacyUserData, UserDataMigration |
 | `main/navigation-error.ts` | 2: classifyNavigationFailure, NavigationFailure |
+| `main/navigation/navigation-surface.ts` | 2: NavigationSurface, NavigationSurfaceDeps |
 | `main/network/impersonate.ts` | 7: resolveCurlBinaryPath, hostPlatformHeaders, impersonateAvailable, isChallenge, fetchStatic, StaticFetchResult, StaticFetchOutcome |
 | `main/network/network-interceptor.ts` | 5: NetworkInterceptor, CapturedNetworkRequest, RealtimeStream, StreamMessage, NetworkFilter |
 | `main/prerender/prerender-engine.ts` | 3: PrerenderEngine, PrerenderItem, PrerenderOptions |
@@ -125,8 +126,7 @@
 | `main/settings/jev.ts` | 4: DEFAULT_JEV_SETTINGS, JevSettingsStore, JevMode, JevSettings |
 | `main/shadow-walk/ax-controls.ts` | 6: findSealedControls, SealedRateLimitError, SealedRect, SealedControl, SealedFindOptions, SealedFindResult |
 | `main/shadow-walk/component-signature.ts` | 4: componentSignatureOf, normalizeSurface, COMPONENT_SIGNATURE_HELPERS, ComponentSurface |
-| `main/shadow-walk/force-open.ts` | 5: isForceOpenArmed, syncForceOpen, detectForceOpen, ForceOpenSyncResult, ForceOpenDetection |
 
-… and 105 more module(s) — grep the full index.
+… and 106 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

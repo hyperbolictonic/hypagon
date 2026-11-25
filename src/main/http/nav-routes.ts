@@ -26,7 +26,7 @@ const ROUTES: Record<string, NavHandler> = {
     ) {
       targetUrl = 'https://' + targetUrl;
     }
-    const result = await chassis.navigateTo(targetUrl, autoDismiss);
+    const result = await chassis.nav.navigateTo(targetUrl, autoDismiss);
     // Live nudge at the moment reading starts: the index is cheap, the dump is not.
     const guided = chassis.jev.isEnforced()
       ? `${result} | JEV ENFORCED: unscoped page reads are refused. Call jev_index, then read_section for only what you need.`
@@ -38,7 +38,7 @@ const ROUTES: Record<string, NavHandler> = {
 
   'POST /shield/dismiss': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
-    const result = await chassis.dismissConsent({
+    const result = await chassis.consent.dismiss({
       policy: body?.policy,
       forceRemove: body?.force_remove === true || body?.forceRemove === true,
     });
@@ -83,9 +83,9 @@ const ROUTES: Record<string, NavHandler> = {
   'POST /history': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
     let result = '';
-    if (body.action === 'back') result = await chassis.goBack();
-    else if (body.action === 'forward') result = await chassis.goForward();
-    else if (body.action === 'reload') result = await chassis.reload();
+    if (body.action === 'back') result = await chassis.nav.goBack();
+    else if (body.action === 'forward') result = await chassis.nav.goForward();
+    else if (body.action === 'reload') result = await chassis.nav.reload();
     sendOk({ result });
   },
 };

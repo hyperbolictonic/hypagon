@@ -12,7 +12,7 @@ import { ZoomController } from './zoom/controller.js';
 import { HumanizedInputSimulator } from './telemetry/input-simulator.js';
 import { loadInputProfile, saveInputProfile, type InputProfile } from './telemetry/input-profile.js';
 import { HumanActivityMonitor, humanListenerScript, type HumanActivity } from './input/human-activity.js';
-import { classifyNavigationFailure } from './navigation-error.js';
+import { NavigationSurface } from './navigation/navigation-surface.js';
 import {
   COLLABORATION_CLASS_PREFIX,
   COLLABORATION_EXIT_PREFIX,
@@ -35,7 +35,7 @@ import { detectHostBrowserProfile, type HostBrowserProfile } from './telemetry/h
 import { TabManager, type TabInstance } from './tabs/tab-manager.js';
 import { cortex, CortexDB } from './cortex/cortex-db.js';
 import { DownloadManager, type DownloadRecord } from './downloads/download-manager.js';
-import { ShieldBreaker, type ShieldDismissResult, type ConsentPolicy } from './shield/shield-breaker.js';
+import { ShieldBreaker, type ConsentPolicy } from './shield/shield-breaker.js';
 import { ConsentController } from './shield/consent-controller.js';
 import { evaluateInFrames, type FrameEvalOptions, type FrameEvalResult } from './browser/frame-eval.js';
 import { listFrames, type FrameInfo } from './browser/frames.js';
@@ -127,6 +127,7 @@ export class BrowserChassis {
   private marksOverlay: MarksOverlay;
   readonly marks: MarksSurface;
   readonly harvest: HarvestSurface;
+  readonly nav: NavigationSurface;
   private scriptVault: ScriptVault;
   private trayManager: TrayManager | null = null;
   private hilManager: HilManager;
@@ -284,6 +285,29 @@ export class BrowserChassis {
       emitHarvest: (details) => this.emitSimpleEvent('harvest', details),
       log: this.controllerLog,
       indexPage: (url, title, content) => cortex.indexPage(url, title, content),
+    });
+    this.nav = new NavigationSurface({
+      activeWebContents: () => this.getActiveWebContents(),
+      welcomePagePath: () => this.tabManager?.getWelcomePagePath(),
+      createTab: (url, view) => {
+        this.tabManager?.createTab(url, view);
+      },
+      prerender: {
+        normalizeUrl: (url) => this.prerenderEngine.normalizeUrl(url),
+        has: (url) => this.prerenderEngine.has(url),
+        consume: (url) => this.prerenderEngine.consume(url),
+      },
+      beginTraversal: () => {
+        this.state.agentStatus = 'TRAVERSING';
+        this.broadcastState();
+      },
+      log: this.controllerLog,
+      bumpNav: () => bump('nav'),
+      purgeJev: () => this.purgeJevDepthStore(),
+      syncForceOpen: (wc) => this.syncForceOpenFor(wc),
+      scheduleConsentSweep: () => this.consent.scheduleSweep(),
+      bumpRevision: () => this.bumpRevision(),
+      broadcastState: () => this.broadcastState(),
     });
     this.scriptVault = new ScriptVault();
 
@@ -951,7 +975,7 @@ export class BrowserChassis {
     this.addLog('action', `MCP Directive: new_tab(${url || 'about:blank'})`);
     // A tab opened directly at a URL is a navigation too: arm the same late-consent sweep, or a
     // cookie wall on a freshly opened tab would never be dismissed.
-    if (url && /^https?:/i.test(url)) this.scheduleConsentSweep();
+    if (url && /^https?:/i.test(url)) this.consent.scheduleSweep();
     return {
       id: tab.id,
       title: tab.title,
@@ -1120,15 +1144,15 @@ export class BrowserChassis {
     ipcMain.handle('chassis:get-human-status', () => this.getHumanStatus());
 
     ipcMain.handle('chassis:navigate', async (_, url: string) => {
-      await this.navigateTo(url);
+      await this.nav.navigateTo(url);
       return { success: true };
     });
 
     // Toolbar history controls. These are the same entry points the MCP `navigate_history` tool and
     // the right-click menu use, so a human and an agent cannot drift apart.
-    ipcMain.handle('chassis:go-back', async () => ({ message: await this.goBack() }));
-    ipcMain.handle('chassis:go-forward', async () => ({ message: await this.goForward() }));
-    ipcMain.handle('chassis:reload', async () => ({ message: await this.reload() }));
+    ipcMain.handle('chassis:go-back', async () => ({ message: await this.nav.goBack() }));
+    ipcMain.handle('chassis:go-forward', async () => ({ message: await this.nav.goForward() }));
+    ipcMain.handle('chassis:reload', async () => ({ message: await this.nav.reload() }));
     ipcMain.handle('chassis:get-nav-state', () => {
       const wc = this.tabManager?.getActiveTab()?.view?.webContents;
       const usable = wc && !wc.isDestroyed();
@@ -1550,76 +1574,13 @@ export class BrowserChassis {
     this.sendToSurfaces('chassis:log', entry);
   }
 
-  // MCP Operations on Active Tab
-  public async navigateTo(url: string, autoDismissConsent: boolean = true): Promise<string> {
-    bump('nav');
-    this.purgeJevDepthStore();
-    const wc = this.getActiveWebContents();
-    await this.syncForceOpenFor(wc);
-    this.state.agentStatus = 'TRAVERSING';
-    this.broadcastState();
-
-    if (url === 'about:blank' || url === 'mark-eleven://manual' || url === 'mark-eleven://welcome') {
-      const manualPath = this.tabManager?.getWelcomePagePath();
-      if (manualPath) {
-        this.addLog('action', 'MCP Directive: navigate_to(mark-eleven://manual)');
-        await wc.loadFile(manualPath);
-        return 'Loaded Hypagon Browser Manual';
-      }
-    }
-
-    const formattedUrl = url.startsWith('http://') || url.startsWith('https://')
-      ? url
-      : `https://${url}`;
-
-    // 0ms Navigation: Check if target URL is already warm in speculative prerender pool.
-    // Guard: Do not elevate if current active tab is already on this page/domain or active form state is present.
-    const currentUrl = wc.getURL();
-    const isSamePage = currentUrl
-      ? this.prerenderEngine.normalizeUrl(currentUrl) === this.prerenderEngine.normalizeUrl(formattedUrl)
-      : false;
-
-    if (!isSamePage && this.prerenderEngine.has(formattedUrl)) {
-      const warmView = this.prerenderEngine.consume(formattedUrl);
-      if (warmView && this.tabManager) {
-        this.addLog('action', `0ms Speculative Elevation: Elevated prerendered view for ${formattedUrl}`);
-        this.tabManager.createTab(formattedUrl, warmView);
-        return `Navigated to ${formattedUrl} (0ms Speculative Instant Elevation)`;
-      }
-    }
-
-    this.addLog('action', `MCP Directive: navigate_to(${formattedUrl})`);
-    const navPromise = wc.loadURL(formattedUrl);
-
-    if (autoDismissConsent) {
-      // Consent walls frequently mount *after* load — a hydration delay, or after a login/redirect
-      // (Reddit's cookie dialog arrives post-signin). One timed attempt at 1.8s missed those, so
-      // sweep a few settle points; each sweep is gated by a cheap consent-only DOM check, so this
-      // never clicks an ordinary dialog.
-      this.scheduleConsentSweep();
-    }
-
-    try {
-      await navPromise;
-    } catch (error: any) {
-      const failure = classifyNavigationFailure(formattedUrl, error);
-      const wrapped = new Error(failure.message) as Error & { code?: string; cause?: string; url?: string };
-      wrapped.code = failure.code;
-      wrapped.cause = failure.cause;
-      wrapped.url = failure.url;
-      this.addLog('warn', failure.message);
-      throw wrapped;
-    }
-    this.bumpRevision();
-    return `Navigated to ${formattedUrl}`;
-  }
 
 
   // ---- Consent sweep ------------------------------------------------------------------
   // The answered-origins memory, the timed sweep and the explicit dismiss live in
   // ConsentController.
 
-  private readonly consentController = new ConsentController({
+  readonly consent = new ConsentController({
     activeWebContents: () => this.getActiveWebContents(),
     shieldBreaker: () => this.shieldBreaker,
     policy: () => this.consentPolicy,
@@ -1627,17 +1588,6 @@ export class BrowserChassis {
     telemetry: this.controllerTelemetry,
   });
 
-  private clearConsentSweep(): void {
-    this.consentController.clearSweep();
-  }
-
-  private scheduleConsentSweep(delays: number[] = [900, 2600, 6000]): void {
-    this.consentController.scheduleSweep(delays);
-  }
-
-  public async dismissConsent(options: { policy?: ConsentPolicy; forceRemove?: boolean } = {}): Promise<ShieldDismissResult> {
-    return this.consentController.dismiss(options);
-  }
 
   // ---- Input actions ------------------------------------------------------------------
   // Click target resolution, the per-field form dispatch and the scroll fallback live
@@ -1826,39 +1776,6 @@ export class BrowserChassis {
     });
   }
 
-  public async goBack(): Promise<string> {
-    return this.historyStep('back');
-  }
-
-  public async goForward(): Promise<string> {
-    return this.historyStep('forward');
-  }
-
-  /** The shared history step: both directions check, purge the JEV store and report the same messages. */
-  private async historyStep(direction: 'back' | 'forward'): Promise<string> {
-    const wc = this.getActiveWebContents();
-    await this.syncForceOpenFor(wc);
-    const can = direction === 'back'
-      ? wc.navigationHistory.canGoBack()
-      : wc.navigationHistory.canGoForward();
-    if (!can) return `Cannot navigate ${direction}; at ${direction === 'back' ? 'start' : 'end'} of history`;
-    this.purgeJevDepthStore();
-    if (direction === 'back') wc.navigationHistory.goBack();
-    else wc.navigationHistory.goForward();
-    this.bumpRevision();
-    this.broadcastState();
-    return `Navigated ${direction} in history`;
-  }
-
-  public async reload(): Promise<string> {
-    const wc = this.getActiveWebContents();
-    await this.syncForceOpenFor(wc);
-    this.purgeJevDepthStore();
-    wc.reload();
-    this.bumpRevision();
-    this.broadcastState();
-    return 'Reloaded active web page';
-  }
 
   public getPageInfo(): { url: string; title: string; isLoading: boolean; activeTabId?: string } {
     // Read the live document URL/title. Reddit (and most SPAs) navigate with pushState, which fires
