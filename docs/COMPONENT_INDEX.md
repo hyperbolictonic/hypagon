@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 296 files, 957 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 297 files, 959 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (793)
+## Types (795)
 
 | File | Export | When to use |
 |---|---|---|
@@ -251,6 +251,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/llm/llm-surface.ts` | `LlmSurfaceDeps` *(type)* | - |
 | `main/llm/read-surface.ts` | `ReadSurface` | The agent-facing read surface over LlmSurface. |
 | `main/llm/read-surface.ts` | `ReadSurfaceDeps` *(type)* | Dependencies the read surface needs from the chassis transports. |
+| `main/marks/inject-script.ts` | `marksInjectorScript` | When to use: `MarksOverlay.injectMarks` — renders the page-side Set-of-Marks scan. |
+| `main/marks/inject-script.ts` | `MarksInjectorOptions` *(type)* | When to use: building one mark scan — the sticky anchors and the two scope flags. |
 | `main/marks/marks-overlay.ts` | `MarksOverlay` | - |
 | `main/marks/marks-overlay.ts` | `MarkItem` *(type)* | - |
 | `main/marks/marks-surface.ts` | `MarksSurface` | The agent-facing marks discovery surface over MarksOverlay. |

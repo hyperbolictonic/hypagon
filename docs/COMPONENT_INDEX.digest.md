@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-296 modules, 957 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+297 modules, 959 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -115,6 +115,7 @@
 | `main/llm/llm-surface.ts` | 10: LlmSurface, LlmSurfaceKind, LlmSurfaceScope, LlmSurfaceNext, LlmSurfaceEndpoint, LlmSurfaceLink, LlmSurfaceReport, LlmFetchResult, … (10) |
 | `main/llm/read-surface.ts` | 2: ReadSurface, ReadSurfaceDeps |
 | `main/marks/format-mark.ts` | 1: formatMark |
+| `main/marks/inject-script.ts` | 2: marksInjectorScript, MarksInjectorOptions |
 | `main/marks/marks-overlay.ts` | 2: MarksOverlay, MarkItem |
 | `main/marks/marks-surface.ts` | 2: MarksSurface, MarksSurfaceDeps |
 | `main/media/auth.ts` | 1: needsLogin |
@@ -125,8 +126,7 @@
 | `main/media/ffmpeg.ts` | 9: platformKey, managedFfmpegDir, ffmpegFileName, managedFfmpegPath, parseFfmpegVersion, detectFfmpeg, installManagedFfmpeg, FfmpegSource, … (9) |
 | `main/media/jobs.ts` | 12: buildFormatSelector, buildDownloadArgs, parseProgressLine, MediaJobs, MediaKind, MediaQuality, MediaJobState, MediaJobFile, … (12) |
 | `main/media/platform.ts` | 8: mediaPlatformKey, ytDlpFileName, ytdlpRuntimeOptions, compareYtDlpVersions, ytDlpReleaseAsset, parseChecksum, YtDlpRuntimeKind, YtDlpRuntime |
-| `main/media/process-failure.ts` | 2: processFailure, ProcessFailureCopy |
 
-… and 171 more module(s) — grep the full index.
+… and 172 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.
