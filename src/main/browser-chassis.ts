@@ -28,7 +28,6 @@ import { ShieldBreaker, type ConsentPolicy } from './shield/shield-breaker.js';
 import { ConsentController } from './shield/consent-controller.js';
 import { resolveFrameMark } from './browser/frame-marks.js';
 import { resolveSealedToken as resolveSealedTarget } from './shadow-walk/sealed-targets.js';
-import { ScreenshotStore } from './harvest/screenshots.js';
 import { loadShadowWalkSettings } from './shadow-walk/settings.js';
 import { assertShadowSurface } from './shadow-walk/guard.js';
 import { ShadowWalkSurface } from './shadow-walk/shadow-surface.js';
@@ -62,6 +61,7 @@ import { WindowBootSurface } from './boot/window-boot.js';
 import { ShellBus } from './shell/event-bus.js';
 import { createLlmStack } from './chassis/llm-stack.js';
 import { createInputStack } from './chassis/input-stack.js';
+import { createHarvestNavStack } from './chassis/harvest-nav-stack.js';
 import { IpcSurface } from './ipc/ipc-surface.js';
 import { readPageInfo } from './tabs/page-info.js';
 import { TabSurface } from './tabs/tab-surface.js';
@@ -336,6 +336,7 @@ export class BrowserChassis {
     this.marks = harvestNav.marks;
     this.harvest = harvestNav.harvest;
     this.nav = harvestNav.nav;
+    this.prerenderEngine = harvestNav.prerender;
     const interaction = this.createInteractionSurfaces();
     this.hil = interaction.hil;
     this.primitives = interaction.primitives;
@@ -405,12 +406,8 @@ export class BrowserChassis {
   }
 
   /** Marks, harvest and navigation, in dependency order (prerender before nav). */
-  private createHarvestNavigationSurfaces(): {
-    marks: MarksSurface;
-    harvest: HarvestSurface;
-    nav: NavigationSurface;
-  } {
-    const marks = new MarksSurface({
+  private createHarvestNavigationSurfaces(): ReturnType<typeof createHarvestNavStack> {
+    return createHarvestNavStack({
       activeWebContents: () => this.getActiveWebContents(),
       revision: () => this.revision,
       marksOverlay: this.marksOverlay,
@@ -419,21 +416,15 @@ export class BrowserChassis {
         clearFocusedField: (wc) => this.input.simulator.clearFocusedField(wc),
         typeText: (wc, text) => this.input.simulator.typeText(wc, text),
       },
-      refuseShadow: (surface) => assertShadowSurface(surface),
       log: this.controllerLog,
+      telemetry: this.controllerTelemetry,
       reportActing: () => this.telemetry.reportActing(),
       reportIdle: () => this.telemetry.reportIdle(),
       emitClick: (point, details) => this.telemetry.emitPointEvent('click', point, details),
       bumpRevision: () => this.bumpRevision(),
-    });
-    const harvest = new HarvestSurface({
-      activeWebContents: () => this.getActiveWebContents(),
       viewportBounds: () => this.tabSetup.bounds(),
       zoomState: () => this.zoom.getState(),
-      marks,
-      marksOverlay: this.marksOverlay,
       harvester: this.harvester,
-      screenshotStore: this.screenshotStore,
       beginHarvest: () => {
         this.state.agentStatus = 'HARVESTING';
         this.telemetry.broadcastState();
@@ -445,40 +436,24 @@ export class BrowserChassis {
       addTokens: (tokens) => {
         this.state.stats.tokensHarvested += tokens;
       },
-      reportIdle: () => this.telemetry.reportIdle(),
       emitHarvest: (details) => this.telemetry.emitSimpleEvent('harvest', details),
-      log: this.controllerLog,
       indexPage: (url, title, content) => cortex.indexPage(url, title, content),
-    });
-    this.prerenderEngine = new PrerenderEngine(
-      this.hostProfile,
-      cortex,
-      (level, msg) => this.telemetry.addLog(level, msg)
-    );
-    const nav = new NavigationSurface({
-      activeWebContents: () => this.getActiveWebContents(),
-      welcomePagePath: () => this.tabSetup.manager?.getWelcomePagePath(),
+      hostProfile: this.hostProfile,
       createTab: (url, view) => {
         this.tabSetup.manager?.createTab(url, view);
       },
-      prerender: {
-        normalizeUrl: (url) => this.prerenderEngine.normalizeUrl(url),
-        has: (url) => this.prerenderEngine.has(url),
-        consume: (url) => this.prerenderEngine.consume(url),
-      },
+      welcomePagePath: () => this.tabSetup.manager?.getWelcomePagePath(),
       beginTraversal: () => {
         this.state.agentStatus = 'TRAVERSING';
         this.telemetry.broadcastState();
       },
-      log: this.controllerLog,
       bumpNav: () => bump('nav'),
       purgeJev: () => this.purgeJevDepthStore(),
       syncForceOpen: (wc) => this.shadow.syncForceOpen(wc),
       scheduleConsentSweep: () => this.consent.scheduleSweep(),
-      bumpRevision: () => this.bumpRevision(),
       broadcastState: () => this.telemetry.broadcastState(),
+      refuseShadow: (surface) => assertShadowSurface(surface),
     });
-    return { marks, harvest, nav };
   }
 
   /** HIL, the action ledger and the orthogonal primitives layer. */
@@ -823,16 +798,7 @@ export class BrowserChassis {
 
 
   // ---- Screenshot persistence ---------------------------------------------------------
-  // The screenshots directory, retention, compositor retry and the encode/save/
-  // telemetry tail live in ScreenshotStore.
-
-  private readonly screenshotStore = new ScreenshotStore({
-    log: this.controllerLog,
-    telemetry: this.controllerTelemetry,
-  });
-
-
-
+  // The screenshot store lives in the harvest stack; this class no longer owns it.
 
   public getPageInfo() {
     return readPageInfo(this.state, this.tabSetup.manager?.getActiveTab() ?? null);

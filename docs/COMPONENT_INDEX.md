@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 268 files, 895 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 269 files, 898 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (763)
+## Types (766)
 
 | File | Export | When to use |
 |---|---|---|
@@ -42,6 +42,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/browser/page-script-surface.ts` | `PageScriptSurfaceDeps` *(type)* | Dependencies the page-script surface needs from the active tab. |
 | `main/capture/screenshot-jpeg.ts` | `captureScreenshotJpeg` | When to use: `decide(include_screenshot)` — a bounded baseline JPEG of the viewport. |
 | `main/capture/screenshot-jpeg.ts` | `ScreenshotJpegDeps` *(type)* | Dependencies the capture needs from the active tab. |
+| `main/chassis/harvest-nav-stack.ts` | `createHarvestNavStack` | When to use: the chassis constructor — build marks, harvest and navigation once. |
+| `main/chassis/harvest-nav-stack.ts` | `HarvestNavStackDeps` *(type)* | Dependencies the harvest/marks/navigation stack needs from the chassis. |
+| `main/chassis/harvest-nav-stack.ts` | `HarvestNavStack` *(type)* | The built harvest/marks/navigation surfaces plus the prerender engine. |
 | `main/chassis/input-stack.ts` | `createInputStack` | When to use: the chassis constructor — build the input/diagnostic surfaces once. |
 | `main/chassis/input-stack.ts` | `InputStackDeps` *(type)* | Dependencies the input/diagnostics stack needs from the chassis. |
 | `main/chassis/input-stack.ts` | `InputStack` *(type)* | The built input and diagnostic surfaces. |

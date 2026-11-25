@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-268 modules, 895 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+269 modules, 898 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -18,6 +18,7 @@
 | `main/browser/page-script-surface.ts` | 2: PageScriptSurface, PageScriptSurfaceDeps |
 | `main/capabilities.ts` | 1: BRIDGE_CAPABILITIES |
 | `main/capture/screenshot-jpeg.ts` | 2: captureScreenshotJpeg, ScreenshotJpegDeps |
+| `main/chassis/harvest-nav-stack.ts` | 3: createHarvestNavStack, HarvestNavStackDeps, HarvestNavStack |
 | `main/chassis/input-stack.ts` | 3: createInputStack, InputStackDeps, InputStack |
 | `main/chassis/llm-stack.ts` | 3: createLlmStack, LlmStackDeps, LlmStack |
 | `main/collaboration/overlay.ts` | 8: collaborationNoteDrawerScript, collaborationPickerScript, collaborationOverlayScript, COLLABORATION_NOTE_PREFIX, COLLABORATION_CLASS_PREFIX, COLLABORATION_RESOLVE_PREFIX, COLLABORATION_EXIT_PREFIX, CollaborationPickerOptions |
@@ -125,8 +126,7 @@
 | `main/remote/oauth-client.ts` | 5: oauthClientFile, readOAuthClient, createOAuthClient, ensureOAuthClient, OAuthClientCredentials |
 | `main/remote/service.ts` | 2: RemoteService, RemoteServiceOptions |
 | `main/remote/settings.ts` | 3: loadRemoteSettings, saveRemoteSettings, RemoteSettings |
-| `main/research/anchor-store.ts` | 2: AnchorStore, StoredAnchor |
 
-… and 143 more module(s) — grep the full index.
+… and 144 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.
