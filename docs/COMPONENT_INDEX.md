@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 219 files, 783 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 220 files, 785 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -685,7 +685,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (114)
+## Modules (116)
 
 | File | Export | When to use |
 |---|---|---|
@@ -795,6 +795,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `renderer/research-panel.ts` | `initResearchPanel` | - |
 | `renderer/settings-clients.ts` | `loadConnectPanel` | Read the connect info (once) and repaint the selected client snippet. |
 | `renderer/settings-clients.ts` | `initConnectPanel` | Wire the client picker once, after the settings modal markup exists. |
+| `renderer/settings-media.ts` | `loadMediaSettings` | Read the media settings and ffmpeg status and paint the form. |
+| `renderer/settings-media.ts` | `initMediaPanel` | Wire the media form once, after the settings modal markup exists. |
 | `renderer/settings-remote.ts` | `loadRemotePanel` | Read the gateway, tunnel and cloudflared status and paint the panel. |
 | `renderer/settings-remote.ts` | `initRemotePanel` | Wire the panel once, after the settings modal markup exists. |
 | `renderer/tools-panel.ts` | `initToolsPanel` | - |
