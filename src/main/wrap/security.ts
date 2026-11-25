@@ -13,6 +13,7 @@
 import dns from 'node:dns/promises';
 import net from 'node:net';
 
+/** When to use: catching a refused wrapper destination — `code` is the published refusal code. */
 export class WrapSecurityError extends Error {
   readonly code: string;
 
@@ -23,12 +24,14 @@ export class WrapSecurityError extends Error {
   }
 }
 
+/** When to use: calling `assertSafeUrl` — the opt-in private/HTTP exceptions and an injectable resolver. */
 export interface UrlPolicy {
   allowPrivateHosts?: boolean;
   allowHttp?: boolean;
   resolveHost?: (hostname: string) => Promise<string[]>;
 }
 
+/** When to use: every wrapper request — reject non-HTTP(S), URL credentials and private/metadata destinations before connecting. */
 export async function assertSafeUrl(rawUrl: string, policy: UrlPolicy = {}): Promise<URL> {
   let url: URL;
   try {
@@ -120,6 +123,7 @@ export function isPrivateHostname(hostname: string): boolean {
  */
 export const resolveHosts = defaultResolveHost;
 
+/** When to use: checking a resolved DNS answer against loopback, private, link-local and metadata ranges. */
 export function isPrivateAddress(address: string): boolean {
   const value = address.toLowerCase().replace(/^\[|\]$/g, '');
 

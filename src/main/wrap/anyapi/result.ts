@@ -19,6 +19,7 @@ import { isPrivateHostname } from '../security.ts';
 import { previewUrl } from '../render.ts';
 import type { WrapErrorInfo, WrapIndexed, WrapMethod, WrapPreview, WrapRunResult } from '../types.ts';
 
+/** When to use: naming the wrapper a run result belongs to — its id and display name. */
 export type WrapIdentity = { readonly id: string; readonly name: string };
 
 /**
@@ -86,6 +87,7 @@ export function wrapErrorCode(
   return CORE_TO_WRAP[error.code as RuntimeError['code']] ?? UNKNOWN_CODE;
 }
 
+/** When to use: calling `wrapFailure` — the preview, the offending field, an explicit retry flag and the request host. */
 export type WrapFailureOptions = {
   readonly request?: WrapPreview;
   readonly field?: string;
@@ -95,6 +97,7 @@ export type WrapFailureOptions = {
   readonly host?: string;
 };
 
+/** When to use: the anyapi executor turning a package runtime error into the wrapper's published `WrapRunResult`. */
 export function wrapFailure(
   wrapper: WrapIdentity,
   error: Pick<RuntimeError, 'code' | 'message' | 'hint' | 'status'>,
@@ -130,6 +133,7 @@ export type WrapRendered = {
   readonly meta?: RenderMeta;
 };
 
+/** When to use: building a successful `WrapRunResult` from the package result plus the wrapper renderer output. */
 export type WrapSuccessInput = {
   readonly wrapper: WrapIdentity;
   /** The core's status is all this adapter needs from its result. */

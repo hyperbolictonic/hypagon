@@ -13,6 +13,7 @@
 import type { WebContents } from 'electron';
 import { COMPONENT_SIGNATURE_HELPERS, type ComponentSurface } from '../shadow-walk/component-signature.js';
 
+/** When to use: text-anchored targeting — exact vs substring, case sensitivity, the candidate cap and optional component surface. */
 export interface TextTargetOptions {
   /** Exact (trimmed) match instead of substring. Default false. */
   exact?: boolean;
@@ -24,6 +25,7 @@ export interface TextTargetOptions {
   componentSurface?: boolean;
 }
 
+/** When to use: one resolved target — text, tag, viewport box, document-order index and optional component surface. */
 export interface TextTargetMatch {
   text: string;
   tag: string;
@@ -37,6 +39,7 @@ export interface TextTargetMatch {
   component?: ComponentSurface;
 }
 
+/** When to use: the text-target reply — the query, ranked matches and whether one is unambiguous. */
 export interface TextTargetResult {
   query: string;
   matches: TextTargetMatch[];
@@ -117,6 +120,7 @@ export function textTargetExpression(query: string, options: TextTargetOptions =
   })()`;
 }
 
+/** When to use: turning the injected script's raw result into a `TextTargetResult`; a malformed result reads as no matches. */
 export function parseTextTargets(raw: unknown): TextTargetResult {
   let value: any = raw;
   if (typeof value === 'string') {

@@ -387,11 +387,11 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/network/cdp-events.ts` | `CdpEventDeps` *(type)* | When to use: `new NetworkInterceptor` — the buffers the events write into. |
 | `main/network/impersonate.ts` | `resolveCurlBinaryPath` | Resolve the pinned binary robustly. |
 | `main/network/impersonate.ts` | `hostPlatformHeaders` | The impersonate profile fixes the TLS/H2 fingerprint (and the Chrome major). The user agent and |
-| `main/network/impersonate.ts` | `impersonateAvailable` | - |
+| `main/network/impersonate.ts` | `impersonateAvailable` | When to use: the static fetch tier deciding whether the curl-impersonate binary is installed before trying it. |
 | `main/network/impersonate.ts` | `isChallenge` | Hard statuses and explicit Cloudflare interstitial markers. |
-| `main/network/impersonate.ts` | `fetchStatic` | - |
-| `main/network/impersonate.ts` | `StaticFetchResult` *(type)* | - |
-| `main/network/impersonate.ts` | `StaticFetchOutcome` *(type)* | - |
+| `main/network/impersonate.ts` | `fetchStatic` | When to use: the cheap acquisition tier — fetch a URL with a Chrome-identical TLS/H2 fingerprint, escalating on a challenge. |
+| `main/network/impersonate.ts` | `StaticFetchResult` *(type)* | When to use: one successful static fetch — status, headers, body, final URL and elapsed time. |
+| `main/network/impersonate.ts` | `StaticFetchOutcome` *(type)* | When to use: the static tier's reply — ok, a detected challenge, an unavailable binary, or a transport error. |
 | `main/network/network-surface.ts` | `NetworkSurface` | The captured traffic, payloads and stream reads. |
 | `main/network/network-surface.ts` | `NetworkSurfaceDeps` *(type)* | Dependencies the network surface needs for directive logging. |
 | `main/network/stream-messages.ts` | `StreamMessages` | When to use: `NetworkInterceptor.messages` — one log per interceptor. |
@@ -443,11 +443,11 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/primitives/options.ts` | `ExtractOptions` *(type)* | When to use: extract() — which structure to read and where. |
 | `main/primitives/options.ts` | `CollectOptions` *(type)* | When to use: collect_all() — which container to scroll and how far. |
 | `main/primitives/text-target.ts` | `textTargetExpression` | Deepest visible element whose trimmed text matches. "Deepest" matters: a card <div> and its |
-| `main/primitives/text-target.ts` | `parseTextTargets` | - |
+| `main/primitives/text-target.ts` | `parseTextTargets` | When to use: turning the injected script's raw result into a `TextTargetResult`; a malformed result reads as no matches. |
 | `main/primitives/text-target.ts` | `resolveTextTargets` | Convenience for callers that already hold a WebContents. |
-| `main/primitives/text-target.ts` | `TextTargetOptions` *(type)* | - |
-| `main/primitives/text-target.ts` | `TextTargetMatch` *(type)* | - |
-| `main/primitives/text-target.ts` | `TextTargetResult` *(type)* | - |
+| `main/primitives/text-target.ts` | `TextTargetOptions` *(type)* | When to use: text-anchored targeting — exact vs substring, case sensitivity, the candidate cap and optional component surface. |
+| `main/primitives/text-target.ts` | `TextTargetMatch` *(type)* | When to use: one resolved target — text, tag, viewport box, document-order index and optional component surface. |
+| `main/primitives/text-target.ts` | `TextTargetResult` *(type)* | When to use: the text-target reply — the query, ranked matches and whether one is unambiguous. |
 | `main/recipes/compile.ts` | `compileDriveSteps` | Map drive steps to recipe steps. Click steps always become `click`; a `type_text` step becomes a |
 | `main/recipes/compile.ts` | `DriveStepLike` *(type)* | - |
 | `main/recipes/compile.ts` | `CompileOptions` *(type)* | - |
@@ -462,10 +462,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/recipes/recipe-store.ts` | `Recipe` *(type)* | When to use: one stored navigation path and its record — origin, path glob, steps and the attempt/success counters that retire it. |
 | `main/recipes/recipe-store.ts` | `RecipeStore` *(type)* | When to use: reading or writing `data/recipes.json` — the `version: 1` document `loadRecipes` returns. |
 | `main/recipes/recipe-store.ts` | `SaveRecipeInput` *(type)* | When to use: calling `saveRecipe` — the target URL, the optional path/name override and the described steps. |
-| `main/recipes/replay.ts` | `replayRecipe` | - |
-| `main/recipes/replay.ts` | `RecipeRunner` *(type)* | - |
-| `main/recipes/replay.ts` | `ReplayStepResult` *(type)* | - |
-| `main/recipes/replay.ts` | `ReplayResult` *(type)* | - |
+| `main/recipes/replay.ts` | `replayRecipe` | When to use: `recipe_run` — replay a stored recipe's steps through the injected runner and stop at the first miss. |
+| `main/recipes/replay.ts` | `RecipeRunner` *(type)* | When to use: injecting the primitives into `replayRecipe` — act, waitFor and optional signature lookup. |
+| `main/recipes/replay.ts` | `ReplayStepResult` *(type)* | When to use: one replay transcript row — the step, its outcome, timing and stopping code. |
+| `main/recipes/replay.ts` | `ReplayResult` *(type)* | When to use: the `recipe_run` reply — status, the per-step transcript and where it stopped. |
 | `main/recording/recording-service.ts` | `onRecordingStatus` | When to use: boot — the HUD subscribes to status changes (one listener). |
 | `main/recording/recording-service.ts` | `setRecordingWindow` | When to use: boot — hand the shell window to the recorder so main can ask it to capture. |
 | `main/recording/recording-service.ts` | `loadRecordingConfig` | When to use: boot — read `recording.json`, falling back to the defaults when it is missing or corrupt. |
@@ -725,17 +725,17 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/anyapi/maps.ts` | `WrapMapProjection` *(type)* | - |
 | `main/wrap/anyapi/result.ts` | `splitBlockedHost` | The core has one refusal code for three situations the wrapper surface |
 | `main/wrap/anyapi/result.ts` | `wrapErrorCode` | 401/403 means the credential is the actionable problem, not the transport. |
-| `main/wrap/anyapi/result.ts` | `wrapFailure` | - |
+| `main/wrap/anyapi/result.ts` | `wrapFailure` | When to use: the anyapi executor turning a package runtime error into the wrapper's published `WrapRunResult`. |
 | `main/wrap/anyapi/result.ts` | `wrapSuccess` | A successful (or failed-upstream, non-2xx already being an error) run. |
 | `main/wrap/anyapi/result.ts` | `wrapDryRun` | A dry run. |
-| `main/wrap/anyapi/result.ts` | `WrapIdentity` *(type)* | - |
-| `main/wrap/anyapi/result.ts` | `WrapFailureOptions` *(type)* | - |
+| `main/wrap/anyapi/result.ts` | `WrapIdentity` *(type)* | When to use: naming the wrapper a run result belongs to — its id and display name. |
+| `main/wrap/anyapi/result.ts` | `WrapFailureOptions` *(type)* | When to use: calling `wrapFailure` — the preview, the offending field, an explicit retry flag and the request host. |
 | `main/wrap/anyapi/result.ts` | `WrapRendered` *(type)* | What the wrapper renderer produced for this run; the package never renders. |
-| `main/wrap/anyapi/result.ts` | `WrapSuccessInput` *(type)* | - |
-| `main/wrap/anyapi/secrets.ts` | `createSecretAdapter` | - |
-| `main/wrap/anyapi/secrets.ts` | `WrapSecretSource` *(type)* | - |
-| `main/wrap/anyapi/secrets.ts` | `WrapSecretRefusal` *(type)* | - |
-| `main/wrap/anyapi/secrets.ts` | `WrapSecretAdapter` *(type)* | - |
+| `main/wrap/anyapi/result.ts` | `WrapSuccessInput` *(type)* | When to use: building a successful `WrapRunResult` from the package result plus the wrapper renderer output. |
+| `main/wrap/anyapi/secrets.ts` | `createSecretAdapter` | When to use: anyapi executor startup — bind the store's secrets to exact hosts and report the refusals. |
+| `main/wrap/anyapi/secrets.ts` | `WrapSecretSource` *(type)* | When to use: injecting the encrypted store into `createSecretAdapter` (list plus host-scoped resolve). |
+| `main/wrap/anyapi/secrets.ts` | `WrapSecretRefusal` *(type)* | When to use: reporting a secret the core cannot bind — its name and the human-readable reason. |
+| `main/wrap/anyapi/secrets.ts` | `WrapSecretAdapter` *(type)* | When to use: handing the core its binding table, provider and the refusals to surface. |
 | `main/wrap/audit.ts` | `WrapAuditLog` | - |
 | `main/wrap/audit.ts` | `WrapAuditEntry` *(type)* | - |
 | `main/wrap/core.ts` | `WrapRunOptions` *(type)* | - |
@@ -811,12 +811,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/secret-types.ts` | `SecretStoreOptions` *(type)* | When to use: `new SecretStore(dir, cipher, options)`. |
 | `main/wrap/secret-types.ts` | `SecretRecord` *(type)* | When to use: the persisted record — the metadata plus the encrypted payloads. |
 | `main/wrap/secret-types.ts` | `SecretFile` *(type)* | When to use: `SecretFileStore` — the on-disk document. |
-| `main/wrap/security.ts` | `assertSafeUrl` | - |
+| `main/wrap/security.ts` | `assertSafeUrl` | When to use: every wrapper request — reject non-HTTP(S), URL credentials and private/metadata destinations before connecting. |
 | `main/wrap/security.ts` | `isPrivateHostname` | A hostname that is private by name alone, before any lookup. |
-| `main/wrap/security.ts` | `isPrivateAddress` | - |
+| `main/wrap/security.ts` | `isPrivateAddress` | When to use: checking a resolved DNS answer against loopback, private, link-local and metadata ranges. |
 | `main/wrap/security.ts` | `resolveHosts` | The resolver the policy uses when the host injects none. Exported so a second |
-| `main/wrap/security.ts` | `WrapSecurityError` | - |
-| `main/wrap/security.ts` | `UrlPolicy` *(type)* | - |
+| `main/wrap/security.ts` | `WrapSecurityError` | When to use: catching a refused wrapper destination — `code` is the published refusal code. |
+| `main/wrap/security.ts` | `UrlPolicy` *(type)* | When to use: calling `assertSafeUrl` — the opt-in private/HTTP exceptions and an injectable resolver. |
 | `main/wrap/store.ts` | `WrapStore` | - |
 | `main/wrap/store.ts` | `StoreResult` *(type)* | - |
 | `main/wrap/transport.ts` | `fetchWithPolicy` | Fetch one page while enforcing URL policy, redirects, timeout and the byte cap. |
@@ -879,10 +879,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `renderer/cortex-panel.ts` | `CortexDeps` *(type)* | Callbacks the panel needs from the app shell. |
 | `renderer/deck/panel-tabs.ts` | `switchTab` | When to use: a tab button, a harvest, or a decision arriving. |
 | `renderer/deck/panel-tabs.ts` | `DeckTab` *(type)* | Which lower panel is on screen. |
-| `renderer/recording.ts` | `isRecording` | - |
-| `renderer/recording.ts` | `beginRecording` | - |
-| `renderer/recording.ts` | `finishRecording` | - |
-| `renderer/recording.ts` | `BeginPayload` *(type)* | - |
+| `renderer/recording.ts` | `isRecording` | When to use: the main process asking whether a timelapse capture is already in flight. |
+| `renderer/recording.ts` | `beginRecording` | When to use: the main process starting a capture — open the desktop stream, build the encoder and begin re-timed frames. |
+| `renderer/recording.ts` | `finishRecording` | When to use: the main process stopping a capture — flush the encoder and hand the WebM bytes back. |
+| `renderer/recording.ts` | `BeginPayload` *(type)* | When to use: the main process starting a capture — source id, output name, capture interval, fps, width and bitrate. |
 | `renderer/research/chrome.ts` | `wireFontScale` | When to use: `initResearchPanel` — the readability control, which zooms the whole |
 | `renderer/research/chrome.ts` | `ResearchChrome` | When to use: `initResearchPanel` — one chrome per panel. |
 | `renderer/research/chrome.ts` | `ResearchChromeDeps` *(type)* | When to use: `ResearchChrome` — the nodes it shows, hides and paints. |

@@ -11,6 +11,7 @@
  */
 import type { Recipe, RecipeStep } from './recipe-store.js';
 
+/** When to use: injecting the primitives into `replayRecipe` — act, waitFor and optional signature lookup. */
 export interface RecipeRunner {
   act(options: {
     targetText?: string;
@@ -23,6 +24,7 @@ export interface RecipeRunner {
   componentSignature?(targetText: string): Promise<{ signature?: string; tag?: string; error?: string }>;
 }
 
+/** When to use: one replay transcript row — the step, its outcome, timing and stopping code. */
 export interface ReplayStepResult {
   index: number;
   step: RecipeStep;
@@ -32,6 +34,7 @@ export interface ReplayStepResult {
   error?: string;
 }
 
+/** When to use: the `recipe_run` reply — status, the per-step transcript and where it stopped. */
 export interface ReplayResult {
   status: 'ok' | 'failed';
   recipeId: string;
@@ -42,6 +45,7 @@ export interface ReplayResult {
   ms: number;
 }
 
+/** When to use: `recipe_run` — replay a stored recipe's steps through the injected runner and stop at the first miss. */
 export async function replayRecipe(
   runner: RecipeRunner,
   recipe: Recipe,

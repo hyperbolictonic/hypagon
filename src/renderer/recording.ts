@@ -11,6 +11,7 @@
  */
 import { ArrayBufferTarget, Muxer } from 'webm-muxer';
 
+/** When to use: the main process starting a capture — source id, output name, capture interval, fps, width and bitrate. */
 export interface BeginPayload {
   sourceId: string;
   filename: string;
@@ -36,6 +37,7 @@ let session: Session | null = null;
 
 const CODEC = 'vp09.00.10.08';
 
+/** When to use: the main process asking whether a timelapse capture is already in flight. */
 export function isRecording(): boolean {
   return session !== null;
 }
@@ -126,6 +128,7 @@ async function createEncoder(
   return { encoder, muxer, target, canvas };
 }
 
+/** When to use: the main process starting a capture — open the desktop stream, build the encoder and begin re-timed frames. */
 export async function beginRecording(payload: BeginPayload): Promise<void> {
   if (session) return;
 
@@ -165,6 +168,7 @@ export async function beginRecording(payload: BeginPayload): Promise<void> {
   window.electronAPI?.recordingReady?.();
 }
 
+/** When to use: the main process stopping a capture — flush the encoder and hand the WebM bytes back. */
 export async function finishRecording(): Promise<void> {
   const active = session;
   if (!active) {

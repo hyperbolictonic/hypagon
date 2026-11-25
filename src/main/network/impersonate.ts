@@ -64,6 +64,7 @@ export function resolveCurlBinaryPath(): string {
   return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0] ?? '';
 }
 
+/** When to use: one successful static fetch — status, headers, body, final URL and elapsed time. */
 export interface StaticFetchResult {
   status: number;
   headers: Record<string, string>;
@@ -72,6 +73,7 @@ export interface StaticFetchResult {
   elapsedMs: number;
 }
 
+/** When to use: the static tier's reply — ok, a detected challenge, an unavailable binary, or a transport error. */
 export type StaticFetchOutcome =
   | { kind: 'ok'; result: StaticFetchResult }
   | { kind: 'blocked'; status: number; reason: string }
@@ -114,6 +116,7 @@ function resolveProfile(): { profile: string; chromeMajor: string } {
   return { profile, chromeMajor: match?.[1] ?? '152' };
 }
 
+/** When to use: the static fetch tier deciding whether the curl-impersonate binary is installed before trying it. */
 export function impersonateAvailable(): boolean {
   if (unavailableReason) return false;
   const binary = resolveCurlBinaryPath();
@@ -156,6 +159,7 @@ export function isChallenge(
   );
 }
 
+/** When to use: the cheap acquisition tier — fetch a URL with a Chrome-identical TLS/H2 fingerprint, escalating on a challenge. */
 export async function fetchStatic(
   url: string,
   opts: { timeoutMs?: number; cookieHeader?: string } = {},

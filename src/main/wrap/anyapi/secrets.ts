@@ -16,22 +16,26 @@ import type { BindingTable, SecretBinding, SecretProvider } from 'anyapi-to-mcp/
 
 import type { WrapSecretMetadata } from '../secrets.ts';
 
+/** When to use: injecting the encrypted store into `createSecretAdapter` (list plus host-scoped resolve). */
 export interface WrapSecretSource {
   list(): WrapSecretMetadata[];
   resolve(name: string, host: string): Promise<{ ok: boolean; value?: string }>;
 }
 
+/** When to use: reporting a secret the core cannot bind — its name and the human-readable reason. */
 export type WrapSecretRefusal = {
   readonly name: string;
   readonly reason: string;
 };
 
+/** When to use: handing the core its binding table, provider and the refusals to surface. */
 export type WrapSecretAdapter = {
   readonly bindings: BindingTable;
   readonly provider: SecretProvider;
   readonly refused: readonly WrapSecretRefusal[];
 };
 
+/** When to use: anyapi executor startup — bind the store's secrets to exact hosts and report the refusals. */
 export function createSecretAdapter(store: WrapSecretSource): WrapSecretAdapter {
   const bindings: Record<string, SecretBinding> = {};
   const refused: WrapSecretRefusal[] = [];
