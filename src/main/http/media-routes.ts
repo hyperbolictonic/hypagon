@@ -47,7 +47,7 @@ const ROUTES: Record<string, MediaHandler> = {
 
   'POST /media/info': async (media, { readBody, sendJson }) => {
     const body = await readBody();
-    respond(sendJson, await media.info(urlOf(body)));
+    respond(sendJson, await media.reader.info(urlOf(body)));
   },
 
   'POST /media/download': async (media, { readBody, sendJson }) => {
@@ -81,7 +81,7 @@ const ROUTES: Record<string, MediaHandler> = {
 
   'POST /media/transcript': async (media, { readBody, sendJson }) => {
     const body = await readBody();
-    respond(sendJson, await media.transcript(urlOf(body), {
+    respond(sendJson, await media.reader.transcript(urlOf(body), {
       lang: optString(body?.lang),
       maxChars: optNumber(body?.maxChars),
       cursor: optNumber(body?.cursor),
@@ -91,7 +91,7 @@ const ROUTES: Record<string, MediaHandler> = {
 
   'POST /media/preview': async (media, { readBody, sendJson }) => {
     const body = await readBody();
-    respond(sendJson, await media.preview(urlOf(body), {
+    respond(sendJson, await media.reader.preview(urlOf(body), {
       lang: optString(body?.lang),
       maxChars: optNumber(body?.maxChars),
       thumbnail: body?.thumbnail !== false,

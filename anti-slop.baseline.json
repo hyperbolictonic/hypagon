@@ -35,7 +35,7 @@
       "main/media/ffmpeg.ts": 6,
       "main/media/jobs.ts": 1,
       "main/media/platform.ts": 2,
-      "main/media/service.ts": 10,
+      "main/media/service.ts": 1,
       "main/media/settings.ts": 3,
       "main/media/transcript.ts": 2,
       "main/media/updater.ts": 2,
@@ -166,10 +166,6 @@
       },
       "main/jev/controller.ts": {
         "class": 1
-      },
-      "main/media/service.ts": {
-        "class": 1,
-        "file": 1
       },
       "main/media/transcript.ts": {
         "function": 1

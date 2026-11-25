@@ -15,15 +15,15 @@ export function registerMediaIpc(getMedia: () => MediaService | null): void {
   // Human-only; the bridge may read the result.
   ipcMain.handle('media:settings:get', () => {
     const media = getMedia();
-    return media ? { ok: true, ...media.settingsSnapshot() } : NOT_READY;
+    return media ? { ok: true, ...media.settings.snapshot() } : NOT_READY;
   });
   ipcMain.handle('media:settings:save', (_event, patch: unknown) => {
     const media = getMedia();
-    return media ? { ok: true, ...media.saveMediaSettings(patch) } : NOT_READY;
+    return media ? { ok: true, ...media.settings.save(patch) } : NOT_READY;
   });
   ipcMain.handle('media:update:check', async () => {
     const media = getMedia();
-    return media ? { ok: true, updater: await media.checkForUpdate(true) } : NOT_READY;
+    return media ? { ok: true, updater: await media.settings.checkForUpdate(true) } : NOT_READY;
   });
   ipcMain.handle('media:pick-dir', async () => {
     const result = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] });
@@ -35,10 +35,10 @@ export function registerMediaIpc(getMedia: () => MediaService | null): void {
   });
   ipcMain.handle('media:ffmpeg:status', async () => {
     const media = getMedia();
-    return media ? { ok: true, ffmpeg: await media.ffmpegInfo(true) } : NOT_READY;
+    return media ? { ok: true, ffmpeg: await media.settings.ffmpeg(true) } : NOT_READY;
   });
   ipcMain.handle('media:ffmpeg:install', async () => {
     const media = getMedia();
-    return media ? { ok: true, ffmpeg: await media.installFfmpeg() } : NOT_READY;
+    return media ? { ok: true, ffmpeg: await media.settings.installFfmpeg() } : NOT_READY;
   });
 }

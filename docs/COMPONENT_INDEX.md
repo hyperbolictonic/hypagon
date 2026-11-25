@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 313 files, 996 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 317 files, 1003 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (813)
+## Types (818)
 
 | File | Export | When to use |
 |---|---|---|
@@ -308,6 +308,19 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/media/job-types.ts` | `MediaJobInput` *(type)* | When to use: the enqueue call the bridge makes. |
 | `main/media/jobs.ts` | `MediaJobs` | - |
 | `main/media/jobs.ts` | `MediaJobsOptions` *(type)* | When to use: constructing the queue — paths, binary resolution and the cookie hook. |
+| `main/media/media-reader.ts` | `MediaReader` | When to use: `/media/info`, `/media/transcript` and `/media/preview`. |
+| `main/media/media-reader.ts` | `MediaReaderDeps` *(type)* | When to use: constructing the reader — the facade owns the binary promise and cookies. |
+| `main/media/media-settings.ts` | `MediaSettingsPanel` | When to use: the Settings → Media panel and the media status poll. |
+| `main/media/media-settings.ts` | `MediaSettingsDeps` *(type)* | When to use: constructing the panel — the store and updater come from the facade. |
+| `main/media/media-types.ts` | `MediaRuntimeStatus` *(type)* | When to use: naming the runtime a media call will use. |
+| `main/media/media-types.ts` | `MediaStatus` *(type)* | When to use: `/media/status` and the Settings → Media panel. |
+| `main/media/media-types.ts` | `MediaInfo` *(type)* | When to use: reading one video's metadata without downloading it. |
+| `main/media/media-types.ts` | `MediaInfoResult` *(type)* | When to use: the `media_info` answer. |
+| `main/media/media-types.ts` | `MediaServiceError` *(type)* | A typed binary-resolution failure, re-exported for route typing. |
+| `main/media/media-types.ts` | `MediaTranscriptResult` *(type)* | When to use: the `media_transcript` answer — captions as paged text. |
+| `main/media/media-types.ts` | `MediaPreviewImage` *(type)* | One poster/thumbnail image, already encoded for the MCP image content block. |
+| `main/media/media-types.ts` | `MediaPreviewResult` *(type)* | When to use: the `media_preview` answer — metadata, an excerpt and images. |
+| `main/media/media-types.ts` | `MediaDownloadResult` *(type)* | When to use: the `media_download` answer — the queued job, or why it was refused. |
 | `main/media/platform.ts` | `mediaPlatformKey` | `win32-x64`, `darwin-arm64`, `linux-x64` — matches `bin/media/<key>`. |
 | `main/media/platform.ts` | `ytDlpFileName` | - |
 | `main/media/platform.ts` | `ytdlpRuntimeOptions` | Point yt-dlp at Electron's own binary as a Node runtime. |
@@ -319,15 +332,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/media/process-failure.ts` | `processFailure` | When to use: mapping a `CommandResult` to the media error result, or null on success. |
 | `main/media/process-failure.ts` | `ProcessFailureCopy` *(type)* | The per-call wording for a failed one-shot run. |
 | `main/media/service.ts` | `MediaService` | - |
-| `main/media/service.ts` | `MediaRuntimeStatus` *(type)* | - |
-| `main/media/service.ts` | `MediaStatus` *(type)* | - |
-| `main/media/service.ts` | `MediaInfo` *(type)* | - |
-| `main/media/service.ts` | `MediaInfoResult` *(type)* | - |
-| `main/media/service.ts` | `MediaServiceError` *(type)* | - |
-| `main/media/service.ts` | `MediaTranscriptResult` *(type)* | - |
-| `main/media/service.ts` | `MediaPreviewImage` *(type)* | - |
-| `main/media/service.ts` | `MediaPreviewResult` *(type)* | - |
-| `main/media/service.ts` | `MediaDownloadResult` *(type)* | - |
+| `main/media/service.ts` | `MediaServiceOptions` *(type)* | When to use: the boot — `rootDir` defaults to `<userData>/media`. |
 | `main/media/transcript.ts` | `parseVtt` | VTT → plain text. |
 | `main/media/transcript.ts` | `transcriptDocument` | The document stored in Cortex for one transcript. |
 | `main/media/transcript.ts` | `fetchArtifacts` | Fetch captions (and optionally the thumbnail) into `dir`. |
@@ -842,7 +847,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (175)
+## Modules (177)
 
 | File | Export | When to use |
 |---|---|---|
@@ -927,6 +932,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/marks/format-mark.ts` | `formatMark` | Renders one Set-of-Marks entry as a compact, accessibility-aware line: |
 | `main/media/auth.ts` | `needsLogin` | Does yt-dlp's output say the site wants a signed-in session? |
 | `main/media/cookie-format.ts` | `toNetscape` | Netscape cookie-file text for yt-dlp's `--cookies`. |
+| `main/media/info-payload.ts` | `warningCodes` | stderr markers worth surfacing as warnings rather than failures. |
+| `main/media/info-payload.ts` | `buildInfo` | When to use: after `--dump-single-json` — one payload to the public shape. |
 | `main/media/job-files.ts` | `listFiles` | When to use: after a successful download — the real files, largest first. |
 | `main/media/job-format.ts` | `buildFormatSelector` | Format selector for one job. |
 | `main/media/job-format.ts` | `buildDownloadArgs` | yt-dlp arguments for a job. Every value is built here, never passed through. |
