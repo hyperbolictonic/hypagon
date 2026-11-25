@@ -15,6 +15,7 @@
  */
 import type { WebContents } from 'electron';
 import { bump } from '../metrics.js';
+import { axProperty, axRole, contentRect } from './cdp.js';
 
 export interface TabWalkOptions {
   /** Light-DOM host to start from. */
@@ -65,15 +66,6 @@ const INTERACTIVE = new Set([
 const MAX_STEPS = 12;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function prop(node: any, name: string): any {
-  const found = (node?.properties || []).find((p: any) => p?.name === name);
-  return found?.value?.value;
-}
-
-function roleOf(node: any): string {
-  return String(node?.role?.value || '').toLowerCase();
-}
-
 /** Focus a CDP node; some hosts (notably with delegatesFocus) reject DOM.focus, so fall back to Runtime.callFunctionOn. */
 async function focusHostNode(dbg: any, backendNodeId: number): Promise<boolean> {
   try {
@@ -104,18 +96,8 @@ async function nodeRect(
   const rect = { x: 0, y: 0, width: 0, height: 0 };
   try {
     const raw = await send('DOM.getBoxModel', { backendNodeId });
-    const model = (raw as any)?.model || raw;
-    const quad = model?.content;
-    if (Array.isArray(quad) && quad.length >= 8) {
-      const xs = [quad[0], quad[2], quad[4], quad[6]].map(Number);
-      const ys = [quad[1], quad[3], quad[5], quad[7]].map(Number);
-      return {
-        x: Math.min(...xs),
-        y: Math.min(...ys),
-        width: Math.max(...xs) - Math.min(...xs),
-        height: Math.max(...ys) - Math.min(...ys),
-      };
-    }
+    const model = contentRect(raw);
+    if (model) return model;
   } catch {
     // A focused node without a box is still a valid focus step; keep the step with a zero rect.
   }
@@ -125,10 +107,10 @@ async function nodeRect(
 /** RootWebArea also claims `focused:true`; it is never the control the user is on. */
 function focusedNode(ax: any): any | null {
   const candidates = (ax?.nodes || []).filter(
-    (n: any) => !n.ignored && prop(n, 'focused') === true && roleOf(n) !== 'rootwebarea'
+    (n: any) => !n.ignored && axProperty(n, 'focused') === true && axRole(n) !== 'rootwebarea'
   );
   if (!candidates.length) return null;
-  return candidates.find((n: any) => INTERACTIVE.has(roleOf(n))) || candidates[0];
+  return candidates.find((n: any) => INTERACTIVE.has(axRole(n))) || candidates[0];
 }
 
 function collectBackendIds(node: any, out = new Set<number>()): Set<number> {
@@ -251,10 +233,10 @@ export async function runTabWalk(
       initialBackend &&
       initialBackend !== hostBackend &&
       inside.has(initialBackend) &&
-      INTERACTIVE.has(roleOf(initial))
+      INTERACTIVE.has(axRole(initial))
     ) {
       const rect = await nodeRect(send, initialBackend);
-      steps.push({ index: 0, role: roleOf(initial), name: String(initial.name?.value || ''), rect, gapMs: 0 });
+      steps.push({ index: 0, role: axRole(initial), name: String(initial.name?.value || ''), rect, gapMs: 0 });
     }
 
     for (let i = 0; i < maxSteps; i++) {
@@ -281,7 +263,7 @@ export async function runTabWalk(
 
       steps.push({
         index: i + 1,
-        role: roleOf(focused),
+        role: axRole(focused),
         name: String(focused.name?.value || ''),
         rect,
         gapMs: Date.now() - startedAt,

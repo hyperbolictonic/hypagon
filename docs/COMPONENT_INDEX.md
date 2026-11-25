@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 237 files, 825 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 238 files, 830 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (699)
+## Types (704)
 
 | File | Export | When to use |
 |---|---|---|
@@ -415,6 +415,11 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/ax-controls.ts` | `SealedControl` *(type)* | - |
 | `main/shadow-walk/ax-controls.ts` | `SealedFindOptions` *(type)* | - |
 | `main/shadow-walk/ax-controls.ts` | `SealedFindResult` *(type)* | - |
+| `main/shadow-walk/cdp.ts` | `axProperty` | When to use: reading one accessibility property off a CDP AX node. |
+| `main/shadow-walk/cdp.ts` | `axRole` | When to use: reading an AX node's role as a lower-cased label. |
+| `main/shadow-walk/cdp.ts` | `contentRect` | When to use: turning a `DOM.getBoxModel` response into a drawable rect; null without a box. |
+| `main/shadow-walk/cdp.ts` | `cdpSend` | When to use: a CDP send that targets the root session when no session id is given. |
+| `main/shadow-walk/cdp.ts` | `ContentRect` *(type)* | The axis-aligned viewport rect a CDP box model describes. |
 | `main/shadow-walk/component-signature.ts` | `componentSignatureOf` | - |
 | `main/shadow-walk/component-signature.ts` | `normalizeSurface` | - |
 | `main/shadow-walk/component-signature.ts` | `COMPONENT_SIGNATURE_HELPERS` | Page-side helpers, inlined into the marks/observe and text-target scripts. |

@@ -24,6 +24,7 @@ import { listFrames, type FrameInfo } from '../browser/frames.js';
 import { normalizeSurface, type ComponentSurface } from './component-signature.js';
 import { loadShadowWalkSettings } from './settings.js';
 import { clearSealedTokens, issueSealedToken } from './sealed-targets.js';
+import { axProperty, cdpSend, contentRect } from './cdp.js';
 
 export interface SealedRect {
   x: number;
@@ -142,11 +143,6 @@ interface TargetSession {
 
 const caches = new WeakMap<WebContents, CacheEntry>();
 const rates = new WeakMap<WebContents, number[]>();
-
-function property(node: any, name: string): any {
-  const found = (node?.properties || []).find((p: any) => p?.name === name);
-  return found?.value?.value;
-}
 
 function actionsFor(role: string, focusable: boolean): string[] {
   if (TYPE_ROLES.has(role)) return ['click', 'type'];
@@ -292,11 +288,7 @@ export async function findSealedControls(
     clearSealedTokens(wc);
     const docCache = new Map<string, any>();
 
-    const send = async (sessionId: string | undefined, method: string, params: Record<string, unknown> = {}) => {
-      return sessionId
-        ? ((await dbg.sendCommand(method as any, params as any, sessionId)) as any)
-        : ((await dbg.sendCommand(method as any, params as any)) as any);
-    };
+    const send = cdpSend(dbg);
 
     const sessionFor = (frame: FrameInfo | undefined): string | undefined => {
       if (!frame?.oopif || !frame.targetId) return undefined;
@@ -436,7 +428,7 @@ export async function findSealedControls(
             if (!INTERACTIVE_ROLES.has(role)) continue;
 
             const dom = closed.info.get(backend);
-            const focusable = property(node, 'focusable') === true;
+            const focusable = axProperty(node, 'focusable') === true;
             const component = componentsEnabled && dom?.host ? await surfaceFor(dom.host, session) : undefined;
             identities.push({
               backendNodeId: backend,
@@ -445,9 +437,9 @@ export async function findSealedControls(
               name: String(node.name?.value || ''),
               nodeName: dom?.nodeName || '',
               actions: actionsFor(role, focusable),
-              disabled: property(node, 'disabled') === true,
+              disabled: axProperty(node, 'disabled') === true,
               focusable,
-              focused: property(node, 'focused') === true,
+              focused: axProperty(node, 'focused') === true,
               order: order++,
               component,
             });
@@ -536,11 +528,7 @@ export async function findSealedControls(
   }
 
   const dbg = wc.debugger;
-  const send = async (sessionId: string | undefined, method: string, params: Record<string, unknown> = {}) => {
-    return sessionId
-      ? ((await dbg.sendCommand(method as any, params as any, sessionId)) as any)
-      : ((await dbg.sendCommand(method as any, params as any)) as any);
-  };
+  const send = cdpSend(dbg);
   const sessions = new Map<string, string>();
   const openedNow: string[] = [];
   try {
@@ -568,16 +556,14 @@ export async function findSealedControls(
       } catch {
         continue;
       }
-      const quad = model?.content;
-      if (!Array.isArray(quad) || quad.length < 8) continue;
-      const xs = [quad[0], quad[2], quad[4], quad[6]].map(Number);
-      const ys = [quad[1], quad[3], quad[5], quad[7]].map(Number);
+      const modelRect = contentRect(model);
+      if (!modelRect) continue;
       const offset = frame.oopif && frame.targetId ? targetRootOffsets.get(frame.targetId) : undefined;
       const rect: SealedRect = {
-        x: Math.min(...xs) + (offset?.x || 0),
-        y: Math.min(...ys) + (offset?.y || 0),
-        width: Math.max(...xs) - Math.min(...xs),
-        height: Math.max(...ys) - Math.min(...ys),
+        x: modelRect.x + (offset?.x || 0),
+        y: modelRect.y + (offset?.y || 0),
+        width: modelRect.width,
+        height: modelRect.height,
       };
       if (rect.width <= 0 || rect.height <= 0) continue;
       const inViewport =

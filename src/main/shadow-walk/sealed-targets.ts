@@ -14,6 +14,7 @@ import type { WebContents } from 'electron';
 import { bump } from '../metrics.js';
 import { listFrames } from '../browser/frames.js';
 import { discoverFrames } from '../browser/frame-tree.js';
+import { contentRect } from './cdp.js';
 
 interface SealedTarget {
   backendNodeId: number;
@@ -46,19 +47,6 @@ export function issueSealedToken(wc: WebContents, backendNodeId: number, frameId
   return token;
 }
 
-function modelRect(raw: any): { x: number; y: number; width: number; height: number } | null {
-  const quad = (raw?.model || raw)?.content;
-  if (!Array.isArray(quad) || quad.length < 8) return null;
-  const xs = [quad[0], quad[2], quad[4], quad[6]].map(Number);
-  const ys = [quad[1], quad[3], quad[5], quad[7]].map(Number);
-  return {
-    x: Math.min(...xs),
-    y: Math.min(...ys),
-    width: Math.max(...xs) - Math.min(...xs),
-    height: Math.max(...ys) - Math.min(...ys),
-  };
-}
-
 /**
  * Resolve a sealed token to a live top-level viewport centre, scrolling the real node into view.
  * Returns null when the token expired, the frame navigated, or the node disappeared.
@@ -82,7 +70,7 @@ export async function resolveSealedToken(
     await new Promise((resolve) => setTimeout(resolve, 90));
 
     const raw = await ctx.send(session, 'DOM.getBoxModel', { backendNodeId: entry.backendNodeId });
-    const model = modelRect(raw);
+    const model = contentRect(raw);
     if (!model || model.width <= 0 || model.height <= 0) return null;
 
     // Same-process box models are already top-level viewport coordinates. An OOPIF session is
