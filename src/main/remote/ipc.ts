@@ -40,44 +40,54 @@ export function registerRemoteIpc(getService: () => RemoteService | null): void 
   );
 
   ipcMain.handle('remote:set-enabled', (_event, enabled: boolean) =>
-    invoke(getService(), async (service) => ({ status: await service.setEnabled(Boolean(enabled)) })),
+    invoke(getService(), async (service) => ({ status: await service.access.setEnabled(Boolean(enabled)) })),
   );
 
   ipcMain.handle('remote:rotate-token', () =>
-    invoke(getService(), async (service) => ({ status: await service.rotateToken() })),
+    invoke(getService(), async (service) => ({ status: await service.access.rotateToken() })),
   );
 
   ipcMain.handle('remote:disconnect-sessions', () =>
-    invoke(getService(), async (service) => ({ status: await service.disconnectSessions() })),
+    invoke(getService(), async (service) => ({ status: await service.access.disconnectSessions() })),
   );
 
   ipcMain.handle('remote:set-tunnel-enabled', (_event, enabled: boolean) =>
-    invoke(getService(), async (service) => ({ status: await service.setTunnelEnabled(Boolean(enabled)) })),
+    invoke(getService(), async (service) => ({ status: await service.tunnel.setEnabled(Boolean(enabled)) })),
   );
 
   ipcMain.handle('remote:set-tunnel-config', (_event, hostname: string, token?: string) =>
-    invoke(getService(), async (service) => ({
-      status: await service.setTunnelConfig(String(hostname || ''), token ? String(token) : undefined),
-    })),
+    invoke(getService(), async (service) => {
+      await service.tunnel.configure(String(hostname || ''), token ? String(token) : undefined);
+      return { status: service.status() };
+    }),
   );
 
   ipcMain.handle('remote:set-cloudflared-mode', (_event, mode: 'manual' | 'automatic') =>
-    invoke(getService(), async (service) => ({ status: await service.setCloudflaredUpdateMode(mode) })),
+    invoke(getService(), async (service) => {
+      service.cloudflared.setUpdateMode(mode);
+      return { status: service.status() };
+    }),
   );
 
   ipcMain.handle('remote:check-cloudflared', () =>
-    invoke(getService(), async (service) => ({ status: await service.checkCloudflared() })),
+    invoke(getService(), async (service) => {
+      await service.cloudflared.check();
+      return { status: service.status() };
+    }),
   );
 
   ipcMain.handle('remote:install-cloudflared', () =>
-    invoke(getService(), async (service) => ({ status: await service.installCloudflared() })),
+    invoke(getService(), async (service) => {
+      await service.cloudflared.install();
+      return { status: service.status() };
+    }),
   );
 
   ipcMain.handle('remote:set-auth-mode', (_event, mode: 'bearer' | 'oauth') =>
-    invoke(getService(), async (service) => ({ status: await service.setAuthMode(mode) })),
+    invoke(getService(), async (service) => ({ status: await service.access.setAuthMode(mode) })),
   );
 
   ipcMain.handle('remote:rotate-oauth-client', () =>
-    invoke(getService(), async (service) => ({ status: await service.rotateOAuthClient() })),
+    invoke(getService(), async (service) => ({ status: await service.access.rotateOAuthClient() })),
   );
 }

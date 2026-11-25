@@ -173,7 +173,7 @@ export class AppServices {
       cwd: app.getPath('userData'),
       cloudflaredPath: process.env.HB_CLOUDFLARED_PATH,
     });
-    this.remote.ensureToken();
-    void this.remote.maybeAutoUpdateCloudflared();
+    this.remote.auth.ensure();
+    void this.remote.cloudflared.maybeAutoUpdate();
   }
 }

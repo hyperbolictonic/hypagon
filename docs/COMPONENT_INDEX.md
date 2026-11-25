@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 346 files, 1064 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 351 files, 1074 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (863)
+## Types (873)
 
 | File | Export | When to use |
 |---|---|---|
@@ -470,16 +470,26 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/recording/recording-service.ts` | `RecordingConfig` *(type)* | - |
 | `main/recording/recording-service.ts` | `RecordingResult` *(type)* | - |
 | `main/recording/recording-service.ts` | `RecordingStatus` *(type)* | - |
+| `main/remote/access.ts` | `RemoteAccess` | When to use: `RemoteService` — one access state per service. |
+| `main/remote/access.ts` | `RemoteAccessDeps` *(type)* | When to use: the service constructor — the three controllers and a status reader. |
+| `main/remote/auth.ts` | `RemoteAuth` | When to use: `RemoteService` — one auth state per service. |
+| `main/remote/auth.ts` | `RemoteAuthDeps` *(type)* | When to use: the service constructor — the paths it already resolved. |
+| `main/remote/cloudflared-panel.ts` | `CloudflaredPanel` | When to use: `RemoteService` — one panel per service. |
+| `main/remote/cloudflared-panel.ts` | `CloudflaredPanelDeps` *(type)* | When to use: the service constructor — the data dir and the tunnel hooks. |
+| `main/remote/gateway-child.ts` | `RemoteGateway` | When to use: `RemoteService` — one child per service. |
+| `main/remote/gateway-child.ts` | `RemoteGatewayDeps` *(type)* | When to use: the service constructor — everything the child is launched with. |
 | `main/remote/oauth-client.ts` | `oauthClientFile` | - |
 | `main/remote/oauth-client.ts` | `readOAuthClient` | - |
 | `main/remote/oauth-client.ts` | `createOAuthClient` | - |
 | `main/remote/oauth-client.ts` | `ensureOAuthClient` | - |
 | `main/remote/oauth-client.ts` | `OAuthClientCredentials` *(type)* | - |
-| `main/remote/service.ts` | `RemoteService` | Owns the app-level remote MCP gateway process. |
-| `main/remote/service.ts` | `RemoteServiceOptions` *(type)* | - |
+| `main/remote/service.ts` | `RemoteService` | When to use: the app — one service per process. |
+| `main/remote/service.ts` | `RemoteServiceOptions` *(type)* | When to use: the app bootstrap — the paths, port and bridge the gateway fronts. |
 | `main/remote/settings.ts` | `loadRemoteSettings` | - |
 | `main/remote/settings.ts` | `saveRemoteSettings` | - |
 | `main/remote/settings.ts` | `RemoteSettings` *(type)* | - |
+| `main/remote/tunnel.ts` | `RemoteTunnel` | When to use: `RemoteService` — one tunnel per service. |
+| `main/remote/tunnel.ts` | `RemoteTunnelDeps` *(type)* | When to use: the service constructor — the paths and the gateway it fronts. |
 | `main/research/anchor-store.ts` | `AnchorStore` | - |
 | `main/research/anchor-store.ts` | `StoredAnchor` *(type)* | - |
 | `main/research/anchors.ts` | `relocateCitation` | Revalidate a stored anchor against fresh HTML. |

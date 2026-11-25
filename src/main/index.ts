@@ -361,7 +361,7 @@ app.on('before-quit', () => {
   services.shutdown();
 });
 app.on('before-quit', (event) => {
-  if (!services.remote || !services.remote.isRunning() || remoteShutdownStarted) return;
+  if (!services.remote || !services.remote.gateway.running() || remoteShutdownStarted) return;
   event.preventDefault();
   remoteShutdownStarted = true;
   void services.remote.stop().finally(() => app.quit());

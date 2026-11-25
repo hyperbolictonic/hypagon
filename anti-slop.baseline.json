@@ -52,7 +52,6 @@
       "main/recipes/replay.ts": 4,
       "main/recording/recording-service.ts": 11,
       "main/remote/oauth-client.ts": 5,
-      "main/remote/service.ts": 1,
       "main/remote/settings.ts": 3,
       "main/research/anchor-store.ts": 2,
       "main/research/anchors.ts": 5,
@@ -152,10 +151,6 @@
       "main/primitives/primitives.ts": {
         "file": 1,
         "function": 6
-      },
-      "main/remote/service.ts": {
-        "class": 1,
-        "file": 1
       },
       "main/research/citation-controller.ts": {
         "class": 1,
