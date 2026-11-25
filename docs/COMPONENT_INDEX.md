@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 320 files, 1021 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 323 files, 1025 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (836)
+## Types (838)
 
 | File | Export | When to use |
 |---|---|---|
@@ -159,10 +159,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/deck/bounds.ts` | `DeckMode` *(type)* | The three panel states the chassis compares. |
 | `main/deck/bounds.ts` | `DeckEdge` *(type)* | Which bottom corner the collapsed chip docks to. |
 | `main/deck/bounds.ts` | `DeckRect` *(type)* | A rectangle in the window's content coordinates. |
-| `main/deck/collab.ts` | `CollabController` | When to use: the deck surface — own the note cycle, list popup and overlay providers. |
-| `main/deck/collab.ts` | `CollabControllerDeps` *(type)* | When to use: building the deck — everything the collab cycle reads through. |
+| `main/deck/collab.ts` | `CollabController` | When to use: the deck surface — own the collab mode, gate and note cycle. |
+| `main/deck/collab.ts` | `CollabControllerDeps` *(type)* | When to use: building the deck — everything the collab wiring reads through. |
 | `main/deck/controller.ts` | `DeckController` | When to use: the chassis — compose the panel, the orb and the collab wiring. |
 | `main/deck/controller.ts` | `DeckControllerDeps` *(type)* | When to use: building the chassis — everything the deck reads through. |
+| `main/deck/note-cycle.ts` | `CollabNoteCycle` | When to use: `CollabController` — own the focused note and its list. |
+| `main/deck/note-cycle.ts` | `CollabNoteCycleDeps` *(type)* | When to use: constructing the controller — the providers and the page lookups. |
 | `main/deck/orb.ts` | `DeckOrb` | When to use: `DeckController` — own the collapsed chip's edge and drag. |
 | `main/deck/orb.ts` | `DeckOrbDeps` *(type)* | When to use: constructing the controller — the panel and the broadcast hook. |
 | `main/deck/panel.ts` | `DeckPanel` | When to use: `DeckController` — own the panel view and its bounds. |
@@ -865,7 +867,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (177)
+## Modules (179)
 
 | File | Export | When to use |
 |---|---|---|
@@ -913,6 +915,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/decide/events.ts` | `emitDecisionEvent` | When to use: after a call completes — fan the record out to the HUD. |
 | `main/decide/local.ts` | `runLocalOnnx` | When to use: the local-onnx protocol. |
 | `main/decide/transport.ts` | `runTypesafe` | When to use: the typesafe protocol. |
+| `main/deck/collab-providers.ts` | `CollabProviders` | When to use: `CollabController` — the deck's collab wiring points. |
+| `main/deck/page-script.ts` | `runInPage` | When to use: any collab in-page call — returns undefined when the tab is gone. |
 | `main/diagnostics/main-log.ts` | `mainLogFile` | - |
 | `main/diagnostics/main-log.ts` | `logMainEvent` | - |
 | `main/http/bookmarks-routes.ts` | `handleBookmarkRoutes` | When to use: the bridge request handler — dispatch `/bookmarks`. Returns |

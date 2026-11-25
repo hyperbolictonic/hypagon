@@ -135,16 +135,16 @@ export class AppServices {
     chassis.deck.collab.setEnabledProvider(() => this.deps.experimental().get().collab);
     chassis.jev.setPolicyProvider(() => this.deps.jevPolicy());
     // The deck toolbar's list + note cycling read exactly what the page overlay shows.
-    chassis.deck.collab.setThreadsProvider((filter) => collaboration.list(filter));
-    chassis.deck.collab.setOverlayRefresher(() => collaboration.refreshOverlay());
-    chassis.deck.collab.setResolver((id) => collaboration.resolve(id, 'Resolved from the collab note list.'));
-    chassis.deck.collab.setClassListener((target, added, removed) => {
+    chassis.deck.collab.providers.threads = (filter) => collaboration.list(filter);
+    chassis.deck.collab.providers.overlayRefresher = () => collaboration.refreshOverlay();
+    chassis.deck.collab.providers.resolver = (id) => collaboration.resolve(id, 'Resolved from the collab note list.');
+    chassis.deck.collab.providers.classListener = (target, added, removed) => {
       try {
         this.collaboration?.recordClassEdit(target, added, removed);
       } catch {
         // Class-edit bookkeeping is best-effort; the page already applied it.
       }
-    });
+    };
     chassis.collaboration.setNoteHandler((note) => {
       try {
         this.collaboration?.create({

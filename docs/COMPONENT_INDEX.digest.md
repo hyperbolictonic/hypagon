@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-320 modules, 1021 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+323 modules, 1025 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -59,9 +59,12 @@
 | `main/decide/transport.ts` | 1: runTypesafe |
 | `main/decide/types.ts` | 6: DecisionProtocol, DecisionConfig, DecisionCall, DecisionFailureCode, DecisionResult, DecisionEvent |
 | `main/deck/bounds.ts` | 15: pageInsetOf, panelBounds, orbDragBounds, nearestEdge, PAGE_SCROLLBAR_GUTTER, PANEL_WIDTH, DECK_ORB_SIZE, DECK_ORB_VIEW, … (15) |
+| `main/deck/collab-providers.ts` | 1: CollabProviders |
 | `main/deck/collab.ts` | 2: CollabController, CollabControllerDeps |
 | `main/deck/controller.ts` | 2: DeckController, DeckControllerDeps |
+| `main/deck/note-cycle.ts` | 2: CollabNoteCycle, CollabNoteCycleDeps |
 | `main/deck/orb.ts` | 2: DeckOrb, DeckOrbDeps |
+| `main/deck/page-script.ts` | 1: runInPage |
 | `main/deck/panel.ts` | 2: DeckPanel, DeckPanelDeps |
 | `main/diagnostics/console-log.ts` | 2: ConsoleLogBuffer, ConsoleLogEntry |
 | `main/diagnostics/main-log.ts` | 2: mainLogFile, logMainEvent |
@@ -123,10 +126,7 @@
 | `main/llm/alternates.ts` | 1: readAlternates |
 | `main/llm/llm-surface.ts` | 1: LlmSurface |
 | `main/llm/probe-transport.ts` | 3: ProbeTransport, ProbeResponse, ProbeTransportDeps |
-| `main/llm/read-surface.ts` | 2: ReadSurface, ReadSurfaceDeps |
-| `main/llm/surface-probe.ts` | 2: SurfaceProbe, SurfaceProbeDeps |
-| `main/llm/surface-types.ts` | 18: coded, TEXT_ACCEPT, NEGOTIATE_ACCEPT, MARKDOWN_LINK_RE, TEXT_LINK_RE, DEFAULT_READ_CHARS, MAX_READ_CHARS, LlmSurfaceKind, … (18) |
 
-… and 195 more module(s) — grep the full index.
+… and 198 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

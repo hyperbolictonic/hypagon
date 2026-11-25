@@ -164,9 +164,9 @@ export class IpcSurface {
     // Collab mode: toolbar pill, note cycling, concise list.
     ipcMain.on('chassis:set-collab-mode', (_: any, open: boolean) => deck.setCollabMode(Boolean(open)));
     ipcMain.on('chassis:collab-escape', () => deck.exitCollabUi());
-    ipcMain.on('chassis:collab-navigate', (_: any, delta: number) => deck.collab.navigate(delta));
+    ipcMain.on('chassis:collab-navigate', (_: any, delta: number) => deck.collab.cycle.navigate(delta));
     ipcMain.on('chassis:collab-toggle-list', (_: any, anchor?: { x: number; y: number; width: number; height: number }) =>
-      deck.collab.toggleList(anchor),
+      deck.collab.cycle.toggleList(anchor),
     );
   }
 

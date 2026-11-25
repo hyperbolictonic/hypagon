@@ -184,8 +184,8 @@ export function createCollaborationSurface(host: ChassisHost): CollaborationSurf
     activeWebContents: () => activeWebContents(host),
     pageInset: () => host.deck.panel.pageInset(),
     setCollabMode: (open) => host.deck.setCollabMode(open),
-    resolveNote: (id) => host.deck.collab.resolveNote(id),
-    forwardClassEdit: (target, added, removed) => host.deck.collab.forwardClassEdit(target, added, removed),
+    resolveNote: (id) => host.deck.collab.cycle.resolveNote(id),
+    forwardClassEdit: (target, added, removed) => host.deck.collab.providers.forwardClassEdit(target, added, removed),
     log: host.log,
   });
 }
