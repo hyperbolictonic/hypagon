@@ -16,6 +16,8 @@ import { closeWrapWrapperModal, loadWrapWrappers } from './settings-wrap-wrapper
 import { activeWrapTab, initWrapSecrets, loadWrapSettings } from './settings-wrap-secrets';
 import { initResearchSettings, loadResearchSettings } from './settings-research';
 import { initShadowWalkSettings, loadShadowWalkSettings } from './settings-shadow-walk';
+import { initInputSettings, loadInputSettings } from './settings-input';
+import { initJevSettings, loadJevSettings } from './settings-jev';
 
 declare global {
   interface Window {
@@ -447,6 +449,8 @@ initMediaPanel();
 initWrapSecrets();
 initResearchSettings();
 initShadowWalkSettings();
+initInputSettings();
+initJevSettings();
 
 // ---- WEB STATE: breadcrumbs, cookies, localStorage/sessionStorage ----------
 async function refreshWebState(): Promise<void> {
@@ -1492,135 +1496,11 @@ if (settingsBtn && settingsModal) {
     button.addEventListener('click', () => showSettingsTab(button.dataset.settingsTab || 'decision'));
   }
 
-  // ---- Human input pacing (Settings → INPUT) ------------------------------------------------
-  const inputForm = document.getElementById('settings-input-form') as HTMLFormElement | null;
-  const inputMouse = document.getElementById('input-mouse-speed') as HTMLInputElement | null;
-  const inputTyping = document.getElementById('input-typing-speed') as HTMLInputElement | null;
-  const inputDwell = document.getElementById('input-click-dwell') as HTMLInputElement | null;
-  const inputMouseValue = document.getElementById('input-mouse-value') as HTMLElement | null;
-  const inputTypingValue = document.getElementById('input-typing-value') as HTMLElement | null;
-  const inputDwellValue = document.getElementById('input-dwell-value') as HTMLElement | null;
-  const inputReset = document.getElementById('settings-input-reset') as HTMLButtonElement | null;
-  const inputResult = document.getElementById('settings-input-result') as HTMLElement | null;
-
-  function showInputResult(kind: 'success' | 'error' | 'info', text: string) {
-    showAlert(inputResult, kind, text);
-  }
-
-  function syncInputLabels() {
-    if (inputMouse && inputMouseValue) inputMouseValue.textContent = inputMouse.value;
-    if (inputTyping && inputTypingValue) inputTypingValue.textContent = inputTyping.value;
-    if (inputDwell && inputDwellValue) inputDwellValue.textContent = inputDwell.value;
-  }
-
-  function applyInputProfile(profile: { mouseSpeedPxPerSec: number; typingWpm: number; clickDwellMs: number }) {
-    if (inputMouse) inputMouse.value = String(profile.mouseSpeedPxPerSec);
-    if (inputTyping) inputTyping.value = String(profile.typingWpm);
-    if (inputDwell) inputDwell.value = String(profile.clickDwellMs);
-    syncInputLabels();
-  }
-
-  async function loadInputSettings() {
-    try {
-      const profile = await window.electronAPI?.getInputProfile();
-      if (profile) applyInputProfile(profile);
-    } catch (err: any) {
-      showInputResult('error', `Could not read the input profile: ${err?.message || err}`);
-    }
-  }
-
-  for (const slider of [inputMouse, inputTyping, inputDwell]) {
-    slider?.addEventListener('input', syncInputLabels);
-  }
-
-  inputForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    try {
-      const result = await window.electronAPI?.saveInputProfile({
-        mouseSpeedPxPerSec: Number(inputMouse?.value) || undefined,
-        typingWpm: Number(inputTyping?.value) || undefined,
-        clickDwellMs: inputDwell ? Number(inputDwell.value) : undefined,
-      });
-      if (result?.ok) {
-        applyInputProfile(result.profile);
-        showInputResult('success', 'Applied — the next click and keystroke use the new pacing.');
-      } else {
-        showInputResult('error', validationMessage(result));
-      }
-    } catch (err: any) {
-      showInputResult('error', `Save failed: ${err?.message || err}`);
-    }
-  });
-
-  inputReset?.addEventListener('click', () => {
-    // Defaults mirror DEFAULT_INPUT_PROFILE in src/main/telemetry/input-profile.ts.
-    applyInputProfile({ mouseSpeedPxPerSec: 1400, typingWpm: 220, clickDwellMs: 55 });
-    showInputResult('info', 'Defaults restored in the form — press SAVE to apply.');
-  });
 
   const showResult = (kind: 'success' | 'error' | 'info', text: string) => {
     showAlert(resultEl, kind, text);
   };
 
-  const jevToggle = document.getElementById('settings-jev-enabled') as HTMLInputElement | null;
-  const jevStatusEl = document.getElementById('settings-jev-status');
-  const jevModePrefer = document.getElementById('settings-jev-mode-prefer') as HTMLButtonElement | null;
-  const jevModeEnforce = document.getElementById('settings-jev-mode-enforce') as HTMLButtonElement | null;
-
-  const paintJevMode = (mode: 'prefer' | 'enforce', locked: boolean) => {
-    const pairs: Array<[HTMLButtonElement | null, boolean]> = [
-      [jevModePrefer, mode === 'prefer'],
-      [jevModeEnforce, mode === 'enforce'],
-    ];
-    for (const [button, active] of pairs) {
-      if (!button) continue;
-      button.classList.toggle('btn-active', active);
-      button.classList.toggle('btn-primary', active);
-      button.setAttribute('aria-pressed', String(active));
-      button.disabled = locked;
-    }
-  };
-
-  /** JEV is optional: only offerable once a decision model is configured. */
-  const applyJevSettings = (result: any) => {
-    const power = result?.settings?.power === true;
-    const mode: 'prefer' | 'enforce' = result?.settings?.mode === 'enforce' ? 'enforce' : 'prefer';
-    const decisionConfigured = result?.decisionConfigured === true;
-    if (jevToggle) {
-      jevToggle.checked = power;
-      jevToggle.disabled = !decisionConfigured;
-    }
-    paintJevMode(mode, !decisionConfigured || !power);
-    if (jevStatusEl) {
-      jevStatusEl.textContent = !decisionConfigured
-        ? 'Requires a configured decision model.'
-        : !power
-          ? 'OFF — agents receive full page markdown.'
-          : mode === 'enforce'
-            ? 'ENFORCE — unscoped page reads are refused; the agent must use jev_index + read_section.'
-            : 'PREFER — tools lead with the index; full-page reads are still allowed.';
-    }
-  };
-  const loadJevSettings = async (): Promise<void> => {
-    try {
-      applyJevSettings(await window.electronAPI!.getJevSettings());
-    } catch {
-      // Best effort: the toggle keeps its last state.
-    }
-  };
-  jevToggle?.addEventListener('change', async () => {
-    if (!jevToggle) return;
-    const result = await window.electronAPI?.saveJevSettings({ power: jevToggle.checked });
-    if (result?.ok) applyJevSettings(result);
-    else jevToggle.checked = !jevToggle.checked;
-  });
-  const saveJevMode = async (mode: 'prefer' | 'enforce') => {
-    const result = await window.electronAPI?.saveJevSettings({ mode });
-    if (result?.ok) applyJevSettings(result);
-  };
-  jevModePrefer?.addEventListener('click', () => void saveJevMode('prefer'));
-  jevModeEnforce?.addEventListener('click', () => void saveJevMode('enforce'));
-  window.electronAPI?.onJevSettings(() => void loadJevSettings());
 
   const showStatus = (status: any, stored: any) => {
     if (status?.configured) {

@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-223 modules, 792 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+225 modules, 796 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -127,6 +127,6 @@
 | `main/shadow-walk/settings.ts` | 14: normalizeShadowWalkSettings, loadShadowWalkSettings, saveShadowWalkSettings, shadowWalkStatus, shadowWalkRefusal, SHADOW_WALK_SETTINGS_FILE, DEFAULT_SHADOW_WALK_SETTINGS, shadowWalkSettings, … (14) |
 | `main/shadow-walk/tab-walk.ts` | 4: runTabWalk, TabWalkOptions, TabWalkStep, TabWalkResult |
 
-… and 97 more module(s) — grep the full index.
+… and 99 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.
