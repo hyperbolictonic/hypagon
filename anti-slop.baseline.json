@@ -155,9 +155,6 @@
       "main/deck/collab.ts": {
         "class": 1
       },
-      "main/deck/controller.ts": {
-        "class": 1
-      },
       "main/hil/hil-manager.ts": {
         "class": 1
       },

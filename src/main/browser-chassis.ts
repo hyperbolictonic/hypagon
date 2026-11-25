@@ -158,7 +158,7 @@ export class BrowserChassis {
   /** The render fan-out for the shell and the deck. */
   readonly bus = new ShellBus({
     window: () => this.mainWindow,
-    deckView: () => this.deck.getView(),
+    deckView: () => this.deck.panel.getView(),
   });
   /** HUD heartbeat and viewport-recovery watchdog. */
   hud!: HudWatchdog;
@@ -211,7 +211,7 @@ export class BrowserChassis {
       log: (level, message) => this.telemetry.addLog(level, message),
       broadcastState: () => this.telemetry.broadcastState(),
       positionDeck: () => this.deck.position(),
-      bringDeckToFront: () => this.deck.bringToFront(),
+      bringDeckToFront: () => this.deck.panel.bringToFront(),
       applyZoomStep: (action) => this.zoom.setZoom({ action }),
       applyZoom: (wc) => this.zoom.applyTo(wc),
       setInputScale: (wc, scale) => this.input.simulator.setViewportScale(wc, scale),

@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-317 modules, 1003 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+320 modules, 1021 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -58,8 +58,11 @@
 | `main/decide/sensitive-gate.ts` | 3: detectSensitiveGate, SensitiveGate, GateDetection |
 | `main/decide/transport.ts` | 1: runTypesafe |
 | `main/decide/types.ts` | 6: DecisionProtocol, DecisionConfig, DecisionCall, DecisionFailureCode, DecisionResult, DecisionEvent |
+| `main/deck/bounds.ts` | 15: pageInsetOf, panelBounds, orbDragBounds, nearestEdge, PAGE_SCROLLBAR_GUTTER, PANEL_WIDTH, DECK_ORB_SIZE, DECK_ORB_VIEW, … (15) |
 | `main/deck/collab.ts` | 2: CollabController, CollabControllerDeps |
-| `main/deck/controller.ts` | 3: DeckController, DeckMode, DeckControllerDeps |
+| `main/deck/controller.ts` | 2: DeckController, DeckControllerDeps |
+| `main/deck/orb.ts` | 2: DeckOrb, DeckOrbDeps |
+| `main/deck/panel.ts` | 2: DeckPanel, DeckPanelDeps |
 | `main/diagnostics/console-log.ts` | 2: ConsoleLogBuffer, ConsoleLogEntry |
 | `main/diagnostics/main-log.ts` | 2: mainLogFile, logMainEvent |
 | `main/downloads/download-manager.ts` | 2: DownloadManager, DownloadRecord |
@@ -123,10 +126,7 @@
 | `main/llm/read-surface.ts` | 2: ReadSurface, ReadSurfaceDeps |
 | `main/llm/surface-probe.ts` | 2: SurfaceProbe, SurfaceProbeDeps |
 | `main/llm/surface-types.ts` | 18: coded, TEXT_ACCEPT, NEGOTIATE_ACCEPT, MARKDOWN_LINK_RE, TEXT_LINK_RE, DEFAULT_READ_CHARS, MAX_READ_CHARS, LlmSurfaceKind, … (18) |
-| `main/llm/surface-url.ts` | 4: isPageUrl, kindScope, resolveSurfaceUrl, normalizeUrl |
-| `main/marks/format-mark.ts` | 1: formatMark |
-| `main/marks/inject-script.ts` | 2: marksInjectorScript, MarksInjectorOptions |
 
-… and 192 more module(s) — grep the full index.
+… and 195 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

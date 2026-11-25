@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 317 files, 1003 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 320 files, 1021 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (818)
+## Types (836)
 
 | File | Export | When to use |
 |---|---|---|
@@ -144,11 +144,29 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/decide/types.ts` | `DecisionFailureCode` *(type)* | When to use: mapping a failure to its typed code. |
 | `main/decide/types.ts` | `DecisionResult` *(type)* | When to use: the entry point's return value. |
 | `main/decide/types.ts` | `DecisionEvent` *(type)* | When to use: the HUD's DECISIONS tab record. |
+| `main/deck/bounds.ts` | `pageInsetOf` | When to use: the page inset — only a visible floating panel covers the page. |
+| `main/deck/bounds.ts` | `panelBounds` | The panel's bounds for the current mode. Collapsed is the orb chip (or the |
+| `main/deck/bounds.ts` | `orbDragBounds` | One live drag step: forward the pointer delta, clamped inside the content area. |
+| `main/deck/bounds.ts` | `nearestEdge` | Drop: dock to the nearest vertical edge. |
+| `main/deck/bounds.ts` | `PAGE_SCROLLBAR_GUTTER` | Deck geometry. The panel sits over the page, clear of the scrollbar track. |
+| `main/deck/bounds.ts` | `PANEL_WIDTH` | Width of the Command Deck HUD (docked and floating). |
+| `main/deck/bounds.ts` | `DECK_ORB_SIZE` | Orb chip size and screen margin. The native view is larger than the visible |
+| `main/deck/bounds.ts` | `DECK_ORB_VIEW` | The native view's side, including the padding the chip is drawn inside. |
+| `main/deck/bounds.ts` | `DECK_ORB_VIEW_PAD` | Half the padding either side of the chip, used to anchor the collapsed view. |
+| `main/deck/bounds.ts` | `DECK_ORB_MARGIN` | Gap between the docked chip and the window edge. |
+| `main/deck/bounds.ts` | `TOOLBAR_BAR_WIDTH` | Collab-mode toolbar pill: the orb is replaced by this bar. |
+| `main/deck/bounds.ts` | `SIDEBAR_TRANSITION_MS` | Sidebar transition duration, shared by the native bounds animation and the panel's CSS reveal. |
+| `main/deck/bounds.ts` | `DeckMode` *(type)* | The three panel states the chassis compares. |
+| `main/deck/bounds.ts` | `DeckEdge` *(type)* | Which bottom corner the collapsed chip docks to. |
+| `main/deck/bounds.ts` | `DeckRect` *(type)* | A rectangle in the window's content coordinates. |
 | `main/deck/collab.ts` | `CollabController` | When to use: the deck surface — own the note cycle, list popup and overlay providers. |
 | `main/deck/collab.ts` | `CollabControllerDeps` *(type)* | When to use: building the deck — everything the collab cycle reads through. |
-| `main/deck/controller.ts` | `DeckController` | When to use: the chassis — own the deck panel view, its modes and orb geometry. |
-| `main/deck/controller.ts` | `DeckMode` *(type)* | When to use: a surface that stores or compares the deck's panel state. |
+| `main/deck/controller.ts` | `DeckController` | When to use: the chassis — compose the panel, the orb and the collab wiring. |
 | `main/deck/controller.ts` | `DeckControllerDeps` *(type)* | When to use: building the chassis — everything the deck reads through. |
+| `main/deck/orb.ts` | `DeckOrb` | When to use: `DeckController` — own the collapsed chip's edge and drag. |
+| `main/deck/orb.ts` | `DeckOrbDeps` *(type)* | When to use: constructing the controller — the panel and the broadcast hook. |
+| `main/deck/panel.ts` | `DeckPanel` | When to use: `DeckController` — own the panel view and its bounds. |
+| `main/deck/panel.ts` | `DeckPanelDeps` *(type)* | When to use: constructing the controller — the window, loader and mode readers. |
 | `main/diagnostics/console-log.ts` | `ConsoleLogBuffer` | The bounded, newest-last console buffer. |
 | `main/diagnostics/console-log.ts` | `ConsoleLogEntry` *(type)* | One captured page console line. |
 | `main/downloads/download-manager.ts` | `DownloadManager` | - |

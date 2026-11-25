@@ -132,13 +132,13 @@ export class AppServices {
     this.media = media;
     media.startUpdater();
 
-    chassis.deck.setEnabledProvider(() => this.deps.experimental().get().collab);
+    chassis.deck.collab.setEnabledProvider(() => this.deps.experimental().get().collab);
     chassis.jev.setPolicyProvider(() => this.deps.jevPolicy());
     // The deck toolbar's list + note cycling read exactly what the page overlay shows.
-    chassis.deck.setThreadsProvider((filter) => collaboration.list(filter));
-    chassis.deck.setOverlayRefresher(() => collaboration.refreshOverlay());
-    chassis.deck.setResolver((id) => collaboration.resolve(id, 'Resolved from the collab note list.'));
-    chassis.deck.setClassListener((target, added, removed) => {
+    chassis.deck.collab.setThreadsProvider((filter) => collaboration.list(filter));
+    chassis.deck.collab.setOverlayRefresher(() => collaboration.refreshOverlay());
+    chassis.deck.collab.setResolver((id) => collaboration.resolve(id, 'Resolved from the collab note list.'));
+    chassis.deck.collab.setClassListener((target, added, removed) => {
       try {
         this.collaboration?.recordClassEdit(target, added, removed);
       } catch {

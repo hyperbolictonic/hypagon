@@ -24,7 +24,7 @@ export function reassertChassisViewport(host: ChassisHost): void {
 /** Keep the deck overlay and the emulated tab viewport in step. */
 export function setViewportVisibility(host: ChassisHost, visible: boolean): void {
   host.tabSetup.manager?.setViewportVisibility(visible);
-  host.deck.setOverlayVisible(visible);
+  host.deck.panel.setOverlayVisible(visible);
 }
 
 /** The active tab's web contents, with the network tap attached. */

@@ -151,22 +151,22 @@ export class IpcSurface {
     ipcMain.handle('chassis:get-sidebar-mode', () => deck.getMode());
     ipcMain.handle('chassis:get-sidebar-state', () => deck.surfaceState());
     // TEMP instrumentation: live bounds for verifying collab-mode geometry.
-    ipcMain.handle('chassis:get-sidebar-bounds', () => deck.getView()?.getBounds() ?? null);
+    ipcMain.handle('chassis:get-sidebar-bounds', () => deck.panel.getView()?.getBounds() ?? null);
     ipcMain.on('chassis:set-sidebar-mode', (_: any, mode: 'docked' | 'floating' | 'collapsed') => deck.setMode(mode));
     ipcMain.on('chassis:toggle-sidebar-mode', () => deck.toggleMode());
 
     // Orb drag choreography (only meaningful while collapsed).
-    ipcMain.on('chassis:set-sidebar-orb-edge', (_: any, edge: 'left' | 'right') => deck.setOrbEdge(edge));
+    ipcMain.on('chassis:set-sidebar-orb-edge', (_: any, edge: 'left' | 'right') => deck.orb.setEdge(edge));
     // Live drag: forward pointer deltas, clamped inside the content area.
-    ipcMain.on('chassis:orbit-drag', (_: any, delta: { dx: number; dy: number }) => deck.dragOrb(delta));
-    ipcMain.on('chassis:orbit-drag-end', () => deck.endOrbDrag());
+    ipcMain.on('chassis:orbit-drag', (_: any, delta: { dx: number; dy: number }) => deck.orb.drag(delta));
+    ipcMain.on('chassis:orbit-drag-end', () => deck.orb.endDrag());
 
     // Collab mode: toolbar pill, note cycling, concise list.
     ipcMain.on('chassis:set-collab-mode', (_: any, open: boolean) => deck.setCollabMode(Boolean(open)));
     ipcMain.on('chassis:collab-escape', () => deck.exitCollabUi());
-    ipcMain.on('chassis:collab-navigate', (_: any, delta: number) => deck.navigate(delta));
+    ipcMain.on('chassis:collab-navigate', (_: any, delta: number) => deck.collab.navigate(delta));
     ipcMain.on('chassis:collab-toggle-list', (_: any, anchor?: { x: number; y: number; width: number; height: number }) =>
-      deck.toggleList(anchor),
+      deck.collab.toggleList(anchor),
     );
   }
 

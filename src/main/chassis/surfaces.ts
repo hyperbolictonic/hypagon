@@ -130,7 +130,7 @@ export function createDeckController(host: ChassisHost): DeckController {
     log: host.log,
     onModeChanged: () => host.tabSetup.manager?.updateActiveTabBounds(),
     sendToShell: (channel, payload) => host.bus.toShell(channel, payload),
-    onPanelLoaded: () => host.deck.sendToPanel('chassis:decision-status', decisionStatus()),
+    onPanelLoaded: () => host.deck.panel.send('chassis:decision-status', decisionStatus()),
     stopSelection: () => host.collaboration.stopSelection(),
   });
 }
@@ -182,10 +182,10 @@ export function createHudWatchdog(host: ChassisHost): HudWatchdog {
 export function createCollaborationSurface(host: ChassisHost): CollaborationSurface {
   return new CollaborationSurface({
     activeWebContents: () => activeWebContents(host),
-    pageInset: () => host.deck.pageInset(),
+    pageInset: () => host.deck.panel.pageInset(),
     setCollabMode: (open) => host.deck.setCollabMode(open),
-    resolveNote: (id) => host.deck.resolveNote(id),
-    forwardClassEdit: (target, added, removed) => host.deck.forwardClassEdit(target, added, removed),
+    resolveNote: (id) => host.deck.collab.resolveNote(id),
+    forwardClassEdit: (target, added, removed) => host.deck.collab.forwardClassEdit(target, added, removed),
     log: host.log,
   });
 }
@@ -203,7 +203,7 @@ export function createWindowBoot(host: ChassisHost): WindowBootSurface {
     logDownload: (record) => host.logDownload(record),
     setupTabs: () => host.tabSetup.setup(),
     registerIpc: () => host.registerIpc(),
-    setupDeck: () => host.deck.setup(),
+    setupDeck: () => host.deck.panel.setup(),
   });
 }
 
