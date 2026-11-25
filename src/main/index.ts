@@ -444,7 +444,7 @@ function jevPayload(): { settings: ReturnType<JevSettingsStore['get']>; availabl
 ipcMain.handle('settings:get-experimental', () => ({ ok: true, settings: experimentalSettings().get() }));
 ipcMain.handle('settings:save-experimental', (_event, patch: unknown) => {
   const settings = experimentalSettings().savePatch(patch);
-  chassis.broadcast('experimental:settings', settings);
+  chassis.bus.broadcast('experimental:settings', settings);
   // Turning the gate off must also leave collab mode and drop page highlights.
   if (!settings.collab) {
     chassis.deck.setCollabMode(false);
@@ -456,7 +456,7 @@ ipcMain.handle('settings:save-experimental', (_event, patch: unknown) => {
 ipcMain.handle('settings:get-jev', () => ({ ok: true, ...jevPayload() }));
 ipcMain.handle('settings:save-jev', (_event, patch: unknown) => {
   jevSettings().savePatch(patch);
-  chassis.broadcast('jev:settings', jevSettings().get());
+  chassis.bus.broadcast('jev:settings', jevSettings().get());
   return { ok: true, ...jevPayload() };
 });
 
@@ -517,7 +517,7 @@ ipcMain.handle('chassis:web-state', async () => {
 registerRemoteIpc(() => activeRemoteService);
 
 onRecordingStatus((state) => {
-  chassis.broadcast('recording:status', state);
+  chassis.bus.broadcast('recording:status', state);
 });
 
 /**
@@ -578,7 +578,7 @@ async function createWindow() {
     if (isMainFrame) logMainEvent('hud-did-fail-load', { code, description, url });
   });
 
-  chassis.setWindow(mainWindow);
+  chassis.boot.window(mainWindow);
   setRecordingWindow(mainWindow);
   loadRecordingConfig();
 
@@ -657,7 +657,7 @@ async function createWindow() {
     const collaboration = new CollaborationService(
       new CollaborationStore(path.join(app.getPath('userData'), 'collaboration.json')),
       chassis,
-      () => chassis.broadcast('collaboration:updated'),
+      () => chassis.bus.broadcast('collaboration:updated'),
       () => experimentalSettings().get().collab,
     );
     activeCollaborationService = collaboration;

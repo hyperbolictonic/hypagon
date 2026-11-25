@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 264 files, 884 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 266 files, 889 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,12 +17,15 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (752)
+## Types (757)
 
 | File | Export | When to use |
 |---|---|---|
 | `main/boot/hud-watchdog.ts` | `HudWatchdog` | The HUD heartbeat and viewport-recovery watchdog. |
 | `main/boot/hud-watchdog.ts` | `HudWatchdogDeps` *(type)* | Dependencies the watchdog needs from the shell window and views. |
+| `main/boot/window-boot.ts` | `WindowBootSurface` | The shell-window boot sequence, bound once. |
+| `main/boot/window-boot.ts` | `DownloadNotice` *(type)* | A finished download, as the boot hook reports it. |
+| `main/boot/window-boot.ts` | `WindowBootDeps` *(type)* | Dependencies the boot sequence needs from the chassis surfaces. |
 | `main/browser/frame-eval.ts` | `evaluateInFrames` | - |
 | `main/browser/frame-eval.ts` | `FrameEvalOptions` *(type)* | - |
 | `main/browser/frame-eval.ts` | `FrameEvalResult` *(type)* | - |
@@ -487,6 +490,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/tab-walk.ts` | `TabWalkOptions` *(type)* | - |
 | `main/shadow-walk/tab-walk.ts` | `TabWalkStep` *(type)* | - |
 | `main/shadow-walk/tab-walk.ts` | `TabWalkResult` *(type)* | - |
+| `main/shell/event-bus.ts` | `ShellBus` | The render fan-out for the shell window and the deck panel. |
+| `main/shell/event-bus.ts` | `ShellBusDeps` *(type)* | Dependencies the bus needs to reach the two render surfaces. |
 | `main/shield/consent-controller.ts` | `ConsentController` | When to use: the chassis — own the consent sweep: answered-origins memory, timed attempts and the explicit dismiss. |
 | `main/shield/consent-controller.ts` | `ConsentControllerDeps` *(type)* | When to use: building the chassis — the wall breaker, the policy and the log/telemetry come from it. |
 | `main/shield/shield-breaker.ts` | `ShieldBreaker` | - |

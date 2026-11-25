@@ -58,6 +58,8 @@ import { RenderedSnapshotEngine } from './snapshots/rendered-snapshot.js';
 import { PrerenderEngine, type PrerenderOptions } from './prerender/prerender-engine.js';
 import { isTakeoverShortcut } from './takeover-key.js';
 import { HudWatchdog } from './boot/hud-watchdog.js';
+import { WindowBootSurface } from './boot/window-boot.js';
+import { ShellBus } from './shell/event-bus.js';
 import { IpcSurface } from './ipc/ipc-surface.js';
 import { readPageInfo } from './tabs/page-info.js';
 import { TabSurface } from './tabs/tab-surface.js';
@@ -174,7 +176,6 @@ export class BrowserChassis {
     currentUrl: () => this.state.currentUrl,
   });
   /** True while a person has explicitly taken control from the HUD. */
-  private hudShortcutBound = false;
   /** How to answer a consent wall. KUANG_CONSENT_POLICY=essential|accept|reject. */
   private consentPolicy: ConsentPolicy = (() => {
     const raw = String(process.env.HB_CONSENT_POLICY ?? process.env.KUANG_CONSENT_POLICY ?? '').toLowerCase();
@@ -193,8 +194,37 @@ export class BrowserChassis {
   private sidebarOverlayVisible = true;
   /** Monotonic page revision: bumped on navigation and every mutating action. */
   private revision = 0;
+  /** The shell-window boot deps, kept out of the constructor. */
+  private createWindowBoot(): WindowBootSurface {
+    return new WindowBootSurface({
+      setMainWindow: (win) => {
+        this.mainWindow = win;
+      },
+      hilSetWindow: (win) => this.hil.manager.setWindow(win),
+      hudWatch: (win) => this.hud.watch(win),
+      toggleHuman: () => this.human.toggle(),
+      createTray: (win) => {
+        this.trayManager = new TrayManager({ mainWindow: win, closeToTrayDefault: false });
+      },
+      attachDownloads: (session) => this.downloads.manager.attachToSession(session),
+      onDownloadComplete: (handler) => this.downloads.manager.onDownloadComplete(handler),
+      logDownload: (record) => {
+        this.telemetry.addLog('info', `Download Complete: "${record.filename}" (${record.totalBytes} bytes) saved to data/downloads/`);
+        this.telemetry.emitSimpleEvent('harvest', `File Download Complete: ${record.filename}`);
+      },
+      setupTabs: () => this.tabSetup.setup(),
+      registerIpc: () => {
+        this.ipc = this.createIpcSurface();
+        this.ipc.register();
+      },
+      setupDeck: () => this.deck.setup(),
+    });;
+  }
+
   /** The tab manager's lifecycle reactions. */
   private tabEvents!: ReturnType<typeof createTabEventHandlers>;
+  /** The shell-window boot sequence. */
+  readonly boot!: WindowBootSurface;
   /** The page overlay picker and its signal channel. */
   readonly collaboration = new CollaborationSurface({
     activeWebContents: () => this.getActiveWebContents(),
@@ -210,6 +240,11 @@ export class BrowserChassis {
   ipc!: IpcSurface;
   /** Open/switch/close and the DevTools toggle. */
   readonly tabOps!: TabSurface;
+  /** The render fan-out for the shell and the deck. */
+  readonly bus = new ShellBus({
+    window: () => this.mainWindow,
+    deckView: () => this.deck.getView(),
+  });
   /** HUD heartbeat and viewport-recovery watchdog. */
   readonly hud = new HudWatchdog({
     window: () => this.mainWindow,
@@ -239,7 +274,7 @@ export class BrowserChassis {
   /** Log ring, state broadcasts and telemetry; every controller reports through it. */
   readonly telemetry = new TelemetrySurface({
     state: this.state,
-    send: (channel, payload) => this.sendToSurfaces(channel, payload),
+    send: (channel, payload) => this.bus.toSurfaces(channel, payload),
     zoomState: () => this.zoom.getState(),
     viewportState: () => this.tabSetup.viewport?.state(),
     activeWebContents: () => this.tabSetup.manager?.getActiveTab()?.view?.webContents ?? null,
@@ -257,7 +292,7 @@ export class BrowserChassis {
       broadcastState: () => this.telemetry.broadcastState(),
       bumpRevision: () => this.bumpRevision(),
       reassertViewport: () => this.reassertViewport(),
-      send: (channel, payload) => this.sendToSurfaces(channel, payload),
+      send: (channel, payload) => this.bus.toSurfaces(channel, payload),
       updateTray: (pending) =>
         this.trayManager?.updateStatus(this.state.agentStatus, this.state.tabs?.length ?? 0, pending),
       hilPending: () => !!this.hil.manager.getActiveRequest(),
@@ -287,6 +322,7 @@ export class BrowserChassis {
       toggleHuman: () => this.human.toggle(),
       tabEvents: this.tabEvents,
     });
+    this.boot = this.createWindowBoot();
     this.subscribeToDecisions();
     this.page = this.createPageScriptSurface();
     this.tabOps = new TabSurface({
@@ -327,7 +363,7 @@ export class BrowserChassis {
     // catch up.
     onDecision((event) => {
       this.decision.record(event);
-      this.sendToSurfaces('chassis:decision', event);
+      this.bus.toSurfaces('chassis:decision', event);
     });
   }
 
@@ -434,7 +470,7 @@ export class BrowserChassis {
       },
       onConstruct: (construct) => {
         this.latestConstruct = construct;
-        this.sendToSurfaces('chassis:construct-harvested', construct);
+        this.bus.toSurfaces('chassis:construct-harvested', construct);
       },
       addTokens: (tokens) => {
         this.state.stats.tokensHarvested += tokens;
@@ -487,7 +523,7 @@ export class BrowserChassis {
       },
       broadcast: (channel, payload) => {
         try {
-          this.broadcast(channel, payload);
+          this.bus.broadcast(channel, payload);
         } catch {
           // Broadcasts must never break the hand-off flow itself.
         }
@@ -621,7 +657,7 @@ export class BrowserChassis {
       detachedView: () => this.researchView.detached,
       harvester: () => this.harvester,
       indexPage: (url, title, content) => cortex.indexPage(url, title, content),
-      broadcast: (channel, payload) => this.broadcast(channel, payload),
+      broadcast: (channel, payload) => this.bus.broadcast(channel, payload),
       log: (level, message) => this.telemetry.addLog(level, message),
     });
   }
@@ -700,34 +736,6 @@ export class BrowserChassis {
     this.hud.start();
   }
 
-  public setWindow(win: BrowserWindow) {
-    this.mainWindow = win;
-    this.hil.manager.setWindow(win);
-    this.hud.watch(win);
-    if (!this.hudShortcutBound) {
-      this.hudShortcutBound = true;
-      win.webContents.on('before-input-event', (event, input) => {
-        if (isTakeoverShortcut(input, process.platform)) {
-          event.preventDefault();
-          this.human.toggle();
-        }
-      });
-    }
-    this.trayManager = new TrayManager({
-      mainWindow: win,
-      closeToTrayDefault: false,
-    });
-    this.downloads.manager.attachToSession(win.webContents.session);
-    this.downloads.manager.onDownloadComplete((record) => {
-      this.telemetry.addLog('info', `Download Complete: "${record.filename}" (${record.totalBytes} bytes) saved to data/downloads/`);
-      this.telemetry.emitSimpleEvent('harvest', `File Download Complete: ${record.filename}`);
-    });
-    this.tabSetup.setup();
-    this.ipc = this.createIpcSurface();
-    this.ipc.register();
-    this.deck.setup();
-  }
-
   public reassertViewport(): void {
     if (!this.mainWindow || this.mainWindow.isDestroyed()) return;
     try {
@@ -782,7 +790,7 @@ export class BrowserChassis {
     pageUrl: () => this.getPageInfo().url,
     log: (level, message) => this.telemetry.addLog(level, message),
     onModeChanged: () => this.tabSetup.manager?.updateActiveTabBounds(),
-    sendToShell: (channel, payload) => this.sendToShellWindow(channel, payload),
+    sendToShell: (channel, payload) => this.bus.toShell(channel, payload),
     onPanelLoaded: () => this.deck.sendToPanel('chassis:decision-status', decisionStatus()),
     stopSelection: () => this.collaboration.stopSelection(),
   });
@@ -809,38 +817,6 @@ export class BrowserChassis {
 
 
 /** Send to the shell window only (the deck panel receives through DeckController). */
-  private sendToShellWindow(channel: string, payload: unknown): void {    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      this.mainWindow.webContents.send(channel, payload);
-    }
-  }
-
-  private sendToSurfaces(channel: string, payload: unknown): void {
-    this.sendToShellWindow(channel, payload);
-    const panel = this.deck.getView()?.webContents;
-    if (panel && !panel.isDestroyed()) panel.send(channel, payload);
-  }
-
-  /** Broadcast an event to every render surface (shell and deck panel alike). */
-  public broadcast(channel: string, payload?: unknown): void {
-    this.sendToSurfaces(channel, payload);
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   // ---- Research session ---------------------------------------------------------------
   // The stealth research session, its settings and the per-host cooldown live in
   // ResearchSessionSurface; the crawl and search surfaces read through it.
@@ -922,7 +898,7 @@ export class BrowserChassis {
         this.deck.setOverlayVisible(visible);
       },
       pageUrl: () => this.getPageInfo().url,
-      send: (channel, payload) => this.sendToSurfaces(channel, payload),
+      send: (channel, payload) => this.bus.toSurfaces(channel, payload),
       inputSetProfile: (profile) => this.input.simulator.setProfile(profile),
       harvestMarkdown: () => this.harvest.harvestMarkdown(),
       decisionsLog: () => this.decision.events(),

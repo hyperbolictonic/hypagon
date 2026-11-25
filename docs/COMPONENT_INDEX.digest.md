@@ -2,11 +2,12 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-264 modules, 884 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+266 modules, 889 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
 | `main/boot/hud-watchdog.ts` | 2: HudWatchdog, HudWatchdogDeps |
+| `main/boot/window-boot.ts` | 3: WindowBootSurface, DownloadNotice, WindowBootDeps |
 | `main/brand-icon.ts` | 2: brandIconPath, brandIcon |
 | `main/browser-chassis.ts` | 1: BrowserChassis |
 | `main/browser/frame-eval.ts` | 3: evaluateInFrames, FrameEvalOptions, FrameEvalResult |
@@ -125,8 +126,7 @@
 | `main/research/anchor-store.ts` | 2: AnchorStore, StoredAnchor |
 | `main/research/anchors.ts` | 6: relocateCitation, relocateCitations, anchorHighlights, CitationAnchor, CitationCandidate, CitationRelocation |
 | `main/research/citation-controller.ts` | 4: CitationController, HumanHandoffResult, CitationControllerDeps, RevalidationSummary |
-| `main/research/crawl-orchestrator.ts` | 5: CrawlOrchestrator, CrawlSessionPolicy, CrawlOrchestratorDeps, RenderCrawlOptions, RenderCrawlResult |
 
-… and 139 more module(s) — grep the full index.
+… and 141 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.
