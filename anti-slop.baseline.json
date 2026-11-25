@@ -106,16 +106,10 @@
   "duplicates": {
     "files": {
       "mcp/tool-groups-data.ts": 135,
-      "mcp/tools-catalog-actuate.ts": 33,
-      "mcp/tools-catalog-capture.ts": 26,
-      "mcp/tools-catalog-desktop.ts": 14,
-      "mcp/tools-catalog-marks.ts": 32,
-      "mcp/tools-catalog-memory.ts": 21,
-      "mcp/tools-catalog-observe.ts": 6,
-      "mcp/tools-catalog-research.ts": 30,
-      "mcp/tools-catalog-workspace.ts": 21
+      "mcp/tools-catalog-memory.ts": 18,
+      "mcp/tools-catalog-workspace.ts": 18
     },
-    "totalDuplicatedLines": 318
+    "totalDuplicatedLines": 171
   },
   "modularity": {
     "files": {}

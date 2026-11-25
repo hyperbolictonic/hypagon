@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { ToolCatalogItem } from './tools-catalog-types.js';
+import { renderRows, rowsOf } from './tools-catalog-fields.js';
 
 /** When to use: the catalog segment fronting network capture: traffic, payloads, JSON queries, realtime streams and HAR export. */
 export const CAPTURE_TOOLS: ToolCatalogItem[] = [
@@ -91,15 +92,14 @@ export const CAPTURE_TOOLS: ToolCatalogItem[] = [
     },
     endpoint: '/streams/list',
     payload: (args) => ({ type: args.type, activeOnly: args.active_only }),
-    format: (data) => {
-      const list = Array.isArray(data.streams) ? data.streams : [];
-      if (list.length === 0) return 'No realtime streams (WebSocket/SSE) captured.';
-      const lines = list.map((s: any) => {
-        const state = s.closed ? 'closed' : 'OPEN';
-        return `[${s.streamId}] ${s.type.toUpperCase()} ${state} ${s.url} (msgs: ${s.messageCount || 0})`;
-      });
-      return `### Realtime Streams (${list.length})\nUse query_json_data({ source: "stream_messages", source_id: "<streamId>" }) to inspect stream data.\n\n${lines.join('\n')}`;
-    },
+    format: (data) =>
+      renderRows(rowsOf(data, 'streams'), {
+        empty: 'No realtime streams (WebSocket/SSE) captured.',
+        heading: (count) =>
+          `### Realtime Streams (${count})\nUse query_json_data({ source: "stream_messages", source_id: "<streamId>" }) to inspect stream data.\n`,
+        line: (s: any) =>
+          `[${s.streamId}] ${s.type.toUpperCase()} ${s.closed ? 'closed' : 'OPEN'} ${s.url} (msgs: ${s.messageCount || 0})`,
+      }),
   },
 {
     name: 'get_stream_messages',
@@ -114,17 +114,13 @@ export const CAPTURE_TOOLS: ToolCatalogItem[] = [
     },
     endpoint: '/streams/messages',
     payload: (args) => ({ streamId: args.stream_id, type: args.type, direction: args.direction, limit: args.limit }),
-    format: (data) => {
-      const msgs = Array.isArray(data.messages) ? data.messages : [];
-      if (msgs.length === 0) return 'No stream messages captured.';
-      const lines = msgs.map((m: any) => {
-        const dir = (m.direction || 'msg').toUpperCase();
-        const time = m.timestamp ? new Date(m.timestamp).toLocaleTimeString() : '';
-        const preview = typeof m.data === 'string' ? m.data.slice(0, 100) : JSON.stringify(m.data || m.jsonData || '').slice(0, 100);
-        return `[${time}] ${dir} (stream: ${m.streamId || 'n/a'}): ${preview}`;
-      });
-      return `### Realtime Messages (${msgs.length})\n${lines.join('\n')}`;
-    },
+    format: (data) =>
+      renderRows(rowsOf(data, 'messages'), {
+        empty: 'No stream messages captured.',
+        heading: (count) => `### Realtime Messages (${count})`,
+        line: (m: any) =>
+          `[${m.timestamp ? new Date(m.timestamp).toLocaleTimeString() : ''}] ${(m.direction || 'msg').toUpperCase()} (stream: ${m.streamId || 'n/a'}): ${typeof m.data === 'string' ? m.data.slice(0, 100) : JSON.stringify(m.data || m.jsonData || '').slice(0, 100)}`,
+      }),
   },
 {
     name: 'clear_stream_messages',

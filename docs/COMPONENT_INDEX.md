@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 438 files, 1261 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 439 files, 1278 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -985,7 +985,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | When to use: the persisted zoom policy file. |
 | `shared/zoom.ts` | `ZoomState` *(type)* | When to use: the zoom readout, the status consumers and `browser_zoom`. |
 
-## Modules (297)
+## Modules (314)
 
 | File | Export | When to use |
 |---|---|---|
@@ -1188,6 +1188,23 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/tools-catalog-actuate.ts` | `ACTUATE_TOOLS` | When to use: the catalog segment fronting input actuation primitives: clicks, typing, keys, forms, waits and shadow walks. |
 | `mcp/tools-catalog-capture.ts` | `CAPTURE_TOOLS` | When to use: the catalog segment fronting network capture: traffic, payloads, JSON queries, realtime streams and HAR export. |
 | `mcp/tools-catalog-desktop.ts` | `DESKTOP_TOOLS` | When to use: the catalog segment fronting human-in-the-loop, notifications, window visibility and the system tray. |
+| `mcp/tools-catalog-fields.ts` | `markIdAliases` | The alias ladder older callers use for a mark id, or undefined when none was given. |
+| `mcp/tools-catalog-fields.ts` | `markIdFrom` | Resolve a mark id, or throw the calling tool's own hint. |
+| `mcp/tools-catalog-fields.ts` | `formatMarks` | The marks array as one line per mark, or the whole payload as JSON when there is none. |
+| `mcp/tools-catalog-fields.ts` | `offscreenFlag` | `include_offscreen` as the query flag the bridge expects. |
+| `mcp/tools-catalog-fields.ts` | `includeOffscreenParameter` | The `include_offscreen` parameter, with the wording the calling tool wants. |
+| `mcp/tools-catalog-fields.ts` | `targetParameters` | The selector/x/y target triple. `coerceSelector` matches the tools that accept a non-string |
+| `mcp/tools-catalog-fields.ts` | `conditionList` | A condition list, folding the single `condition` legacy form into an array. |
+| `mcp/tools-catalog-fields.ts` | `conditionLines` | One `✓ type — evidence` line per condition result. |
+| `mcp/tools-catalog-fields.ts` | `notificationParameters` | The notification parameter set. The title default, the urgency choices and the wording differ |
+| `mcp/tools-catalog-fields.ts` | `queryPagingPayload` | The `q` / `tag` / `limit` query payload the search lists share. Only the default limit differs |
+| `mcp/tools-catalog-fields.ts` | `rowsOf` | The rows of `data[key]`, or an empty list. |
+| `mcp/tools-catalog-fields.ts` | `renderRows` | `empty` when there are no rows, else the heading plus one line per row. |
+| `mcp/tools-catalog-fields.ts` | `engineParameters` | The `engine` / `engines` / `url_template` triple the two search tools share. |
+| `mcp/tools-catalog-fields.ts` | `urlAsPayload` | The `url` / `as` pair every representation fetch accepts. |
+| `mcp/tools-catalog-fields.ts` | `representationEnum` | The advertised-representation enum the representation fetches share; only the wording differs. |
+| `mcp/tools-catalog-fields.ts` | `collectPayload` | The collect fields shared by `collect_all` and `extract(kind: "collect")`. |
+| `mcp/tools-catalog-fields.ts` | `collectFormat` | The collected rows, or the failing tool's own line. |
 | `mcp/tools-catalog-marks.ts` | `MARKS_TOOLS` | When to use: the catalog segment fronting Set-of-Marks grounding: screenshots, the mark registry and mark actuation. |
 | `mcp/tools-catalog-memory.ts` | `MEMORY_TOOLS` | When to use: the catalog segment fronting local Cortex memory: semantic recall, browsing history and bookmarks. |
 | `mcp/tools-catalog-navigate.ts` | `NAVIGATE_TOOLS` | When to use: the catalog segment fronting page navigation, history, page status and devtools checks. |

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { BRAND } from '../shared/brand.js';
 import type { ToolCatalogItem } from './tools-catalog-types.js';
+import { notificationParameters } from './tools-catalog-fields.js';
 
 /** When to use: the catalog segment fronting human-in-the-loop, notifications, window visibility and the system tray. */
 export const DESKTOP_TOOLS: ToolCatalogItem[] = [
@@ -51,12 +52,15 @@ export const DESKTOP_TOOLS: ToolCatalogItem[] = [
 {
     name: 'send_notification',
     description: 'Dispatches an OS native desktop notification to alert the user without blocking agent execution.',
-    parameters: {
-      message: z.string().describe('Notification body message'),
-      title: z.string().optional().default(BRAND.product).describe('Notification title'),
-      urgency: z.enum(['normal', 'critical', 'low']).optional().default('normal').describe('Urgency level (default: normal)'),
-      sound: z.boolean().optional().default(true).describe('Whether to play notification alert sound (default: true)'),
-    },
+    parameters: notificationParameters({
+      message: 'Notification body message',
+      title: 'Notification title',
+      titleDefault: BRAND.product,
+      urgencyChoices: ['normal', 'critical', 'low'],
+      urgencyDefault: 'normal',
+      urgencyDescription: 'Urgency level (default: normal)',
+      soundDescription: 'Whether to play notification alert sound (default: true)',
+    }),
     endpoint: '/notify',
     payload: (args) => {
       const title = args?.title || BRAND.product;
@@ -70,12 +74,15 @@ export const DESKTOP_TOOLS: ToolCatalogItem[] = [
     hidden: true,
     deprecatedInFavorOf: 'send_notification',
     description: 'Deprecated alias for send_notification (same /notify endpoint; defaults urgency=critical). Triggers a native desktop notification to summon the human operator for Human-in-the-Loop (HIL) assistance (e.g. 2FA code, SMS prompt, CAPTCHA override, or manual login).',
-    parameters: {
-      message: z.string().describe('Specific reason why the user is needed and instructions for what to do in the browser.'),
-      title: z.string().optional().default(`${BRAND.browser}: Human Intervention Required`).describe('Notification title'),
-      urgency: z.enum(['low', 'normal', 'critical']).optional().default('critical').describe('Urgency level of the notification.'),
-      sound: z.boolean().optional().default(true).describe('Whether to play notification alert sound (default: true)'),
-    },
+    parameters: notificationParameters({
+      message: 'Specific reason why the user is needed and instructions for what to do in the browser.',
+      title: 'Notification title',
+      titleDefault: `${BRAND.browser}: Human Intervention Required`,
+      urgencyChoices: ['low', 'normal', 'critical'],
+      urgencyDefault: 'critical',
+      urgencyDescription: 'Urgency level of the notification.',
+      soundDescription: 'Whether to play notification alert sound (default: true)',
+    }),
     endpoint: '/notify',
     payload: (args) => {
       const title = args?.title || `${BRAND.browser}: Human Intervention Required`;

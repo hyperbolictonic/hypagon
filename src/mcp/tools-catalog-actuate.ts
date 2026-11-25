@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { formatMark } from '../main/marks/format-mark.js';
 import type { ToolCatalogItem } from './tools-catalog-types.js';
+import { conditionLines, conditionList, targetParameters } from './tools-catalog-fields.js';
 
 /** When to use: the catalog segment fronting input actuation primitives: clicks, typing, keys, forms, waits and shadow walks. */
 export const ACTUATE_TOOLS: ToolCatalogItem[] = [
@@ -10,9 +11,11 @@ export const ACTUATE_TOOLS: ToolCatalogItem[] = [
     deprecatedInFavorOf: 'act',
     description: 'Clicks an element on the active web page using a CSS selector or direct viewport coordinates (x, y). Simulates realistic human pointer movement and switch actuation.',
     parameters: {
-      selector: z.string().optional().describe('CSS selector of the element to click (e.g. "button.submit", "a[href*=\'login\']", "#search-input")'),
-      x: z.coerce.number().optional().describe('Direct X coordinate on the viewport in pixels'),
-      y: z.coerce.number().optional().describe('Direct Y coordinate on the viewport in pixels'),
+      ...targetParameters({
+        selector: 'CSS selector of the element to click (e.g. "button.submit", "a[href*=\'login\']", "#search-input")',
+        x: 'Direct X coordinate on the viewport in pixels',
+        y: 'Direct Y coordinate on the viewport in pixels',
+      }),
     },
     endpoint: '/click',
     payload: (args) => {
@@ -79,9 +82,12 @@ export const ACTUATE_TOOLS: ToolCatalogItem[] = [
       'Choosing the target is a separate job: when a decision model is configured AND two or more controls plausibly match, prefer observe(as:"components") -> decide -> act(mark_id); when exactly one control matches, find/act is faster and deterministic.',
     parameters: {
       mark_id: z.coerce.number().optional().describe('Target Set-of-Marks badge id from observe/find/take_screenshot (preferred)'),
-      selector: z.coerce.string().optional().describe('CSS selector of the target, when you have no mark id (e.g. "button.submit", "#search-input")'),
-      x: z.coerce.number().optional().describe('Viewport X for coordinate targeting (pair with y)'),
-      y: z.coerce.number().optional().describe('Viewport Y for coordinate targeting (pair with x)'),
+      ...targetParameters({
+        coerceSelector: true,
+        selector: 'CSS selector of the target, when you have no mark id (e.g. "button.submit", "#search-input")',
+        x: 'Viewport X for coordinate targeting (pair with y)',
+        y: 'Viewport Y for coordinate targeting (pair with x)',
+      }),
       target_text: z.string().optional().describe('Anchor by visible text when the control has no semantics (React card divs, handler-only elements). Resolves the deepest visible element containing the text; refuses when more than one match is ambiguous'),
       sealed_token: z.string().optional().describe('Opaque token from find(sealed:true); scrolls/re-measures the sealed control before acting'),
       action: z.enum(['click', 'focus', 'hover', 'type', 'press', 'fill']).default('click').describe('Action to perform (default: "click")'),
@@ -191,9 +197,9 @@ export const ACTUATE_TOOLS: ToolCatalogItem[] = [
       conditions: z.array(z.record(z.string(), z.any())).describe('Conditions to assert immediately, e.g. [{"type":"text","text":"GBP"},{"type":"url","pattern":"/flights"}]'),
     },
     endpoint: '/expect',
-    payload: (args) => ({ conditions: args?.conditions || (args?.condition ? [args.condition] : []) }),
+    payload: (args) => ({ conditions: conditionList(args) }),
     format: (data) => {
-      const lines = (data.results || []).map((r: any) => `${r.ok ? '✓' : '✗'} ${r.type}${r.evidence ? ` — ${r.evidence}` : ''}`);
+      const lines = conditionLines(data);
       return `${data.ok ? 'PASS' : 'FAIL'} (${data.results.filter((r: any) => r.ok).length}/${data.results.length} conditions)\n${lines.join('\n')}`;
     },
   },
@@ -212,13 +218,13 @@ export const ACTUATE_TOOLS: ToolCatalogItem[] = [
     },
     endpoint: '/wait-for',
     payload: (args) => ({
-      conditions: args?.conditions || (args?.condition ? [args.condition] : []),
+      conditions: conditionList(args),
       require: args?.require || 'any',
       timeout_ms: args?.timeout_ms,
       poll_ms: args?.poll_ms,
     }),
     format: (data) => {
-      const lines = (data.results || []).map((r: any) => `${r.ok ? '✓' : '✗'} ${r.type}${r.evidence ? ` — ${r.evidence}` : ''}`);
+      const lines = conditionLines(data);
       return `${data.ok ? 'READY' : 'TIMED OUT'} after ${data.waitedMs}ms (${data.attempts} polls, require=${data.require})\n${lines.join('\n')}`;
     },
   },
@@ -227,9 +233,11 @@ export const ACTUATE_TOOLS: ToolCatalogItem[] = [
     description:
       'Enter a closed shadow root like a keyboard user: focus the host, then send trusted Tab (or Shift+Tab) steps and read the accessibility tree to confirm which inner control actually has focus. Stops when focus leaves the host, the step budget is spent, or focus is lost. Use act(action:"press", text:"Enter") to activate the landed control.',
     parameters: {
-      selector: z.string().optional().describe('Light-DOM host selector to start from'),
-      x: z.coerce.number().optional().describe('Viewport x of the host (when there is no stable selector)'),
-      y: z.coerce.number().optional().describe('Viewport y of the host'),
+      ...targetParameters({
+        selector: 'Light-DOM host selector to start from',
+        x: 'Viewport x of the host (when there is no stable selector)',
+        y: 'Viewport y of the host',
+      }),
       direction: z.enum(['forward', 'backward']).optional().default('forward').describe('Tab or Shift+Tab'),
       max_steps: z.coerce.number().optional().default(8).describe('Maximum key presses (1-12)'),
       restore: z.coerce.boolean().optional().default(true).describe('Return focus to the host if the walk fails'),

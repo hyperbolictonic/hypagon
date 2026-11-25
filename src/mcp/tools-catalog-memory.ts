@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { ToolCatalogItem } from './tools-catalog-types.js';
+import { queryPagingPayload, renderRows, rowsOf } from './tools-catalog-fields.js';
 
 /** When to use: the catalog segment fronting local Cortex memory: semantic recall, browsing history and bookmarks. */
 export const MEMORY_TOOLS: ToolCatalogItem[] = [
@@ -70,22 +71,16 @@ export const MEMORY_TOOLS: ToolCatalogItem[] = [
     },
     endpoint: '/bookmarks',
     method: 'GET',
-    payload: (args) => ({
-      queryParams: {
-        ...(args?.query ? { q: args.query } : {}),
-        ...(args?.tag ? { tag: args.tag } : {}),
-        limit: String(args?.limit ?? 20),
-      },
-    }),
-    format: (data) => {
-      const bm = Array.isArray(data.bookmarks) ? data.bookmarks : [];
-      if (bm.length === 0) return 'No bookmarks found.';
-      const lines = bm.map((b: any) => {
-        const tags = Array.isArray(b.tags) && b.tags.length > 0 ? ` [${b.tags.join(', ')}]` : '';
-        return `- [${b.id || 'bm'}] "${b.title || 'Untitled'}" - ${b.url}${tags}`;
-      });
-      return `### Saved Bookmarks (${bm.length})\n${lines.join('\n')}`;
-    },
+    payload: (args) => queryPagingPayload(args, 20),
+    format: (data) =>
+      renderRows(rowsOf(data, 'bookmarks'), {
+        empty: 'No bookmarks found.',
+        heading: (count) => `### Saved Bookmarks (${count})`,
+        line: (b: any) => {
+          const tags = Array.isArray(b.tags) && b.tags.length > 0 ? ` [${b.tags.join(', ')}]` : '';
+          return `- [${b.id || 'bm'}] "${b.title || 'Untitled'}" - ${b.url}${tags}`;
+        },
+      }),
   },
 {
     name: 'delete_bookmark',

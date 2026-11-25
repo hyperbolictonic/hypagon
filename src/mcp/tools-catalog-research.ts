@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { ToolCatalogItem } from './tools-catalog-types.js';
+import { collectFormat, collectPayload, engineParameters, representationEnum, urlAsPayload } from './tools-catalog-fields.js';
 
 /** When to use: the catalog segment fronting URL-to-Markdown, multi-engine search, crawling and cited topic research. */
 export const RESEARCH_TOOLS: ToolCatalogItem[] = [
@@ -43,10 +44,10 @@ export const RESEARCH_TOOLS: ToolCatalogItem[] = [
       'GATED: it refuses with NO_LLM_SURFACE unless the site actually advertises a surface, and never fetches arbitrary URLs or guesses paths. The result carries `scope` ("origin"|"page") and `scope_mismatch` — true when you asked for a page but only a site-wide index exists. For the rendered page use `observe({ as: "markdown" })`; for one call that always returns text use `read_url`.',
     parameters: {
       url: z.string().optional().describe('Site or page URL (default: the active tab)'),
-      as: z.enum(['llms_txt', 'llms_full', 'markdown', 'text']).optional().describe('Which advertised representation to fetch (default: the probe\'s recommended)'),
+      as: representationEnum("Which advertised representation to fetch (default: the probe's recommended)"),
     },
     endpoint: '/llm/fetch',
-    payload: (args) => ({ url: args?.url, as: args?.as }),
+    payload: (args) => urlAsPayload(args),
     format: (data) => {
       const warn = data.scope_mismatch ? '\n> Scope mismatch: you asked for a page, but this is the site-wide index.' : '';
       return `### llm_fetch ${data.as} · ${data.url} (${data.contentType || 'unknown'}, ${data.bytes} bytes, ${data.scope} scope, via ${data.via})${warn}\n\n${data.content || ''}`;
@@ -61,10 +62,10 @@ export const RESEARCH_TOOLS: ToolCatalogItem[] = [
       url: z.string().optional().describe('URL to read as Markdown (default: the active tab)'),
       max_chars: z.coerce.number().optional().describe('Maximum characters to return per call (default 20000, cap 50000)'),
       cursor: z.union([z.string(), z.number()]).optional().describe('Character offset to continue from (the previous call\'s next_cursor)'),
-      as: z.enum(['llms_txt', 'llms_full', 'markdown', 'text']).optional().describe('Force a specific advertised representation instead of the probe\'s recommendation'),
+      as: representationEnum("Force a specific advertised representation instead of the probe's recommendation"),
     },
     endpoint: '/read/url',
-    payload: (args) => ({ url: args?.url, max_chars: args?.max_chars, cursor: args?.cursor, as: args?.as }),
+    payload: (args) => ({ ...urlAsPayload(args), max_chars: args?.max_chars, cursor: args?.cursor }),
     format: (data) => {
       const how = data.via === 'llm_fetch' ? `site-provided ${data.as}` : 'rendered';
       const returned = data.content?.length || 0;
@@ -91,9 +92,11 @@ export const RESEARCH_TOOLS: ToolCatalogItem[] = [
       'engines: google | duckduckgo | bing | brave | startpage | custom (custom needs url_template containing {query}, e.g. a SearXNG instance). Results are plain URLs to feed navigate_to or collect_all.',
     parameters: {
       query: z.string().describe('Search query'),
-      engine: z.enum(['google', 'duckduckgo', 'bing', 'brave', 'startpage', 'custom']).optional().describe('Pin a single engine (default: auto chain google → duckduckgo → brave)'),
-      engines: z.array(z.string()).optional().describe('Explicit ordered fallback chain (overrides engine)'),
-      url_template: z.string().optional().describe('URL template containing {query} for a custom/SearXNG engine'),
+      ...engineParameters({
+        engine: 'Pin a single engine (default: auto chain google → duckduckgo → brave)',
+        engines: 'Explicit ordered fallback chain (overrides engine)',
+        urlTemplate: 'URL template containing {query} for a custom/SearXNG engine',
+      }),
       max_results: z.coerce.number().optional().describe('Max results to return (default: Research settings)'),
     },
     endpoint: '/search/web',
@@ -166,9 +169,11 @@ export const RESEARCH_TOOLS: ToolCatalogItem[] = [
     parameters: {
       query: z.string().describe('Research topic / question'),
       max_sources: z.coerce.number().optional().default(5).describe('Distinct sources to gather (max 8)'),
-      engine: z.enum(['google', 'duckduckgo', 'bing', 'brave', 'startpage', 'custom']).optional().describe('Pin one search engine (default: auto chain)'),
-      engines: z.array(z.string()).optional().describe('Explicit ordered search-engine fallback chain'),
-      url_template: z.string().optional().describe('URL template with {query} for a custom/SearXNG engine'),
+      ...engineParameters({
+        engine: 'Pin one search engine (default: auto chain)',
+        engines: 'Explicit ordered search-engine fallback chain',
+        urlTemplate: 'URL template with {query} for a custom/SearXNG engine',
+      }),
       excerpt_chars: z.coerce.number().optional().default(1200).describe('Chars of each source kept for highlighting (max 4000)'),
       harvest_to_cortex: z.coerce.boolean().optional().describe('Index each source into LanceDB Cortex (default true)'),
       prefer_llm: z.coerce.boolean().optional().describe('Try content-negotiated Markdown/Text before rendering (default true)'),
@@ -257,20 +262,8 @@ export const RESEARCH_TOOLS: ToolCatalogItem[] = [
       max: z.coerce.number().optional().default(300).describe('Max rows to collect'),
     },
     endpoint: '/collect',
-    payload: (args) => ({
-      selector: args?.selector,
-      ref: args?.ref,
-      scroll: args?.scroll || 'container',
-      step: args?.step,
-      delay_ms: args?.delay_ms,
-      max_scrolls: args?.max_scrolls,
-      max: args?.max,
-    }),
-    format: (data) => {
-      if (data.error) return `collect_all failed: ${data.error}`;
-      const rows = (data.rows || []).map((r: any, i: number) => `${i + 1}. ${r.text}${r.href ? ` -> ${r.href}` : ''}`);
-      return `# collect_all — ${data.count} distinct rows after ${data.scrolls} scrolls\n${rows.join('\n')}`;
-    },
+    payload: (args) => collectPayload(args),
+    format: (data) => collectFormat(data, { label: 'collect_all', heading: '# collect_all —' }),
   },
 {
     name: 'prerender_links',

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { ToolCatalogItem } from './tools-catalog-types.js';
+import { collectFormat, collectPayload } from './tools-catalog-fields.js';
 
 /** When to use: the catalog segment fronting reading and harvesting the page, the JEV compaction surface and the decision-model loop. */
 export const OBSERVE_TOOLS: ToolCatalogItem[] = [
@@ -144,13 +145,11 @@ export const OBSERVE_TOOLS: ToolCatalogItem[] = [
     endpointFor: (args) => (args?.kind === 'collect' ? '/collect' : '/extract'),
     endpoints: ['/extract', '/collect'],
     payload: (args) => args?.kind === 'collect'
-      ? { kind: 'collect', selector: args?.selector, ref: args?.ref, scroll: args?.scroll || 'container', step: args?.step, delay_ms: args?.delay_ms, max_scrolls: args?.max_scrolls, max: args?.max }
+      ? { kind: 'collect', ...collectPayload(args) }
       : { kind: args?.kind || 'list', ref: args?.ref, selector: args?.selector, type: args?.type, limit: args?.limit, include_frames: args?.include_frames, max_frames: args?.max_frames, timeout_ms: args?.timeout_ms },
     format: (data, args) => {
       if (args?.kind === 'collect') {
-        if (data.error) return `extract(collect) failed: ${data.error}`;
-        const rows = (data.rows || []).map((r: any, i: number) => `${i + 1}. ${r.text}${r.href ? ` -> ${r.href}` : ''}`);
-        return `# extract(collect) - ${data.count} distinct rows after ${data.scrolls} scrolls\n${rows.join('\n')}`;
+        return collectFormat(data, { label: 'extract(collect)', heading: '# extract(collect) -' });
       }
       const frameSummary = Array.isArray(data.frames) && data.frames.length
         ? `\n\n# child frames (${data.frames.length})\n${data.frames.map((f: any) => {

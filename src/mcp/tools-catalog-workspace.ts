@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { normaliseUrl, requireUrl } from './tool-args.js';
 import type { ToolCatalogItem } from './tools-catalog-types.js';
+import { queryPagingPayload, renderRows, rowsOf } from './tools-catalog-fields.js';
 
 /** When to use: the catalog segment fronting the stateful workspace: tabs, zoom, viewport, downloads, contexts, recordings and the script vault. */
 export const WORKSPACE_TOOLS: ToolCatalogItem[] = [
@@ -301,22 +302,16 @@ export const WORKSPACE_TOOLS: ToolCatalogItem[] = [
     },
     endpoint: '/scripts/list',
     method: 'GET',
-    payload: (args) => ({
-      queryParams: {
-        ...(args?.query ? { q: args.query } : {}),
-        ...(args?.tag ? { tag: args.tag } : {}),
-        limit: String(args?.limit ?? 100),
-      },
-    }),
-    format: (data) => {
-      const scripts = Array.isArray(data.scripts) ? data.scripts : [];
-      if (scripts.length === 0) return 'No matching scripts in vault.';
-      const lines = scripts.map((s: any) => {
-        const score = typeof s.score === 'number' ? ` (score: ${s.score.toFixed(2)})` : '';
-        return `- "${s.name}"${score}: ${s.description || 'No description'}`;
-      });
-      return `### Script Vault (${scripts.length})\n${lines.join('\n')}`;
-    },
+    payload: (args) => queryPagingPayload(args, 100),
+    format: (data) =>
+      renderRows(rowsOf(data, 'scripts'), {
+        empty: 'No matching scripts in vault.',
+        heading: (count) => `### Script Vault (${count})`,
+        line: (s: any) => {
+          const score = typeof s.score === 'number' ? ` (score: ${s.score.toFixed(2)})` : '';
+          return `- "${s.name}"${score}: ${s.description || 'No description'}`;
+        },
+      }),
   },
 {
     name: 'delete_script',
