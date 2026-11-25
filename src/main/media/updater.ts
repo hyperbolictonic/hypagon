@@ -19,6 +19,7 @@ import path from 'node:path';
 
 import type { MediaSettings, MediaUpdaterState } from '../../shared/media.ts';
 import { compareYtDlpVersions, parseChecksum, ytDlpReleaseAsset } from './platform.ts';
+import { requestReleaseJson, requestReleaseText } from './updater-http.ts';
 
 const RELEASE_API = 'https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest';
 const CHECKSUMS_ASSET = 'SHA2-256SUMS';
@@ -64,6 +65,11 @@ export function jitter(ms: number, random: () => number = Math.random): number {
   return Math.max(60_000, Math.round(ms - spread + random() * spread * 2));
 }
 
+/** The auto-update switch and the environment kill-switch. */
+function autoUpdateEnabled(settings: MediaSettings): boolean {
+  return settings.autoUpdate && process.env.HB_MEDIA_AUTOUPDATE !== '0';
+}
+
 export class MediaUpdater {
   private readonly options: MediaUpdaterOptions;
   private readonly fetchImpl: typeof fetch;
@@ -89,7 +95,7 @@ export class MediaUpdater {
 
   state(): MediaUpdaterState {
     const settings = this.options.settings();
-    const autoUpdate = this.autoUpdateEnabled(settings);
+    const autoUpdate = autoUpdateEnabled(settings);
     return {
       autoUpdate,
       intervalMinutes: settings.updateIntervalMinutes,
@@ -102,10 +108,6 @@ export class MediaUpdater {
       checking: this.inFlight !== null,
       updateAvailable: compareYtDlpVersions(this.latestVersion, this.installedVersion) > 0,
     };
-  }
-
-  private autoUpdateEnabled(settings: MediaSettings): boolean {
-    return settings.autoUpdate && process.env.HB_MEDIA_AUTOUPDATE !== '0';
   }
 
   start(): void {
@@ -158,13 +160,13 @@ export class MediaUpdater {
     const settings = this.options.settings();
     this.installedVersion = await this.options.readVersion(this.options.binaryPath());
 
-    if (!force && !this.autoUpdateEnabled(settings)) {
+    if (!force && !autoUpdateEnabled(settings)) {
       this.lastCheckedAt = nowIso();
       return this.state();
     }
 
     try {
-      const release = await this.requestJson<ReleaseResponse>(RELEASE_API, 20_000);
+      const release = await requestReleaseJson<ReleaseResponse>(this.fetchImpl, RELEASE_API, 20_000);
       const latest = normaliseVersion(release.tag_name);
       if (!latest) throw new Error('the GitHub release has no tag name');
       this.latestVersion = latest;
@@ -182,7 +184,7 @@ export class MediaUpdater {
             (entry) => entry.name === CHECKSUMS_ASSET,
           )?.browser_download_url;
           if (!checksumsUrl) throw new Error(`release ${latest} has no ${CHECKSUMS_ASSET}`);
-          const checksums = await this.requestText(checksumsUrl, 20_000);
+          const checksums = await requestReleaseText(this.fetchImpl, checksumsUrl, 20_000);
           const expected = parseChecksum(checksums, assetName);
           if (!expected) throw new Error(`${CHECKSUMS_ASSET} has no entry for ${assetName}`);
 
@@ -264,22 +266,4 @@ export class MediaUpdater {
     }
   }
 
-  private async requestJson<T>(url: string, timeoutMs: number): Promise<T> {
-    const response = await this.fetchImpl(url, {
-      headers: { Accept: 'application/vnd.github+json', 'User-Agent': USER_AGENT },
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!response.ok) throw new Error(`GitHub API responded ${response.status}`);
-    return (await response.json()) as T;
-  }
-
-  private async requestText(url: string, timeoutMs: number): Promise<string> {
-    const response = await this.fetchImpl(url, {
-      redirect: 'follow',
-      headers: { 'User-Agent': USER_AGENT },
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!response.ok) throw new Error(`download of checksums responded ${response.status}`);
-    return response.text();
-  }
 }

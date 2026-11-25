@@ -158,9 +158,6 @@
       "main/media/transcript.ts": {
         "function": 1
       },
-      "main/media/updater.ts": {
-        "class": 1
-      },
       "main/network/network-interceptor.ts": {
         "function": 1
       },

@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 323 files, 1025 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 324 files, 1027 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -867,7 +867,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (179)
+## Modules (181)
 
 | File | Export | When to use |
 |---|---|---|
@@ -965,6 +965,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/media/settings.ts` | `normalizeMediaSettings` | - |
 | `main/media/settings.ts` | `DEFAULT_MEDIA_SETTINGS` | - |
 | `main/media/settings.ts` | `MediaSettingsStore` | - |
+| `main/media/updater-http.ts` | `requestReleaseJson` | When to use: the GitHub release lookup — JSON with the GitHub media type. |
+| `main/media/updater-http.ts` | `requestReleaseText` | When to use: downloading the checksum list — plain text, redirects followed. |
 | `main/metrics.ts` | `bump` | - |
 | `main/metrics.ts` | `snapshot` | - |
 | `main/metrics.ts` | `summary` | Grouped summary for `bridge_health` — three numbers instead of a wall of keys. |
