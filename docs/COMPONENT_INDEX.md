@@ -120,12 +120,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/crawl/crawler.ts` | `normalizeUrl` | Strips the fragment so `/a` and `/a#x` are one page. |
 | `main/crawl/crawler.ts` | `matchesAnyPattern` | True when the URL matches any pattern (glob by default, `/regex/` when wrapped in slashes). |
 | `main/crawl/crawler.ts` | `linksFromMarkdown` | Extracts absolute links from Markdown (`[text](href)`), resolved against the page URL. |
-| `main/crawl/crawler.ts` | `Crawler` | - |
-| `main/crawl/crawler.ts` | `HumanAssistInfo` *(type)* | - |
-| `main/crawl/crawler.ts` | `CrawlOptions` *(type)* | - |
-| `main/crawl/crawler.ts` | `CrawlPage` *(type)* | - |
-| `main/crawl/crawler.ts` | `CrawlOutcome` *(type)* | - |
-| `main/crawl/crawler.ts` | `CrawlerDeps` *(type)* | - |
+| `main/crawl/crawler.ts` | `Crawler` | When to use: `deep_crawl` and a research run — one BFS crawl over the research session. |
+| `main/crawl/crawler.ts` | `HumanAssistInfo` *(type)* | When to use: the crawler's `onHuman` callback — a page needs a person (needed) and later does not (done). |
+| `main/crawl/crawler.ts` | `CrawlOptions` *(type)* | When to use: `deep_crawl` and a research run — the seed, the depth/page budgets, the scope and the per-page flags. |
+| `main/crawl/crawler.ts` | `CrawlPage` *(type)* | When to use: one row of a crawl result and the research feed's source events. |
+| `main/crawl/crawler.ts` | `CrawlOutcome` *(type)* | When to use: the `deep_crawl` reply — pages, depth reached, indexing count and truncation. |
+| `main/crawl/crawler.ts` | `CrawlerDeps` *(type)* | When to use: building the chassis — the tier readers and handlers a crawl composes. |
 | `main/decide/decision-guard.ts` | `validateAnswers` | Validate one answer set. Returns the offending (question, option) pairs so the caller can |
 | `main/decide/decision-guard.ts` | `decideGuarded` | Ask, validate, eliminate, repeat. `maxAttempts` includes the first call (default 3). |
 | `main/decide/decision-guard.ts` | `DecisionGuard` *(type)* | - |
@@ -306,27 +306,27 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/marks/marks-overlay.ts` | `MarkItem` *(type)* | - |
 | `main/marks/marks-surface.ts` | `MarksSurface` | The agent-facing marks discovery surface over MarksOverlay. |
 | `main/marks/marks-surface.ts` | `MarksSurfaceDeps` *(type)* | Dependencies the marks surface needs from the active tab and policy. |
-| `main/media/binaries.ts` | `bundledYtDlpPath` | - |
-| `main/media/binaries.ts` | `writableYtDlpPath` | - |
+| `main/media/binaries.ts` | `bundledYtDlpPath` | When to use: the packaged/dev lookup of the shipped yt-dlp, before any download. |
+| `main/media/binaries.ts` | `writableYtDlpPath` | When to use: the download and update target under the user data directory. |
 | `main/media/binaries.ts` | `readYtDlpVersion` | Run `<binary> --version`; null means it did not execute or printed nothing. |
 | `main/media/binaries.ts` | `ensureYtDlp` | The yt-dlp this process should run, or a typed error when neither copy works. |
-| `main/media/binaries.ts` | `isMediaBinary` | - |
-| `main/media/binaries.ts` | `MediaBinarySource` *(type)* | - |
-| `main/media/binaries.ts` | `MediaBinary` *(type)* | - |
-| `main/media/binaries.ts` | `MediaBinaryError` *(type)* | - |
+| `main/media/binaries.ts` | `isMediaBinary` | When to use: narrowing an `ensureYtDlp` result before using its path. |
+| `main/media/binaries.ts` | `MediaBinarySource` *(type)* | When to use: telling a bundled yt-dlp from one downloaded into the user data directory. |
+| `main/media/binaries.ts` | `MediaBinary` *(type)* | When to use: a resolved yt-dlp that can run — path, version and where it came from. |
+| `main/media/binaries.ts` | `MediaBinaryError` *(type)* | When to use: `ensureYtDlp` refusing — the code the downloader reports and the message a human reads. |
 | `main/media/cookies.ts` | `writeCookieFile` | Write the cookies for `url` (the browser would send this host) to a temp file. |
 | `main/media/cookies.ts` | `CookieFile` *(type)* | - |
 | `main/media/exec.ts` | `runYtDlpProcess` | - |
 | `main/media/exec.ts` | `CommandResult` *(type)* | - |
-| `main/media/ffmpeg.ts` | `platformKey` | - |
-| `main/media/ffmpeg.ts` | `managedFfmpegDir` | - |
-| `main/media/ffmpeg.ts` | `ffmpegFileName` | - |
-| `main/media/ffmpeg.ts` | `managedFfmpegPath` | - |
+| `main/media/ffmpeg.ts` | `platformKey` | When to use: naming the managed download folder for the current or a given platform. |
+| `main/media/ffmpeg.ts` | `managedFfmpegDir` | When to use: the managed ffmpeg folder under a data root. |
+| `main/media/ffmpeg.ts` | `ffmpegFileName` | When to use: the managed binary name (`ffmpeg.exe` on Windows). |
+| `main/media/ffmpeg.ts` | `managedFfmpegPath` | When to use: the managed binary's absolute path for install, probe and spawn. |
 | `main/media/ffmpeg.ts` | `parseFfmpegVersion` | `ffmpeg version 6.1.1-...` → `6.1.1-...` |
 | `main/media/ffmpeg.ts` | `detectFfmpeg` | Resolve ffmpeg for the current settings. `installing` is supplied by the |
 | `main/media/ffmpeg.ts` | `installManagedFfmpeg` | Download the pinned managed build for this platform. Idempotent while a |
-| `main/media/ffmpeg.ts` | `FfmpegSource` *(type)* | - |
-| `main/media/ffmpeg.ts` | `FfmpegInfo` *(type)* | - |
+| `main/media/ffmpeg.ts` | `FfmpegSource` *(type)* | When to use: reporting where the resolved ffmpeg came from — configured path, managed download, or PATH. |
+| `main/media/ffmpeg.ts` | `FfmpegInfo` *(type)* | When to use: the Media settings row and `detectFfmpeg` — availability, version, source and error. |
 | `main/media/job-complete.ts` | `finishJob` | When to use: any terminal transition — sets state/error/time and persists. |
 | `main/media/job-complete.ts` | `completeJob` | When to use: the child closed — clean up, collect files or explain the failure. |
 | `main/media/job-complete.ts` | `CompletionDeps` *(type)* | When to use: `MediaJobs.run` — what completion needs from the queue. |
@@ -666,14 +666,14 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/tabs/window-open-policy.ts` | `popupWindowSize` | Window size requested by a `window.open` features string, clamped to something usable. |
 | `main/tabs/window-open-policy.ts` | `WindowOpenRequest` *(type)* | How a renderer's `window.open()` / `target="_blank"` request should be handled. |
 | `main/tabs/window-open-policy.ts` | `PopupSize` *(type)* | - |
-| `main/telemetry/action-ledger.ts` | `ActionLedger` | - |
+| `main/telemetry/action-ledger.ts` | `ActionLedger` | When to use: the primitives layer recording each action, and `/ledger` reading it back. |
 | `main/telemetry/action-ledger.ts` | `FieldFacts` *(type)* | Typed facts about the form control an action addressed. |
-| `main/telemetry/action-ledger.ts` | `TransitionTarget` *(type)* | - |
-| `main/telemetry/action-ledger.ts` | `AddressMode` *(type)* | - |
-| `main/telemetry/action-ledger.ts` | `TransitionRecord` *(type)* | - |
+| `main/telemetry/action-ledger.ts` | `TransitionTarget` *(type)* | When to use: a ledger record's target — mark id/selector plus the form-control facts when it was a field. |
+| `main/telemetry/action-ledger.ts` | `AddressMode` *(type)* | When to use: recording how an action addressed its target — mark id, selector, coordinates or none. |
+| `main/telemetry/action-ledger.ts` | `TransitionRecord` *(type)* | When to use: one ledger line — what was done, whether the page changed, and the evidence collected. |
 | `main/telemetry/action-ledger.ts` | `TypingOutcome` *(type)* | Evidence collected around a typing action (all in-page; the value itself never leaves the page). |
-| `main/telemetry/action-ledger.ts` | `TypingChannel` *(type)* | - |
-| `main/telemetry/action-ledger.ts` | `ActionLedgerOptions` *(type)* | - |
+| `main/telemetry/action-ledger.ts` | `TypingChannel` *(type)* | When to use: naming the input channel that produced (or was attempted for) a typed value. |
+| `main/telemetry/action-ledger.ts` | `ActionLedgerOptions` *(type)* | When to use: constructing the ledger — its directory, rotation size and log sink. |
 | `main/telemetry/chaos-kinematics.ts` | `generateChaosTrajectory` | Generates an advanced bio-kinematic trajectory incorporating chaos math, |
 | `main/telemetry/chaos-kinematics.ts` | `Point` *(type)* | Kuang Grade Mark Eleven — Bio-Kinematic Chaos & Neuromotor Mouse Engine |
 | `main/telemetry/chaos-kinematics.ts` | `PathStep` *(type)* | - |

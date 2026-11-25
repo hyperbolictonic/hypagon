@@ -22,20 +22,24 @@ import { compareYtDlpVersions, mediaPlatformKey, ytDlpFileName } from './platfor
 
 const execFileAsync = promisify(execFile);
 
+/** When to use: telling a bundled yt-dlp from one downloaded into the user data directory. */
 export type MediaBinarySource = 'bundled' | 'user-data';
 
+/** When to use: a resolved yt-dlp that can run — path, version and where it came from. */
 export interface MediaBinary {
   readonly path: string;
   readonly version: string | null;
   readonly source: MediaBinarySource;
 }
 
+/** When to use: `ensureYtDlp` refusing — the code the downloader reports and the message a human reads. */
 export interface MediaBinaryError {
   readonly ok: false;
   readonly code: 'BINARY_MISSING' | 'BINARY_BROKEN';
   readonly error: string;
 }
 
+/** When to use: the packaged/dev lookup of the shipped yt-dlp, before any download. */
 export function bundledYtDlpPath(): string {
   const key = mediaPlatformKey();
   const name = ytDlpFileName();
@@ -44,6 +48,7 @@ export function bundledYtDlpPath(): string {
     : path.join(app.getAppPath(), 'bin', 'media', key, name);
 }
 
+/** When to use: the download and update target under the user data directory. */
 export function writableYtDlpPath(): string {
   return path.join(app.getPath('userData'), 'media', 'bin', ytDlpFileName());
 }
@@ -127,6 +132,7 @@ export async function ensureYtDlp(): Promise<MediaBinary | MediaBinaryError> {
   };
 }
 
+/** When to use: narrowing an `ensureYtDlp` result before using its path. */
 export function isMediaBinary(value: MediaBinary | MediaBinaryError): value is MediaBinary {
   return (value as MediaBinaryError).ok !== false;
 }

@@ -11,12 +11,14 @@
  */
 import type { CitationAnchor } from '../research/anchors.js';
 
+/** When to use: the crawler's `onHuman` callback — a page needs a person (needed) and later does not (done). */
 export interface HumanAssistInfo {
   phase: 'needed' | 'done';
   url: string;
   reason?: string;
 }
 
+/** When to use: `deep_crawl` and a research run — the seed, the depth/page budgets, the scope and the per-page flags. */
 export interface CrawlOptions {
   startUrl: string;
   /** Link depth from the seed (default 2, max 5). Depth 0 = the seed only. */
@@ -49,6 +51,7 @@ export interface CrawlOptions {
   onPage?: (page: CrawlPage) => void;
 }
 
+/** When to use: one row of a crawl result and the research feed's source events. */
 export interface CrawlPage {
   url: string;
   title: string;
@@ -72,6 +75,7 @@ export interface CrawlPage {
   excerpt?: string;
 }
 
+/** When to use: the `deep_crawl` reply — pages, depth reached, indexing count and truncation. */
 export interface CrawlOutcome {
   startUrl: string;
   pages: CrawlPage[];
@@ -83,6 +87,7 @@ export interface CrawlOutcome {
   notes: string[];
 }
 
+/** When to use: building the chassis — the tier readers and handlers a crawl composes. */
 export interface CrawlerDeps {
   /** Content-negotiated Markdown/Text, or null when the page advertises none. */
   tryLlm?: (url: string) => Promise<{ content: string; via: string } | null>;
@@ -190,6 +195,7 @@ export function linksFromMarkdown(markdown: string, baseUrl: string): string[] {
   return Array.from(out);
 }
 
+/** When to use: `deep_crawl` and a research run — one BFS crawl over the research session. */
 export class Crawler {
   private deps: CrawlerDeps;
 

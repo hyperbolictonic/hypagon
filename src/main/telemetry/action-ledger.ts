@@ -32,6 +32,7 @@ export interface FieldFacts {
   disabled?: boolean;
 }
 
+/** When to use: a ledger record's target — mark id/selector plus the form-control facts when it was a field. */
 export interface TransitionTarget {
   id?: number;
   tag?: string;
@@ -41,8 +42,10 @@ export interface TransitionTarget {
   field?: FieldFacts;
 }
 
+/** When to use: recording how an action addressed its target — mark id, selector, coordinates or none. */
 export type AddressMode = 'mark_id' | 'selector' | 'coords' | 'none';
 
+/** When to use: one ledger line — what was done, whether the page changed, and the evidence collected. */
 export interface TransitionRecord {
   ts: number;
   action: string;
@@ -95,8 +98,10 @@ export interface TypingOutcome {
   unobservable?: boolean;
 }
 
+/** When to use: naming the input channel that produced (or was attempted for) a typed value. */
 export type TypingChannel = 'keys' | 'insertText' | 'paste';
 
+/** When to use: constructing the ledger — its directory, rotation size and log sink. */
 export interface ActionLedgerOptions {
   /** Directory to write into (default: `<cwd>/data`). */
   dir?: string;
@@ -105,6 +110,7 @@ export interface ActionLedgerOptions {
   log?: (level: 'info' | 'warn' | 'action', message: string) => void;
 }
 
+/** When to use: the primitives layer recording each action, and `/ledger` reading it back. */
 export class ActionLedger {
   private readonly file: string;
   private queue: Promise<void> = Promise.resolve();
