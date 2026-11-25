@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 433 files, 1255 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 438 files, 1261 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (953)
+## Types (956)
 
 | File | Export | When to use |
 |---|---|---|
@@ -383,6 +383,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/navigation/navigation-surface.ts` | `NavigationSurfaceDeps` *(type)* | Dependencies the navigation surface needs from the active tab and chassis state. |
 | `main/navigation-error.ts` | `classifyNavigationFailure` | - |
 | `main/navigation-error.ts` | `NavigationFailure` *(type)* | Turn Electron `loadURL` failures into stable, user-facing navigation errors. |
+| `main/network/cdp-events.ts` | `NetworkEvents` | When to use: `NetworkInterceptor` — dispatch every debugger message here. |
+| `main/network/cdp-events.ts` | `CdpEventDeps` *(type)* | When to use: `new NetworkInterceptor` — the buffers the events write into. |
 | `main/network/impersonate.ts` | `resolveCurlBinaryPath` | Resolve the pinned binary robustly. |
 | `main/network/impersonate.ts` | `hostPlatformHeaders` | The impersonate profile fixes the TLS/H2 fingerprint (and the Chrome major). The user agent and |
 | `main/network/impersonate.ts` | `impersonateAvailable` | - |
@@ -390,13 +392,14 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/network/impersonate.ts` | `fetchStatic` | - |
 | `main/network/impersonate.ts` | `StaticFetchResult` *(type)* | - |
 | `main/network/impersonate.ts` | `StaticFetchOutcome` *(type)* | - |
-| `main/network/network-interceptor.ts` | `NetworkInterceptor` | - |
-| `main/network/network-interceptor.ts` | `CapturedNetworkRequest` *(type)* | - |
-| `main/network/network-interceptor.ts` | `RealtimeStream` *(type)* | - |
-| `main/network/network-interceptor.ts` | `StreamMessage` *(type)* | - |
-| `main/network/network-interceptor.ts` | `NetworkFilter` *(type)* | - |
 | `main/network/network-surface.ts` | `NetworkSurface` | The captured traffic, payloads and stream reads. |
 | `main/network/network-surface.ts` | `NetworkSurfaceDeps` *(type)* | Dependencies the network surface needs for directive logging. |
+| `main/network/stream-messages.ts` | `StreamMessages` | When to use: `NetworkInterceptor.messages` — one log per interceptor. |
+| `main/network/stream-messages.ts` | `FrameInput` *(type)* | One frame as the CDP router saw it, before the log stamps it. |
+| `main/network/types.ts` | `CapturedNetworkRequest` *(type)* | When to use: `get_traffic`, `get_api_payload` and the CDP request lifecycle. |
+| `main/network/types.ts` | `RealtimeStream` *(type)* | When to use: `get_streams` and the websocket/SSE lifecycle. |
+| `main/network/types.ts` | `StreamMessage` *(type)* | When to use: `get_stream_messages` — one websocket frame or one SSE event. |
+| `main/network/types.ts` | `NetworkFilter` *(type)* | When to use: `getTraffic` — narrow by URL, method, resource type, status and count. |
 | `main/prerender/types.ts` | `PrerenderItem` *(type)* | When to use: one warm background view in the prerender pool. |
 | `main/prerender/types.ts` | `PrerenderOptions` *(type)* | When to use: the `prerender_links` tool call. |
 | `main/primitives/act-address.ts` | `ActAddressResolver` | When to use: `ActController` — resolve whichever address the caller gave. |
@@ -982,7 +985,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (294)
+## Modules (297)
 
 | File | Export | When to use |
 |---|---|---|
@@ -1090,6 +1093,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/metrics.ts` | `snapshot` | - |
 | `main/metrics.ts` | `summary` | Grouped summary for `bridge_health` — three numbers instead of a wall of keys. |
 | `main/metrics.ts` | `resetMetrics` | - |
+| `main/network/network-interceptor.ts` | `NetworkInterceptor` | When to use: the chassis network surface — one interceptor per app. |
+| `main/network/stream-registry.ts` | `StreamRegistry` | When to use: `NetworkInterceptor.streams` — one registry per interceptor. |
+| `main/network/traffic-buffer.ts` | `TrafficBuffer` | When to use: `NetworkInterceptor.traffic` — one buffer per interceptor. |
 | `main/prerender/candidate-links.ts` | `extractCandidateLinks` | When to use: `prerender` without an explicit URL list — top outgoing links. |
 | `main/prerender/harvest.ts` | `harvestPrerenderedItem` | When to use: after a view is pooled — index it so the read is already warm. |
 | `main/prerender/pool.ts` | `PrerenderPool` | When to use: `PrerenderEngine` — one pool per process. |

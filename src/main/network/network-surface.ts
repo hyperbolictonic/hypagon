@@ -5,13 +5,8 @@
  * Tabs attach their web contents through `manager`; this surface is the
  * agent-facing read/clear side the bridge routes call.
  */
-import {
-  NetworkInterceptor,
-  type CapturedNetworkRequest,
-  type NetworkFilter,
-  type RealtimeStream,
-  type StreamMessage,
-} from './network-interceptor.js';
+import { NetworkInterceptor } from './network-interceptor.js';
+import type { CapturedNetworkRequest, NetworkFilter, RealtimeStream, StreamMessage } from './types.js';
 
 /** Dependencies the network surface needs for directive logging. */
 export interface NetworkSurfaceDeps {
