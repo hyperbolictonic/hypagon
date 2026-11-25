@@ -532,16 +532,19 @@ function resolveBrandIcon(): string | undefined {
 
 const brandIcon = resolveBrandIcon();
 
-async function createWindow() {
-  // Load the page-zoom policy before the first tab exists, so the initial
-  // document is rendered at the right proportions rather than resizing after
-  // load. Later windows reuse the same store and keep any manual zoom.
-  if (!activeZoomSettings) {
-    activeZoomSettings = new ZoomSettingsStore(path.join(app.getPath('userData'), 'zoom-settings.json'));
-    chassis.zoom.setSettings(activeZoomSettings.get());
-  }
+/** The page-zoom policy must exist before the first tab, so the initial document renders at the right proportions. */
+function prepareZoomPolicy(): void {
+  if (activeZoomSettings) return;
+  activeZoomSettings = new ZoomSettingsStore(path.join(app.getPath('userData'), 'zoom-settings.json'));
+  chassis.zoom.setSettings(activeZoomSettings.get());
+}
 
-  mainWindow = new BrowserWindow({
+/**
+ * The shell window plus its HUD crash handling. A crashed renderer used to leave a
+ * permanently white BrowserWindow with no log; record it and reload once.
+ */
+function openShellWindow(): BrowserWindow {
+  const win = new BrowserWindow({
     title: BRAND.windowTitle,
     ...(brandIcon ? { icon: brandIcon } : {}),
     width: 1440,
@@ -557,9 +560,7 @@ async function createWindow() {
     },
   });
 
-  // The HUD is a renderer too. A crash used to leave a permanently white
-  // BrowserWindow with no log; record it and reload once so the window recovers.
-  const hudContents = mainWindow.webContents;
+  const hudContents = win.webContents;
   hudContents.on('render-process-gone', (_event, details) => {
     logMainEvent('hud-renderer-gone', { reason: details.reason, exitCode: details.exitCode });
     if (details.reason === 'clean-exit') return;
@@ -579,6 +580,165 @@ async function createWindow() {
     if (isMainFrame) logMainEvent('hud-did-fail-load', { code, description, url });
   });
 
+  return win;
+}
+
+/** Update IPC: status, an on-demand check, and install (packaged builds only in practice). */
+function registerUpdateHandlers(): void {
+  ipcMain.handle('app:update-status', () => updaterState());
+  ipcMain.handle('app:update-check', () => checkForUpdates());
+  ipcMain.handle('app:update-install', () => installUpdate());
+  void initUpdater((state) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('app:update-status', state);
+    }
+  });
+}
+
+/** The dev server URL in development, the bundled file in a packaged build. */
+async function loadShell(win: BrowserWindow): Promise<void> {
+  if (process.env.VITE_DEV_SERVER_URL) {
+    await win.loadURL(process.env.VITE_DEV_SERVER_URL);
+    return;
+  }
+  await win.loadFile(path.join(__dirname, '../../dist/index.html'));
+}
+
+interface WrapServices {
+  store: WrapStore;
+  secrets: SecretStore;
+  audit: WrapAuditLog;
+  executor: ReturnType<typeof createWrapExecutor>;
+  token: string;
+}
+
+/** The wrap store, its secrets/audit log, the executor and the capability token. */
+function createWrapServices(): WrapServices {
+  const store = new WrapStore(wrapDir());
+  activeWrapStore = store;
+  const secrets = new SecretStore(wrapDir(), createSecretCipher());
+  const audit = new WrapAuditLog(path.join(wrapDir(), 'audit.jsonl'));
+  activeWrapSecrets = secrets;
+  activeWrapAudit = audit;
+  const executor = createWrapExecutor(
+    store,
+    {
+      secrets,
+      audit,
+      // Opt-in per recipe (`response.index: "cortex"`). Chunks land in the same
+      // page_history table as browsed pages, so `recall_memory` finds them.
+      indexDocuments: async (documents, context) => {
+        const cortex = chassis.cortex;
+        let chunks = 0;
+        for (const document of documents) {
+          chunks += await cortex.indexPage(context.url, document.title, document.markdown);
+        }
+        return chunks;
+      },
+    },
+    secrets,
+  );
+  return { store, secrets, audit, executor, token: createCapabilityToken(wrapDir()) };
+}
+
+interface CollaborationServices {
+  collaboration: CollaborationService;
+  media: MediaService;
+  toolSettings: ToolSettingsStore;
+}
+
+/** Tool settings, collaboration threads, the media service and the deck's collab wiring. */
+function createCollaborationServices(): CollaborationServices {
+  const toolSettings = new ToolSettingsStore(path.join(app.getPath('userData'), 'tool-settings.json'));
+  registerToolSettingsIpc(toolSettings);
+  const collaboration = new CollaborationService(
+    new CollaborationStore(path.join(app.getPath('userData'), 'collaboration.json')),
+    chassis,
+    () => chassis.bus.broadcast('collaboration:updated'),
+    () => experimentalSettings().get().collab,
+  );
+  activeCollaborationService = collaboration;
+  const media = new MediaService({
+    notify: ({ title, message }) => chassis.hil.notify(title, message, 'normal', false),
+  });
+  activeMediaService = media;
+  media.startUpdater();
+  chassis.deck.setEnabledProvider(() => experimentalSettings().get().collab);
+  chassis.jev.setPolicyProvider(() => jevPolicy());
+  // The deck toolbar's list + note cycling read exactly what the page overlay shows.
+  chassis.deck.setThreadsProvider((filter) => collaboration.list(filter));
+  chassis.deck.setOverlayRefresher(() => collaboration.refreshOverlay());
+  chassis.deck.setResolver((id) => collaboration.resolve(id, 'Resolved from the collab note list.'));
+  chassis.deck.setClassListener((target, added, removed) => {
+    try {
+      activeCollaborationService?.recordClassEdit(target, added, removed);
+    } catch {
+      // Class-edit bookkeeping is best-effort; the page already applied it.
+    }
+  });
+  chassis.collaboration.setNoteHandler((note) => {
+    try {
+      activeCollaborationService?.create({
+        target: note.target,
+        text: note.text,
+        tags: note.tags,
+        kind: 'comment',
+        author: 'human',
+      });
+    } catch {
+      // The page drawer is best-effort; the persisted thread is authoritative.
+    }
+  });
+  return { collaboration, media, toolSettings };
+}
+
+/** Start the remote tunnel once; a second window reuses the running service. */
+function ensureRemoteService(): void {
+  if (activeRemoteService) return;
+  activeRemoteService = new RemoteService({
+    serverPath: ensureRemoteServerPath(),
+    bridgeUrl: `http://127.0.0.1:${bridgePort}`,
+    port: remotePort,
+    dataDir: remoteDir(),
+    cwd: app.getPath('userData'),
+    cloudflaredPath: process.env.HB_CLOUDFLARED_PATH,
+  });
+  activeRemoteService.ensureToken();
+  void activeRemoteService.maybeAutoUpdateCloudflared();
+}
+
+/** Start the autonomous HTTP bridge and the tunnel the window exposes to agents. */
+async function startBackgroundServices(): Promise<void> {
+  try {
+    activeResearchSettings = new ResearchSettingsStore(path.join(app.getPath('userData'), 'research-settings.json'));
+    await chassis.research.setSettings(activeResearchSettings.load());
+
+    const wrap = createWrapServices();
+    const collab = createCollaborationServices();
+    startHttpBridge(
+      chassis,
+      bridgePort,
+      {
+        store: wrap.store,
+        executor: wrap.executor,
+        secrets: wrap.secrets,
+        audit: wrap.audit,
+        token: wrap.token,
+      },
+      collab.toolSettings,
+      collab.collaboration,
+      collab.media,
+    );
+
+    ensureRemoteService();
+  } catch (err: any) {
+    chassis.telemetry.addLog('warn', `HTTP Bridge notice: ${err?.message || err}`);
+  }
+}
+
+async function createWindow() {
+  prepareZoomPolicy();
+  mainWindow = openShellWindow();
   chassis.boot.window(mainWindow);
   setRecordingWindow(mainWindow);
   loadRecordingConfig();
@@ -590,22 +750,8 @@ async function createWindow() {
     onLog: (level, message) => console.log(`[HUD context menu] ${level}: ${message}`),
   });
 
-  // ---- updates (optional, packaged builds only) -------------------------------------------
-  ipcMain.handle('app:update-status', () => updaterState());
-  ipcMain.handle('app:update-check', () => checkForUpdates());
-  ipcMain.handle('app:update-install', () => installUpdate());
-  void initUpdater((state) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('app:update-status', state);
-    }
-  });
-
-  // Dev server or production bundle
-  if (process.env.VITE_DEV_SERVER_URL) {
-    await mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-  } else {
-    await mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
-  }
+  registerUpdateHandlers();
+  await loadShell(mainWindow);
 
   mainWindow.show();
   mainWindow.focus();
@@ -623,106 +769,7 @@ async function createWindow() {
     return { action: 'deny' };
   });
 
-  // Start Autonomous HTTP Bridge
-  try {
-    activeResearchSettings = new ResearchSettingsStore(path.join(app.getPath('userData'), 'research-settings.json'));
-    await chassis.research.setSettings(activeResearchSettings.load());
-
-    const wrapStore = new WrapStore(wrapDir());
-    activeWrapStore = wrapStore;
-    const wrapSecrets = new SecretStore(wrapDir(), createSecretCipher());
-    const wrapAudit = new WrapAuditLog(path.join(wrapDir(), 'audit.jsonl'));
-    activeWrapSecrets = wrapSecrets;
-    activeWrapAudit = wrapAudit;
-    const wrapExecutor = createWrapExecutor(
-      wrapStore,
-      {
-        secrets: wrapSecrets,
-        audit: wrapAudit,
-        // Opt-in per recipe (`response.index: "cortex"`). Chunks land in the same
-        // page_history table as browsed pages, so `recall_memory` finds them.
-        indexDocuments: async (documents, context) => {
-          const cortex = chassis.cortex;
-          let chunks = 0;
-          for (const document of documents) {
-            chunks += await cortex.indexPage(context.url, document.title, document.markdown);
-          }
-          return chunks;
-        },
-      },
-      wrapSecrets,
-    );
-    const wrapToken = createCapabilityToken(wrapDir());
-    const toolSettings = new ToolSettingsStore(path.join(app.getPath('userData'), 'tool-settings.json'));
-    registerToolSettingsIpc(toolSettings);
-    const collaboration = new CollaborationService(
-      new CollaborationStore(path.join(app.getPath('userData'), 'collaboration.json')),
-      chassis,
-      () => chassis.bus.broadcast('collaboration:updated'),
-      () => experimentalSettings().get().collab,
-    );
-    activeCollaborationService = collaboration;
-    const media = new MediaService({
-      notify: ({ title, message }) => chassis.hil.notify(title, message, 'normal', false),
-    });
-    activeMediaService = media;
-    media.startUpdater();
-    chassis.deck.setEnabledProvider(() => experimentalSettings().get().collab);
-    chassis.jev.setPolicyProvider(() => jevPolicy());
-    // The deck toolbar's list + note cycling read exactly what the page overlay shows.
-    chassis.deck.setThreadsProvider((filter) => collaboration.list(filter));
-    chassis.deck.setOverlayRefresher(() => collaboration.refreshOverlay());
-    chassis.deck.setResolver((id) => collaboration.resolve(id, 'Resolved from the collab note list.'));
-    chassis.deck.setClassListener((target, added, removed) => {
-      try {
-        activeCollaborationService?.recordClassEdit(target, added, removed);
-      } catch {
-        // Class-edit bookkeeping is best-effort; the page already applied it.
-      }
-    });
-    chassis.collaboration.setNoteHandler((note) => {
-      try {
-        activeCollaborationService?.create({
-          target: note.target,
-          text: note.text,
-          tags: note.tags,
-          kind: 'comment',
-          author: 'human',
-        });
-      } catch {
-        // The page drawer is best-effort; the persisted thread is authoritative.
-      }
-    });
-    startHttpBridge(
-      chassis,
-      bridgePort,
-      {
-        store: wrapStore,
-        executor: wrapExecutor,
-        secrets: wrapSecrets,
-        audit: wrapAudit,
-        token: wrapToken,
-      },
-      toolSettings,
-      collaboration,
-      media
-    );
-
-    if (!activeRemoteService) {
-      activeRemoteService = new RemoteService({
-        serverPath: ensureRemoteServerPath(),
-        bridgeUrl: `http://127.0.0.1:${bridgePort}`,
-        port: remotePort,
-        dataDir: remoteDir(),
-        cwd: app.getPath('userData'),
-        cloudflaredPath: process.env.HB_CLOUDFLARED_PATH,
-      });
-      activeRemoteService.ensureToken();
-      void activeRemoteService.maybeAutoUpdateCloudflared();
-    }
-  } catch (err: any) {
-    chassis.telemetry.addLog('warn', `HTTP Bridge notice: ${err?.message || err}`);
-  }
+  await startBackgroundServices();
 }
 
 app.whenReady().then(createWindow);
