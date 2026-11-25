@@ -117,7 +117,7 @@ const ROUTES: Record<string, ResearchHandler> = {
   'POST /citation/relocate': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
     sendOk(
-      await chassis.relocateCitation({
+      await chassis.researchView.relocateCitation({
         url: body?.url,
         fingerprint: body?.fingerprint,
         threshold: body?.threshold,
@@ -128,7 +128,7 @@ const ROUTES: Record<string, ResearchHandler> = {
   'POST /citation/revalidate': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
     sendOk(
-      await chassis.revalidateStored({
+      await chassis.researchView.revalidateStored({
         url: body?.url,
         maxUrls: body?.max_urls ?? body?.maxUrls,
       }),

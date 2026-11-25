@@ -56,7 +56,7 @@ import { ScriptVault } from './scripts/script-vault.js';
 import type { ScriptItem } from './cortex/cortex-db.js';
 import { TrayManager } from './tray/tray-manager.js';
 import { researchError } from './research/session-controller.js';
-import { DetachedViewController } from './research/detached-view.js';
+import { ResearchViewSurface } from './research/research-view-surface.js';
 import { ResearchSessionSurface } from './research/research-session-surface.js';
 import { CrawlSurface } from './research/crawl-surface.js';
 
@@ -71,8 +71,6 @@ import { ReadSurface } from './llm/read-surface.js';
 import { SearchHub, engineHost } from './search/search-engine.js';
 import { SearchSurface } from './search/search-surface.js';
 import { type CitationRelocation } from './research/anchors.js';
-import { CitationController, type HumanHandoffResult, type RevalidationSummary } from './research/citation-controller.js';
-import type { HumanAssistInfo } from './crawl/crawler.js';
 
 
 export class BrowserChassis {
@@ -123,6 +121,8 @@ export class BrowserChassis {
   readonly shadow!: ShadowWalkSurface;
   /** Script evaluation and the shared control description. */
   readonly page!: PageScriptSurface;
+  /** Shared detached research view and the citation/hand-off pipeline. */
+  readonly researchView!: ResearchViewSurface;
   private actionLedger!: ActionLedger;
   /** Reused off-screen view for detached reads (SERPs, Markdown alternates, crawls). */
   /** Origins a human has authenticated; skip the anonymous static tier for them. */
@@ -202,6 +202,7 @@ export class BrowserChassis {
     this.page = this.createPageScriptSurface();
     this.input = this.createInputSurfaces();
     this.research = this.createResearchSession();
+    this.researchView = this.createResearchViewSurface();
     const harvestNav = this.createHarvestNavigationSurfaces();
     this.marks = harvestNav.marks;
     this.harvest = harvestNav.harvest;
@@ -458,7 +459,7 @@ export class BrowserChassis {
 
     // Multi-engine web search (TODO_RESEARCH_CRAWL.md §5, Feature 5).
     const searchHub = new SearchHub({
-      load: (url, script, opts) => this.loadDetached(url, script, opts),
+      load: (url, script, opts) => this.researchView.load(url, script, opts),
       log: (level, msg) => this.telemetry.addLog(level, msg),
     });
     this.searchHub = searchHub;
@@ -494,14 +495,57 @@ export class BrowserChassis {
       search: (query, opts) => this.searchHub.search(query, opts),
       settings: () => this.research.settings(),
       session: this.research,
-      citation: () => this.citationController,
-      detachedView: () => this.detachedView,
+      citation: () => this.researchView.citations,
+      detachedView: () => this.researchView.detached,
       harvester: () => this.harvester,
       indexPage: (url, title, content) => cortex.indexPage(url, title, content),
       broadcast: (channel, payload) => this.broadcast(channel, payload),
       log: (level, message) => this.telemetry.addLog(level, message),
     });
   }
+  /** Bounds of the browser viewport as actually laid out in the HUD (zoom-aware). */
+  private async computeViewportBounds(): Promise<{ x: number; y: number; width: number; height: number }> {
+    const win = this.mainWindow;
+    if (!win || win.isDestroyed()) return this.getViewportBounds();
+    try {
+      const rect = await win.webContents.executeJavaScript(
+        `(() => {
+          const el = document.getElementById('viewport-container');
+          if (!el) return null;
+          const r = el.getBoundingClientRect();
+          return { x: r.x, y: r.y, width: r.width, height: r.height };
+        })()`,
+      );
+      if (rect && rect.width > 0 && rect.height > 0) {
+        const zoom = win.webContents.getZoomFactor() || 1;
+        return {
+          x: Math.round(rect.x * zoom),
+          y: Math.round(rect.y * zoom),
+          width: Math.round(rect.width * zoom),
+          height: Math.round(rect.height * zoom),
+        };
+      }
+    } catch {
+      /* fall back to the static calculation */
+    }
+    return this.getViewportBounds();
+  }
+
+  /** The shared detached view plus citations and the human hand-off. */
+  private createResearchViewSurface(): ResearchViewSurface {
+    return new ResearchViewSurface({
+      userAgent: this.hostProfile.userAgent,
+      activate: (wc) => this.research.activateView(wc),
+      window: () => this.mainWindow,
+      hilManager: () => this.hilManager,
+      researchSettings: () => this.research.settings(),
+      viewportBounds: () => this.computeViewportBounds(),
+      reassertViewport: () => this.reassertViewport(),
+      activeWebContents: () => this.getActiveWebContents(),
+      log: (level, message) => this.telemetry.addLog(level, message),
+    });
+  }
+
   /** Script evaluation and control description over the active tab. */
   private createPageScriptSurface(): PageScriptSurface {
     return new PageScriptSurface({
@@ -636,7 +680,7 @@ export class BrowserChassis {
 /** The deps both LlmSurface instances share: navigation, fingerprint UA and the log. */
   private llmSurfaceBase() {
     return {
-      navigateForText: (url: string) => this.navigateForText(url),
+      navigateForText: (url: string) => this.researchView.navigateForText(url),
       userAgent: this.hostProfile.userAgent,
       log: (level: 'info' | 'warn' | 'action', msg: string) => this.telemetry.addLog(level, msg),
     };
@@ -1646,7 +1690,7 @@ export class BrowserChassis {
   public async readUrlRender(
     url: string,
   ): Promise<{ markdown: string; title: string; status: number; contentType: string | null }> {
-    const r = await this.loadDetached<{ title: string }>(
+    const r = await this.researchView.load<{ title: string }>(
       url,
       '(() => ({ title: document.title || "" }))()',
       {
@@ -1655,113 +1699,6 @@ export class BrowserChassis {
       },
     );
     return { markdown: r.after || '', title: r.result?.title || url, status: r.status, contentType: r.contentType };
-  }
-
-  /**
-   * Loads a URL in a *detached* WebContentsView (real Chromium, host fingerprint) and returns the
-   * result of `script`. Used for reading advertised Markdown/Text alternates and for `search_web`
-   * SERPs — without hijacking the active tab. Optionally waits for `readyScript` to become truthy.
-   */
-  /**
-   * Run a task that reads or drives the shared off-screen research view.
-   *
-   * `loadDetached` already serializes its own work; this extends the same queue to the human
-   * hand-off and anchor capture, which otherwise let a concurrent detached read steal the view.
-   */
-  // ---- Detached research view ---------------------------------------------------------
-  // One reusable off-screen view and its operation queue live in
-  // DetachedViewController; these delegations keep the chassis's public surface unchanged.
-
-  private readonly detachedView = new DetachedViewController({
-    userAgent: this.hostProfile.userAgent,
-    activate: (wc) => this.research.activateView(wc),
-  });
-
-  private async withUtilView<T>(task: () => Promise<T>): Promise<T> {
-    return this.detachedView.withView(task);
-  }
-
-  private async loadDetached<T = any>(
-    url: string,
-    script: string,
-    opts: { timeoutMs?: number; settleMs?: number; readyScript?: string; readyMs?: number; after?: (wc: WebContents) => Promise<any> } = {},
-  ): Promise<{ result: T | null; after: any; status: number; contentType: string | null }> {
-    return this.detachedView.load<T>(url, script, opts);
-  }
-
-  public async navigateForText(url: string): Promise<{ body: string | null; contentType: string | null; status: number }> {
-    return this.detachedView.navigateForText(url);
-  }
-
-  /**
-   * Runs a web search across a configurable engine chain (TODO_RESEARCH_CRAWL.md §5, Feature 5).
-   * Each engine is loaded in a detached view; if it yields nothing (bot-check/consent) the hub
-   * falls back to the next. Results are plain URLs for `navigate_to` / `collect_all`.
-   */
-
-
-
-  /** Bounds of the browser viewport as actually laid out in the HUD (zoom-aware). */
-  private async computeViewportBounds(): Promise<{ x: number; y: number; width: number; height: number }> {
-    const win = this.mainWindow;
-    if (!win || win.isDestroyed()) return this.getViewportBounds();
-    try {
-      const rect = await win.webContents.executeJavaScript(
-        `(() => {
-          const el = document.getElementById('viewport-container');
-          if (!el) return null;
-          const r = el.getBoundingClientRect();
-          return { x: r.x, y: r.y, width: r.width, height: r.height };
-        })()`,
-      );
-      if (rect && rect.width > 0 && rect.height > 0) {
-        const zoom = win.webContents.getZoomFactor() || 1;
-        return {
-          x: Math.round(rect.x * zoom),
-          y: Math.round(rect.y * zoom),
-          width: Math.round(rect.width * zoom),
-          height: Math.round(rect.height * zoom),
-        };
-      }
-    } catch {
-      /* fall back to the static calculation */
-    }
-    return this.getViewportBounds();
-  }
-
-  // ---- Citations & human hand-off -----------------------------------------------------
-  // The anchor store, warm origins, hand-off state and the citation fetch/relocate
-  // pipeline live in CitationController.
-
-  private readonly citationController = new CitationController({
-    window: () => this.mainWindow,
-    detachedView: this.detachedView,
-    hilManager: () => this.hilManager,
-    researchSettings: () => this.research.settings(),
-    viewportBounds: () => this.computeViewportBounds(),
-    reassertViewport: () => this.reassertViewport(),
-    activeWebContents: () => this.getActiveWebContents(),
-    log: (level, message) => this.telemetry.addLog(level, message),
-  });
-
-  public async relocateCitation(opts: {
-    url: string;
-    fingerprint: unknown;
-    threshold?: number;
-  }): Promise<CitationRelocation> {
-    return this.citationController.relocateCitation(opts);
-  }
-
-  public async revalidateStored(opts: { url?: string; maxUrls?: number } = {}): Promise<RevalidationSummary> {
-    return this.citationController.revalidateStored(opts);
-  }
-
-  private async attemptHumanHandoff(
-    url: string,
-    onHuman?: (info: HumanAssistInfo) => void,
-    anchorsFor?: string,
-  ): Promise<HumanHandoffResult> {
-    return this.citationController.attemptHandoff(url, onHuman, anchorsFor);
   }
 
   public async saveScript(data: {

@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-243 modules, 839 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+244 modules, 841 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -118,6 +118,7 @@
 | `main/research/crawl-surface.ts` | 2: CrawlSurface, CrawlSurfaceDeps |
 | `main/research/detached-view.ts` | 4: DetachedViewController, DetachedLoadOptions, DetachedLoadResult, DetachedViewDeps |
 | `main/research/research-session-surface.ts` | 2: ResearchSessionSurface, ResearchSessionSurfaceDeps |
+| `main/research/research-view-surface.ts` | 2: ResearchViewSurface, ResearchViewSurfaceDeps |
 | `main/research/researcher.ts` | 6: extractHighlights, Researcher, ResearchOptions, ResearchSource, ResearchOutcome, ResearcherDeps |
 | `main/research/session-controller.ts` | 3: researchError, ResearchSessionController, ResearchSessionDeps |
 | `main/research/settings.ts` | 7: normalizeResearchSettings, looksLikeChallenge, RESEARCH_ENGINES, DEFAULT_RESEARCH_SETTINGS, ResearchSettingsStore, ResearchSettings, ResearchSettingsResult |
@@ -125,8 +126,7 @@
 | `main/scripts/script-vault.ts` | 2: ScriptVault, SavedScriptMeta |
 | `main/search/search-engine.ts` | 8: engineHost, KNOWN_ENGINES, DEFAULT_ENGINE_CHAIN, SearchHub, SearchResult, SearchAttempt, SearchOutcome, SearchHubDeps |
 | `main/search/search-surface.ts` | 3: SearchSurface, SearchPolicyTarget, SearchSurfaceDeps |
-| `main/security/capability-token.ts` | 3: tokenPathIn, createCapabilityToken, readCapabilityToken |
 
-… and 118 more module(s) — grep the full index.
+… and 119 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

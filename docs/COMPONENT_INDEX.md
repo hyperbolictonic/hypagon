@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 243 files, 839 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 244 files, 841 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (712)
+## Types (714)
 
 | File | Export | When to use |
 |---|---|---|
@@ -375,6 +375,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/detached-view.ts` | `DetachedViewDeps` *(type)* | When to use: building the chassis — the view reads through these two collaborators. |
 | `main/research/research-session-surface.ts` | `ResearchSessionSurface` | The settings, isolated session and cooldown policy behind research runs. |
 | `main/research/research-session-surface.ts` | `ResearchSessionSurfaceDeps` *(type)* | Dependencies the research session surface needs to boot its isolated session. |
+| `main/research/research-view-surface.ts` | `ResearchViewSurface` | The detached research view and the citation/hand-off pipeline over it. |
+| `main/research/research-view-surface.ts` | `ResearchViewSurfaceDeps` *(type)* | Dependencies the research view needs from the window and the HIL manager. |
 | `main/research/researcher.ts` | `extractHighlights` | Extractive highlights: paragraphs of the source that mention the most query terms, best first. |
 | `main/research/researcher.ts` | `Researcher` | - |
 | `main/research/researcher.ts` | `ResearchOptions` *(type)* | - |
