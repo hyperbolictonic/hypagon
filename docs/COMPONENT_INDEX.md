@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 286 files, 937 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 296 files, 957 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,12 +24,18 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (776)
+## Types (793)
 
 | File | Export | When to use |
 |---|---|---|
 | `main/boot/hud-watchdog.ts` | `HudWatchdog` | The HUD heartbeat and viewport-recovery watchdog. |
 | `main/boot/hud-watchdog.ts` | `HudWatchdogDeps` *(type)* | Dependencies the watchdog needs from the shell window and views. |
+| `main/boot/services.ts` | `AppServices` | The long-lived services the renderer IPC modules read through getters. |
+| `main/boot/services.ts` | `ServicesDeps` *(type)* | When to use: constructing the boot — every path and store comes from the entry point. |
+| `main/boot/shell-window.ts` | `createShellWindow` | The window itself plus its HUD crash handling. A crashed renderer used to |
+| `main/boot/shell-window.ts` | `registerUpdateHandlers` | Update IPC: status, an on-demand check, and install (packaged builds only in practice). |
+| `main/boot/shell-window.ts` | `loadShell` | When to use: after the window exists — the dev server URL, or the bundled file. |
+| `main/boot/shell-window.ts` | `ShellWindowDeps` *(type)* | When to use: creating a shell window — `appDir` is the compiled main directory. |
 | `main/boot/window-boot.ts` | `WindowBootSurface` | The shell-window boot sequence, bound once. |
 | `main/boot/window-boot.ts` | `DownloadNotice` *(type)* | A finished download, as the boot hook reports it. |
 | `main/boot/window-boot.ts` | `WindowBootDeps` *(type)* | Dependencies the boot sequence needs from the chassis surfaces. |
@@ -200,9 +206,20 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/input-actions.ts` | `InputActionsController` | When to use: the chassis — own how input actions are performed over the active tab. |
 | `main/input-actions.ts` | `InputActionsStatus` *(type)* | When to use: building the chassis — the state surface the actions report through. |
 | `main/input-actions.ts` | `InputActionsDeps` *(type)* | When to use: building the chassis — everything an input action reads through. |
+| `main/ipc/collaboration-ipc.ts` | `registerCollaborationIpc` | When to use: once at startup, before the first window exists. |
+| `main/ipc/collaboration-ipc.ts` | `CollaborationIpcDeps` *(type)* | When to use: once at startup — the service is live only after boot. |
+| `main/ipc/connect-info-ipc.ts` | `registerConnectInfoIpc` | When to use: once at startup, before the first window exists. |
+| `main/ipc/connect-info-ipc.ts` | `ConnectInfoDeps` *(type)* | When to use: once at startup — the path resolvers are owned by the entry point. |
 | `main/ipc/ipc-surface.ts` | `createIpcSurface` | When to use: the chassis boot — build the renderer IPC surface from the host contract. |
 | `main/ipc/ipc-surface.ts` | `IpcSurface` | Registers the renderer-facing IPC channels. |
 | `main/ipc/ipc-surface.ts` | `IpcSurfaceDeps` *(type)* | The surfaces the renderer IPC channels talk to. |
+| `main/ipc/research-ipc.ts` | `registerResearchIpc` | When to use: once at startup, before the first window exists. |
+| `main/ipc/research-ipc.ts` | `ResearchIpcDeps` *(type)* | When to use: once at startup — the settings store is created by the boot, not here. |
+| `main/ipc/settings-ipc.ts` | `registerSettingsIpc` | When to use: once at startup, before the first window exists. |
+| `main/ipc/settings-ipc.ts` | `JevPayload` *(type)* | What Settings → Decision needs to render the JEV panel. |
+| `main/ipc/settings-ipc.ts` | `SettingsIpcDeps` *(type)* | When to use: once at startup — every store is created lazily by the caller. |
+| `main/ipc/wrap-ipc.ts` | `registerWrapIpc` | When to use: once at startup, before the first window exists. |
+| `main/ipc/wrap-ipc.ts` | `WrapIpcDeps` *(type)* | When to use: once at startup — every dependency is live only after boot. |
 | `main/jev/controller.ts` | `JevController` | When to use: the chassis — own the JEV gate, funnel, loop breaker, stats and depth store. |
 | `main/jev/controller.ts` | `JevControllerDeps` *(type)* | When to use: building the chassis — the collaborators JEV reads through. |
 | `main/jev/controller.ts` | `JevPolicy` *(type)* | When to use: declaring the optional JEV gate; wired by index.ts to the settings store + decision status. |
@@ -805,7 +822,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (153)
+## Modules (156)
 
 | File | Export | When to use |
 |---|---|---|
@@ -871,6 +888,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/http/window-routes.ts` | `handleWindowRoutes` | When to use: the bridge request handler — dispatch `/window/*`. Returns |
 | `main/http/workspace-routes.ts` | `handleWorkspaceRoutes` | When to use: the bridge request handler — dispatch `/zoom` and `/viewport`. |
 | `main/http-bridge.ts` | `startHttpBridge` | - |
+| `main/ipc/media-ipc.ts` | `registerMediaIpc` | When to use: once at startup — reads the service lazily, because boot creates it. |
+| `main/ipc/recording-ipc.ts` | `registerRecordingIpc` | When to use: once at startup, before the first window exists. |
+| `main/ipc/web-state-ipc.ts` | `registerWebStateIpc` | When to use: once at startup — the handler reads the active tab on demand. |
 | `main/marks/format-mark.ts` | `formatMark` | Renders one Set-of-Marks entry as a compact, accessibility-aware line: |
 | `main/media/auth.ts` | `needsLogin` | Does yt-dlp's output say the site wants a signed-in session? |
 | `main/media/cookie-format.ts` | `toNetscape` | Netscape cookie-file text for yt-dlp's `--cookies`. |

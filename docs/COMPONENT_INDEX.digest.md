@@ -2,11 +2,13 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-286 modules, 937 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+296 modules, 957 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
 | `main/boot/hud-watchdog.ts` | 2: HudWatchdog, HudWatchdogDeps |
+| `main/boot/services.ts` | 2: AppServices, ServicesDeps |
+| `main/boot/shell-window.ts` | 4: createShellWindow, registerUpdateHandlers, loadShell, ShellWindowDeps |
 | `main/boot/start-loops.ts` | 1: startLoops |
 | `main/boot/window-boot.ts` | 3: WindowBootSurface, DownloadNotice, WindowBootDeps |
 | `main/brand-icon.ts` | 2: brandIconPath, brandIcon |
@@ -97,7 +99,15 @@
 | `main/input/human-activity.ts` | 6: shouldCountAsHuman, humanListenerScript, SYNTHETIC_GRACE_MS, HUMAN_CONSOLE_PREFIX, HumanActivityMonitor, HumanActivity |
 | `main/input/human-control.ts` | 2: HumanControlSurface, HumanControlDeps |
 | `main/input/input-surface.ts` | 2: InputSurface, InputSurfaceDeps |
+| `main/ipc/collaboration-ipc.ts` | 2: registerCollaborationIpc, CollaborationIpcDeps |
+| `main/ipc/connect-info-ipc.ts` | 2: registerConnectInfoIpc, ConnectInfoDeps |
 | `main/ipc/ipc-surface.ts` | 3: createIpcSurface, IpcSurface, IpcSurfaceDeps |
+| `main/ipc/media-ipc.ts` | 1: registerMediaIpc |
+| `main/ipc/recording-ipc.ts` | 1: registerRecordingIpc |
+| `main/ipc/research-ipc.ts` | 2: registerResearchIpc, ResearchIpcDeps |
+| `main/ipc/settings-ipc.ts` | 3: registerSettingsIpc, JevPayload, SettingsIpcDeps |
+| `main/ipc/web-state-ipc.ts` | 1: registerWebStateIpc |
+| `main/ipc/wrap-ipc.ts` | 2: registerWrapIpc, WrapIpcDeps |
 | `main/jev/controller.ts` | 3: JevController, JevControllerDeps, JevPolicy |
 | `main/jev/engine.ts` | 5: JevEngine, JevSection, JevSession, JevStatus, JevSearchHit |
 | `main/jev/policy.ts` | 6: decideFunnel, DEFAULT_FUNNEL_MIN_TOKENS, FunnelBreaker, FunnelReason, FunnelInput, FunnelDecision |
@@ -116,17 +126,7 @@
 | `main/media/jobs.ts` | 12: buildFormatSelector, buildDownloadArgs, parseProgressLine, MediaJobs, MediaKind, MediaQuality, MediaJobState, MediaJobFile, … (12) |
 | `main/media/platform.ts` | 8: mediaPlatformKey, ytDlpFileName, ytdlpRuntimeOptions, compareYtDlpVersions, ytDlpReleaseAsset, parseChecksum, YtDlpRuntimeKind, YtDlpRuntime |
 | `main/media/process-failure.ts` | 2: processFailure, ProcessFailureCopy |
-| `main/media/service.ts` | 10: MediaService, MediaRuntimeStatus, MediaStatus, MediaInfo, MediaInfoResult, MediaServiceError, MediaTranscriptResult, MediaPreviewImage, … (10) |
-| `main/media/settings.ts` | 3: normalizeMediaSettings, DEFAULT_MEDIA_SETTINGS, MediaSettingsStore |
-| `main/media/transcript.ts` | 5: parseVtt, transcriptDocument, fetchArtifacts, SubtitleArtifacts, ArtifactResult |
-| `main/media/updater.ts` | 3: jitter, MediaUpdater, MediaUpdaterOptions |
-| `main/menu/context-menu.ts` | 2: attachContextMenu, ContextMenuOptions |
-| `main/metrics.ts` | 4: bump, snapshot, summary, resetMetrics |
-| `main/migrate-user-data.ts` | 2: migrateLegacyUserData, UserDataMigration |
-| `main/navigation-error.ts` | 2: classifyNavigationFailure, NavigationFailure |
-| `main/navigation/navigation-surface.ts` | 2: NavigationSurface, NavigationSurfaceDeps |
-| `main/network/impersonate.ts` | 7: resolveCurlBinaryPath, hostPlatformHeaders, impersonateAvailable, isChallenge, fetchStatic, StaticFetchResult, StaticFetchOutcome |
 
-… and 161 more module(s) — grep the full index.
+… and 171 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

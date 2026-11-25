@@ -1,55 +1,31 @@
-import { activeWebContents, reassertChassisViewport } from './chassis/accessors.js';
-import { app, BrowserWindow, dialog, ipcMain, safeStorage, shell } from 'electron';
+import { reassertChassisViewport } from './chassis/accessors.js';
+import { app, BrowserWindow, ipcMain, safeStorage, shell } from 'electron';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { BrowserChassis } from './browser-chassis.js';
-import { startHttpBridge } from './http-bridge.js';
-import { createWrapExecutor } from './wrap/factory.js';
-import { WrapStore } from './wrap/store.js';
-import { createCapabilityToken, tokenPathIn } from './security/capability-token.js';
-import { SecretStore } from './wrap/secrets.js';
-import type { SecretCipher } from './wrap/secrets.js';
-import { WrapAuditLog } from './wrap/audit.js';
-import { ResearchSettingsStore } from './research/settings.js';
 import { ZoomSettingsStore } from './zoom/settings.js';
-import type { ZoomMode } from '../shared/zoom.js';
-import { DEFAULT_SHADOW_WALK_SETTINGS, loadShadowWalkSettings, saveShadowWalkSettings } from './shadow-walk/settings.js';
 import { attachContextMenu } from './menu/context-menu.js';
-import type { WebPageState } from '../shared/web-state.js';
-import { initUpdater, checkForUpdates, installUpdate, updaterState } from './updates/updater.js';
-import { RemoteService } from './remote/service.js';
 import { registerRemoteIpc } from './remote/ipc.js';
 import { brandIconPath } from './brand-icon.js';
-import { ToolSettingsStore } from './tools/settings.js';
-import { registerToolSettingsIpc } from './tools/ipc.js';
-import { CollaborationStore } from './collaboration/store.js';
-import { CollaborationService } from './collaboration/service.js';
-import { MediaService } from './media/service.js';
 import { ExperimentalSettingsStore } from './settings/experimental.js';
 import { JevSettingsStore } from './settings/jev.js';
 import { decisionStatus } from './decide/decision-client.js';
-import { dataPath } from './data-paths.js';
 import { logMainEvent } from './diagnostics/main-log.js';
 import { migrateLegacyUserData } from './migrate-user-data.js';
-import { BRAND } from '../shared/brand.js';
-import { APP_VERSION } from '../shared/version.js';
-import {
-  failRecording,
-  getRecordingConfig,
-  getRecordingStatus,
-  listRecordings,
-  loadRecordingConfig,
-  onRecordingStatus,
-  pickRecordingDir,
-  readyRecording,
-  saveRecording,
-  saveRecordingConfig,
-  setRecordingWindow,
-  startRecording,
-  stopRecording,
-} from './recording/recording-service.js';
+import { loadRecordingConfig, onRecordingStatus, setRecordingWindow } from './recording/recording-service.js';
+import type { SecretCipher } from './wrap/secrets.js';
+import { AppServices } from './boot/services.js';
+import { createShellWindow, loadShell, registerUpdateHandlers } from './boot/shell-window.js';
+import { registerRecordingIpc } from './ipc/recording-ipc.js';
+import { registerResearchIpc } from './ipc/research-ipc.js';
+import { registerMediaIpc } from './ipc/media-ipc.js';
+import { registerWrapIpc } from './ipc/wrap-ipc.js';
+import { registerSettingsIpc } from './ipc/settings-ipc.js';
+import type { JevPayload } from './ipc/settings-ipc.js';
+import { registerCollaborationIpc } from './ipc/collaboration-ipc.js';
+import { registerWebStateIpc } from './ipc/web-state-ipc.js';
+import { registerConnectInfoIpc } from './ipc/connect-info-ipc.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -185,14 +161,7 @@ function remoteDir(): string {
   return path.join(app.getPath('userData'), 'remote');
 }
 
-let activeResearchSettings: ResearchSettingsStore | null = null;
 let activeZoomSettings: ZoomSettingsStore | null = null;
-let activeWrapStore: WrapStore | null = null;
-let activeWrapSecrets: SecretStore | null = null;
-let activeWrapAudit: WrapAuditLog | null = null;
-let activeRemoteService: RemoteService | null = null;
-let activeCollaborationService: CollaborationService | null = null;
-let activeMediaService: MediaService | null = null;
 
 function createSecretCipher(): SecretCipher {
   let available = false;
@@ -242,172 +211,6 @@ app.on('second-instance', () => {
   }
 });
 
-// ---- recording IPC (registered once, not per window) --------------------------------------
-ipcMain.handle('recording:config:get', () => getRecordingConfig());
-ipcMain.handle('recording:config:save', (_event, config: any) => saveRecordingConfig(config || {}));
-ipcMain.handle('recording:pick-dir', () => pickRecordingDir());
-ipcMain.handle('recording:start', (_event, name?: string) => startRecording(typeof name === 'string' ? name : undefined));
-ipcMain.handle('recording:stop', () => stopRecording());
-ipcMain.handle('recording:status', () => getRecordingStatus());
-
-// ---- research run IPC (streams events on 'research:event') --------------------------------
-ipcMain.handle('research:run', (_event, opts: any) => chassis.crawl.researchTopic(opts ?? {}));
-ipcMain.handle('research:relocate', (_event, opts: any) => chassis.researchView.relocateCitation(opts ?? {}));
-ipcMain.handle('research:revalidate', (_event, opts: any) => chassis.researchView.revalidateStored(opts ?? {}));
-ipcMain.handle('recording:list', () => listRecordings());
-ipcMain.handle('recording:save', (_event, buffer: ArrayBuffer, frames: number) => saveRecording(buffer, Number(frames) || 0));
-ipcMain.on('recording:ready', () => readyRecording());
-ipcMain.on('recording:failed', (_event, message: string) => failRecording(String(message || 'Recording failed.')));
-
-// ---- media settings IPC (human-only; the bridge may read the result) ------------------------
-ipcMain.handle('media:settings:get', () => {
-  if (!activeMediaService) return { ok: false, error: 'Media is not ready yet.' };
-  return { ok: true, ...activeMediaService.settingsSnapshot() };
-});
-ipcMain.handle('media:settings:save', (_event, patch: unknown) => {
-  if (!activeMediaService) return { ok: false, error: 'Media is not ready yet.' };
-  return { ok: true, ...activeMediaService.saveMediaSettings(patch) };
-});
-ipcMain.handle('media:update:check', async () => {
-  if (!activeMediaService) return { ok: false, error: 'Media is not ready yet.' };
-  return { ok: true, updater: await activeMediaService.checkForUpdate(true) };
-});
-ipcMain.handle('media:pick-dir', async () => {
-  const result = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] });
-  return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0];
-});
-ipcMain.handle('media:pick-ffmpeg', async () => {
-  const result = await dialog.showOpenDialog({ properties: ['openFile'] });
-  return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0];
-});
-ipcMain.handle('media:ffmpeg:status', async () => {
-  if (!activeMediaService) return { ok: false, error: 'Media is not ready yet.' };
-  return { ok: true, ffmpeg: await activeMediaService.ffmpegInfo(true) };
-});
-ipcMain.handle('media:ffmpeg:install', async () => {
-  if (!activeMediaService) return { ok: false, error: 'Media is not ready yet.' };
-  return { ok: true, ffmpeg: await activeMediaService.installFfmpeg() };
-});
-
-// Hypagon REST secrets are written only here, from the Settings renderer. No
-// bridge route or MCP tool can create, read, or bind a credential value.
-ipcMain.handle('wrap:secrets:list', () => {
-  if (!activeWrapSecrets) {
-    return { available: false, warning: 'Hypagon REST is not ready yet.', secrets: [] };
-  }
-  return {
-    available: activeWrapSecrets.available(),
-    warning: activeWrapSecrets.warning(),
-    secrets: activeWrapSecrets.list(),
-  };
-});
-
-ipcMain.handle('wrap:secrets:set', (_event, input: any) => {
-  if (!activeWrapSecrets) return { ok: false, errors: ['Hypagon REST is not ready yet.'] };
-  return activeWrapSecrets.set(input || {});
-});
-
-ipcMain.handle('wrap:secrets:delete', (_event, name: string) => {
-  if (!activeWrapSecrets) return { ok: false, errors: ['Hypagon REST is not ready yet.'] };
-  const deleted = activeWrapSecrets.delete(String(name || ''));
-  return deleted ? { ok: true, errors: [] } : { ok: false, errors: [`No secret named "${name || ''}".`] };
-});
-
-ipcMain.handle('wrap:audit:list', (_event, limit?: number) => {
-  return activeWrapAudit ? activeWrapAudit.list(Number(limit) || 50) : [];
-});
-
-// Research / stealth settings. These affect search_web, deep_crawl, and
-// research_topic; proxy/session changes stay in main.
-ipcMain.handle('chassis:zoom:mode', (_event, mode: unknown) => {
-  const next: ZoomMode = mode === 'native' ? 'native' : 'compensate';
-  if (!activeZoomSettings) {
-    activeZoomSettings = new ZoomSettingsStore(path.join(app.getPath('userData'), 'zoom-settings.json'));
-  }
-  activeZoomSettings.savePatch({ mode: next });
-  return chassis.zoom.setZoom({ mode: next });
-});
-
-ipcMain.handle('research:settings:get', () => {
-  return activeResearchSettings
-    ? activeResearchSettings.load()
-    : { schemaVersion: 1, enabled: false, engineChain: [], urlTemplate: '', proxyUrl: '', domainCooldownSec: 300, delayMs: 1000, activateView: true };
-});
-
-ipcMain.handle('research:settings:save', async (_event, settings: any) => {
-  if (!activeResearchSettings) return { ok: false, settings: null, errors: ['Research settings are not ready yet.'] };
-  const result = activeResearchSettings.save(settings);
-  if (result.ok) await chassis.research.setSettings(result.settings);
-  return result;
-});
-
-// Shadow Walk settings: written over IPC only, read by the bridge on every guarded call.
-ipcMain.handle('shadowwalk:settings:get', () => loadShadowWalkSettings());
-ipcMain.handle('shadowwalk:settings:save', async (_event, settings: any) => {
-  const result = saveShadowWalkSettings(settings);
-  if (result.ok) await chassis.shadow.applySettings();
-  return result;
-});
-ipcMain.handle('shadowwalk:settings:reset', async () => {
-  const result = saveShadowWalkSettings(DEFAULT_SHADOW_WALK_SETTINGS);
-  if (result.ok) await chassis.shadow.applySettings();
-  return result;
-});
-ipcMain.handle('shadowwalk:detect', () => chassis.shadow.detectPatch());
-
-ipcMain.handle('research:session:reset', async () => {
-  try {
-    await chassis.research.reset();
-    return { ok: true };
-  } catch (err: any) {
-    return { ok: false, error: err?.message || String(err) };
-  }
-});
-
-// Wrapper editing from Settings. The store validates and normalises every
-// save; the bridge and MCP use the same files.
-ipcMain.handle('wrap:wrappers:list', () => {
-  return activeWrapStore ? activeWrapStore.list() : [];
-});
-
-ipcMain.handle('wrap:wrappers:save', (_event, wrapper: any) => {
-  if (!activeWrapStore) return { ok: false, errors: ['Hypagon REST is not ready yet.'] };
-  const id = typeof wrapper?.id === 'string' ? wrapper.id : '';
-  const exists = Boolean(id && activeWrapStore.get(id));
-  return exists ? activeWrapStore.update(wrapper) : activeWrapStore.create(wrapper);
-});
-
-ipcMain.handle('wrap:wrappers:delete', (_event, id: string) => {
-  if (!activeWrapStore) return { ok: false, errors: ['Hypagon REST is not ready yet.'] };
-  const wrapperId = String(id || '');
-  const deleted = activeWrapStore.delete(wrapperId);
-  return deleted ? { ok: true, errors: [] } : { ok: false, errors: [`No wrapper named "${wrapperId}".`] };
-});
-
-ipcMain.handle('app:connect-info', () => {
-  const serverPath = ensureMcpServerPath();
-  const wrapServerPath = ensureWrapServerPath();
-  const devlogsServerPath = ensureDevlogsServerPath();
-  return {
-    platform: process.platform,
-    version: APP_VERSION,
-    bridgeUrl: `http://127.0.0.1:${bridgePort}`,
-    bridgePort,
-    serverPath,
-    serverExists: fs.existsSync(serverPath),
-    wrapServerPath,
-    wrapServerExists: fs.existsSync(wrapServerPath),
-    devlogsServerPath,
-    devlogsServerExists: fs.existsSync(devlogsServerPath),
-    devlogsDir: dataPath('logs'),
-    devMode: !app.isPackaged,
-    wrapTokenFile: tokenPathIn(wrapDir()),
-    runtimePath: process.execPath,
-    packaged: app.isPackaged,
-    homedir: os.homedir(),
-  };
-});
-
 /** Experimental feature flags (Settings → Experimental). Persisted; default off. */
 let experimentalStore: ExperimentalSettingsStore | null = null;
 function experimentalSettings(): ExperimentalSettingsStore {
@@ -432,7 +235,7 @@ function jevPolicy(): { available: boolean; enforce: boolean } {
   return { available, enforce: available && settings.mode === 'enforce' };
 }
 
-function jevPayload(): { settings: ReturnType<JevSettingsStore['get']>; available: boolean; decisionConfigured: boolean; mode: 'prefer' | 'enforce' } {
+function jevPayload(): JevPayload {
   const settings = jevSettings().get();
   return {
     settings,
@@ -442,80 +245,55 @@ function jevPayload(): { settings: ReturnType<JevSettingsStore['get']>; availabl
   };
 }
 
-ipcMain.handle('settings:get-experimental', () => ({ ok: true, settings: experimentalSettings().get() }));
-ipcMain.handle('settings:save-experimental', (_event, patch: unknown) => {
-  const settings = experimentalSettings().savePatch(patch);
-  chassis.bus.broadcast('experimental:settings', settings);
-  // Turning the gate off must also leave collab mode and drop page highlights.
-  if (!settings.collab) {
+function zoomSettings(): ZoomSettingsStore {
+  activeZoomSettings ??= new ZoomSettingsStore(path.join(app.getPath('userData'), 'zoom-settings.json'));
+  return activeZoomSettings;
+}
+
+/** The long-lived services; fields stay null until the first window starts them. */
+const services = new AppServices({
+  chassis,
+  bridgePort,
+  remotePort,
+  wrapDir,
+  remoteDir,
+  remoteServerPath: ensureRemoteServerPath,
+  secretCipher: createSecretCipher,
+  experimental: experimentalSettings,
+  jevPolicy,
+});
+
+// ---- renderer IPC (registered once, not per window) ----------------------------------------
+registerRecordingIpc();
+registerResearchIpc({ chassis, settings: () => services.research });
+registerMediaIpc(() => services.media);
+registerWrapIpc({
+  store: () => services.wrapStore,
+  secrets: () => services.wrapSecrets,
+  audit: () => services.wrapAudit,
+});
+registerSettingsIpc({
+  chassis,
+  experimental: experimentalSettings,
+  jevSettings,
+  jevPayload,
+  zoomSettings,
+  onCollabDisabled: () => {
     chassis.deck.setCollabMode(false);
-    void activeCollaborationService?.refreshOverlay();
-  }
-  return { ok: true, settings };
+    void services.collaboration?.refreshOverlay();
+  },
+});
+registerCollaborationIpc({ chassis, service: () => services.collaboration });
+registerWebStateIpc(chassis);
+registerConnectInfoIpc({
+  bridgePort,
+  mcpServerPath: ensureMcpServerPath,
+  wrapServerPath: ensureWrapServerPath,
+  devlogsServerPath: ensureDevlogsServerPath,
+  wrapDir,
 });
 
-ipcMain.handle('settings:get-jev', () => ({ ok: true, ...jevPayload() }));
-ipcMain.handle('settings:save-jev', (_event, patch: unknown) => {
-  jevSettings().savePatch(patch);
-  chassis.bus.broadcast('jev:settings', jevSettings().get());
-  return { ok: true, ...jevPayload() };
-});
-
-ipcMain.handle('collaboration:list', (_event, filter?: any) => {
-  if (!activeCollaborationService) return { ok: false, threads: [], error: 'Collaboration is not ready yet.' };
-  try {
-    return { ok: true, threads: activeCollaborationService.list(filter || {}) };
-  } catch (error: any) {
-    return { ok: false, threads: [], error: error?.message || String(error) };
-  }
-});
-
-ipcMain.handle('collaboration:start-picker', async () => {
-  try {
-    const target = await chassis.collaboration.pickTarget();
-    return { ok: true, target };
-  } catch (error: any) {
-    return { ok: false, error: error?.message || String(error) };
-  }
-});
-
-/** Page signals for the Command Deck WEB STATE tab (breadcrumb, cookies, storage). */
-ipcMain.handle('chassis:web-state', async () => {
-  try {
-    const wc = activeWebContents(chassis);
-    const page = await wc.executeJavaScript(
-      '(() => { ' +
-      'const crumbs = (location.pathname || "").split("/").filter(Boolean);' +
-      'const ls = {}; const ss = {};' +
-      'try { for (let i = 0; i < localStorage.length && i < 50; i++) { const k = localStorage.key(i); ls[k] = (localStorage.getItem(k) || "").slice(0, 120); } } catch {}' +
-      'try { for (let i = 0; i < sessionStorage.length && i < 50; i++) { const k = sessionStorage.key(i); ss[k] = (sessionStorage.getItem(k) || "").slice(0, 120); } } catch {}' +
-      'return JSON.stringify({ url: location.href, host: location.host, title: document.title, crumbs: crumbs, ls: ls, ss: ss });' +
-      '})()',
-      ).then((raw: string) => JSON.parse(raw));
-    let cookies: WebPageState['cookies'] = [];
-    try {
-      cookies = (await wc.session.cookies.get({ url: String(page?.url ?? '') }))
-        .slice(0, 40)
-        .map((cookie) => ({ name: cookie.name, domain: cookie.domain || '', httpOnly: Boolean(cookie.httpOnly) }));
-    } catch {
-      cookies = [];
-    }
-    const state: WebPageState = {
-      url: String(page?.url ?? ''),
-      host: String(page?.host ?? ''),
-      title: String(page?.title ?? ''),
-      crumbs: Array.isArray(page?.crumbs) ? page.crumbs.map(String) : [],
-      cookies,
-      local: page?.ls ?? {},
-      session: page?.ss ?? {},
-    };
-    return { ok: true, state };
-  } catch (error: any) {
-    return { ok: false, error: error?.message || String(error) };
-  }
-});
-
-registerRemoteIpc(() => activeRemoteService);
+registerRemoteIpc(() => services.remote);
 
 onRecordingStatus((state) => {
   chassis.bus.broadcast('recording:status', state);
@@ -526,219 +304,17 @@ onRecordingStatus((state) => {
  *
  * The packaged app reads it from inside the asar; development reads the repo copy.
  */
-function resolveBrandIcon(): string | undefined {
-  return brandIconPath();
-}
-
-const brandIcon = resolveBrandIcon();
+const brandIcon = brandIconPath();
 
 /** The page-zoom policy must exist before the first tab, so the initial document renders at the right proportions. */
 function prepareZoomPolicy(): void {
   if (activeZoomSettings) return;
-  activeZoomSettings = new ZoomSettingsStore(path.join(app.getPath('userData'), 'zoom-settings.json'));
-  chassis.zoom.setSettings(activeZoomSettings.get());
-}
-
-/**
- * The shell window plus its HUD crash handling. A crashed renderer used to leave a
- * permanently white BrowserWindow with no log; record it and reload once.
- */
-function openShellWindow(): BrowserWindow {
-  const win = new BrowserWindow({
-    title: BRAND.windowTitle,
-    ...(brandIcon ? { icon: brandIcon } : {}),
-    width: 1440,
-    height: 900,
-    minWidth: 1024,
-    minHeight: 700,
-    backgroundColor: '#18181b',
-    webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
-      sandbox: false,
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  });
-
-  const hudContents = win.webContents;
-  hudContents.on('render-process-gone', (_event, details) => {
-    logMainEvent('hud-renderer-gone', { reason: details.reason, exitCode: details.exitCode });
-    if (details.reason === 'clean-exit') return;
-    setTimeout(() => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        try {
-          mainWindow.webContents.reload();
-        } catch {
-          // Window closed while the renderer was restarting.
-        }
-      }
-    }, 700);
-  });
-  hudContents.on('unresponsive', () => logMainEvent('hud-unresponsive'));
-  hudContents.on('responsive', () => logMainEvent('hud-responsive'));
-  hudContents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
-    if (isMainFrame) logMainEvent('hud-did-fail-load', { code, description, url });
-  });
-
-  return win;
-}
-
-/** Update IPC: status, an on-demand check, and install (packaged builds only in practice). */
-function registerUpdateHandlers(): void {
-  ipcMain.handle('app:update-status', () => updaterState());
-  ipcMain.handle('app:update-check', () => checkForUpdates());
-  ipcMain.handle('app:update-install', () => installUpdate());
-  void initUpdater((state) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('app:update-status', state);
-    }
-  });
-}
-
-/** The dev server URL in development, the bundled file in a packaged build. */
-async function loadShell(win: BrowserWindow): Promise<void> {
-  if (process.env.VITE_DEV_SERVER_URL) {
-    await win.loadURL(process.env.VITE_DEV_SERVER_URL);
-    return;
-  }
-  await win.loadFile(path.join(__dirname, '../../dist/index.html'));
-}
-
-interface WrapServices {
-  store: WrapStore;
-  secrets: SecretStore;
-  audit: WrapAuditLog;
-  executor: ReturnType<typeof createWrapExecutor>;
-  token: string;
-}
-
-/** The wrap store, its secrets/audit log, the executor and the capability token. */
-function createWrapServices(): WrapServices {
-  const store = new WrapStore(wrapDir());
-  activeWrapStore = store;
-  const secrets = new SecretStore(wrapDir(), createSecretCipher());
-  const audit = new WrapAuditLog(path.join(wrapDir(), 'audit.jsonl'));
-  activeWrapSecrets = secrets;
-  activeWrapAudit = audit;
-  const executor = createWrapExecutor(
-    store,
-    {
-      secrets,
-      audit,
-      // Opt-in per recipe (`response.index: "cortex"`). Chunks land in the same
-      // page_history table as browsed pages, so `recall_memory` finds them.
-      indexDocuments: async (documents, context) => {
-        const cortex = chassis.cortex;
-        let chunks = 0;
-        for (const document of documents) {
-          chunks += await cortex.indexPage(context.url, document.title, document.markdown);
-        }
-        return chunks;
-      },
-    },
-    secrets,
-  );
-  return { store, secrets, audit, executor, token: createCapabilityToken(wrapDir()) };
-}
-
-interface CollaborationServices {
-  collaboration: CollaborationService;
-  media: MediaService;
-  toolSettings: ToolSettingsStore;
-}
-
-/** Tool settings, collaboration threads, the media service and the deck's collab wiring. */
-function createCollaborationServices(): CollaborationServices {
-  const toolSettings = new ToolSettingsStore(path.join(app.getPath('userData'), 'tool-settings.json'));
-  registerToolSettingsIpc(toolSettings);
-  const collaboration = new CollaborationService(
-    new CollaborationStore(path.join(app.getPath('userData'), 'collaboration.json')),
-    chassis,
-    () => chassis.bus.broadcast('collaboration:updated'),
-    () => experimentalSettings().get().collab,
-  );
-  activeCollaborationService = collaboration;
-  const media = new MediaService({
-    notify: ({ title, message }) => chassis.hil.notify(title, message, 'normal', false),
-  });
-  activeMediaService = media;
-  media.startUpdater();
-  chassis.deck.setEnabledProvider(() => experimentalSettings().get().collab);
-  chassis.jev.setPolicyProvider(() => jevPolicy());
-  // The deck toolbar's list + note cycling read exactly what the page overlay shows.
-  chassis.deck.setThreadsProvider((filter) => collaboration.list(filter));
-  chassis.deck.setOverlayRefresher(() => collaboration.refreshOverlay());
-  chassis.deck.setResolver((id) => collaboration.resolve(id, 'Resolved from the collab note list.'));
-  chassis.deck.setClassListener((target, added, removed) => {
-    try {
-      activeCollaborationService?.recordClassEdit(target, added, removed);
-    } catch {
-      // Class-edit bookkeeping is best-effort; the page already applied it.
-    }
-  });
-  chassis.collaboration.setNoteHandler((note) => {
-    try {
-      activeCollaborationService?.create({
-        target: note.target,
-        text: note.text,
-        tags: note.tags,
-        kind: 'comment',
-        author: 'human',
-      });
-    } catch {
-      // The page drawer is best-effort; the persisted thread is authoritative.
-    }
-  });
-  return { collaboration, media, toolSettings };
-}
-
-/** Start the remote tunnel once; a second window reuses the running service. */
-function ensureRemoteService(): void {
-  if (activeRemoteService) return;
-  activeRemoteService = new RemoteService({
-    serverPath: ensureRemoteServerPath(),
-    bridgeUrl: `http://127.0.0.1:${bridgePort}`,
-    port: remotePort,
-    dataDir: remoteDir(),
-    cwd: app.getPath('userData'),
-    cloudflaredPath: process.env.HB_CLOUDFLARED_PATH,
-  });
-  activeRemoteService.ensureToken();
-  void activeRemoteService.maybeAutoUpdateCloudflared();
-}
-
-/** Start the autonomous HTTP bridge and the tunnel the window exposes to agents. */
-async function startBackgroundServices(): Promise<void> {
-  try {
-    activeResearchSettings = new ResearchSettingsStore(path.join(app.getPath('userData'), 'research-settings.json'));
-    await chassis.research.setSettings(activeResearchSettings.load());
-
-    const wrap = createWrapServices();
-    const collab = createCollaborationServices();
-    startHttpBridge(
-      chassis,
-      bridgePort,
-      {
-        store: wrap.store,
-        executor: wrap.executor,
-        secrets: wrap.secrets,
-        audit: wrap.audit,
-        token: wrap.token,
-      },
-      collab.toolSettings,
-      collab.collaboration,
-      collab.media,
-    );
-
-    ensureRemoteService();
-  } catch (err: any) {
-    chassis.telemetry.addLog('warn', `HTTP Bridge notice: ${err?.message || err}`);
-  }
+  chassis.zoom.setSettings(zoomSettings().get());
 }
 
 async function createWindow() {
   prepareZoomPolicy();
-  mainWindow = openShellWindow();
+  mainWindow = createShellWindow({ appDir: __dirname, brandIcon, getMainWindow: () => mainWindow });
   chassis.boot.window(mainWindow);
   setRecordingWindow(mainWindow);
   loadRecordingConfig();
@@ -750,8 +326,8 @@ async function createWindow() {
     onLog: (level, message) => console.log(`[HUD context menu] ${level}: ${message}`),
   });
 
-  registerUpdateHandlers();
-  await loadShell(mainWindow);
+  registerUpdateHandlers(() => mainWindow);
+  await loadShell(mainWindow, __dirname);
 
   mainWindow.show();
   mainWindow.focus();
@@ -769,20 +345,26 @@ async function createWindow() {
     return { action: 'deny' };
   });
 
-  await startBackgroundServices();
+  // Start the autonomous HTTP bridge and the tunnel it exposes to agents. A failure is a
+  // logged warning, never a startup crash: the window is already usable.
+  try {
+    await services.start();
+  } catch (err: any) {
+    chassis.telemetry.addLog('warn', `HTTP Bridge notice: ${err?.message || err}`);
+  }
 }
 
 app.whenReady().then(createWindow);
 
 let remoteShutdownStarted = false;
 app.on('before-quit', () => {
-  activeMediaService?.shutdown();
+  services.shutdown();
 });
 app.on('before-quit', (event) => {
-  if (!activeRemoteService || !activeRemoteService.isRunning() || remoteShutdownStarted) return;
+  if (!services.remote || !services.remote.isRunning() || remoteShutdownStarted) return;
   event.preventDefault();
   remoteShutdownStarted = true;
-  void activeRemoteService.stop().finally(() => app.quit());
+  void services.remote.stop().finally(() => app.quit());
 });
 
 app.on('window-all-closed', () => {
