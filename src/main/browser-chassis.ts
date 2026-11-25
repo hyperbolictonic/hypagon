@@ -61,6 +61,7 @@ import { HudWatchdog } from './boot/hud-watchdog.js';
 import { WindowBootSurface } from './boot/window-boot.js';
 import { ShellBus } from './shell/event-bus.js';
 import { createLlmStack } from './chassis/llm-stack.js';
+import { createInputStack } from './chassis/input-stack.js';
 import { IpcSurface } from './ipc/ipc-surface.js';
 import { readPageInfo } from './tabs/page-info.js';
 import { TabSurface } from './tabs/tab-surface.js';
@@ -320,12 +321,15 @@ export class BrowserChassis {
       scheduleConsentSweep: () => this.consent.scheduleSweep(),
       refreshViewport: () => void this.tabSetup.viewport?.refreshActive(),
     });
-    const inputSurfaces = this.createInputSurfaces();
-    this.input = inputSurfaces.input;
-    this.downloads = inputSurfaces.downloads;
-    this.sessions = inputSurfaces.sessions;
-    this.network = inputSurfaces.network;
-    this.scripts = inputSurfaces.scripts;
+    const inputStack = this.createInputStack();
+    this.input = inputStack.input;
+    this.harvester = inputStack.harvester;
+    this.shieldBreaker = inputStack.shieldBreaker;
+    this.marksOverlay = inputStack.marksOverlay;
+    this.downloads = inputStack.downloads;
+    this.sessions = inputStack.sessions;
+    this.network = inputStack.network;
+    this.scripts = inputStack.scripts;
     this.research = this.createResearchSession();
     this.researchView = this.createResearchViewSurface();
     const harvestNav = this.createHarvestNavigationSurfaces();
@@ -381,71 +385,23 @@ export class BrowserChassis {
     });
   }
 
-  /** Input simulation, downloads, sessions, the network tap and the script vault. */
-  private createInputSurfaces(): {
-    input: InputSurface;
-    downloads: DownloadSurface;
-    sessions: SessionSurface;
-    network: NetworkSurface;
-    scripts: ScriptsSurface;
-  } {
-    this.harvester = new ConstructHarvester();
-    const input = new InputSurface({
+  /** The input/diagnostic stack, kept out of the constructor. */
+  private createInputStack(): ReturnType<typeof createInputStack> {
+    return createInputStack({
       activeWebContents: () => this.getActiveWebContents(),
-      onMouseMove: (point, velocity) => {
-        this.state.cursor = point;
-        this.telemetry.emitPointEvent('mouse_move', point, `Velocity: ${velocity.toFixed(2)} px/ms`);
-      },
-      onClick: (point) => {
-        this.state.stats.totalInteractions++;
-        this.telemetry.emitPointEvent('click', point, 'Physical mouse switch actuated');
-      },
-      onKey: (char, delay) => {
-        this.state.stats.totalInteractions++;
-        this.telemetry.emitTelemetry({
-          type: 'keystroke',
-          key: char === ' ' ? 'SPACE' : char,
-          durationMs: delay,
-          timestamp: Date.now(),
-          details: `Cadence variance: ${delay}ms`,
-        });
-      },
-      onScroll: (deltaY) => {
-        this.telemetry.emitSimpleEvent('scroll', `Mousewheel impulse: ${deltaY}px`);
-      },
-      markSynthetic: (at) => this.human.monitor.markSynthetic(at),
-      humanActive: () => this.human.isActive(),
-      status: {
-        acting: () => {
-          this.state.agentStatus = 'SIMULATING_INPUT';
-        },
-        idle: () => this.telemetry.reportIdle(),
-        error: () => {
-          this.state.agentStatus = 'ERROR';
-          this.telemetry.broadcastState();
-        },
-      },
-      log: (level, message) => this.telemetry.addLog(level, message),
-      bumpRevision: () => this.bumpRevision(),
-    });
-
-    this.shieldBreaker = new ShieldBreaker(input.simulator);
-    const downloads = new DownloadSurface({ log: this.controllerLog });
-    const sessions = new SessionSurface({
-      activeWebContents: () => this.getActiveWebContents(),
+      state: this.state,
       log: this.controllerLog,
-      emitHarvest: (details) => this.telemetry.emitHarvestDetails(details),
-    });
-    const network = new NetworkSurface({ log: this.controllerLog });
-    const scripts = new ScriptsSurface({
-      activeWebContents: () => this.getActiveWebContents(),
-      log: this.controllerLog,
+      pointEvent: (type, point, details) => this.telemetry.emitPointEvent(type, point, details),
+      telemetryEvent: (event) => this.telemetry.emitTelemetry(event),
+      simpleEvent: (type, details) => this.telemetry.emitSimpleEvent(type, details),
       reportActing: () => this.telemetry.reportActing(),
       reportIdle: () => this.telemetry.reportIdle(),
       emitHarvest: (details) => this.telemetry.emitHarvestDetails(details),
+      broadcastState: () => this.telemetry.broadcastState(),
+      bumpRevision: () => this.bumpRevision(),
+      markSynthetic: (at) => this.human.monitor.markSynthetic(at),
+      humanActive: () => this.human.isActive(),
     });
-    this.marksOverlay = new MarksOverlay();
-    return { input, downloads, sessions, network, scripts };
   }
 
   /** Marks, harvest and navigation, in dependency order (prerender before nav). */
