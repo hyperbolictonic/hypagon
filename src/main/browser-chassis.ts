@@ -10,14 +10,7 @@ import { TelemetrySurface } from './telemetry/telemetry-surface.js';
 import { humanListenerScript } from './input/human-activity.js';
 import { HumanControlSurface } from './input/human-control.js';
 import { NavigationSurface } from './navigation/navigation-surface.js';
-import {
-  COLLABORATION_CLASS_PREFIX,
-  COLLABORATION_EXIT_PREFIX,
-  COLLABORATION_NOTE_PREFIX,
-  COLLABORATION_RESOLVE_PREFIX,
-  collaborationPickerScript,
-} from './collaboration/overlay.js';
-import type { CollaborationTarget } from '../shared/collaboration.js';
+import { CollaborationSurface } from './collaboration/surface.js';
 import { bump } from './metrics.js';
 import { ActionLedger } from './telemetry/action-ledger.js';
 import { ConstructHarvester } from './harvester/markdown.js';
@@ -197,7 +190,15 @@ export class BrowserChassis {
   private sidebarOverlayVisible = true;
   /** Monotonic page revision: bumped on navigation and every mutating action. */
   private revision = 0;
-  private onCollaborationNote?: (input: { target: CollaborationTarget; text: string; tags: string[] }) => void;
+  /** The page overlay picker and its signal channel. */
+  readonly collaboration = new CollaborationSurface({
+    activeWebContents: () => this.getActiveWebContents(),
+    pageInset: () => this.deck.pageInset(),
+    setCollabMode: (open) => this.deck.setCollabMode(open),
+    resolveNote: (id) => this.deck.resolveNote(id),
+    forwardClassEdit: (target, added, removed) => this.deck.forwardClassEdit(target, added, removed),
+    log: (level, message) => this.telemetry.addLog(level, message),
+  });
   /** Page zoom policy: fit the page to the OS display scale, or honour Windows scale. */
   /** Explicit zoom from the toolbar or an agent; null means use the policy base. */
   /** Renderer IPC channels. */
@@ -841,41 +842,7 @@ export class BrowserChassis {
         // Takeover channel: the page reports trusted pointer/key/wheel activity with a magic prefix.
         const human = this.human.monitor.ingest(log.message);
         if (human) this.human.note(human);
-        if (log.message === COLLABORATION_EXIT_PREFIX) {
-          this.deck.setCollabMode(false);
-        }
-        if (log.message.startsWith(COLLABORATION_RESOLVE_PREFIX)) {
-          try {
-            const payload = JSON.parse(log.message.slice(COLLABORATION_RESOLVE_PREFIX.length));
-            if (typeof payload?.id === 'string') void this.deck.resolveNote(payload.id);
-          } catch {
-            this.telemetry.addLog('warn', 'Collaboration note resolve signal was invalid.');
-          }
-        }
-        if (log.message.startsWith(COLLABORATION_NOTE_PREFIX)) {
-          try {
-            const note = JSON.parse(log.message.slice(COLLABORATION_NOTE_PREFIX.length));
-            if (note?.target && typeof note.text === 'string') {
-              this.onCollaborationNote?.({
-                target: note.target,
-                text: note.text,
-                tags: Array.isArray(note.tags) ? note.tags.filter((tag: unknown): tag is string => typeof tag === 'string') : [],
-              });
-            }
-          } catch {}
-        }
-        if (log.message.startsWith(COLLABORATION_CLASS_PREFIX)) {
-          try {
-            const edit = JSON.parse(log.message.slice(COLLABORATION_CLASS_PREFIX.length));
-            if (edit?.target) {
-              this.deck.forwardClassEdit(
-                edit.target,
-                Array.isArray(edit.added) ? edit.added.map(String) : [],
-                Array.isArray(edit.removed) ? edit.removed.map(String) : [],
-              );
-            }
-          } catch {}
-        }
+        this.collaboration.handleSignal(log.message);
   }
 
   public getViewportBounds(): { x: number; y: number; width: number; height: number } {
@@ -923,7 +890,7 @@ export class BrowserChassis {
     onModeChanged: () => this.tabManager?.updateActiveTabBounds(),
     sendToShell: (channel, payload) => this.sendToShellWindow(channel, payload),
     onPanelLoaded: () => this.deck.sendToPanel('chassis:decision-status', decisionStatus()),
-    stopSelection: () => this.stopCollaborationSelection(),
+    stopSelection: () => this.collaboration.stopSelection(),
   });
 
 
@@ -1116,37 +1083,6 @@ export class BrowserChassis {
       maxSide,
       quality,
     );
-  }
-
-  public setOnCollaborationNote(
-    callback: (input: { target: CollaborationTarget; text: string; tags: string[] }) => void,
-  ): void {
-    this.onCollaborationNote = callback;
-  }
-
-  /** Start the human element picker and resolve with its selected target. */
-  public async pickCollaborationTarget(): Promise<CollaborationTarget | null> {
-    const wc = this.getActiveWebContents();
-    return await wc
-      .executeJavaScript(collaborationPickerScript({ rightInset: this.deck.pageInset() }))
-      .catch(() => null);
-  }
-
-  public async stopCollaborationSelection(): Promise<void> {
-    try {
-      const wc = this.getActiveWebContents();
-      await wc.executeJavaScript(`
-        (() => {
-          if (typeof window.__kuangCollabPickerCancel === 'function') window.__kuangCollabPickerCancel();
-          if (typeof window.__kuangCollabSelectionCancel === 'function') window.__kuangCollabSelectionCancel();
-          const el = document.getElementById('__kuang_collab_picker');
-          if (el) el.remove();
-          const selected = document.getElementById('__kuang_collab_selection');
-          if (selected) selected.remove();
-          window.__kuangCollabPicking = false;
-        })()
-      `);
-    } catch {}
   }
 
   // ---- Consent sweep ------------------------------------------------------------------

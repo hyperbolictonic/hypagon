@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 260 files, 873 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 261 files, 876 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (742)
+## Types (745)
 
 | File | Export | When to use |
 |---|---|---|
@@ -49,6 +49,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/collaboration/overlay.ts` | `CollaborationPickerOptions` *(type)* | Human element picker. The click is reported through the existing console channel. |
 | `main/collaboration/store.ts` | `CollaborationStore` | - |
 | `main/collaboration/store.ts` | `CreateThreadInput` *(type)* | - |
+| `main/collaboration/surface.ts` | `CollaborationSurface` | The element picker and the page overlay signal channel. |
+| `main/collaboration/surface.ts` | `CollaborationNote` *(type)* | A note the page overlay posted for the collaboration store. |
+| `main/collaboration/surface.ts` | `CollaborationSurfaceDeps` *(type)* | Dependencies the collaboration surface needs from the deck and the tab. |
 | `main/cortex/chunker.ts` | `chunkMarkdown` | - |
 | `main/cortex/chunker.ts` | `extractDomain` | - |
 | `main/cortex/chunker.ts` | `PageChunk` *(type)* | Kuang Grade Mark Eleven - Cortex Markdown Chunker |

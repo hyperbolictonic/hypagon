@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-260 modules, 873 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+261 modules, 876 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -20,6 +20,7 @@
 | `main/collaboration/overlay.ts` | 8: collaborationNoteDrawerScript, collaborationPickerScript, collaborationOverlayScript, COLLABORATION_NOTE_PREFIX, COLLABORATION_CLASS_PREFIX, COLLABORATION_RESOLVE_PREFIX, COLLABORATION_EXIT_PREFIX, CollaborationPickerOptions |
 | `main/collaboration/service.ts` | 1: CollaborationService |
 | `main/collaboration/store.ts` | 2: CollaborationStore, CreateThreadInput |
+| `main/collaboration/surface.ts` | 3: CollaborationSurface, CollaborationNote, CollaborationSurfaceDeps |
 | `main/cortex/chunker.ts` | 3: chunkMarkdown, extractDomain, PageChunk |
 | `main/cortex/cortex-db.ts` | 10: cortex, CortexDB, PageHistoryRow, BookmarkRow, RecallResult, HistoryItem, UrlSuggestion, BookmarkItem, … (10) |
 | `main/cortex/embedder.ts` | 9: registerEmbeddingProvider, listEmbeddingProviders, setEmbeddingProvider, getEmbeddingProvider, embedText, generateEmbedding, DEFAULT_PROVIDER_ID, EMBEDDING_DIM, … (9) |
@@ -125,8 +126,7 @@
 | `main/research/anchors.ts` | 6: relocateCitation, relocateCitations, anchorHighlights, CitationAnchor, CitationCandidate, CitationRelocation |
 | `main/research/citation-controller.ts` | 4: CitationController, HumanHandoffResult, CitationControllerDeps, RevalidationSummary |
 | `main/research/crawl-orchestrator.ts` | 5: CrawlOrchestrator, CrawlSessionPolicy, CrawlOrchestratorDeps, RenderCrawlOptions, RenderCrawlResult |
-| `main/research/crawl-surface.ts` | 2: CrawlSurface, CrawlSurfaceDeps |
 
-… and 135 more module(s) — grep the full index.
+… and 136 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

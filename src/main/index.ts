@@ -471,7 +471,7 @@ ipcMain.handle('collaboration:list', (_event, filter?: any) => {
 
 ipcMain.handle('collaboration:start-picker', async () => {
   try {
-    const target = await chassis.pickCollaborationTarget();
+    const target = await chassis.collaboration.pickTarget();
     return { ok: true, target };
   } catch (error: any) {
     return { ok: false, error: error?.message || String(error) };
@@ -679,7 +679,7 @@ async function createWindow() {
         // Class-edit bookkeeping is best-effort; the page already applied it.
       }
     });
-    chassis.setOnCollaborationNote((note) => {
+    chassis.collaboration.setNoteHandler((note) => {
       try {
         activeCollaborationService?.create({
           target: note.target,
