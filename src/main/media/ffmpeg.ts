@@ -107,6 +107,29 @@ async function findSystem(): Promise<{ path: string; version: string } | null> {
   return version === null ? null : { path: 'ffmpeg', version };
 }
 
+/** The "nothing runnable" verdict; `error` tells the user what to fix. */
+function missing(error: string, mode: FfmpegMode, installing: boolean): FfmpegInfo {
+  return { available: false, version: null, source: null, path: null, mode, installing, error };
+}
+
+/** A resolved binary, tagged with where it came from. */
+function available(
+  binary: { path: string; version: string },
+  source: FfmpegSource,
+  mode: FfmpegMode,
+  installing: boolean,
+): FfmpegInfo {
+  return {
+    available: true,
+    version: binary.version,
+    source,
+    path: binary.path,
+    mode,
+    installing,
+    error: null,
+  };
+}
+
 /**
  * Resolve ffmpeg for the current settings. `installing` is supplied by the
  * service so a status poll during a managed download says so.
@@ -117,56 +140,28 @@ export async function detectFfmpeg(
   installing = false,
 ): Promise<FfmpegInfo> {
   const mode = settings.ffmpegMode;
-  const base = { mode, installing };
 
   if (mode === 'path') {
     const found = await findConfigured(settings);
     return found
-      ? { ...base, available: true, source: 'configured', path: found.path, version: found.version, error: null }
-      : {
-          ...base,
-          available: false,
-          source: null,
-          path: null,
-          version: null,
-          error: 'ffmpegPath is not set to a runnable ffmpeg binary.',
-        };
+      ? available(found, 'configured', mode, installing)
+      : missing('ffmpegPath is not set to a runnable ffmpeg binary.', mode, installing);
   }
 
   if (mode === 'managed') {
     const found = await findManaged(rootDir);
     return found
-      ? { ...base, available: true, source: 'managed', path: found.path, version: found.version, error: null }
-      : {
-          ...base,
-          available: false,
-          source: null,
-          path: null,
-          version: null,
-          error: 'The managed ffmpeg is not installed. Use "Install ffmpeg" in Settings → Media.',
-        };
+      ? available(found, 'managed', mode, installing)
+      : missing('The managed ffmpeg is not installed. Use "Install ffmpeg" in Settings → Media.', mode, installing);
   }
 
   const configured = await findConfigured(settings);
-  if (configured) {
-    return { ...base, available: true, source: 'configured', path: configured.path, version: configured.version, error: null };
-  }
+  if (configured) return available(configured, 'configured', mode, installing);
   const managed = await findManaged(rootDir);
-  if (managed) {
-    return { ...base, available: true, source: 'managed', path: managed.path, version: managed.version, error: null };
-  }
+  if (managed) return available(managed, 'managed', mode, installing);
   const system = await findSystem();
-  if (system) {
-    return { ...base, available: true, source: 'system', path: system.path, version: system.version, error: null };
-  }
-  return {
-    ...base,
-    available: false,
-    source: null,
-    path: null,
-    version: null,
-    error: 'No ffmpeg found. Merging and transcoding are unavailable until one is configured or installed.',
-  };
+  if (system) return available(system, 'system', mode, installing);
+  return missing('No ffmpeg found. Merging and transcoding are unavailable until one is configured or installed.', mode, installing);
 }
 
 async function downloadVerified(url: string, expectedSha256: string, destination: string): Promise<void> {

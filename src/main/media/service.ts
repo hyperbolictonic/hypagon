@@ -399,6 +399,19 @@ export class MediaService {
     }
   }
 
+  /** The shared prelude: normalized URL, media info and preferred caption language. */
+  private async locateMedia(
+    rawUrl: string,
+    lang?: string,
+  ): Promise<
+    | { ok: false; code: string; error: string }
+    | { ok: true; url: string; lang: string; info: Extract<MediaInfoResult, { ok: true }> }
+  > {
+    const info = await this.info(rawUrl);
+    if (!info.ok) return { ok: false, code: info.code, error: info.error };
+    return { ok: true, url: rawUrl.trim(), lang: this.pickLanguage(info.media, lang), info };
+  }
+
   /**
    * Captions as text, without downloading the media. Paged with
    * `maxChars`/`cursor`, and cached for ten minutes per URL + language.
@@ -407,11 +420,10 @@ export class MediaService {
     rawUrl: string,
     options: { lang?: string; maxChars?: number; cursor?: number; index?: boolean } = {},
   ): Promise<MediaTranscriptResult> {
-    const info = await this.info(rawUrl);
-    if (!info.ok) return { ok: false, code: info.code, error: info.error };
+    const located = await this.locateMedia(rawUrl, options.lang);
+    if (!located.ok) return located;
 
-    const url = rawUrl.trim();
-    const lang = this.pickLanguage(info.media, options.lang);
+    const { url, lang, info } = located;
     const key = `${url}|${lang}`;
     const cached = this.transcriptCache.get(key);
     let artifacts: SubtitleArtifacts | null =
@@ -471,11 +483,10 @@ export class MediaService {
     rawUrl: string,
     options: { lang?: string; maxChars?: number; thumbnail?: boolean } = {},
   ): Promise<MediaPreviewResult> {
-    const info = await this.info(rawUrl);
-    if (!info.ok) return { ok: false, code: info.code, error: info.error };
+    const located = await this.locateMedia(rawUrl, options.lang);
+    if (!located.ok) return located;
 
-    const url = rawUrl.trim();
-    const lang = this.pickLanguage(info.media, options.lang);
+    const { url, lang, info } = located;
     const fetched = await this.artifactsFor(url, lang, options.thumbnail !== false);
     const warnings = [...info.warnings];
 

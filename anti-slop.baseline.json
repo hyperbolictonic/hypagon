@@ -131,10 +131,9 @@
     "files": {
       "main/decide/decision-client.ts": 7,
       "main/decide/decision-guard.ts": 7,
-      "main/media/ffmpeg.ts": 24,
-      "main/media/service.ts": 20,
+      "main/media/service.ts": 6,
       "main/media/transcript.ts": 5,
-      "main/primitives/primitives.ts": 38,
+      "main/primitives/primitives.ts": 10,
       "main/recipes/recipe-store.ts": 10,
       "main/scripts/script-vault.ts": 9,
       "main/shadow-walk/ax-controls.ts": 25,
@@ -163,7 +162,7 @@
       "renderer/settings-clients.ts": 38,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 845
+    "totalDuplicatedLines": 779
   },
   "modularity": {
     "files": {

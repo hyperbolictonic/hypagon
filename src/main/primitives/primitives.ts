@@ -867,20 +867,7 @@ export class Primitives {
     }
 
     if (as === 'text') {
-      const pre = await this.host.precheckPageRead?.({
-        as,
-        region: opts.region,
-        budget: opts.budget,
-        cursor: opts.cursor,
-        full: opts.full,
-      });
-      if (pre?.blocked) {
-        throw new PrimitiveError(
-          'JEV_REQUIRED',
-          'Unscoped page reads are disabled while JEV enforce is on. Call jev_index, then read_section for the sections you need.',
-          pre.refusal,
-        );
-      }
+      const pre = await this.precheckRead(as, opts);
       const rootExpr =
         typeof opts.region === 'number'
           ? `document.querySelector('[data-mark-id="${opts.region}"]')`
@@ -897,20 +884,7 @@ export class Primitives {
     }
 
     // markdown (default)
-    const pre = await this.host.precheckPageRead?.({
-      as: 'markdown',
-      region: opts.region,
-      budget: opts.budget,
-      cursor: opts.cursor,
-      full: opts.full,
-    });
-    if (pre?.blocked) {
-      throw new PrimitiveError(
-        'JEV_REQUIRED',
-        'Unscoped page reads are disabled while JEV enforce is on. Call jev_index, then read_section for the sections you need.',
-        pre.refusal,
-      );
-    }
+    const pre = await this.precheckRead('markdown', opts);
     const construct = await this.host.harvest({ includeMarks: true, includeOffscreen: opts.includeOffscreen === true });
     const funnel = pre?.note
       ? pre.note
@@ -962,14 +936,33 @@ export class Primitives {
       title: info.title,
       content: content ?? text,
     });
-    if (!guard.allowed) {
-      throw new PrimitiveError(
-        'JEV_REQUIRED',
-        'Unscoped page reads are disabled while JEV enforce is on. Call jev_index, then read_section for the sections you need.',
-        guard.refusal,
-      );
-    }
+    if (!guard.allowed) this.refuseUnscoped(guard.refusal);
     return guard.note;
+  }
+
+  /** The JEV precheck shared by the text and markdown reads; refuses an unscoped page. */
+  private async precheckRead(
+    as: 'text' | 'markdown',
+    opts: ObserveOptions,
+  ): Promise<PrecheckPageReadResult | undefined> {
+    const pre = await this.host.precheckPageRead?.({
+      as,
+      region: opts.region,
+      budget: opts.budget,
+      cursor: opts.cursor,
+      full: opts.full,
+    });
+    if (pre?.blocked) this.refuseUnscoped(pre.refusal);
+    return pre;
+  }
+
+  /** The one JEV refusal every read path raises. */
+  private refuseUnscoped(detail?: Record<string, any>): never {
+    throw new PrimitiveError(
+      'JEV_REQUIRED',
+      'Unscoped page reads are disabled while JEV enforce is on. Call jev_index, then read_section for the sections you need.',
+      detail,
+    );
   }
 
   /** Child-frame controls as mark-like rows for observe(som/components). */
