@@ -124,9 +124,9 @@ const HELPERS = `
   };
 `;
 
-/** Build the self-contained expression. Callers only ever pass plain JSON-able options. */
-export function controlFactsExpression(opts: ControlFactsOptions = {}): string {
-  const options = {
+/** The normalised option object the page sees, with every bound applied. */
+function expressionOptions(opts: ControlFactsOptions) {
+  return {
     selector: opts.selector,
     ids: Array.isArray(opts.ids) && opts.ids.length ? opts.ids.slice(0, 200) : undefined,
     limit: opts.limit && opts.limit > 0 ? Math.min(opts.limit, 500) : 200,
@@ -136,11 +136,10 @@ export function controlFactsExpression(opts: ControlFactsOptions = {}): string {
     markIdBase: Number.isFinite(opts.markIdBase) ? Number(opts.markIdBase) : undefined,
     component: opts.component === true,
   };
-  return `(() => {
-    const opts = ${JSON.stringify(options)};
-    ${HELPERS}
-    ${options.component ? COMPONENT_SIGNATURE_HELPERS : ''}
-    const SEL = 'a[href],button,input,select,textarea,summary,[role="button"],[role="link"],[role="tab"],[role="menuitem"],[role="checkbox"],[role="combobox"],[contenteditable="true"],[onclick],[tabindex]:not([tabindex="-1"])';
+}
+
+/** The selector every control matches, and the shadow-aware collection primitives. */
+const COLLECTORS = `    const SEL = 'a[href],button,input,select,textarea,summary,[role="button"],[role="link"],[role="tab"],[role="menuitem"],[role="checkbox"],[role="combobox"],[contenteditable="true"],[onclick],[tabindex]:not([tabindex="-1"])';
     let nodes;
     const deepQuery = (root) => {
       if (!opts.deep) return Array.from(root.querySelectorAll(SEL));
@@ -172,13 +171,19 @@ export function controlFactsExpression(opts: ControlFactsOptions = {}): string {
       }
       return el;
     };
-    if (opts.ids && opts.ids.length) {
+`;
+
+/** Which nodes to describe: the marked ids, or the selector's descendants from a root. */
+const COLLECT = `    if (opts.ids && opts.ids.length) {
       nodes = opts.ids.map((id) => document.querySelector('[data-mark-id="' + id + '"]')).filter(Boolean);
     } else {
       const root = opts.selector ? document.querySelector(opts.selector) : document.body;
       if (!root) return { error: 'root not found', controls: [] };
       nodes = opts.selector && root.matches && root.matches(SEL) ? [root] : deepQuery(root);
-    }
+    }`;
+
+/** One record per control: its name, state, actions, region, occlusion and box. */
+const DESCRIBE = `
     const out = [];
     for (const el of nodes) {
       if (out.length >= opts.limit) break;
@@ -230,9 +235,19 @@ export function controlFactsExpression(opts: ControlFactsOptions = {}): string {
         rect: { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) },
       });
     }
-    return { url: location.href, count: out.length, controls: out };
+    return { url: location.href, count: out.length, controls: out };`;
+
+/** Build the self-contained expression. Callers only ever pass plain JSON-able options. */
+export function controlFactsExpression(opts: ControlFactsOptions = {}): string {
+  const options = expressionOptions(opts);
+  return `(() => {
+    const opts = ${JSON.stringify(options)};
+    ${HELPERS}
+    ${options.component ? COMPONENT_SIGNATURE_HELPERS : ''}
+${COLLECTORS}${COLLECT}${DESCRIBE}
   })()`;
 }
+
 
 /** Parse the expression result into typed facts, tolerating an adapter that returned a string. */
 export function parseControlFacts(raw: unknown): { url?: string; controls: ControlFacts[] } {
