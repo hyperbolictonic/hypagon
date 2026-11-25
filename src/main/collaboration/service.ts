@@ -84,7 +84,7 @@ export class CollaborationService {
       // Resolved threads are history, not active page highlights. Keeping them
       // painted after Resolve makes the user think collab mode is still active.
       const threads = this.store.list({ url }).filter((thread) => thread.status !== 'resolved');
-      const rightInset = this.chassis.getSidebarPageInset();
+      const rightInset = this.chassis.deck.pageInset();
       await wc.executeJavaScript(collaborationOverlayScript(threads, { rightInset })).catch(() => null);
     } catch {
       // Overlay refresh is best-effort; the persisted thread remains authoritative.

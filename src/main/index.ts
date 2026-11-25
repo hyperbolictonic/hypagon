@@ -447,7 +447,7 @@ ipcMain.handle('settings:save-experimental', (_event, patch: unknown) => {
   chassis.broadcast('experimental:settings', settings);
   // Turning the gate off must also leave collab mode and drop page highlights.
   if (!settings.collab) {
-    chassis.setCollabMode(false);
+    chassis.deck.setCollabMode(false);
     void activeCollaborationService?.refreshOverlay();
   }
   return { ok: true, settings };
@@ -666,13 +666,13 @@ async function createWindow() {
     });
     activeMediaService = media;
     media.startUpdater();
-    chassis.setCollabEnabledProvider(() => experimentalSettings().get().collab);
+    chassis.deck.setEnabledProvider(() => experimentalSettings().get().collab);
     chassis.jev.setPolicyProvider(() => jevPolicy());
     // The deck toolbar's list + note cycling read exactly what the page overlay shows.
-    chassis.setCollaborationThreadsProvider((filter) => collaboration.list(filter));
-    chassis.setCollaborationOverlayRefresher(() => collaboration.refreshOverlay());
-    chassis.setCollaborationResolver((id) => collaboration.resolve(id, 'Resolved from the collab note list.'));
-    chassis.setCollaborationClassListener((target, added, removed) => {
+    chassis.deck.setThreadsProvider((filter) => collaboration.list(filter));
+    chassis.deck.setOverlayRefresher(() => collaboration.refreshOverlay());
+    chassis.deck.setResolver((id) => collaboration.resolve(id, 'Resolved from the collab note list.'));
+    chassis.deck.setClassListener((target, added, removed) => {
       try {
         activeCollaborationService?.recordClassEdit(target, added, removed);
       } catch {

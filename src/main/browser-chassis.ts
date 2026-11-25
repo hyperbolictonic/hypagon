@@ -20,8 +20,7 @@ import {
   COLLABORATION_RESOLVE_PREFIX,
   collaborationPickerScript,
 } from './collaboration/overlay.js';
-import type { CollaborationTarget, CollaborationThread } from '../shared/collaboration.js';
-import type { SidebarSurfaceState } from '../shared/menu.js';
+import type { CollaborationTarget } from '../shared/collaboration.js';
 import { bump } from './metrics.js';
 import { ActionLedger } from './telemetry/action-ledger.js';
 import { ConstructHarvester } from './harvester/markdown.js';
@@ -468,7 +467,7 @@ export class BrowserChassis {
     });
     this.setupTabManager();
     this.registerIpcHandlers();
-    this.setupSidebarView();
+    this.deck.setup();
   }
 
   /**
@@ -505,7 +504,7 @@ export class BrowserChassis {
   public reassertViewport(): void {
     if (!this.mainWindow || this.mainWindow.isDestroyed()) return;
     try {
-      this.positionSidebar();
+      this.deck.position();
     } catch {
       // A settings surface can temporarily hide the sidebar.
     }
@@ -637,7 +636,7 @@ export class BrowserChassis {
           }
         });
       },
-      onViewAdded: () => this.bringSidebarToFront(),
+      onViewAdded: () => this.deck.bringToFront(),
       onTabClosed: (tabId) => this.viewportController?.unregisterTab(tabId),
       onLog: (level, msg) => this.addLog(level, msg),
       onConsoleLog: (log) => {
@@ -647,12 +646,12 @@ export class BrowserChassis {
         const human = this.humanMonitor.ingest(log.message);
         if (human) this.noteHumanInput(human);
         if (log.message === COLLABORATION_EXIT_PREFIX) {
-          this.setCollabMode(false);
+          this.deck.setCollabMode(false);
         }
         if (log.message.startsWith(COLLABORATION_RESOLVE_PREFIX)) {
           try {
             const payload = JSON.parse(log.message.slice(COLLABORATION_RESOLVE_PREFIX.length));
-            if (typeof payload?.id === 'string') void this.resolveCollaborationNote(payload.id);
+            if (typeof payload?.id === 'string') void this.deck.resolveNote(payload.id);
           } catch {
             this.addLog('warn', 'Collaboration note resolve signal was invalid.');
           }
@@ -673,7 +672,7 @@ export class BrowserChassis {
           try {
             const edit = JSON.parse(log.message.slice(COLLABORATION_CLASS_PREFIX.length));
             if (edit?.target) {
-              this.deckController.forwardClassEdit(
+              this.deck.forwardClassEdit(
                 edit.target,
                 Array.isArray(edit.added) ? edit.added.map(String) : [],
                 Array.isArray(edit.removed) ? edit.removed.map(String) : [],
@@ -690,7 +689,7 @@ export class BrowserChassis {
     this.tabManager.createTab('about:blank');
 
     this.mainWindow.on('resize', () => {
-      this.positionSidebar();
+      this.deck.position();
       this.tabManager?.updateActiveTabBounds();
       this.viewportController?.scheduleRefresh();
     });
@@ -701,7 +700,7 @@ export class BrowserChassis {
     // Child-view bounds are relative to the content area (excluding the title
     // bar and menu), so size the page viewport from the content size.
     const [winWidth, winHeight] = this.mainWindow.getContentSize();
-    const rightPanelWidth = this.deckController.getMode() === 'docked' ? 420 : 0;
+    const rightPanelWidth = this.deck.getMode() === 'docked' ? 420 : 0;
     // With tab bar, top bar height is 100px (64px navbar + 36px tab bar)
     const topBarHeight = 100;
 
@@ -718,9 +717,9 @@ export class BrowserChassis {
 
   // ---- Deck chrome --------------------------------------------------------------------
   // The panel view, its mode transitions, the orb geometry and the collab wiring
-  // live in DeckController; these delegations keep the chassis's public surface unchanged.
+  // live in DeckController; the public field is the surface callers use.
 
-  private readonly deckController = new DeckController({
+  readonly deck = new DeckController({
     window: () => this.mainWindow,
     loadPanel: (view) => {
       const devUrl = process.env.VITE_DEV_SERVER_URL;
@@ -740,17 +739,11 @@ export class BrowserChassis {
     log: (level, message) => this.addLog(level, message),
     onModeChanged: () => this.tabManager?.updateActiveTabBounds(),
     sendToShell: (channel, payload) => this.sendToShellWindow(channel, payload),
-    onPanelLoaded: () => this.deckController.sendToPanel('chassis:decision-status', decisionStatus()),
+    onPanelLoaded: () => this.deck.sendToPanel('chassis:decision-status', decisionStatus()),
     stopSelection: () => this.stopCollaborationSelection(),
   });
 
-  private setupSidebarView(): void {
-    this.deckController.setup();
-  }
 
-  public getSidebarMode(): 'docked' | 'floating' | 'collapsed' {
-    return this.deckController.getMode();
-  }
 
   // ---- JEV (Just-Enough-View) page compaction -----------------------------------------
   // The policy, funnel, loop breaker, stats and depth store live in JevController;
@@ -768,17 +761,8 @@ export class BrowserChassis {
   }
 
 
-  public getSidebarPageInset(): number {
-    return this.deckController.pageInset();
-  }
 
-  public setSidebarMode(mode: 'docked' | 'floating' | 'collapsed'): void {
-    this.deckController.setMode(mode);
-  }
 
-  public toggleSidebarMode(): void {
-    this.deckController.toggleMode();
-  }
 
 /** Send to the shell window only (the deck panel receives through DeckController). */
   private sendToShellWindow(channel: string, payload: unknown): void {    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
@@ -788,7 +772,7 @@ export class BrowserChassis {
 
   private sendToSurfaces(channel: string, payload: unknown): void {
     this.sendToShellWindow(channel, payload);
-    const panel = this.deckController.getView()?.webContents;
+    const panel = this.deck.getView()?.webContents;
     if (panel && !panel.isDestroyed()) panel.send(channel, payload);
   }
 
@@ -797,68 +781,20 @@ export class BrowserChassis {
     this.sendToSurfaces(channel, payload);
   }
 
-  public getSidebarSurfaceState(): SidebarSurfaceState {
-    return this.deckController.surfaceState();
-  }
 
-  public setCollabMode(open: boolean): void {
-    this.deckController.setCollabMode(open);
-  }
 
-  public exitCollabUi(): void {
-    this.deckController.exitCollabUi();
-  }
 
-  public collabNavigate(delta: number): void {
-    this.deckController.navigate(delta);
-  }
 
-  public collabToggleList(anchor?: { x: number; y: number; width: number; height: number }): void {
-    this.deckController.toggleList(anchor);
-  }
 
-  private async resolveCollaborationNote(threadId: string): Promise<void> {
-    await this.deckController.resolveNote(threadId);
-  }
 
-  /** Called by index.ts once the collaboration service exists. */
-  public setCollaborationThreadsProvider(provider: (filter: { url: string }) => CollaborationThread[]): void {
-    this.deckController.setThreadsProvider(provider);
-  }
 
-  /** Ensure the page overlay (and its focus helper) is injected before navigating. */
-  public setCollaborationOverlayRefresher(refresh: () => Promise<void> | void): void {
-    this.deckController.setOverlayRefresher(refresh);
-  }
 
-  public setCollaborationResolver(resolve: (id: string) => Promise<unknown> | unknown): void {
-    this.deckController.setResolver(resolve);
-  }
 
-  public setCollabEnabledProvider(enabled: () => boolean): void {
-    this.deckController.setEnabledProvider(enabled);
-  }
 
-  public isCollabEnabled(): boolean {
-    return this.deckController.isCollabEnabled();
-  }
 
-  /** Called by index.ts: forwards human class-list edits to the collab service. */
-  public setCollaborationClassListener(listener: (target: CollaborationTarget, added: string[], removed: string[]) => void): void {
-    this.deckController.setClassListener(listener);
-  }
 
-  private positionSidebar(animate = false): void {
-    this.deckController.position(animate);
-  }
 
-  private setSidebarOverlayVisible(visible: boolean): void {
-    this.deckController.setOverlayVisible(visible);
-  }
 
-  private bringSidebarToFront(): void {
-    this.deckController.bringToFront();
-  }
 
   // ---- Research session ---------------------------------------------------------------
   // The stealth research session (own cookie jar, UA headers, proxy), the settings
@@ -1169,33 +1105,33 @@ export class BrowserChassis {
 
     const setVisibility = (_: any, visible: boolean) => {
       this.tabManager?.setViewportVisibility(visible);
-      this.setSidebarOverlayVisible(visible);
+      this.deck.setOverlayVisible(visible);
     };
 
     ipcMain.handle('chassis:set-viewport-visibility', setVisibility);
     ipcMain.on('chassis:set-viewport-visibility', setVisibility);
 
-    ipcMain.handle('chassis:get-sidebar-mode', () => this.getSidebarMode());
-    ipcMain.handle('chassis:get-sidebar-state', () => this.getSidebarSurfaceState());
+    ipcMain.handle('chassis:get-sidebar-mode', () => this.deck.getMode());
+    ipcMain.handle('chassis:get-sidebar-state', () => this.deck.surfaceState());
     // TEMP instrumentation: live bounds for verifying collab-mode geometry.
-    ipcMain.handle('chassis:get-sidebar-bounds', () => this.deckController.getView()?.getBounds() ?? null);
+    ipcMain.handle('chassis:get-sidebar-bounds', () => this.deck.getView()?.getBounds() ?? null);
     ipcMain.on('chassis:set-sidebar-mode', (_: any, mode: 'docked' | 'floating' | 'collapsed') =>
-      this.setSidebarMode(mode),
+      this.deck.setMode(mode),
     );
-    ipcMain.on('chassis:toggle-sidebar-mode', () => this.toggleSidebarMode());
+    ipcMain.on('chassis:toggle-sidebar-mode', () => this.deck.toggleMode());
 
     // Orb drag choreography (only meaningful while collapsed).
-    ipcMain.on('chassis:set-sidebar-orb-edge', (_: any, edge: 'left' | 'right') => this.deckController.setOrbEdge(edge));
+    ipcMain.on('chassis:set-sidebar-orb-edge', (_: any, edge: 'left' | 'right') => this.deck.setOrbEdge(edge));
     // Live drag: forward pointer deltas, clamped inside the content area.
-    ipcMain.on('chassis:orbit-drag', (_: any, delta: { dx: number; dy: number }) => this.deckController.dragOrb(delta));
-    ipcMain.on('chassis:orbit-drag-end', () => this.deckController.endOrbDrag());
+    ipcMain.on('chassis:orbit-drag', (_: any, delta: { dx: number; dy: number }) => this.deck.dragOrb(delta));
+    ipcMain.on('chassis:orbit-drag-end', () => this.deck.endOrbDrag());
 
     // Collab mode: toolbar pill, note cycling, concise list.
-    ipcMain.on('chassis:set-collab-mode', (_: any, open: boolean) => this.setCollabMode(Boolean(open)));
-    ipcMain.on('chassis:collab-escape', () => this.exitCollabUi());
-    ipcMain.on('chassis:collab-navigate', (_: any, delta: number) => this.collabNavigate(delta));
+    ipcMain.on('chassis:set-collab-mode', (_: any, open: boolean) => this.deck.setCollabMode(Boolean(open)));
+    ipcMain.on('chassis:collab-escape', () => this.deck.exitCollabUi());
+    ipcMain.on('chassis:collab-navigate', (_: any, delta: number) => this.deck.navigate(delta));
     ipcMain.on('chassis:collab-toggle-list', (_: any, anchor?: { x: number; y: number; width: number; height: number }) =>
-      this.collabToggleList(anchor));
+      this.deck.toggleList(anchor));
 
     // Cortex & Bookmarks IPC Handlers
     ipcMain.handle('cortex:recall', async (_, query: string, options?: any) => {
@@ -1368,7 +1304,7 @@ export class BrowserChassis {
   public async pickCollaborationTarget(): Promise<CollaborationTarget | null> {
     const wc = this.getActiveWebContents();
     return await wc
-      .executeJavaScript(collaborationPickerScript({ rightInset: this.getSidebarPageInset() }))
+      .executeJavaScript(collaborationPickerScript({ rightInset: this.deck.pageInset() }))
       .catch(() => null);
   }
 
