@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 385 files, 1137 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 389 files, 1145 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (903)
+## Types (910)
 
 | File | Export | When to use |
 |---|---|---|
@@ -507,10 +507,13 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/anchors.ts` | `CitationAnchor` *(type)* | - |
 | `main/research/anchors.ts` | `CitationCandidate` *(type)* | - |
 | `main/research/anchors.ts` | `CitationRelocation` *(type)* | - |
-| `main/research/citation-controller.ts` | `CitationController` | When to use: the chassis — own the anchor store, warm origins, hand-off state and the citation fetch/relocate pipeline. |
-| `main/research/citation-controller.ts` | `HumanHandoffResult` *(type)* | The result of a human-handoff read, or null when no human took over. |
+| `main/research/citation-anchors.ts` | `CitationAnchors` | When to use: `CitationController` — the anchors and the fetch it revalidates with. |
+| `main/research/citation-anchors.ts` | `RevalidationSummary` *(type)* | The outcome of revalidating stored anchors across URLs. |
+| `main/research/citation-controller.ts` | `CitationController` | When to use: the chassis — own the anchors, the hand-off and the fetch policy. |
 | `main/research/citation-controller.ts` | `CitationControllerDeps` *(type)* | When to use: building the chassis — everything the citation pipeline reads through. |
-| `main/research/citation-controller.ts` | `RevalidationSummary` *(type)* | The outcome of revalidating stored anchors across URLs. |
+| `main/research/citation-fetch.ts` | `CitationFetcher` | When to use: `CitationController` — one fetcher per controller. |
+| `main/research/citation-fetch.ts` | `CitationFetch` *(type)* | What one citation fetch produced. |
+| `main/research/citation-fetch.ts` | `CitationFetcherDeps` *(type)* | When to use: `CitationController` — the settings and the shared research view. |
 | `main/research/crawl-orchestrator.ts` | `CrawlOrchestrator` | When to use: the chassis — own how crawl and topic research runs are orchestrated. |
 | `main/research/crawl-orchestrator.ts` | `CrawlSessionPolicy` *(type)* | The session policy a crawl run needs: cooldown guards and engine defaults. |
 | `main/research/crawl-orchestrator.ts` | `CrawlOrchestratorDeps` *(type)* | When to use: building the chassis — the five collaborators a run composes. |
@@ -522,6 +525,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/detached-view.ts` | `DetachedLoadOptions` *(type)* | When to use: a detached load — wait bounds, a readiness probe and a post-load hook. |
 | `main/research/detached-view.ts` | `DetachedLoadResult` *(type)* | When to use: reading a detached load's outcome — the script result, post-load hook output, HTTP status and content type. |
 | `main/research/detached-view.ts` | `DetachedViewDeps` *(type)* | When to use: building the chassis — the view reads through these two collaborators. |
+| `main/research/handoff.ts` | `HumanHandoff` | When to use: `CitationController` — one hand-off at a time per controller. |
+| `main/research/handoff.ts` | `HumanHandoffResult` *(type)* | The result of a human-handoff read, or null when no human took over. |
+| `main/research/handoff.ts` | `HandoffEnvironment` *(type)* | When to use: anything that needs the window, the research view and the HIL. |
+| `main/research/handoff.ts` | `HumanHandoffDeps` *(type)* | When to use: `CitationController` — the hand-off's environment plus the anchors. |
 | `main/research/research-session-surface.ts` | `ResearchSessionSurface` | The settings, isolated session and cooldown policy behind research runs. |
 | `main/research/research-session-surface.ts` | `ResearchSessionSurfaceDeps` *(type)* | Dependencies the research session surface needs to boot its isolated session. |
 | `main/research/research-view-surface.ts` | `ResearchViewSurface` | The detached research view and the citation/hand-off pipeline over it. |
@@ -932,7 +939,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (226)
+## Modules (227)
 
 | File | Export | When to use |
 |---|---|---|
@@ -1066,6 +1073,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/primitives/wait-controller.ts` | `WaitController` | When to use: `Primitives` — the wait_for / expect entry points. |
 | `main/remote/cloudflared.ts` | `findCloudflared` | Find cloudflared without installing or downloading it. |
 | `main/remote/ipc.ts` | `registerRemoteIpc` | When to use: main-process startup — register every `remote:*` channel. The |
+| `main/research/handoff-probe.ts` | `ACTIONABLE_PROBE` | When to use: `HumanHandoff.probeActionable` — the actionable-page probe. |
 | `main/security/capability-token.ts` | `tokenPathIn` | The token file path inside a capability directory. |
 | `main/security/capability-token.ts` | `createCapabilityToken` | Create (or rotate) the token in `dir`. The caller owns the directory. |
 | `main/security/capability-token.ts` | `readCapabilityToken` | Read and validate a token file. A missing, malformed or empty file returns undefined. |

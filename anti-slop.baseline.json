@@ -148,10 +148,6 @@
       "main/primitives/control-facts.ts": {
         "function": 1
       },
-      "main/research/citation-controller.ts": {
-        "class": 1,
-        "function": 1
-      },
       "main/research/session-controller.ts": {
         "class": 1
       },
