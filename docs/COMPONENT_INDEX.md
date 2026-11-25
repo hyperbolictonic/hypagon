@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 216 files, 776 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 217 files, 779 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (663)
+## Types (666)
 
 | File | Export | When to use |
 |---|---|---|
@@ -595,6 +595,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/tool-renderers.ts` | `ToolRenderer` *(type)* | When to use: the dispatcher — render a tool result, or null to take the default text path. |
 | `mcp/tools-catalog-types.ts` | `ToolCatalogItem` *(type)* | When to use: any surface that registers or inspects a catalog entry — the one item shape for the whole catalog. |
 | `preload/index.ts` | `ElectronAPI` *(type)* | When to use: the preload bridge surface — every renderer call goes through `window.electronAPI`. |
+| `renderer/cortex-panel.ts` | `initCortexPanel` | Wire the modal once, after the document has parsed. |
+| `renderer/cortex-panel.ts` | `updateActivePage` | Track the active page for the bookmark star and the save form. |
+| `renderer/cortex-panel.ts` | `CortexDeps` *(type)* | Callbacks the panel needs from the app shell. |
 | `renderer/recording.ts` | `isRecording` | - |
 | `renderer/recording.ts` | `beginRecording` | - |
 | `renderer/recording.ts` | `finishRecording` | - |
