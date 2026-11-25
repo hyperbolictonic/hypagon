@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 329 files, 1037 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 332 files, 1042 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (847)
+## Types (852)
 
 | File | Export | When to use |
 |---|---|---|
@@ -251,14 +251,19 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/ipc/settings-ipc.ts` | `SettingsIpcDeps` *(type)* | When to use: once at startup — every store is created lazily by the caller. |
 | `main/ipc/wrap-ipc.ts` | `registerWrapIpc` | When to use: once at startup, before the first window exists. |
 | `main/ipc/wrap-ipc.ts` | `WrapIpcDeps` *(type)* | When to use: once at startup — every dependency is live only after boot. |
-| `main/jev/controller.ts` | `JevController` | When to use: the chassis — own the JEV gate, funnel, loop breaker, stats and depth store. |
+| `main/jev/controller.ts` | `JevController` | When to use: the chassis — own the JEV gate, funnel, store and counters. |
 | `main/jev/controller.ts` | `JevControllerDeps` *(type)* | When to use: building the chassis — the collaborators JEV reads through. |
-| `main/jev/controller.ts` | `JevPolicy` *(type)* | When to use: declaring the optional JEV gate; wired by index.ts to the settings store + decision status. |
+| `main/jev/depth-store.ts` | `JevDepthStore` | When to use: `JevController` — own the depth store and the reads over it. |
+| `main/jev/depth-store.ts` | `JevDepthStoreDeps` *(type)* | When to use: constructing the controller — the policy and the page lookups. |
 | `main/jev/engine.ts` | `JevEngine` | - |
 | `main/jev/engine.ts` | `JevSection` *(type)* | Just-Enough-View (JEV) page compaction. |
 | `main/jev/engine.ts` | `JevSession` *(type)* | - |
 | `main/jev/engine.ts` | `JevStatus` *(type)* | - |
 | `main/jev/engine.ts` | `JevSearchHit` *(type)* | - |
+| `main/jev/funnel.ts` | `JevFunnel` | When to use: `JevController` — own both funnels, the loop breaker and the counters. |
+| `main/jev/funnel.ts` | `JevFunnelDeps` *(type)* | When to use: constructing the controller — the policy, the page and the section count. |
+| `main/jev/policy-gate.ts` | `JevPolicyGate` | When to use: `JevController` — own the policy provider and its normalisation. |
+| `main/jev/policy-gate.ts` | `JevPolicy` *(type)* | When to use: declaring the optional JEV gate; wired by index.ts to the settings store + decision status. |
 | `main/jev/policy.ts` | `decideFunnel` | - |
 | `main/jev/policy.ts` | `DEFAULT_FUNNEL_MIN_TOKENS` | - |
 | `main/jev/policy.ts` | `FunnelBreaker` | Loop breaker: after two refusals for the same URL inside the window, the next |

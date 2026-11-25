@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-329 modules, 1037 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+332 modules, 1042 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -124,9 +124,9 @@
 | `main/ipc/settings-ipc.ts` | 3: registerSettingsIpc, JevPayload, SettingsIpcDeps |
 | `main/ipc/web-state-ipc.ts` | 1: registerWebStateIpc |
 | `main/ipc/wrap-ipc.ts` | 2: registerWrapIpc, WrapIpcDeps |
-| `main/jev/controller.ts` | 3: JevController, JevControllerDeps, JevPolicy |
-| `main/jev/engine.ts` | 5: JevEngine, JevSection, JevSession, JevStatus, JevSearchHit |
+| `main/jev/controller.ts` | 2: JevController, JevControllerDeps |
+| `main/jev/depth-store.ts` | 2: JevDepthStore, JevDepthStoreDeps |
 
-… and 204 more module(s) — grep the full index.
+… and 207 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

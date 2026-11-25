@@ -148,9 +148,6 @@
   },
   "modularity": {
     "files": {
-      "main/jev/controller.ts": {
-        "class": 1
-      },
       "main/media/transcript.ts": {
         "function": 1
       },
