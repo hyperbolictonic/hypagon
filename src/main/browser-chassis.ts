@@ -62,7 +62,8 @@ import { ShellBus } from './shell/event-bus.js';
 import { createLlmStack } from './chassis/llm-stack.js';
 import { createInputStack } from './chassis/input-stack.js';
 import { createHarvestNavStack } from './chassis/harvest-nav-stack.js';
-import { IpcSurface } from './ipc/ipc-surface.js';
+import { createInteractionStack } from './chassis/interaction-stack.js';
+import { createIpcSurface, type IpcSurface } from './ipc/ipc-surface.js';
 import { readPageInfo } from './tabs/page-info.js';
 import { TabSurface } from './tabs/tab-surface.js';
 import { createTabEventHandlers } from './tabs/tab-events.js';
@@ -92,28 +93,26 @@ export class BrowserChassis {
     describe: (result: T) => string,
     run: () => Promise<T>,
   ): Promise<T> => this.crawl.activity(tool, summary, describe, run);
-  /** Recent decision-model calls, mirrored to the HUD (newest last, capped at 50). */
   /** Decision log and the guard-driven human hand-off. */
   readonly decision = new DecisionSurface({
     hil: () => this.hil,
     pageUrl: () => this.getPageInfo().url,
   });
-  /** Throttle for gate-triggered human hand-offs (one per URL per few minutes). */
   /** Tab manager and viewport controller, built with the window. */
   readonly tabSetup!: TabSetupSurface;
   readonly input!: InputSurface;
-  private harvester!: ConstructHarvester;
+  readonly harvester!: ConstructHarvester;
   /** JEV page compaction: surface index + in-memory depth store. */
   private shieldBreaker!: ShieldBreaker;
   readonly downloads!: DownloadSurface;
   readonly sessions!: SessionSurface;
   readonly network!: NetworkSurface;
-  private marksOverlay!: MarksOverlay;
+  readonly marksOverlay!: MarksOverlay;
   readonly marks: MarksSurface;
   readonly harvest: HarvestSurface;
   readonly nav: NavigationSurface;
   readonly scripts!: ScriptsSurface;
-  private trayManager: TrayManager | null = null;
+  trayManager: TrayManager | null = null;
   /** Human-in-the-loop and desktop notifications. */
   readonly hil!: HilSurface;
   private prerenderEngine!: PrerenderEngine;
@@ -135,11 +134,7 @@ export class BrowserChassis {
   readonly page!: PageScriptSurface;
   /** Shared detached research view and the citation/hand-off pipeline. */
   readonly researchView!: ResearchViewSurface;
-  private actionLedger!: ActionLedger;
-  /** Reused off-screen view for detached reads (SERPs, Markdown alternates, crawls). */
-  /** Origins a human has authenticated; skip the anonymous static tier for them. */
-  /** Only one human hand-off at a time (the shared research view is serialized). */
-  /** Why the last hand-off was skipped (surfaced in the WAF error). */
+  readonly actionLedger!: ActionLedger;
 
 
   /** Human takeover is explicit: page input alone never pauses the agent. */
@@ -202,7 +197,7 @@ export class BrowserChassis {
       },
       setupTabs: () => this.tabSetup.setup(),
       registerIpc: () => {
-        this.ipc = this.createIpcSurface();
+        this.ipc = createIpcSurface(this);
         this.ipc.register();
       },
       setupDeck: () => this.deck.setup(),
@@ -222,8 +217,6 @@ export class BrowserChassis {
     forwardClassEdit: (target, added, removed) => this.deck.forwardClassEdit(target, added, removed),
     log: (level, message) => this.telemetry.addLog(level, message),
   });
-  /** Page zoom policy: fit the page to the OS display scale, or honour Windows scale. */
-  /** Explicit zoom from the toolbar or an agent; null means use the policy base. */
   /** Renderer IPC channels. */
   ipc!: IpcSurface;
   /** Open/switch/close and the DevTools toggle. */
@@ -241,7 +234,7 @@ export class BrowserChassis {
     logEvent: (name) => logMainEvent(name),
   });
 
-  private state: ChassisState = {
+  readonly state: ChassisState = {
     currentUrl: 'about:blank',
     pageTitle: 'Hypagon Browser Offline',
     isLoading: false,
@@ -268,7 +261,7 @@ export class BrowserChassis {
     activeWebContents: () => this.tabSetup.manager?.getActiveTab()?.view?.webContents ?? null,
   });
 
-  private latestConstruct: HarvestedConstruct | null = null;
+  latestConstruct: HarvestedConstruct | null = null;
   /** Captured page console lines (bounded). */
   readonly consoleLogs = new ConsoleLogBuffer();
 
@@ -337,9 +330,10 @@ export class BrowserChassis {
     this.harvest = harvestNav.harvest;
     this.nav = harvestNav.nav;
     this.prerenderEngine = harvestNav.prerender;
-    const interaction = this.createInteractionSurfaces();
+    const interaction = createInteractionStack(this);
     this.hil = interaction.hil;
     this.primitives = interaction.primitives;
+    this.actionLedger = interaction.actionLedger;
     const stack = this.createLlmStack();
     this.llmSurface = stack.llmSurface;
     this.researchLlmSurface = stack.researchLlmSurface;
@@ -454,85 +448,6 @@ export class BrowserChassis {
       broadcastState: () => this.telemetry.broadcastState(),
       refuseShadow: (surface) => assertShadowSurface(surface),
     });
-  }
-
-  /** HIL, the action ledger and the orthogonal primitives layer. */
-  private createInteractionSurfaces(): { hil: HilSurface; primitives: Primitives } {
-    const hil = new HilSurface({
-      activeWebContents: () => {
-        try {
-          return this.getActiveWebContents();
-        } catch {
-          return null;
-        }
-      },
-      broadcast: (channel, payload) => {
-        try {
-          this.bus.broadcast(channel, payload);
-        } catch {
-          // Broadcasts must never break the hand-off flow itself.
-        }
-      },
-      onStateChanged: (pending, request) => {
-        this.trayManager?.updateStatus(this.state.agentStatus, this.state.tabs?.length || 0, pending);
-        if (pending && request) {
-          this.state.agentStatus = 'AWAITING_INPUT';
-          this.state.activeAction = `⚠️ HUMAN ACTION REQUIRED: ${request.reason}`;
-        } else {
-          this.state.agentStatus = 'IDLE';
-          this.state.activeAction = 'Standby - Awaiting MCP Uplink';
-        }
-        this.telemetry.broadcastState();
-      },
-      log: (level, message) => this.telemetry.addLog(level, message),
-      emitNavigation: (details) => this.telemetry.emitSimpleEvent('navigation', details),
-    });
-
-    // Action ledger — local, append-only record of executed actions and their outcomes
-    // (data/transitions.jsonl). This is the dataset a runner-side decision model learns from;
-    // it never leaves the machine and never stores typed text.
-    this.actionLedger = new ActionLedger({
-      dir: dataPath(),
-      log: (level, msg) => this.telemetry.addLog(level, msg),
-    });
-
-    // Orthogonal primitives layer (observe / act / wait / extract / collect / find).
-    // It borrows the chassis' real input + marks plumbing so it stays on the humanlike path.
-    const primitives = new Primitives({
-      webContents: () => this.getActiveWebContents(),
-      log: (level, msg) => this.telemetry.addLog(level, msg),
-      evaluate: (script) => this.page.quiet(script),
-      harvest: (opts) => this.harvest.harvestMarkdown(opts),
-    guardPageRead: (input) => this.jev.guardPageRead(input),
-    precheckPageRead: (input) => this.jev.precheckPageRead(input),
-      injectMarks: (opts) => this.marks.scan(this.getActiveWebContents(), opts || {}),
-      removeMarks: () => this.marksOverlay.removeMarks(this.getActiveWebContents()),
-      getMarks: () => this.marks.getActive(),
-      getMarkTarget: (id) =>
-        Number(id) >= 100
-          ? resolveFrameMark(this.getActiveWebContents(), Number(id))
-          : this.marksOverlay.getMarkTarget(this.getActiveWebContents(), id),
-      getFrames: (opts) => this.shadow.getFrames(opts),
-      evaluateInFrames: (script, opts) => this.page.evaluateInFrames(script, opts),
-      resolveSealedToken: (token) => resolveSealedTarget(this.getActiveWebContents(), token),
-      clickMark: (id) => this.marks.clickMark(id),
-      typeMark: (id, text, opts) => this.marks.typeMark(id, text, opts),
-      clickElement: (selector, coords) => this.input.clickElement(selector, coords),
-      typeText: (text, selector, opts) => this.input.typeText(text, selector, opts),
-      findSealed: (opts) => this.marks.findSealed(opts),
-      componentSurfaceEnabled: () => loadShadowWalkSettings().shadow.componentSurface,
-      insertText: (text) => this.input.insertText(text),
-      pasteText: (text) => this.input.simulator.pasteText(this.getActiveWebContents(), text),
-      moveMouseTo: (target) => this.input.moveMouse(target),
-      pressKey: (key) => this.input.pressKey(key),
-      snapshotRenderedPage: (opts) => this.marks.snapshotRenderedPage(opts),
-      getNetworkTraffic: (filter) => this.network.traffic(filter),
-      getPageInfo: () => this.getPageInfo(),
-      revision: () => this.revision,
-      windowFocused: () => this.window.isFocused(),
-      recordTransition: (record) => this.actionLedger.record(record),
-    });
-    return { hil, primitives };
   }
 
   /** Bounds of the browser viewport as actually laid out in the HUD (zoom-aware). */
@@ -709,6 +624,12 @@ export class BrowserChassis {
   }
 
   /** The responsive viewport controller; available once the window is set. */
+  /** Keep the deck overlay and the emulated tab viewport in step. */
+  setViewportVisibility(visible: boolean): void {
+    this.tabSetup.manager?.setViewportVisibility(visible);
+    this.deck.setOverlayVisible(visible);
+  }
+
   get viewport(): ViewportController {
     if (!this.tabSetup.viewport) throw new Error('Browser Chassis uninitialized');
     return this.tabSetup.viewport;
@@ -734,41 +655,6 @@ export class BrowserChassis {
     onChanged: () => this.telemetry.broadcastState(),
   });
 
-
-  private createIpcSurface(): IpcSurface {
-    return new IpcSurface({
-      state: this.state,
-      hud: this.hud,
-      logs: () => this.telemetry.entries(),
-      latestConstruct: () => this.latestConstruct,
-      human: {
-        takeOver: () => this.human.takeOver(),
-        resume: () => this.human.resume(),
-        status: () => this.human.status(),
-      },
-      nav: this.nav,
-      activeWebContents: () => this.tabSetup.manager?.getActiveTab()?.view?.webContents ?? null,
-      tabs: {
-        summary: () => this.tabSetup.manager?.getTabsSummary() ?? [],
-        create: (url) => this.tabOps.create(url),
-        switchTo: (id) => this.tabOps.switchTo(id),
-        close: (id) => this.tabOps.close(id),
-      },
-      zoom: this.zoom,
-      viewport: this.viewport,
-      deck: this.deck,
-      toggleDevTools: () => this.tabOps.toggleDevTools(),
-      setViewportVisibility: (visible) => {
-        this.tabSetup.manager?.setViewportVisibility(visible);
-        this.deck.setOverlayVisible(visible);
-      },
-      pageUrl: () => this.getPageInfo().url,
-      send: (channel, payload) => this.bus.toSurfaces(channel, payload),
-      inputSetProfile: (profile) => this.input.simulator.setProfile(profile),
-      harvestMarkdown: () => this.harvest.harvestMarkdown(),
-      decisionsLog: () => this.decision.events(),
-    });
-  }
 
   /** The shared Cortex database (bookmarks, history, recall). */
   readonly cortex = cortex;

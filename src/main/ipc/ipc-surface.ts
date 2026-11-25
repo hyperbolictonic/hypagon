@@ -16,6 +16,7 @@ import type { NavigationSurface } from '../navigation/navigation-surface.js';
 import type { ZoomController } from '../zoom/controller.js';
 import type { ViewportController } from '../viewport/controller.js';
 import type { DeckController } from '../deck/controller.js';
+import type { ChassisHost } from '../chassis/host.js';
 import { cortex } from '../cortex/cortex-db.js';
 import {
   decisionStatus,
@@ -225,4 +226,37 @@ export class IpcSurface {
       return { ...result, totalMs: Date.now() - started };
     });
   }
+}
+
+/** When to use: the chassis boot — build the renderer IPC surface from the host contract. */
+export function createIpcSurface(host: ChassisHost): IpcSurface {
+  return new IpcSurface({
+    state: host.state,
+    hud: host.hud,
+    logs: () => host.telemetry.entries(),
+    latestConstruct: () => host.latestConstruct,
+    human: {
+      takeOver: () => host.human.takeOver(),
+      resume: () => host.human.resume(),
+      status: () => host.human.status(),
+    },
+    nav: host.nav,
+    activeWebContents: () => host.tabSetup.manager?.getActiveTab()?.view?.webContents ?? null,
+    tabs: {
+      summary: () => host.tabSetup.manager?.getTabsSummary() ?? [],
+      create: (url) => host.tabOps.create(url),
+      switchTo: (id) => host.tabOps.switchTo(id),
+      close: (id) => host.tabOps.close(id),
+    },
+    zoom: host.zoom,
+    viewport: host.viewport,
+    deck: host.deck,
+    toggleDevTools: () => host.tabOps.toggleDevTools(),
+    setViewportVisibility: (visible) => host.setViewportVisibility(visible),
+    pageUrl: () => host.getPageInfo().url,
+    send: (channel, payload) => host.bus.toSurfaces(channel, payload),
+    inputSetProfile: (profile) => host.input.simulator.setProfile(profile),
+    harvestMarkdown: () => host.harvest.harvestMarkdown(),
+    decisionsLog: () => host.decision.events(),
+  });
 }

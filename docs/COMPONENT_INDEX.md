@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 269 files, 898 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 271 files, 902 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (766)
+## Types (770)
 
 | File | Export | When to use |
 |---|---|---|
@@ -45,9 +45,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/chassis/harvest-nav-stack.ts` | `createHarvestNavStack` | When to use: the chassis constructor — build marks, harvest and navigation once. |
 | `main/chassis/harvest-nav-stack.ts` | `HarvestNavStackDeps` *(type)* | Dependencies the harvest/marks/navigation stack needs from the chassis. |
 | `main/chassis/harvest-nav-stack.ts` | `HarvestNavStack` *(type)* | The built harvest/marks/navigation surfaces plus the prerender engine. |
+| `main/chassis/host.ts` | `ChassisHost` *(type)* | The chassis surfaces and accessors a composition root may read. |
 | `main/chassis/input-stack.ts` | `createInputStack` | When to use: the chassis constructor — build the input/diagnostic surfaces once. |
 | `main/chassis/input-stack.ts` | `InputStackDeps` *(type)* | Dependencies the input/diagnostics stack needs from the chassis. |
 | `main/chassis/input-stack.ts` | `InputStack` *(type)* | The built input and diagnostic surfaces. |
+| `main/chassis/interaction-stack.ts` | `createInteractionStack` | When to use: the chassis constructor — build HIL, the ledger and primitives once. |
+| `main/chassis/interaction-stack.ts` | `InteractionStack` *(type)* | The built interaction surfaces. |
 | `main/chassis/llm-stack.ts` | `createLlmStack` | When to use: the chassis constructor — build the read/search/crawl stack once. |
 | `main/chassis/llm-stack.ts` | `LlmStackDeps` *(type)* | Dependencies the LLM stack needs from the chassis. |
 | `main/chassis/llm-stack.ts` | `LlmStack` *(type)* | The built LLM/read/search/crawl surfaces. |
@@ -184,6 +187,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/input-actions.ts` | `InputActionsController` | When to use: the chassis — own how input actions are performed over the active tab. |
 | `main/input-actions.ts` | `InputActionsStatus` *(type)* | When to use: building the chassis — the state surface the actions report through. |
 | `main/input-actions.ts` | `InputActionsDeps` *(type)* | When to use: building the chassis — everything an input action reads through. |
+| `main/ipc/ipc-surface.ts` | `createIpcSurface` | When to use: the chassis boot — build the renderer IPC surface from the host contract. |
 | `main/ipc/ipc-surface.ts` | `IpcSurface` | Registers the renderer-facing IPC channels. |
 | `main/ipc/ipc-surface.ts` | `IpcSurfaceDeps` *(type)* | The surfaces the renderer IPC channels talk to. |
 | `main/jev/controller.ts` | `JevController` | When to use: the chassis — own the JEV gate, funnel, loop breaker, stats and depth store. |

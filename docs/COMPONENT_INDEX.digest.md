@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-269 modules, 898 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+271 modules, 902 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -19,7 +19,9 @@
 | `main/capabilities.ts` | 1: BRIDGE_CAPABILITIES |
 | `main/capture/screenshot-jpeg.ts` | 2: captureScreenshotJpeg, ScreenshotJpegDeps |
 | `main/chassis/harvest-nav-stack.ts` | 3: createHarvestNavStack, HarvestNavStackDeps, HarvestNavStack |
+| `main/chassis/host.ts` | 1: ChassisHost |
 | `main/chassis/input-stack.ts` | 3: createInputStack, InputStackDeps, InputStack |
+| `main/chassis/interaction-stack.ts` | 2: createInteractionStack, InteractionStack |
 | `main/chassis/llm-stack.ts` | 3: createLlmStack, LlmStackDeps, LlmStack |
 | `main/collaboration/overlay.ts` | 8: collaborationNoteDrawerScript, collaborationPickerScript, collaborationOverlayScript, COLLABORATION_NOTE_PREFIX, COLLABORATION_CLASS_PREFIX, COLLABORATION_RESOLVE_PREFIX, COLLABORATION_EXIT_PREFIX, CollaborationPickerOptions |
 | `main/collaboration/service.ts` | 1: CollaborationService |
@@ -81,7 +83,7 @@
 | `main/input/human-activity.ts` | 6: shouldCountAsHuman, humanListenerScript, SYNTHETIC_GRACE_MS, HUMAN_CONSOLE_PREFIX, HumanActivityMonitor, HumanActivity |
 | `main/input/human-control.ts` | 2: HumanControlSurface, HumanControlDeps |
 | `main/input/input-surface.ts` | 2: InputSurface, InputSurfaceDeps |
-| `main/ipc/ipc-surface.ts` | 2: IpcSurface, IpcSurfaceDeps |
+| `main/ipc/ipc-surface.ts` | 3: createIpcSurface, IpcSurface, IpcSurfaceDeps |
 | `main/jev/controller.ts` | 3: JevController, JevControllerDeps, JevPolicy |
 | `main/jev/engine.ts` | 5: JevEngine, JevSection, JevSession, JevStatus, JevSearchHit |
 | `main/jev/policy.ts` | 6: decideFunnel, DEFAULT_FUNNEL_MIN_TOKENS, FunnelBreaker, FunnelReason, FunnelInput, FunnelDecision |
@@ -124,9 +126,7 @@
 | `main/remote/cloudflared.ts` | 1: findCloudflared |
 | `main/remote/ipc.ts` | 1: registerRemoteIpc |
 | `main/remote/oauth-client.ts` | 5: oauthClientFile, readOAuthClient, createOAuthClient, ensureOAuthClient, OAuthClientCredentials |
-| `main/remote/service.ts` | 2: RemoteService, RemoteServiceOptions |
-| `main/remote/settings.ts` | 3: loadRemoteSettings, saveRemoteSettings, RemoteSettings |
 
-… and 144 more module(s) — grep the full index.
+… and 146 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.
