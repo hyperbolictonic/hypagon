@@ -693,9 +693,13 @@ export class BrowserChassis {
     };
   }
 
-    private setupTabManager() {
+  private setupTabManager(): void {
     if (!this.mainWindow) return;
+    this.createViewportController();
+    this.createTabManager();
+  }
 
+  private createViewportController(): void {
     this.viewportController = new ViewportController({
       store: new DeviceProfileStore(path.join(app.getPath('userData'), 'device-profiles.json')),
       available: () => this.getViewportBounds(),
@@ -707,9 +711,13 @@ export class BrowserChassis {
       broadcast: () => this.broadcastState(),
       log: (level, message) => this.addLog(level, message),
     });
+  }
 
+  private createTabManager(): void {
+    const mainWindow = this.mainWindow;
+    if (!mainWindow) return;
     this.tabManager = new TabManager({
-      mainWindow: this.mainWindow,
+      mainWindow,
       hostProfile: this.hostProfile,
       getViewportBounds: () => this.getViewportBounds(),
       getTabBounds: (tabId) =>
@@ -719,7 +727,29 @@ export class BrowserChassis {
         this.setZoom({ action });
       },
       onTakeoverShortcut: () => this.toggleHumanControl(),
-      onRendererGone: (tab, details) => {
+      onRendererGone: (tab, details) => this.handleRendererGone(tab, details),
+      onTabUpdated: (tab) => this.handleTabUpdated(tab),
+      onTabsChanged: (tabs) => this.handleTabsChanged(tabs),
+      onTabCreated: (tab) => this.handleTabCreated(tab),
+      onViewAdded: () => this.deck.bringToFront(),
+      onTabClosed: (tabId) => this.viewportController?.unregisterTab(tabId),
+      onLog: (level, msg) => this.addLog(level, msg),
+      onConsoleLog: (log) => this.handleConsoleLog(log),
+    });
+
+    this.addLog('info', `Stealth Profile Active: Spoofing host ${this.hostProfile.name} v${this.hostProfile.version}`);
+
+    // Create initial default tab
+    this.tabManager.createTab('about:blank');
+
+    mainWindow.on('resize', () => {
+      this.deck.position();
+      this.tabManager?.updateActiveTabBounds();
+      this.viewportController?.scheduleRefresh();
+    });
+  }
+
+  private handleRendererGone(tab: TabInstance, details: Electron.RenderProcessGoneDetails): void {
         logMainEvent('tab-renderer-gone', {
           tabId: tab.id,
           url: tab.url,
@@ -737,8 +767,9 @@ export class BrowserChassis {
           }
           this.reassertViewport();
         }, 600);
-      },
-      onTabUpdated: (tab: TabInstance) => {
+  }
+
+  private handleTabUpdated(tab: TabInstance): void {
         if (tab.id === this.tabManager?.getActiveTabId()) {
           this.state.currentUrl = tab.url;
           this.state.pageTitle = tab.title;
@@ -756,14 +787,16 @@ export class BrowserChassis {
             this.harvest.indexTabQuietly(tab);
           }
         }
-      },
-      onTabsChanged: (tabs: TabSummary[]) => {
+  }
+
+  private handleTabsChanged(tabs: TabSummary[]): void {
         this.state.tabs = tabs;
         this.broadcastState();
         this.trayManager?.updateStatus(this.state.agentStatus, tabs.length, !!this.hilManager.getActiveRequest());
         this.sendToSurfaces('chassis:tabs-updated', tabs);
-      },
-      onTabCreated: (tab: TabInstance) => {
+  }
+
+  private handleTabCreated(tab: TabInstance): void {
         this.networkInterceptor.attach(tab.view.webContents);
         this.viewportController?.registerTab(tab);
         // A tab created while force-open is armed must be patched *before* its document runs.
@@ -778,11 +811,9 @@ export class BrowserChassis {
             }, 60);
           }
         });
-      },
-      onViewAdded: () => this.deck.bringToFront(),
-      onTabClosed: (tabId) => this.viewportController?.unregisterTab(tabId),
-      onLog: (level, msg) => this.addLog(level, msg),
-      onConsoleLog: (log) => {
+  }
+
+  private handleConsoleLog(log: { level: string; message: string; line: number; sourceId: string; timestamp: number }): void {
         this.targetConsoleLogs.push(log);
         if (this.targetConsoleLogs.length > 200) this.targetConsoleLogs.shift();
         // Takeover channel: the page reports trusted pointer/key/wheel activity with a magic prefix.
@@ -823,19 +854,6 @@ export class BrowserChassis {
             }
           } catch {}
         }
-      },
-    });
-
-    this.addLog('info', `Stealth Profile Active: Spoofing host ${this.hostProfile.name} v${this.hostProfile.version}`);
-
-    // Create initial default tab
-    this.tabManager.createTab('about:blank');
-
-    this.mainWindow.on('resize', () => {
-      this.deck.position();
-      this.tabManager?.updateActiveTabBounds();
-      this.viewportController?.scheduleRefresh();
-    });
   }
 
   public getViewportBounds(): { x: number; y: number; width: number; height: number } {
