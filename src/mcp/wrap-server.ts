@@ -23,7 +23,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { startStdioServer } from './stdio-server.js';
 import { APP_VERSION } from '../shared/version.js';
 import { generatedToolName, wrapInputToZodShape } from './wrap-tool-schema.js';
 import { installProcessGuards } from './process-guard.js';
@@ -657,15 +657,8 @@ export async function createWrapMcpServer() {
   return server;
 }
 
-async function start() {
-  logWrap('Initializing Hypagon REST MCP Server over stdio...', 'boot');
-  const server = await createWrapMcpServer();
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  logWrap('Connected to stdio transport. Listening for JSON-RPC messages.', 'boot');
-}
-
-start().catch((err) => {
-  logWrap(`Fatal Hypagon REST MCP Server Error: ${err?.stack || err}`, 'error');
-  process.exit(1);
+void startStdioServer({
+  label: 'Hypagon REST MCP Server',
+  create: createWrapMcpServer,
+  log: logWrap,
 });

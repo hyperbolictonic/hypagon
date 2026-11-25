@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-230 modules, 807 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+231 modules, 809 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -127,6 +127,6 @@
 | `main/shadow-walk/ax-controls.ts` | 6: findSealedControls, SealedRateLimitError, SealedRect, SealedControl, SealedFindOptions, SealedFindResult |
 | `main/shadow-walk/component-signature.ts` | 4: componentSignatureOf, normalizeSurface, COMPONENT_SIGNATURE_HELPERS, ComponentSurface |
 
-… and 105 more module(s) — grep the full index.
+… and 106 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

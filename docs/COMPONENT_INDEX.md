@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 230 files, 807 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 231 files, 809 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (682)
+## Types (684)
 
 | File | Export | When to use |
 |---|---|---|
@@ -599,6 +599,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/zoom/controller.ts` | `ZoomControllerDeps` *(type)* | When to use: building the chassis — everything zoom reads through. |
 | `mcp/process-guard.ts` | `installProcessGuards` | When to use: at the top of a stdio MCP server entrypoint, before connecting |
 | `mcp/process-guard.ts` | `ProcessGuardOptions` *(type)* | Process resilience shared by the stdio MCP entrypoints. |
+| `mcp/stdio-server.ts` | `startStdioServer` | Boot a stdio MCP server and exit non-zero on a fatal startup error. |
+| `mcp/stdio-server.ts` | `StdioServerHooks` *(type)* | Hooks for the shared stdio boot envelope. |
 | `mcp/tool-groups-data.ts` | `TOOL_GROUPS` | When to use: reading or extending the consolidated surface — the group table itself. |
 | `mcp/tool-groups-data.ts` | `ToolArgs` *(type)* | When to use: the arguments a group action maps from. |
 | `mcp/tool-groups-data.ts` | `ToolGroupAction` *(type)* | When to use: describing one action inside a consolidated group tool. |
