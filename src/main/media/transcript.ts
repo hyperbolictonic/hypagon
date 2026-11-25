@@ -10,8 +10,8 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 
 import { runYtDlpProcess } from './exec.ts';
+import { processFailure } from './process-failure.ts';
 import { ytdlpRuntimeOptions } from './platform.ts';
-import { needsLogin } from './auth.ts';
 import type { MediaBinary } from './binaries.ts';
 
 const SUBTITLE_TIMEOUT_MS = 45_000;
@@ -178,16 +178,17 @@ export async function fetchArtifacts(
     env: runtime.env,
   });
 
-  if (result.timedOut) {
-    return { ok: false, code: 'TIMEOUT', error: `caption fetch did not finish in ${SUBTITLE_TIMEOUT_MS / 1000}s` };
-  }
-  if (result.code !== 0) {
-    const detail = result.stderr.trim().split(/\r?\n/u).slice(-3).join(' ').slice(0, 400);
-    if (needsLogin(result.stderr)) {
-      return { ok: false, code: 'LOGIN_REQUIRED', error: detail || 'the site wants a signed-in session' };
-    }
-    return { ok: false, code: 'EXTRACT_FAILED', error: detail || `The downloader exited with code ${result.code ?? 'unknown'}` };
-  }
+  const failed = processFailure(
+    result,
+    {
+      timeout: 'caption fetch did not finish in',
+      detailLines: 3,
+      detailChars: 400,
+      loginFallback: 'the site wants a signed-in session',
+    },
+    { timeoutMs: SUBTITLE_TIMEOUT_MS },
+  );
+  if (failed) return failed;
 
   const info = readInfo(dir);
   const subtitleFile = pickSubtitle(dir);

@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-239 modules, 832 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+240 modules, 834 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -84,6 +84,7 @@
 | `main/media/ffmpeg.ts` | 9: platformKey, managedFfmpegDir, ffmpegFileName, managedFfmpegPath, parseFfmpegVersion, detectFfmpeg, installManagedFfmpeg, FfmpegSource, … (9) |
 | `main/media/jobs.ts` | 12: buildFormatSelector, buildDownloadArgs, parseProgressLine, MediaJobs, MediaKind, MediaQuality, MediaJobState, MediaJobFile, … (12) |
 | `main/media/platform.ts` | 8: mediaPlatformKey, ytDlpFileName, ytdlpRuntimeOptions, compareYtDlpVersions, ytDlpReleaseAsset, parseChecksum, YtDlpRuntimeKind, YtDlpRuntime |
+| `main/media/process-failure.ts` | 2: processFailure, ProcessFailureCopy |
 | `main/media/service.ts` | 10: MediaService, MediaRuntimeStatus, MediaStatus, MediaInfo, MediaInfoResult, MediaServiceError, MediaTranscriptResult, MediaPreviewImage, … (10) |
 | `main/media/settings.ts` | 3: normalizeMediaSettings, DEFAULT_MEDIA_SETTINGS, MediaSettingsStore |
 | `main/media/transcript.ts` | 5: parseVtt, transcriptDocument, fetchArtifacts, SubtitleArtifacts, ArtifactResult |
@@ -125,8 +126,7 @@
 | `main/search/search-surface.ts` | 3: SearchSurface, SearchPolicyTarget, SearchSurfaceDeps |
 | `main/security/capability-token.ts` | 3: tokenPathIn, createCapabilityToken, readCapabilityToken |
 | `main/session/session-vault.ts` | 2: SessionVault, SessionSnapshot |
-| `main/settings/experimental.ts` | 1: ExperimentalSettingsStore |
 
-… and 114 more module(s) — grep the full index.
+… and 115 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

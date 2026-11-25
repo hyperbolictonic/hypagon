@@ -129,8 +129,6 @@
   },
   "duplicates": {
     "files": {
-      "main/media/service.ts": 6,
-      "main/media/transcript.ts": 5,
       "main/primitives/primitives.ts": 10,
       "main/tools/state.ts": 4,
       "mcp/browser-mcp.ts": 4,
@@ -149,7 +147,7 @@
       "renderer/settings-clients.ts": 38,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 492
+    "totalDuplicatedLines": 481
   },
   "modularity": {
     "files": {

@@ -15,13 +15,13 @@ import path from 'node:path';
 import { app } from 'electron';
 
 import { isMediaBinary, ensureYtDlp, readYtDlpVersion, writableYtDlpPath, type MediaBinary, type MediaBinaryError } from './binaries.ts';
-import { needsLogin } from './auth.ts';
 import { writeCookieFile } from './cookies.ts';
 import { detectFfmpeg, installManagedFfmpeg, type FfmpegInfo } from './ffmpeg.ts';
 import { fetchArtifacts, transcriptDocument, type SubtitleArtifacts } from './transcript.ts';
 import { cortex } from '../cortex/cortex-db.js';
 import { MediaJobs, type MediaJob, type MediaJobInput, type MediaKind, type MediaQuality } from './jobs.ts';
 import { runYtDlpProcess } from './exec.ts';
+import { processFailure } from './process-failure.ts';
 import { ytdlpRuntimeOptions } from './platform.ts';
 import { MediaSettingsStore } from './settings.ts';
 import { MediaUpdater, type MediaUpdaterOptions } from './updater.ts';
@@ -591,22 +591,14 @@ export class MediaService {
         env: runtime.env,
       });
 
-      if (result.timedOut) {
-        return { ok: false, code: 'TIMEOUT', error: `The downloader did not answer within ${INFO_TIMEOUT_MS / 1000}s` };
-      }
-      if (result.overflowed) {
-        return { ok: false, code: 'RESPONSE_TOO_LARGE', error: 'Metadata exceeded the 16 MB limit' };
-      }
-
-      if (result.code !== 0) {
-        const detail = result.stderr.trim().split(/\r?\n/u).slice(-4).join(' ').slice(0, 500);
-        const loginRequired = needsLogin(result.stderr);
-        if (loginRequired) this.notifyLoginRequired();
-        return {
-          ok: false,
-          code: loginRequired ? 'LOGIN_REQUIRED' : 'EXTRACT_FAILED',
-          error: detail === '' ? `The downloader exited with code ${result.code ?? 'unknown'}` : detail,
-        };
+      const failed = processFailure(
+        result,
+        { timeout: 'The downloader did not answer within', detailLines: 4, detailChars: 500 },
+        { timeoutMs: INFO_TIMEOUT_MS, overflowError: 'Metadata exceeded the 16 MB limit' },
+      );
+      if (failed) {
+        if (failed.code === 'LOGIN_REQUIRED') this.notifyLoginRequired();
+        return failed;
       }
 
       let payload: Record<string, any>;

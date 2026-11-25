@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 239 files, 832 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 240 files, 834 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (706)
+## Types (708)
 
 | File | Export | When to use |
 |---|---|---|
@@ -226,6 +226,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/media/platform.ts` | `parseChecksum` | Find one asset hash in a `SHA2-256SUMS` file. |
 | `main/media/platform.ts` | `YtDlpRuntimeKind` *(type)* | Pure helpers for the media tooling: platform naming and the yt-dlp runtime. |
 | `main/media/platform.ts` | `YtDlpRuntime` *(type)* | - |
+| `main/media/process-failure.ts` | `processFailure` | When to use: mapping a `CommandResult` to the media error result, or null on success. |
+| `main/media/process-failure.ts` | `ProcessFailureCopy` *(type)* | The per-call wording for a failed one-shot run. |
 | `main/media/service.ts` | `MediaService` | - |
 | `main/media/service.ts` | `MediaRuntimeStatus` *(type)* | - |
 | `main/media/service.ts` | `MediaStatus` *(type)* | - |
