@@ -6,8 +6,6 @@
  * network/script surfaces. The chassis supplies the active tab, state and the
  * telemetry sinks; this module owns the construction order.
  */
-import type { WebContents } from 'electron';
-import type { ChassisState, TelemetryEvent } from '../../shared/types.js';
 import { InputSurface } from '../input/input-surface.js';
 import { ConstructHarvester } from '../harvester/markdown.js';
 import { ShieldBreaker } from '../shield/shield-breaker.js';
@@ -16,23 +14,7 @@ import { DownloadSurface } from '../downloads/download-surface.js';
 import { SessionSurface } from '../session/session-surface.js';
 import { NetworkSurface } from '../network/network-surface.js';
 import { ScriptsSurface } from '../scripts/scripts-surface.js';
-
-/** Dependencies the input/diagnostics stack needs from the chassis. */
-export interface InputStackDeps {
-  activeWebContents(): WebContents;
-  state: ChassisState;
-  log(level: 'info' | 'warn' | 'action', message: string): void;
-  pointEvent(type: 'mouse_move' | 'click', point: { x: number; y: number }, details: string): void;
-  telemetryEvent(event: TelemetryEvent): void;
-  simpleEvent(type: TelemetryEvent['type'], details: string): void;
-  reportActing(): void;
-  reportIdle(): void;
-  emitHarvest(details: string): void;
-  broadcastState(): void;
-  bumpRevision(): number;
-  markSynthetic(at: number): void;
-  humanActive(): boolean;
-}
+import type { ChassisHost } from './host.js';
 
 /** The built input and diagnostic surfaces. */
 export interface InputStack {
@@ -47,20 +29,20 @@ export interface InputStack {
 }
 
 /** When to use: the chassis constructor — build the input/diagnostic surfaces once. */
-export function createInputStack(deps: InputStackDeps): InputStack {
+export function createInputStack(host: ChassisHost): InputStack {
   const input = new InputSurface({
-    activeWebContents: () => deps.activeWebContents(),
+    activeWebContents: () => host.getActiveWebContents(),
     onMouseMove: (point, velocity) => {
-      deps.state.cursor = point;
-      deps.pointEvent('mouse_move', point, `Velocity: ${velocity.toFixed(2)} px/ms`);
+      host.state.cursor = point;
+      host.telemetry.emitPointEvent('mouse_move', point, `Velocity: ${velocity.toFixed(2)} px/ms`);
     },
     onClick: (point) => {
-      deps.state.stats.totalInteractions++;
-      deps.pointEvent('click', point, 'Physical mouse switch actuated');
+      host.state.stats.totalInteractions++;
+      host.telemetry.emitPointEvent('click', point, 'Physical mouse switch actuated');
     },
     onKey: (char, delay) => {
-      deps.state.stats.totalInteractions++;
-      deps.telemetryEvent({
+      host.state.stats.totalInteractions++;
+      host.telemetry.emitTelemetry({
         type: 'keystroke',
         key: char === ' ' ? 'SPACE' : char,
         durationMs: delay,
@@ -69,22 +51,22 @@ export function createInputStack(deps: InputStackDeps): InputStack {
       });
     },
     onScroll: (deltaY) => {
-      deps.simpleEvent('scroll', `Mousewheel impulse: ${deltaY}px`);
+      host.telemetry.emitSimpleEvent('scroll', `Mousewheel impulse: ${deltaY}px`);
     },
-    markSynthetic: (at) => deps.markSynthetic(at),
-    humanActive: () => deps.humanActive(),
+    markSynthetic: (at) => host.human.monitor.markSynthetic(at),
+    humanActive: () => host.human.isActive(),
     status: {
       acting: () => {
-        deps.state.agentStatus = 'SIMULATING_INPUT';
+        host.state.agentStatus = 'SIMULATING_INPUT';
       },
-      idle: () => deps.reportIdle(),
+      idle: () => host.telemetry.reportIdle(),
       error: () => {
-        deps.state.agentStatus = 'ERROR';
-        deps.broadcastState();
+        host.state.agentStatus = 'ERROR';
+        host.telemetry.broadcastState();
       },
     },
-    log: (level, message) => deps.log(level, message),
-    bumpRevision: () => deps.bumpRevision(),
+    log: host.log,
+    bumpRevision: () => host.bumpRevision(),
   });
 
   return {
@@ -92,19 +74,19 @@ export function createInputStack(deps: InputStackDeps): InputStack {
     harvester: new ConstructHarvester(),
     shieldBreaker: new ShieldBreaker(input.simulator),
     marksOverlay: new MarksOverlay(),
-    downloads: new DownloadSurface({ log: deps.log }),
+    downloads: new DownloadSurface({ log: host.log }),
     sessions: new SessionSurface({
-      activeWebContents: () => deps.activeWebContents(),
-      log: deps.log,
-      emitHarvest: (details) => deps.emitHarvest(details),
+      activeWebContents: () => host.getActiveWebContents(),
+      log: host.log,
+      emitHarvest: (details) => host.telemetry.emitHarvestDetails(details),
     }),
-    network: new NetworkSurface({ log: deps.log }),
+    network: new NetworkSurface({ log: host.log }),
     scripts: new ScriptsSurface({
-      activeWebContents: () => deps.activeWebContents(),
-      log: deps.log,
-      reportActing: () => deps.reportActing(),
-      reportIdle: () => deps.reportIdle(),
-      emitHarvest: (details) => deps.emitHarvest(details),
+      activeWebContents: () => host.getActiveWebContents(),
+      log: host.log,
+      reportActing: () => host.telemetry.reportActing(),
+      reportIdle: () => host.telemetry.reportIdle(),
+      emitHarvest: (details) => host.telemetry.emitHarvestDetails(details),
     }),
   };
 }

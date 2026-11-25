@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-271 modules, 902 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+271 modules, 900 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -18,9 +18,9 @@
 | `main/browser/page-script-surface.ts` | 2: PageScriptSurface, PageScriptSurfaceDeps |
 | `main/capabilities.ts` | 1: BRIDGE_CAPABILITIES |
 | `main/capture/screenshot-jpeg.ts` | 2: captureScreenshotJpeg, ScreenshotJpegDeps |
-| `main/chassis/harvest-nav-stack.ts` | 3: createHarvestNavStack, HarvestNavStackDeps, HarvestNavStack |
+| `main/chassis/harvest-nav-stack.ts` | 2: createHarvestNavStack, HarvestNavStack |
 | `main/chassis/host.ts` | 1: ChassisHost |
-| `main/chassis/input-stack.ts` | 3: createInputStack, InputStackDeps, InputStack |
+| `main/chassis/input-stack.ts` | 2: createInputStack, InputStack |
 | `main/chassis/interaction-stack.ts` | 2: createInteractionStack, InteractionStack |
 | `main/chassis/llm-stack.ts` | 3: createLlmStack, LlmStackDeps, LlmStack |
 | `main/collaboration/overlay.ts` | 8: collaborationNoteDrawerScript, collaborationPickerScript, collaborationOverlayScript, COLLABORATION_NOTE_PREFIX, COLLABORATION_CLASS_PREFIX, COLLABORATION_RESOLVE_PREFIX, COLLABORATION_EXIT_PREFIX, CollaborationPickerOptions |

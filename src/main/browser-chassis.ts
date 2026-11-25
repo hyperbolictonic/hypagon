@@ -85,6 +85,8 @@ export class BrowserChassis {
   });
   /** Shared controller hooks: every controller config wires the same log and telemetry. */
   private readonly controllerLog = (level: 'info' | 'warn' | 'action', message: string): void => this.telemetry.addLog(level, message);
+  /** The bound log entry point the composition roots may pass around without losing `this`. */
+  readonly log = (level: 'info' | 'warn' | 'action', message: string): void => this.telemetry.addLog(level, message);
   private readonly controllerTelemetry = (event: TelemetryEvent): void => this.telemetry.emitTelemetry(event);
   /** The research activity feed hook shared by the read/search surfaces. */
   private readonly surfaceActivity = <T>(
@@ -310,11 +312,11 @@ export class BrowserChassis {
       manager: () => this.requireTabManager(),
       activeWebContents: () => this.getActiveWebContents(),
       log: (level, message) => this.telemetry.addLog(level, message),
-      purgeJev: () => this.purgeJevDepthStore(),
+      purgeJev: () => this.purgeJev(),
       scheduleConsentSweep: () => this.consent.scheduleSweep(),
       refreshViewport: () => void this.tabSetup.viewport?.refreshActive(),
     });
-    const inputStack = this.createInputStack();
+    const inputStack = createInputStack(this);
     this.input = inputStack.input;
     this.harvester = inputStack.harvester;
     this.shieldBreaker = inputStack.shieldBreaker;
@@ -325,7 +327,7 @@ export class BrowserChassis {
     this.scripts = inputStack.scripts;
     this.research = this.createResearchSession();
     this.researchView = this.createResearchViewSurface();
-    const harvestNav = this.createHarvestNavigationSurfaces();
+    const harvestNav = createHarvestNavStack(this);
     this.marks = harvestNav.marks;
     this.harvest = harvestNav.harvest;
     this.nav = harvestNav.nav;
@@ -377,76 +379,6 @@ export class BrowserChassis {
       harvester: () => this.harvester,
       indexPage: (url, title, content) => cortex.indexPage(url, title, content),
       broadcast: (channel, payload) => this.bus.broadcast(channel, payload),
-    });
-  }
-
-  /** The input/diagnostic stack, kept out of the constructor. */
-  private createInputStack(): ReturnType<typeof createInputStack> {
-    return createInputStack({
-      activeWebContents: () => this.getActiveWebContents(),
-      state: this.state,
-      log: this.controllerLog,
-      pointEvent: (type, point, details) => this.telemetry.emitPointEvent(type, point, details),
-      telemetryEvent: (event) => this.telemetry.emitTelemetry(event),
-      simpleEvent: (type, details) => this.telemetry.emitSimpleEvent(type, details),
-      reportActing: () => this.telemetry.reportActing(),
-      reportIdle: () => this.telemetry.reportIdle(),
-      emitHarvest: (details) => this.telemetry.emitHarvestDetails(details),
-      broadcastState: () => this.telemetry.broadcastState(),
-      bumpRevision: () => this.bumpRevision(),
-      markSynthetic: (at) => this.human.monitor.markSynthetic(at),
-      humanActive: () => this.human.isActive(),
-    });
-  }
-
-  /** Marks, harvest and navigation, in dependency order (prerender before nav). */
-  private createHarvestNavigationSurfaces(): ReturnType<typeof createHarvestNavStack> {
-    return createHarvestNavStack({
-      activeWebContents: () => this.getActiveWebContents(),
-      revision: () => this.revision,
-      marksOverlay: this.marksOverlay,
-      simulator: {
-        clickAt: (wc, point) => this.input.simulator.clickAt(wc, point),
-        clearFocusedField: (wc) => this.input.simulator.clearFocusedField(wc),
-        typeText: (wc, text) => this.input.simulator.typeText(wc, text),
-      },
-      log: this.controllerLog,
-      telemetry: this.controllerTelemetry,
-      reportActing: () => this.telemetry.reportActing(),
-      reportIdle: () => this.telemetry.reportIdle(),
-      emitClick: (point, details) => this.telemetry.emitPointEvent('click', point, details),
-      bumpRevision: () => this.bumpRevision(),
-      viewportBounds: () => this.tabSetup.bounds(),
-      zoomState: () => this.zoom.getState(),
-      harvester: this.harvester,
-      beginHarvest: () => {
-        this.state.agentStatus = 'HARVESTING';
-        this.telemetry.broadcastState();
-      },
-      onConstruct: (construct) => {
-        this.latestConstruct = construct;
-        this.bus.toSurfaces('chassis:construct-harvested', construct);
-      },
-      addTokens: (tokens) => {
-        this.state.stats.tokensHarvested += tokens;
-      },
-      emitHarvest: (details) => this.telemetry.emitSimpleEvent('harvest', details),
-      indexPage: (url, title, content) => cortex.indexPage(url, title, content),
-      hostProfile: this.hostProfile,
-      createTab: (url, view) => {
-        this.tabSetup.manager?.createTab(url, view);
-      },
-      welcomePagePath: () => this.tabSetup.manager?.getWelcomePagePath(),
-      beginTraversal: () => {
-        this.state.agentStatus = 'TRAVERSING';
-        this.telemetry.broadcastState();
-      },
-      bumpNav: () => bump('nav'),
-      purgeJev: () => this.purgeJevDepthStore(),
-      syncForceOpen: (wc) => this.shadow.syncForceOpen(wc),
-      scheduleConsentSweep: () => this.consent.scheduleSweep(),
-      broadcastState: () => this.telemetry.broadcastState(),
-      refuseShadow: (surface) => assertShadowSurface(surface),
     });
   }
 
@@ -588,7 +520,7 @@ export class BrowserChassis {
     harvest: () => this.harvest.harvestMarkdown(),
   });
 
-  private purgeJevDepthStore(): void {
+  purgeJev(): void {
     this.jev.purge();
   }
 

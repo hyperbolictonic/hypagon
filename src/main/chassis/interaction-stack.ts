@@ -51,7 +51,7 @@ export function createInteractionStack(host: ChassisHost): InteractionStack {
       }
       host.telemetry.broadcastState();
     },
-    log: (level, message) => host.telemetry.addLog(level, message),
+    log: host.log,
     emitNavigation: (details) => host.telemetry.emitSimpleEvent('navigation', details),
   });
 
@@ -59,12 +59,12 @@ export function createInteractionStack(host: ChassisHost): InteractionStack {
   // runner-side decision model learns from; it never leaves the machine and never stores typed text.
   const actionLedger = new ActionLedger({
     dir: dataPath(),
-    log: (level, message) => host.telemetry.addLog(level, message),
+    log: host.log,
   });
 
   const primitives = new Primitives({
     webContents: () => host.getActiveWebContents(),
-    log: (level, message) => host.telemetry.addLog(level, message),
+    log: host.log,
     evaluate: (script) => host.page.quiet(script),
     harvest: (opts) => host.harvest.harvestMarkdown(opts),
     guardPageRead: (input) => host.jev.guardPageRead(input),

@@ -28,6 +28,10 @@ import type { MarksSurface } from '../marks/marks-surface.js';
 import type { MarksOverlay } from '../marks/marks-overlay.js';
 import type { ShadowWalkSurface } from '../shadow-walk/shadow-surface.js';
 import type { JevController } from '../jev/controller.js';
+import type { ConsentController } from '../shield/consent-controller.js';
+import type { ResearchSessionSurface } from '../research/research-session-surface.js';
+import type { ResearchViewSurface } from '../research/research-view-surface.js';
+import type { CrawlSurface } from '../research/crawl-surface.js';
 import type { NetworkSurface } from '../network/network-surface.js';
 import type { DecisionSurface } from '../decide/decision-surface.js';
 import type { ConsoleLogBuffer } from '../diagnostics/console-log.js';
@@ -59,6 +63,10 @@ export interface ChassisHost {
   readonly marksOverlay: MarksOverlay;
   readonly shadow: ShadowWalkSurface;
   readonly jev: JevController;
+  readonly consent: ConsentController;
+  readonly research: ResearchSessionSurface;
+  readonly researchView: ResearchViewSurface;
+  readonly crawl: CrawlSurface;
   readonly network: NetworkSurface;
   readonly decision: DecisionSurface;
   readonly consoleLogs: ConsoleLogBuffer;
@@ -70,6 +78,10 @@ export interface ChassisHost {
   /** The tray, or null before the window is created. */
   trayManager: TrayManager | null;
   getActiveWebContents(): WebContents;
+  /** Drop the JEV depth index before a tab change. */
+  purgeJev(): void;
+  /** The bound log entry point (safe to pass as a callback). */
+  log(level: 'info' | 'warn' | 'action', message: string): void;
   getPageInfo(): PageInfo;
   getRevision(): number;
   bumpRevision(): number;
