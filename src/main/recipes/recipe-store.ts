@@ -180,11 +180,18 @@ export function deleteRecipe(idOrUrl: string): boolean {
   return true;
 }
 
-/** Record the outcome of a replay; a recipe is retired after RETIRE_AFTER_FAILURES consecutive misses. */
-export function recordResult(id: string, ok: boolean): Recipe | null {
+/** Load the store and the recipe to mutate, or null when it no longer exists. */
+function findRecipe(id: string): { store: ReturnType<typeof loadRecipes>; recipe: Recipe } | null {
   const store = loadRecipes();
   const recipe = store.recipes.find((r) => r.id === id);
-  if (!recipe) return null;
+  return recipe ? { store, recipe } : null;
+}
+
+/** Record the outcome of a replay; a recipe is retired after RETIRE_AFTER_FAILURES consecutive misses. */
+export function recordResult(id: string, ok: boolean): Recipe | null {
+  const found = findRecipe(id);
+  if (!found) return null;
+  const { store, recipe } = found;
   recipe.attempts += 1;
   if (ok) {
     recipe.successes += 1;
@@ -199,9 +206,9 @@ export function recordResult(id: string, ok: boolean): Recipe | null {
 
 /** A structural change is not a flaky miss: retire immediately instead of burning three attempts. */
 export function retireRecipe(id: string): Recipe | null {
-  const store = loadRecipes();
-  const recipe = store.recipes.find((r) => r.id === id);
-  if (!recipe) return null;
+  const found = findRecipe(id);
+  if (!found) return null;
+  const { store, recipe } = found;
   recipe.attempts += 1;
   recipe.consecutiveFailures = RETIRE_AFTER_FAILURES;
   persist(store);

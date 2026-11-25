@@ -14,6 +14,7 @@
  */
 
 import { runDecision, emitDecisionEvent, type DecisionResult } from './decision-client.js';
+import { summarizeQuestions } from './decision-questions.js';
 
 export interface DecisionGuard {
   /** Minimum confidence for a choice to be accepted (0–1). Omit to accept any confidence. */
@@ -156,14 +157,6 @@ export function validateAnswers(answers: Record<string, any>, guard: DecisionGua
   }
 
   return { ok: rejections.length === 0, rejections };
-}
-
-function summarizeQuestions(questions: Record<string, any>): Array<{ id: string; type?: string; instruction?: string }> {
-  return Object.entries(questions || {}).map(([id, q]: [string, any]) => ({
-    id,
-    type: q?.type,
-    instruction: typeof q?.instructions === 'string' ? q.instructions.slice(0, 120) : undefined,
-  }));
 }
 
 /** Mirror the final verdict into the HUD, so an eliminated set is visible as such. */

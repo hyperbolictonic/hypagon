@@ -38,6 +38,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { detectSensitiveGate } from './sensitive-gate.js';
 import { dataPath } from '../data-paths.js';
+import { summarizeQuestions } from './decision-questions.js';
 
 export type DecisionProtocol = 'typesafe' | 'local-onnx';
 
@@ -339,14 +340,6 @@ export function emitDecisionEvent(event: DecisionEvent): void {
       // A UI listener must never break a decision.
     }
   }
-}
-
-function summarizeQuestions(questions: Record<string, any>): DecisionEvent['questions'] {
-  return Object.entries(questions || {}).map(([id, q]: [string, any]) => ({
-    id,
-    type: q?.type,
-    instruction: typeof q?.instructions === 'string' ? q.instructions.slice(0, 120) : undefined,
-  }));
 }
 
 /** One decision call. Never throws: failures are returned as typed results. */

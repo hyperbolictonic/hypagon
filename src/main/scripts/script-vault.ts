@@ -71,6 +71,12 @@ export class ScriptVault {
     return await cortex.recallScripts(query, options);
   }
 
+  /** The on-disk JSON path for a script name, sanitized to a filename. */
+  private scriptFilePath(name: string): string {
+    const cleanName = name.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+    return path.join(this.scriptsDir, `${cleanName}.json`);
+  }
+
   /**
    * Retrieves a script by exact name from memory/DB or file system.
    */
@@ -78,8 +84,7 @@ export class ScriptVault {
     const fromDb = await cortex.getScriptByName(name);
     if (fromDb) return fromDb;
 
-    const cleanName = name.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
-    const filePath = path.join(this.scriptsDir, `${cleanName}.json`);
+    const filePath = this.scriptFilePath(name);
     if (fs.existsSync(filePath)) {
       try {
         const data: SavedScriptMeta = JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -147,8 +152,7 @@ export class ScriptVault {
    * Deletes a script from both LanceDB Cortex and filesystem.
    */
   public async deleteScript(name: string): Promise<boolean> {
-    const cleanName = name.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
-    const filePath = path.join(this.scriptsDir, `${cleanName}.json`);
+    const filePath = this.scriptFilePath(name);
 
     if (fs.existsSync(filePath)) {
       try {

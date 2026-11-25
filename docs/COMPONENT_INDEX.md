@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 238 files, 830 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 239 files, 832 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (704)
+## Types (706)
 
 | File | Export | When to use |
 |---|---|---|
@@ -89,6 +89,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/decide/decision-guard.ts` | `DecisionGuard` *(type)* | - |
 | `main/decide/decision-guard.ts` | `GuardRejection` *(type)* | - |
 | `main/decide/decision-guard.ts` | `GuardedDecision` *(type)* | - |
+| `main/decide/decision-questions.ts` | `summarizeQuestions` | When to use: one call's questions, flattened for the event log. |
+| `main/decide/decision-questions.ts` | `DecisionQuestionSummary` *(type)* | When to use: recording what a decision call was asked. |
 | `main/decide/sensitive-gate.ts` | `detectSensitiveGate` | Inspect the state Kuang is about to send. `state` may be the composed page text or the component |
 | `main/decide/sensitive-gate.ts` | `SensitiveGate` *(type)* | Sensitive gates — situations where the correct action is **a human**, never a click. |
 | `main/decide/sensitive-gate.ts` | `GateDetection` *(type)* | - |

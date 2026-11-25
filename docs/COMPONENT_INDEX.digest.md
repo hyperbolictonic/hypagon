@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-238 modules, 830 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+239 modules, 832 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -23,6 +23,7 @@
 | `main/data-paths.ts` | 3: dataRoot, dataPath, writeJsonAtomic |
 | `main/decide/decision-client.ts` | 13: resolveDecisionConfig, readStoredDecisionConfig, saveDecisionConfig, decisionStatus, onDecision, emitDecisionEvent, runDecision, DecisionProtocol, … (13) |
 | `main/decide/decision-guard.ts` | 5: validateAnswers, decideGuarded, DecisionGuard, GuardRejection, GuardedDecision |
+| `main/decide/decision-questions.ts` | 2: summarizeQuestions, DecisionQuestionSummary |
 | `main/decide/sensitive-gate.ts` | 3: detectSensitiveGate, SensitiveGate, GateDetection |
 | `main/deck/collab.ts` | 2: CollabController, CollabControllerDeps |
 | `main/deck/controller.ts` | 3: DeckController, DeckMode, DeckControllerDeps |
@@ -125,8 +126,7 @@
 | `main/security/capability-token.ts` | 3: tokenPathIn, createCapabilityToken, readCapabilityToken |
 | `main/session/session-vault.ts` | 2: SessionVault, SessionSnapshot |
 | `main/settings/experimental.ts` | 1: ExperimentalSettingsStore |
-| `main/settings/jev.ts` | 4: DEFAULT_JEV_SETTINGS, JevSettingsStore, JevMode, JevSettings |
 
-… and 113 more module(s) — grep the full index.
+… and 114 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

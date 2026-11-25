@@ -129,13 +129,9 @@
   },
   "duplicates": {
     "files": {
-      "main/decide/decision-client.ts": 7,
-      "main/decide/decision-guard.ts": 7,
       "main/media/service.ts": 6,
       "main/media/transcript.ts": 5,
       "main/primitives/primitives.ts": 10,
-      "main/recipes/recipe-store.ts": 10,
-      "main/scripts/script-vault.ts": 9,
       "main/tools/state.ts": 4,
       "mcp/browser-mcp.ts": 4,
       "mcp/tool-groups-data.ts": 135,
@@ -153,7 +149,7 @@
       "renderer/settings-clients.ts": 38,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 525
+    "totalDuplicatedLines": 492
   },
   "modularity": {
     "files": {
