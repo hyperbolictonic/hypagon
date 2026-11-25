@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createBearerAuthorizer, createMcpHttpHost } from '../../packages/mcp-http/src/index.ts';
 import { McpOAuthServer } from '../../packages/mcp-oauth/src/index.ts';
 import { createBridgeMcpServer, flushLogSync } from './browser-mcp.js';
-import { readRemoteToken } from '../main/remote/token.js';
+import { readCapabilityToken } from '../main/security/capability-token.js';
 import { readOAuthClient } from '../main/remote/oauth-client.js';
 
 const DEFAULT_PORT = 4112;
@@ -98,7 +98,7 @@ async function main(): Promise<void> {
     createServer: createBridgeMcpServer,
     authorize: oauth
       ? (request) => oauth.authorize(request)
-      : createBearerAuthorizer(() => readRemoteToken(tokenFile), 'remote-operator'),
+      : createBearerAuthorizer(() => readCapabilityToken(tokenFile), 'remote-operator'),
     ...(oauth
       ? {
           handleExtraRequest: (request, response, url) => oauth.handleRequest(request, response, url),

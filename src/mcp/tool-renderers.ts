@@ -8,7 +8,7 @@
  * content; the dispatcher keeps the transport, the default text path and the
  * stale-server note.
  */
-import { formatMark } from './format-mark.js';
+import { formatMark } from '../main/marks/format-mark.js';
 
 // Ceiling on tool text: a huge page can neither flood the agent context nor wedge the stdio transport.
 const MAX_TEXT_CHARS = 60000;

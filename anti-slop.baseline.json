@@ -104,7 +104,6 @@
       "main/wrap/secrets.ts": 11,
       "main/wrap/security.ts": 4,
       "main/wrap/store.ts": 2,
-      "main/wrap/token.ts": 3,
       "main/wrap/types.ts": 10,
       "main/wrap/validate-wrapper.ts": 3,
       "mcp/browser-mcp.ts": 3,

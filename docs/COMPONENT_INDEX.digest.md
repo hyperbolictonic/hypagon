@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-233 modules, 813 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+230 modules, 807 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -107,7 +107,6 @@
 | `main/remote/oauth-client.ts` | 5: oauthClientFile, readOAuthClient, createOAuthClient, ensureOAuthClient, OAuthClientCredentials |
 | `main/remote/service.ts` | 2: RemoteService, RemoteServiceOptions |
 | `main/remote/settings.ts` | 3: loadRemoteSettings, saveRemoteSettings, RemoteSettings |
-| `main/remote/token.ts` | 3: remoteTokenFile, createRemoteToken, readRemoteToken |
 | `main/research/anchor-store.ts` | 2: AnchorStore, StoredAnchor |
 | `main/research/anchors.ts` | 6: relocateCitation, relocateCitations, anchorHighlights, CitationAnchor, CitationCandidate, CitationRelocation |
 | `main/research/citation-controller.ts` | 4: CitationController, HumanHandoffResult, CitationControllerDeps, RevalidationSummary |
@@ -126,7 +125,8 @@
 | `main/settings/jev.ts` | 4: DEFAULT_JEV_SETTINGS, JevSettingsStore, JevMode, JevSettings |
 | `main/settings/json-settings.ts` | 4: loadJsonSettings, saveJsonSettings, settingsSource, SettingsResult |
 | `main/shadow-walk/ax-controls.ts` | 6: findSealedControls, SealedRateLimitError, SealedRect, SealedControl, SealedFindOptions, SealedFindResult |
+| `main/shadow-walk/component-signature.ts` | 4: componentSignatureOf, normalizeSurface, COMPONENT_SIGNATURE_HELPERS, ComponentSurface |
 
-… and 107 more module(s) — grep the full index.
+… and 105 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

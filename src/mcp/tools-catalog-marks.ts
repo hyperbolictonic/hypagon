@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { formatMark } from './format-mark.js';
+import { formatMark } from '../main/marks/format-mark.js';
 import type { ToolCatalogItem } from './tools-catalog-types.js';
 
 /** When to use: the catalog segment fronting Set-of-Marks grounding: screenshots, the mark registry and mark actuation. */

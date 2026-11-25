@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { createRemoteToken, readRemoteToken } from '../src/main/remote/token.ts';
+import { createCapabilityToken, readCapabilityToken } from '../src/main/security/capability-token.ts';
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -42,9 +42,9 @@ async function waitForUnauthorized(url, timeoutMs = 8000) {
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hypagon-remote-'));
 const tokenFile = path.join(tempDir, 'token');
 const logFile = path.join(tempDir, 'remote.log');
-const token = createRemoteToken(tempDir);
-assert.equal(readRemoteToken(tokenFile), token);
-assert.equal(readRemoteToken(path.join(tempDir, 'missing')), undefined, 'missing token must be rejected');
+const token = createCapabilityToken(tempDir);
+assert.equal(readCapabilityToken(tokenFile), token);
+assert.equal(readCapabilityToken(path.join(tempDir, 'missing')), undefined, 'missing token must be rejected');
 
 const port = await freePort();
 const url = `http://127.0.0.1:${port}/mcp/browser`;

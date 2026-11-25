@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { createRemoteToken } from '../src/main/remote/token.ts';
+import { createCapabilityToken } from '../src/main/security/capability-token.ts';
 import { createOAuthClient } from '../src/main/remote/oauth-client.ts';
 
 const VERIFIER = 'b'.repeat(64);
@@ -42,7 +42,7 @@ async function waitForMetadata(url, timeoutMs = 8000) {
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hypagon-remote-oauth-'));
 const tokenFile = path.join(tempDir, 'token');
 const clientFile = path.join(tempDir, 'oauth-client.json');
-createRemoteToken(tempDir);
+createCapabilityToken(tempDir);
 const oauthClient = createOAuthClient(clientFile);
 const port = await freePort();
 const base = `http://127.0.0.1:${port}`;

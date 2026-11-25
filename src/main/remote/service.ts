@@ -3,7 +3,7 @@ import { once } from 'node:events';
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
-import { createRemoteToken, readRemoteToken, remoteTokenFile } from './token.ts';
+import { createCapabilityToken, readCapabilityToken, tokenPathIn } from '../security/capability-token.ts';
 import { findCloudflared } from './cloudflared.ts';
 import { ensureOAuthClient, oauthClientFile, createOAuthClient } from './oauth-client.ts';
 import type { OAuthClientCredentials } from './oauth-client.ts';
@@ -76,7 +76,7 @@ export class RemoteService {
 
   constructor(options: RemoteServiceOptions) {
     this.options = options;
-    this.tokenPath = remoteTokenFile(options.dataDir);
+    this.tokenPath = tokenPathIn(options.dataDir);
     this.logFile = options.logFile || path.join(options.dataDir, 'remote-server.log');
     this.tunnelLogFile = path.join(options.dataDir, 'named-tunnel.log');
     this.tunnelTokenPath = path.join(options.dataDir, 'tunnel-token');
@@ -90,10 +90,10 @@ export class RemoteService {
   }
 
   ensureToken(): string {
-    const existing = readRemoteToken(this.tokenPath);
+    const existing = readCapabilityToken(this.tokenPath);
     if (existing) return existing;
     fs.mkdirSync(this.options.dataDir, { recursive: true });
-    return createRemoteToken(this.options.dataDir);
+    return createCapabilityToken(this.options.dataDir);
   }
 
   getToken(): string {
@@ -409,7 +409,7 @@ export class RemoteService {
   async rotateToken(): Promise<RemoteStatus> {
     const wasEnabled = this.enabled;
     await this.stopChild();
-    createRemoteToken(this.options.dataDir);
+    createCapabilityToken(this.options.dataDir);
     this.lastError = '';
     if (wasEnabled) {
       this.enabled = true;

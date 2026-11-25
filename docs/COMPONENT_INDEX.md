@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 233 files, 813 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 230 files, 807 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -701,7 +701,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (128)
+## Modules (122)
 
 | File | Export | When to use |
 |---|---|---|
@@ -752,9 +752,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/metrics.ts` | `resetMetrics` | - |
 | `main/remote/cloudflared.ts` | `findCloudflared` | Find cloudflared without installing or downloading it. |
 | `main/remote/ipc.ts` | `registerRemoteIpc` | When to use: main-process startup — register every `remote:*` channel. The |
-| `main/remote/token.ts` | `remoteTokenFile` | When to use: a surface that needs the token file path itself (the gateway status UI). |
-| `main/remote/token.ts` | `createRemoteToken` | When to use: first start or rotation — create the gateway token and return it. |
-| `main/remote/token.ts` | `readRemoteToken` | When to use: a bearer authorizer — read the gateway token from disk, or undefined when absent. |
 | `main/security/capability-token.ts` | `tokenPathIn` | The token file path inside a capability directory. |
 | `main/security/capability-token.ts` | `createCapabilityToken` | Create (or rotate) the token in `dir`. The caller owns the directory. |
 | `main/security/capability-token.ts` | `readCapabilityToken` | Read and validate a token file. A missing, malformed or empty file returns undefined. |
@@ -774,9 +771,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/viewport/profiles.ts` | `DeviceProfileStore` | - |
 | `main/wrap/auth.ts` | `tokenFromHeaders` | - |
 | `main/wrap/auth.ts` | `isWrapAuthorized` | - |
-| `main/wrap/token.ts` | `readWrapToken` | - |
-| `main/wrap/token.ts` | `tokenFile` | - |
-| `main/wrap/token.ts` | `createWrapToken` | - |
 | `main/zoom/settings.ts` | `ZoomSettingsStore` | The browser zoom policy lives next to the other human settings. The HTTP |
 | `mcp/browser-mcp.ts` | `flushLogSync` | Synchronous drain used only on shutdown paths, where async I/O cannot run. |
 | `mcp/browser-mcp.ts` | `logMcp` | - |

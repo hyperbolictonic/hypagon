@@ -7,7 +7,7 @@ import { BrowserChassis } from './browser-chassis.js';
 import { startHttpBridge } from './http-bridge.js';
 import { createWrapExecutor } from './wrap/factory.js';
 import { WrapStore } from './wrap/store.js';
-import { createWrapToken, tokenFile } from './wrap/token.js';
+import { createCapabilityToken, tokenPathIn } from './security/capability-token.js';
 import { SecretStore } from './wrap/secrets.js';
 import type { SecretCipher } from './wrap/secrets.js';
 import { WrapAuditLog } from './wrap/audit.js';
@@ -400,7 +400,7 @@ ipcMain.handle('app:connect-info', () => {
     devlogsServerExists: fs.existsSync(devlogsServerPath),
     devlogsDir: dataPath('logs'),
     devMode: !app.isPackaged,
-    wrapTokenFile: tokenFile(wrapDir()),
+    wrapTokenFile: tokenPathIn(wrapDir()),
     runtimePath: process.execPath,
     packaged: app.isPackaged,
     homedir: os.homedir(),
@@ -651,7 +651,7 @@ async function createWindow() {
       },
       wrapSecrets,
     );
-    const wrapToken = createWrapToken(wrapDir());
+    const wrapToken = createCapabilityToken(wrapDir());
     const toolSettings = new ToolSettingsStore(path.join(app.getPath('userData'), 'tool-settings.json'));
     registerToolSettingsIpc(toolSettings);
     const collaboration = new CollaborationService(

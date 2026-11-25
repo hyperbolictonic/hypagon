@@ -9,7 +9,7 @@ import { validateWrapper } from '../src/main/wrap/validate-wrapper.ts';
 import { buildRequest } from '../src/main/wrap/interpolate.ts';
 import { validateArgs } from '../src/main/wrap/input-schema.ts';
 import { assertSafeUrl, isPrivateAddress } from '../src/main/wrap/security.ts';
-import { createWrapToken, readWrapToken } from '../src/main/wrap/token.ts';
+import { createCapabilityToken, readCapabilityToken, tokenPathIn } from '../src/main/security/capability-token.ts';
 import { isWrapAuthorized, tokenFromHeaders } from '../src/main/wrap/auth.ts';
 import { SecretStore } from '../src/main/wrap/secrets.ts';
 import { WrapAuditLog } from '../src/main/wrap/audit.ts';
@@ -88,16 +88,16 @@ function postWrapper() {
 
 test('rotates and reads the local wrap bridge token', () => {
   const { dir } = tempStore();
-  const first = createWrapToken(dir);
+  const first = createCapabilityToken(dir);
   assert.match(first, /^[a-f0-9]{64}$/);
-  assert.equal(readWrapToken(dir), first);
+  assert.equal(readCapabilityToken(tokenPathIn(dir)), first);
   assert.equal(isWrapAuthorized(first, first), true);
   assert.equal(isWrapAuthorized('wrong', first), false);
   assert.equal(isWrapAuthorized('', first), false);
 
-  const second = createWrapToken(dir);
+  const second = createCapabilityToken(dir);
   assert.notEqual(second, first);
-  assert.equal(readWrapToken(dir), second);
+  assert.equal(readCapabilityToken(tokenPathIn(dir)), second);
   assert.equal(isWrapAuthorized(first, second), false);
 });
 

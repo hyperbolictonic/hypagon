@@ -10,7 +10,7 @@ import {
   TOOL_GROUPS,
   type ToolGroupDefinition,
 } from './tool-groups.js';
-import { formatMark } from './format-mark.js';
+import { formatMark } from '../main/marks/format-mark.js';
 import { clampText, renderMediaPreview, renderFrames, renderImageTool, renderComponentsTable } from './tool-renderers.js';
 import { APP_VERSION } from '../shared/version.js';
 import { BRAND } from '../shared/brand.js';
