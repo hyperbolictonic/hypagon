@@ -3,6 +3,11 @@
  *
  * The deck is its own native view, so these controls can live inline without the popup-window
  * workaround the old top-toolbar button needed. Agents use the smaller `browser_viewport` tool.
+ *
+ * Why this file is a class: the panel has one piece of state (`current`, `profiles`, and the
+ * `suppress` flag that stops an input change from re-triggering the set it just caused) and
+ * four render/apply rules over it. One object keeps them together, and `initViewportControls`
+ * only resolves the nodes and wires the events.
  */
 import type { ElectronAPI } from '../preload/index.js';
 import type { DeviceProfile, ViewportState } from '../shared/viewport.js';
@@ -10,80 +15,130 @@ import { byId } from './dom.js';
 
 const api = (window as unknown as { electronAPI?: ElectronAPI }).electronAPI;
 
+/** When to use: `ViewportControls` — the nodes the deck renders. */
+interface ViewportNodes {
+  presetSelect: HTMLSelectElement;
+  fitButton: HTMLButtonElement | null;
+  editButton: HTMLButtonElement | null;
+  detail: HTMLElement | null;
+  widthInput: HTMLInputElement | null;
+  heightInput: HTMLInputElement | null;
+  dprInput: HTMLInputElement | null;
+  mobileInput: HTMLInputElement | null;
+  touchInput: HTMLInputElement | null;
+  rotateButton: HTMLButtonElement | null;
+  saveButton: HTMLButtonElement | null;
+  fitDetailButton: HTMLButtonElement | null;
+  profilesList: HTMLElement | null;
+  devtoolsButton: HTMLButtonElement | null;
+}
 
-export function initViewportControls(): void {
-  const presetSelect = byId<HTMLSelectElement>('viewport-preset');
-  const fitButton = byId<HTMLButtonElement>('viewport-fit');
-  const editButton = byId<HTMLButtonElement>('viewport-edit');
-  const detail = byId<HTMLElement>('viewport-detail');
-  const widthInput = byId<HTMLInputElement>('viewport-width');
-  const heightInput = byId<HTMLInputElement>('viewport-height');
-  const dprInput = byId<HTMLInputElement>('viewport-dpr');
-  const mobileInput = byId<HTMLInputElement>('viewport-mobile');
-  const touchInput = byId<HTMLInputElement>('viewport-touch');
-  const rotateButton = byId<HTMLButtonElement>('viewport-rotate');
-  const saveButton = byId<HTMLButtonElement>('viewport-save');
-  const fitDetailButton = byId<HTMLButtonElement>('viewport-fit-detail');
-  const profilesList = byId<HTMLElement>('viewport-profiles');
-  const devtoolsButton = byId<HTMLButtonElement>('devtools-btn');
+/** When to use: `initViewportControls` — one controller per deck. */
+class ViewportControls {
+  private readonly nodes: ViewportNodes;
+  private current: ViewportState | null = null;
+  private profiles: DeviceProfile[] = [];
+  /** True while `applyState` writes the inputs, so their change events are ignored. */
+  private suppress = false;
 
-  if (!presetSelect) return;
+  constructor(nodes: ViewportNodes) {
+    this.nodes = nodes;
+  }
 
-  let current: ViewportState | null = null;
-  let profiles: DeviceProfile[] = [];
-  let suppress = false;
+  /** Wire every control in the panel. */
+  wire(): void {
+    const n = this.nodes;
 
-  const renderProfiles = (): void => {
-    if (!profilesList) return;
-    profilesList.replaceChildren();
-    const custom = profiles.filter((profile) => !profile.builtin);
-    if (custom.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'px-2 py-1 text-[10px] text-base-content/40';
-      empty.textContent = 'No saved devices yet.';
-      profilesList.appendChild(empty);
-      return;
+    n.presetSelect.addEventListener('change', () => {
+      if (this.suppress) return;
+      if (n.presetSelect.value === '__off__') {
+        void api?.resetViewport().then((state) => this.applyState(state));
+        return;
+      }
+      if (!n.presetSelect.value) return;
+      void this.applyPreset(n.presetSelect.value);
+    });
+    for (const input of [n.widthInput, n.heightInput, n.dprInput]) {
+      input?.addEventListener('change', () => void this.applyCustom());
     }
-    for (const profile of custom) {
-      const row = document.createElement('div');
-      row.className = 'flex items-center gap-1';
-      const apply = document.createElement('button');
-      apply.type = 'button';
-      apply.className = 'btn btn-ghost btn-xs flex-1 justify-start font-mono text-[10px]';
-      apply.textContent = `${profile.name} · ${profile.width}×${profile.height}`;
-      apply.addEventListener('click', () => void applyPreset(profile.id));
-      const remove = document.createElement('button');
-      remove.type = 'button';
-      remove.className = 'btn btn-ghost btn-xs text-error';
-      remove.textContent = '×';
-      remove.title = `Delete ${profile.name}`;
-      remove.addEventListener('click', async () => {
-        const result = await api?.deleteDeviceProfile(profile.id);
-        if (result) {
-          profiles = result.profiles;
-          renderProfiles();
-          populatePresets();
-        }
-      });
-      row.append(apply, remove);
-      profilesList.appendChild(row);
+    for (const input of [n.mobileInput, n.touchInput]) {
+      input?.addEventListener('change', () => void this.applyCustom());
     }
-  };
 
-  const populatePresets = (): void => {
-    const previous = presetSelect.value;
-    presetSelect.replaceChildren();
+    n.fitButton?.addEventListener('click', async () => this.applyState(await api?.resetViewport()));
+    n.fitDetailButton?.addEventListener('click', async () => this.applyState(await api?.resetViewport()));
+    n.rotateButton?.addEventListener('click', async () => this.applyState(await api?.setViewport({ action: 'rotate' })));
+    n.saveButton?.addEventListener('click', () => void this.saveCurrent());
+    n.editButton?.addEventListener('click', () => this.toggleDetail());
+    n.devtoolsButton?.addEventListener('click', () => void api?.openDevTools());
+
+    // Ask the main process for the current state once the deck is up.
+    api?.getViewport?.().then((state) => this.applyState(state)).catch(() => undefined);
+  }
+
+  /** Render a state: the detail inputs, the preset list and the saved-device rows. */
+  applyState(state: ViewportState | null | undefined): void {
+    if (!state) return;
+    this.current = state;
+    this.profiles = state.profiles ?? this.profiles;
+
+    this.writeDetail(state);
+    this.populatePresets();
+    this.nodes.presetSelect.value = !state.active
+      ? '__off__'
+      : state.spec && this.profiles.some((profile) => profile.id === state.spec?.profileId)
+        ? state.spec.profileId
+        : '';
+    this.renderProfiles();
+  }
+
+  /** The OFF buttons and the width/height/dpr/mobile/touch inputs for one state. */
+  private writeDetail(state: ViewportState): void {
+    const n = this.nodes;
+    const spec = state.spec;
+
+    this.suppress = true;
+    for (const button of [n.fitButton, n.fitDetailButton]) {
+      if (!button) continue;
+      button.textContent = 'OFF';
+      button.disabled = !state.active;
+      button.title = state.active ? 'Switch off device emulation' : 'No device emulation is active';
+    }
+    if (state.active && spec) {
+      if (n.widthInput) n.widthInput.value = String(spec.width);
+      if (n.heightInput) n.heightInput.value = String(spec.height);
+      if (n.dprInput) n.dprInput.value = String(spec.deviceScaleFactor);
+      if (n.mobileInput) n.mobileInput.checked = spec.mobile;
+      if (n.touchInput) n.touchInput.checked = spec.touch;
+    } else {
+      if (n.widthInput) n.widthInput.value = '';
+      if (n.heightInput) n.heightInput.value = '';
+      if (n.dprInput) n.dprInput.value = '1';
+      if (n.mobileInput) n.mobileInput.checked = false;
+      if (n.touchInput) n.touchInput.checked = false;
+    }
+    this.suppress = false;
+  }
+
+  /** The preset dropdown: off, custom size, the built-in devices and the saved ones. */
+  private populatePresets(): void {
+    const select = this.nodes.presetSelect;
+    const previous = select.value;
+    select.replaceChildren();
+
     const off = document.createElement('option');
     off.value = '__off__';
     off.textContent = 'Off — full browser area';
-    presetSelect.appendChild(off);
+    select.appendChild(off);
+
     const custom = document.createElement('option');
     custom.value = '';
     custom.textContent = 'Custom size';
-    presetSelect.appendChild(custom);
+    select.appendChild(custom);
+
     for (const group of [
-      { label: 'Devices', list: profiles.filter((profile) => profile.builtin) },
-      { label: 'Saved', list: profiles.filter((profile) => !profile.builtin) },
+      { label: 'Devices', list: this.profiles.filter((profile) => profile.builtin) },
+      { label: 'Saved', list: this.profiles.filter((profile) => !profile.builtin) },
     ]) {
       if (group.list.length === 0) continue;
       const optgroup = document.createElement('optgroup');
@@ -94,112 +149,124 @@ export function initViewportControls(): void {
         option.textContent = `${profile.name} · ${profile.width}×${profile.height}`;
         optgroup.appendChild(option);
       }
-      presetSelect.appendChild(optgroup);
+      select.appendChild(optgroup);
     }
-    if (previous && profiles.some((profile) => profile.id === previous)) presetSelect.value = previous;
-  };
+    if (previous && this.profiles.some((profile) => profile.id === previous)) select.value = previous;
+  }
 
-  const applyState = (state: ViewportState | null | undefined): void => {
-    if (!state) return;
-    current = state;
-    profiles = state.profiles ?? profiles;
+  /** The saved-device rows, each with an apply button and a delete button. */
+  private renderProfiles(): void {
+    const host = this.nodes.profilesList;
+    if (!host) return;
+    host.replaceChildren();
 
-    suppress = true;
-    const spec = state.spec;
-    for (const button of [fitButton, fitDetailButton]) {
-      if (!button) continue;
-      button.textContent = 'OFF';
-      button.disabled = !state.active;
-      button.title = state.active ? 'Switch off device emulation' : 'No device emulation is active';
+    const custom = this.profiles.filter((profile) => !profile.builtin);
+    if (custom.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'px-2 py-1 text-[10px] text-base-content/40';
+      empty.textContent = 'No saved devices yet.';
+      host.appendChild(empty);
+      return;
     }
-    if (state.active && spec) {
-      if (widthInput) widthInput.value = String(spec.width);
-      if (heightInput) heightInput.value = String(spec.height);
-      if (dprInput) dprInput.value = String(spec.deviceScaleFactor);
-      if (mobileInput) mobileInput.checked = spec.mobile;
-      if (touchInput) touchInput.checked = spec.touch;
-    } else {
-      if (widthInput) widthInput.value = '';
-      if (heightInput) heightInput.value = '';
-      if (dprInput) dprInput.value = '1';
-      if (mobileInput) mobileInput.checked = false;
-      if (touchInput) touchInput.checked = false;
+
+    for (const profile of custom) {
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-1';
+
+      const apply = document.createElement('button');
+      apply.type = 'button';
+      apply.className = 'btn btn-ghost btn-xs flex-1 justify-start font-mono text-[10px]';
+      apply.textContent = `${profile.name} · ${profile.width}×${profile.height}`;
+      apply.addEventListener('click', () => void this.applyPreset(profile.id));
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'btn btn-ghost btn-xs text-error';
+      remove.textContent = '×';
+      remove.title = `Delete ${profile.name}`;
+      remove.addEventListener('click', async () => {
+        const result = await api?.deleteDeviceProfile(profile.id);
+        if (!result) return;
+        this.profiles = result.profiles;
+        this.renderProfiles();
+        this.populatePresets();
+      });
+
+      row.append(apply, remove);
+      host.appendChild(row);
     }
-    suppress = false;
+  }
 
-    populatePresets();
-    presetSelect.value = !state.active
-      ? '__off__'
-      : spec && profiles.some((profile) => profile.id === spec.profileId)
-        ? spec.profileId
-        : '';
-    renderProfiles();
-  };
-
-  const applyPreset = async (id: string): Promise<void> => {
+  /** Apply a preset by id. */
+  private async applyPreset(id: string): Promise<void> {
     if (!id) return;
-    applyState(await api?.setViewport({ action: 'set', preset: id }));
-  };
+    this.applyState(await api?.setViewport({ action: 'set', preset: id }));
+  }
 
-  const applyCustom = async (): Promise<void> => {
-    if (suppress) return;
-    const width = Number(widthInput?.value);
-    const height = Number(heightInput?.value);
+  /** Apply the typed width/height (and the dpr/mobile/touch flags). */
+  private async applyCustom(): Promise<void> {
+    if (this.suppress) return;
+    const width = Number(this.nodes.widthInput?.value);
+    const height = Number(this.nodes.heightInput?.value);
     if (!Number.isFinite(width) || !Number.isFinite(height) || width < 200 || height < 200) return;
-    applyState(
+    this.applyState(
       await api?.setViewport({
         action: 'set',
         width,
         height,
-        deviceScaleFactor: Number(dprInput?.value) || 1,
-        mobile: mobileInput?.checked ?? false,
-        touch: touchInput?.checked ?? false,
+        deviceScaleFactor: Number(this.nodes.dprInput?.value) || 1,
+        mobile: this.nodes.mobileInput?.checked ?? false,
+        touch: this.nodes.touchInput?.checked ?? false,
       }),
     );
-  };
+  }
 
-  const saveCurrent = async (): Promise<void> => {
-    const spec = current?.spec;
+  /** Save the active device under a human-chosen name. */
+  private async saveCurrent(): Promise<void> {
+    const spec = this.current?.spec;
     if (!spec) return;
     const name = window.prompt('Save this device as', `${spec.width}×${spec.height} device`);
     if (!name?.trim()) return;
     const result = await api?.saveDeviceProfile({ name: name.trim(), spec });
-    if (result) {
-      profiles = result.profiles;
-      renderProfiles();
-      populatePresets();
-    }
-  };
-
-  presetSelect.addEventListener('change', () => {
-    if (suppress) return;
-    if (presetSelect.value === '__off__') {
-      void api?.resetViewport().then(applyState);
-      return;
-    }
-    if (!presetSelect.value) return;
-    void applyPreset(presetSelect.value);
-  });
-  for (const input of [widthInput, heightInput, dprInput]) {
-    input?.addEventListener('change', () => void applyCustom());
-  }
-  for (const input of [mobileInput, touchInput]) {
-    input?.addEventListener('change', () => void applyCustom());
+    if (!result) return;
+    this.profiles = result.profiles;
+    this.renderProfiles();
+    this.populatePresets();
   }
 
-  fitButton?.addEventListener('click', async () => applyState(await api?.resetViewport()));
-  fitDetailButton?.addEventListener('click', async () => applyState(await api?.resetViewport()));
-  rotateButton?.addEventListener('click', async () => applyState(await api?.setViewport({ action: 'rotate' })));
-  saveButton?.addEventListener('click', () => void saveCurrent());
-  editButton?.addEventListener('click', () => {
-    if (!detail) return;
+  /** Show or hide the custom-size detail panel. */
+  private toggleDetail(): void {
+    const { detail, editButton } = this.nodes;
+    if (!detail || !editButton) return;
     const hidden = detail.classList.toggle('hidden');
     editButton.textContent = hidden ? 'EDIT' : 'CLOSE';
     editButton.classList.toggle('btn-active', !hidden);
+  }
+}
+
+export function initViewportControls(): void {
+  const presetSelect = byId<HTMLSelectElement>('viewport-preset');
+  if (!presetSelect) return;
+
+  const controls = new ViewportControls({
+    presetSelect,
+    fitButton: byId<HTMLButtonElement>('viewport-fit'),
+    editButton: byId<HTMLButtonElement>('viewport-edit'),
+    detail: byId<HTMLElement>('viewport-detail'),
+    widthInput: byId<HTMLInputElement>('viewport-width'),
+    heightInput: byId<HTMLInputElement>('viewport-height'),
+    dprInput: byId<HTMLInputElement>('viewport-dpr'),
+    mobileInput: byId<HTMLInputElement>('viewport-mobile'),
+    touchInput: byId<HTMLInputElement>('viewport-touch'),
+    rotateButton: byId<HTMLButtonElement>('viewport-rotate'),
+    saveButton: byId<HTMLButtonElement>('viewport-save'),
+    fitDetailButton: byId<HTMLButtonElement>('viewport-fit-detail'),
+    profilesList: byId<HTMLElement>('viewport-profiles'),
+    devtoolsButton: byId<HTMLButtonElement>('devtools-btn'),
   });
-  devtoolsButton?.addEventListener('click', () => void api?.openDevTools());
 
-  api?.getViewport?.().then(applyState).catch(() => undefined);
+  controls.wire();
 
-  (window as unknown as { __applyViewportState?: (state: ViewportState) => void }).__applyViewportState = applyState;
+  (window as unknown as { __applyViewportState?: (state: ViewportState) => void }).__applyViewportState = (state) =>
+    controls.applyState(state);
 }
