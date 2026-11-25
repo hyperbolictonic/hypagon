@@ -7,6 +7,7 @@
  * methods on the service. They are one object.
  */
 import fs from 'node:fs';
+import { writePrivateFile } from '../security/private-file.ts';
 import { CloudflaredTunnel } from '../../../packages/cloudflared-tunnel/src/index.ts';
 import type { RemoteTunnelStatus } from '../../shared/remote.js';
 
@@ -25,19 +26,6 @@ function normalizeHostname(value: string): string {
     throw new Error('Public hostname must be a full DNS name, for example mcp.example.com.');
   }
   return hostname;
-}
-
-/** Write the tunnel token atomically, owner-readable only where the OS honours modes. */
-function writeTokenFile(tokenPath: string, dataDir: string, value: string): void {
-  fs.mkdirSync(dataDir, { recursive: true });
-  const temp = `${tokenPath}.${process.pid}.${Date.now()}.tmp`;
-  fs.writeFileSync(temp, `${value}\n`, { encoding: 'utf8', mode: 0o600 });
-  fs.renameSync(temp, tokenPath);
-  try {
-    fs.chmodSync(tokenPath, 0o600);
-  } catch {
-    // Windows uses ACLs; the userData directory is already user-private.
-  }
 }
 
 /** When to use: the service constructor — the paths and the gateway it fronts. */
@@ -80,7 +68,7 @@ export class RemoteTunnel {
     const value = token?.trim();
     const wasEnabled = this.enabled;
     if (wasEnabled) await this.stop();
-    if (value) writeTokenFile(this.deps.tokenPath, this.deps.dataDir, value);
+    if (value) writePrivateFile(this.deps.tokenPath, `${value}\n`, { ensureDir: this.deps.dataDir });
     this.hostnameValue = normalized;
     this.deps.onChanged();
     if (wasEnabled) await this.setEnabled(true);

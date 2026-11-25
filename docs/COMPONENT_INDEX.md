@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 389 files, 1145 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 396 files, 1160 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (910)
+## Types (919)
 
 | File | Export | When to use |
 |---|---|---|
@@ -776,17 +776,26 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/run-surface.ts` | `WrapRunSurface` | The not-found/status/test contract both wrapper executors publish. |
 | `main/wrap/run-surface.ts` | `WrapRunSurfaceDeps` *(type)* | When to use: building an executor — where a resolved wrapper actually runs. |
 | `main/wrap/run-surface.ts` | `WrapCoreMethods` *(type)* | The four bound operations an executor publishes; see `bindRunCore`. |
-| `main/wrap/secrets.ts` | `SecretStore` | - |
-| `main/wrap/secrets.ts` | `WrapSecretKind` *(type)* | - |
-| `main/wrap/secrets.ts` | `WrapOAuthMetadata` *(type)* | - |
-| `main/wrap/secrets.ts` | `WrapSecretMetadata` *(type)* | - |
-| `main/wrap/secrets.ts` | `WrapSecretInput` *(type)* | - |
-| `main/wrap/secrets.ts` | `SecretCipher` *(type)* | - |
-| `main/wrap/secrets.ts` | `SecretResolution` *(type)* | - |
-| `main/wrap/secrets.ts` | `TokenRequest` *(type)* | - |
-| `main/wrap/secrets.ts` | `TokenResult` *(type)* | - |
-| `main/wrap/secrets.ts` | `TokenMinter` *(type)* | - |
-| `main/wrap/secrets.ts` | `SecretStoreOptions` *(type)* | - |
+| `main/wrap/secret-rules.ts` | `normalizeHosts` | Split `allowedHosts` (an array or a comma/space separated string) into unique hosts. |
+| `main/wrap/secret-rules.ts` | `hostAllowed` | True when `host` matches one of the allowed patterns (a `*.` prefix covers subdomains). |
+| `main/wrap/secret-rules.ts` | `isSecretRecord` | True when a parsed document entry has the fields every credential needs. |
+| `main/wrap/secret-rules.ts` | `metadataOf` | The listable half of a stored record (never the ciphertext). |
+| `main/wrap/secret-rules.ts` | `planSecret` | When to use: `SecretStore.set` — the name, the value presence, the hosts, the header |
+| `main/wrap/secret-rules.ts` | `planOAuth` | When to use: `SecretStore.set` for kind=oauth2 — the token endpoint and the client id. |
+| `main/wrap/secret-rules.ts` | `SecretPlan` *(type)* | The validated core of an input, before it is encrypted. |
+| `main/wrap/secret-rules.ts` | `OAuthPlan` *(type)* | The OAuth2 metadata an input asks for, or an empty object for a static credential. |
+| `main/wrap/secret-types.ts` | `WrapSecretKind` *(type)* | When to use: a stored credential — a fixed header value, or OAuth2 client credentials. |
+| `main/wrap/secret-types.ts` | `WrapOAuthMetadata` *(type)* | When to use: the OAuth2 half of a credential (the client secret is not part of it). |
+| `main/wrap/secret-types.ts` | `WrapSecretMetadata` *(type)* | When to use: the Settings list and the bridge's `/wrap/secrets` — metadata only, no value. |
+| `main/wrap/secret-types.ts` | `WrapSecretInput` *(type)* | When to use: `SecretStore.set` — what a human filled in. |
+| `main/wrap/secret-types.ts` | `SecretCipher` *(type)* | When to use: the app injects Electron's safeStorage implementation. |
+| `main/wrap/secret-types.ts` | `SecretResolution` *(type)* | When to use: `SecretStore.resolve` — the header a request needs, or why it could not. |
+| `main/wrap/secret-types.ts` | `TokenRequest` *(type)* | When to use: a client-credentials token request. |
+| `main/wrap/secret-types.ts` | `TokenResult` *(type)* | When to use: what a token endpoint answered. |
+| `main/wrap/secret-types.ts` | `TokenMinter` *(type)* | When to use: `SecretStoreOptions.mintToken` — a test or an alternate endpoint. |
+| `main/wrap/secret-types.ts` | `SecretStoreOptions` *(type)* | When to use: `new SecretStore(dir, cipher, options)`. |
+| `main/wrap/secret-types.ts` | `SecretRecord` *(type)* | When to use: the persisted record — the metadata plus the encrypted payloads. |
+| `main/wrap/secret-types.ts` | `SecretFile` *(type)* | When to use: `SecretFileStore` — the on-disk document. |
 | `main/wrap/security.ts` | `assertSafeUrl` | - |
 | `main/wrap/security.ts` | `isPrivateHostname` | A hostname that is private by name alone, before any lookup. |
 | `main/wrap/security.ts` | `isPrivateAddress` | - |
@@ -939,7 +948,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (227)
+## Modules (233)
 
 | File | Export | When to use |
 |---|---|---|
@@ -1077,6 +1086,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/security/capability-token.ts` | `tokenPathIn` | The token file path inside a capability directory. |
 | `main/security/capability-token.ts` | `createCapabilityToken` | Create (or rotate) the token in `dir`. The caller owns the directory. |
 | `main/security/capability-token.ts` | `readCapabilityToken` | Read and validate a token file. A missing, malformed or empty file returns undefined. |
+| `main/security/private-file.ts` | `writePrivateFile` | When to use: any file that holds a secret — a token, a client secret, a key. |
 | `main/settings/experimental.ts` | `ExperimentalSettingsStore` | Experimental feature flags persisted next to the other user settings. |
 | `main/shadow-walk/ax-controls.ts` | `findSealedControls` | Find interactive controls inside closed shadow roots. |
 | `main/shadow-walk/guard.ts` | `assertShadowSurface` | When to use: before a surface that Settings → Shadow Walk can disable. |
@@ -1111,6 +1121,11 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/window/reassert-viewport.ts` | `reassertViewport` | When to use: after show/restore/focus/resume — re-position the deck and repaint every view. |
 | `main/wrap/auth.ts` | `tokenFromHeaders` | - |
 | `main/wrap/auth.ts` | `isWrapAuthorized` | - |
+| `main/wrap/manifest.ts` | `manifestOf` | When to use: `WrapStore.manifest` — one wrapper summarised for a list. |
+| `main/wrap/secret-file.ts` | `SecretFileStore` | When to use: `SecretStore` — one document per wrap data directory. |
+| `main/wrap/secret-tokens.ts` | `OAuthTokens` | When to use: `SecretStore.resolve` on a kind=oauth2 credential. |
+| `main/wrap/secrets.ts` | `SecretStore` | - |
+| `main/wrap/wrapper-files.ts` | `WrapperFiles` | When to use: `WrapStore` — one directory per wrap data dir. |
 | `main/zoom/display-scale.ts` | `displayScale` | When to use: building the zoom controller — the display scale behind the window. |
 | `main/zoom/settings.ts` | `ZoomSettingsStore` | The browser zoom policy lives next to the other human settings. The HTTP |
 | `mcp/browser-mcp.ts` | `flushLogSync` | Synchronous drain used only on shutdown paths, where async I/O cannot run. |

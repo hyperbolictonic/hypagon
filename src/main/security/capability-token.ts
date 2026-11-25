@@ -10,6 +10,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { writePrivateFile } from './private-file.ts';
 
 const TOKEN_BYTES = 32;
 const TOKEN_PATTERN = /^[a-f0-9]{64}$/i;
@@ -23,15 +24,7 @@ export function tokenPathIn(dir: string): string {
 export function createCapabilityToken(dir: string): string {
   fs.mkdirSync(dir, { recursive: true });
   const token = crypto.randomBytes(TOKEN_BYTES).toString('hex');
-  const target = tokenPathIn(dir);
-  const temp = `${target}.${process.pid}.${Date.now()}.tmp`;
-  fs.writeFileSync(temp, `${token}\n`, { encoding: 'utf8', mode: 0o600 });
-  fs.renameSync(temp, target);
-  try {
-    fs.chmodSync(target, 0o600);
-  } catch {
-    // Windows uses ACLs; the userData directory is already user-private.
-  }
+  writePrivateFile(tokenPathIn(dir), `${token}\n`, { ensureDir: dir });
   return token;
 }
 

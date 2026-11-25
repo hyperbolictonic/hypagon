@@ -96,7 +96,7 @@
       "main/wrap/input-schema.ts": 3,
       "main/wrap/interpolate.ts": 5,
       "main/wrap/render.ts": 12,
-      "main/wrap/secrets.ts": 11,
+      "main/wrap/secrets.ts": 1,
       "main/wrap/security.ts": 4,
       "main/wrap/store.ts": 2,
       "main/wrap/types.ts": 10,
@@ -174,12 +174,6 @@
       },
       "main/wrap/anyapi/executor.ts": {
         "function": 1
-      },
-      "main/wrap/secrets.ts": {
-        "file": 1
-      },
-      "main/wrap/store.ts": {
-        "class": 1
       },
       "main/wrap/validate-wrapper.ts": {
         "function": 2
