@@ -2,11 +2,12 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-273 modules, 911 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+275 modules, 925 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
 | `main/boot/hud-watchdog.ts` | 2: HudWatchdog, HudWatchdogDeps |
+| `main/boot/start-loops.ts` | 1: startLoops |
 | `main/boot/window-boot.ts` | 3: WindowBootSurface, DownloadNotice, WindowBootDeps |
 | `main/brand-icon.ts` | 2: brandIconPath, brandIcon |
 | `main/browser-chassis.ts` | 1: BrowserChassis |
@@ -18,12 +19,13 @@
 | `main/browser/page-script-surface.ts` | 2: PageScriptSurface, PageScriptSurfaceDeps |
 | `main/capabilities.ts` | 1: BRIDGE_CAPABILITIES |
 | `main/capture/screenshot-jpeg.ts` | 2: captureScreenshotJpeg, ScreenshotJpegDeps |
+| `main/chassis/accessors.ts` | 10: reassertChassisViewport, setViewportVisibility, activeWebContents, pageInfo, currentRevision, bumpRevision, queryChassisJson, prerenderLinks, … (10) |
 | `main/chassis/harvest-nav-stack.ts` | 2: createHarvestNavStack, HarvestNavStack |
 | `main/chassis/host.ts` | 1: ChassisHost |
 | `main/chassis/input-stack.ts` | 2: createInputStack, InputStack |
 | `main/chassis/interaction-stack.ts` | 2: createInteractionStack, InteractionStack |
 | `main/chassis/llm-stack.ts` | 2: createLlmStack, LlmStack |
-| `main/chassis/surfaces.ts` | 11: createPageScriptSurface, createShadowWalkSurface, createResearchViewSurface, createHumanSurface, createDeckController, createJevController, createZoomController, createConsentController, … (11) |
+| `main/chassis/surfaces.ts` | 14: createPageScriptSurface, createShadowWalkSurface, createResearchViewSurface, createHumanSurface, createDeckController, createJevController, createZoomController, createConsentController, … (14) |
 | `main/collaboration/overlay.ts` | 8: collaborationNoteDrawerScript, collaborationPickerScript, collaborationOverlayScript, COLLABORATION_NOTE_PREFIX, COLLABORATION_CLASS_PREFIX, COLLABORATION_RESOLVE_PREFIX, COLLABORATION_EXIT_PREFIX, CollaborationPickerOptions |
 | `main/collaboration/service.ts` | 1: CollaborationService |
 | `main/collaboration/store.ts` | 2: CollaborationStore, CreateThreadInput |
@@ -124,9 +126,7 @@
 | `main/recipes/recipe-store.ts` | 11: loadRecipes, originOf, recipesFor, saveRecipe, deleteRecipe, recordResult, retireRecipe, RecipeStep, … (11) |
 | `main/recipes/replay.ts` | 4: replayRecipe, RecipeRunner, ReplayStepResult, ReplayResult |
 | `main/recording/recording-service.ts` | 16: onRecordingStatus, setRecordingWindow, loadRecordingConfig, getRecordingConfig, saveRecordingConfig, getRecordingStatus, pickRecordingDir, startRecording, … (16) |
-| `main/remote/cloudflared.ts` | 1: findCloudflared |
-| `main/remote/ipc.ts` | 1: registerRemoteIpc |
 
-… and 148 more module(s) — grep the full index.
+… and 150 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

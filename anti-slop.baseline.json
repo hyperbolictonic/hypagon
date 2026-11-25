@@ -151,9 +151,6 @@
   },
   "modularity": {
     "files": {
-      "main/browser-chassis.ts": {
-        "class": 1
-      },
       "main/browser/frame-eval.ts": {
         "function": 1
       },

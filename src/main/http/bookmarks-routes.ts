@@ -6,6 +6,7 @@
  * directly. One table keeps the query-parameter contract (q/tag/limit, url)
  * visible next to the body contract of the write routes.
  */
+import { activeWebContents } from '../chassis/accessors.js';
 import type { ChassisRouteContext } from './route-table.js';
 import { dispatchRoute } from './route-table.js';
 
@@ -24,7 +25,7 @@ const ROUTES: Record<string, BookmarkHandler> = {
 
   'POST /bookmarks/add': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    const activeUrl = chassis.tabs.getTabsSummary().find((t) => t.isActive)?.url || 'about:blank';
+    const activeUrl = chassis.tabSetup.requireManager().getTabsSummary().find((t) => t.isActive)?.url || 'about:blank';
     const bookmark = await chassis.cortex.addBookmark({
       url: body.url || activeUrl,
       title: body.title,

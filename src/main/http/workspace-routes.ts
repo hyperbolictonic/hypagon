@@ -7,6 +7,7 @@
  * Keeping the pair together is what makes the validation rule auditable; the
  * main handler only has to dispatch.
  */
+import { activeWebContents } from '../chassis/accessors.js';
 import type { ChassisRouteContext } from './route-table.js';
 import { dispatchRoute } from './route-table.js';
 
@@ -37,7 +38,7 @@ const ROUTES: Record<string, WorkspaceHandler> = {
   },
 
   'GET /viewport': ({ chassis, sendJson }) => {
-    sendJson({ success: true, viewport: chassis.viewport.state() });
+    sendJson({ success: true, viewport: chassis.tabSetup.requireViewport().state() });
   },
 
   'POST /viewport': async ({ chassis, readBody, sendJson }) => {
@@ -49,7 +50,7 @@ const ROUTES: Record<string, WorkspaceHandler> = {
           ? 'set'
           : 'status';
     try {
-      const viewport = await chassis.viewport.set({
+      const viewport = await chassis.tabSetup.requireViewport().set({
         action: requested,
         preset: typeof body?.preset === 'string' ? body.preset : undefined,
         width: body?.width !== undefined ? Number(body.width) : undefined,

@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 273 files, 911 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 275 files, 925 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (767)
+## Types (781)
 
 | File | Export | When to use |
 |---|---|---|
@@ -51,6 +51,20 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/chassis/interaction-stack.ts` | `InteractionStack` *(type)* | The built interaction surfaces. |
 | `main/chassis/llm-stack.ts` | `createLlmStack` | When to use: the chassis constructor — build the read/search/crawl stack once. |
 | `main/chassis/llm-stack.ts` | `LlmStack` *(type)* | The built LLM/read/search/crawl surfaces. |
+| `main/chassis/surfaces.ts` | `createPageScriptSurface` | When to use: the chassis constructor — the page-script surface over the host's tab. |
+| `main/chassis/surfaces.ts` | `createShadowWalkSurface` | When to use: the chassis constructor — Shadow Walk policy and frame reads over the host's tabs. |
+| `main/chassis/surfaces.ts` | `createResearchViewSurface` | When to use: the chassis constructor — the detached research view plus citations/hand-off. |
+| `main/chassis/surfaces.ts` | `createHumanSurface` | When to use: the chassis constructor — the explicit human-takeover latch. |
+| `main/chassis/surfaces.ts` | `createDeckController` | When to use: the chassis constructor — the deck panel, its modes and the collab wiring. |
+| `main/chassis/surfaces.ts` | `createJevController` | When to use: the chassis constructor — JEV page compaction over the active page. |
+| `main/chassis/surfaces.ts` | `createZoomController` | When to use: the chassis constructor — the page-zoom policy. |
+| `main/chassis/surfaces.ts` | `createConsentController` | When to use: the chassis constructor — the consent sweep over the active page. |
+| `main/chassis/surfaces.ts` | `createHudWatchdog` | When to use: the chassis constructor — the HUD heartbeat and viewport-recovery watchdog. |
+| `main/chassis/surfaces.ts` | `createCollaborationSurface` | When to use: the chassis constructor — the page overlay picker and its signal channel. |
+| `main/chassis/surfaces.ts` | `createWindowBoot` | When to use: the chassis constructor — the ordered shell-window boot sequence. |
+| `main/chassis/surfaces.ts` | `createChromeSurfaces` | When to use: the chassis constructor — build the chrome surfaces first. |
+| `main/chassis/surfaces.ts` | `createTabEvents` | When to use: the chassis constructor — the tab manager lifecycle reactions. |
+| `main/chassis/surfaces.ts` | `ChromeSurfaces` *(type)* | The five surfaces the rest of the composition reads, built first. |
 | `main/collaboration/overlay.ts` | `collaborationNoteDrawerScript` | Anchored note composer. The drawer is mounted next to the picked element, |
 | `main/collaboration/overlay.ts` | `collaborationPickerScript` | - |
 | `main/collaboration/overlay.ts` | `collaborationOverlayScript` | Pure in-page projection for collaboration threads. The overlay is read-only in |
@@ -793,6 +807,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 
 | File | Export | When to use |
 |---|---|---|
+| `main/boot/start-loops.ts` | `startLoops` | When to use: the chassis constructor — start the uptime tick and the HUD watchdog. |
 | `main/brand-icon.ts` | `brandIconPath` | When to use: a surface that needs the asset path itself (window icon). |
 | `main/brand-icon.ts` | `brandIcon` | When to use: a tray/HIL icon — the brand mark at the requested square size, |
 | `main/browser/frame-marks.ts` | `clearFrameMarks` | - |
@@ -800,17 +815,16 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/browser/frame-marks.ts` | `resolveFrameMark` | Resolve a frame mark to a live page-space target. Returns null when the frame navigated, the |
 | `main/browser-chassis.ts` | `BrowserChassis` | - |
 | `main/capabilities.ts` | `BRIDGE_CAPABILITIES` | The bridge capabilities advertised by `bridge_health`. |
-| `main/chassis/surfaces.ts` | `createPageScriptSurface` | When to use: the chassis constructor — the page-script surface over the host's tab. |
-| `main/chassis/surfaces.ts` | `createShadowWalkSurface` | When to use: the chassis constructor — Shadow Walk policy and frame reads over the host's tabs. |
-| `main/chassis/surfaces.ts` | `createResearchViewSurface` | When to use: the chassis constructor — the detached research view plus citations/hand-off. |
-| `main/chassis/surfaces.ts` | `createHumanSurface` | When to use: the chassis constructor — the explicit human-takeover latch. |
-| `main/chassis/surfaces.ts` | `createDeckController` | When to use: the chassis constructor — the deck panel, its modes and the collab wiring. |
-| `main/chassis/surfaces.ts` | `createJevController` | When to use: the chassis constructor — JEV page compaction over the active page. |
-| `main/chassis/surfaces.ts` | `createZoomController` | When to use: the chassis constructor — the page-zoom policy. |
-| `main/chassis/surfaces.ts` | `createConsentController` | When to use: the chassis constructor — the consent sweep over the active page. |
-| `main/chassis/surfaces.ts` | `createHudWatchdog` | When to use: the chassis constructor — the HUD heartbeat and viewport-recovery watchdog. |
-| `main/chassis/surfaces.ts` | `createCollaborationSurface` | When to use: the chassis constructor — the page overlay picker and its signal channel. |
-| `main/chassis/surfaces.ts` | `createWindowBoot` | When to use: the chassis constructor — the ordered shell-window boot sequence. |
+| `main/chassis/accessors.ts` | `reassertChassisViewport` | Re-assert the shell and tab views after a window/display transition. |
+| `main/chassis/accessors.ts` | `setViewportVisibility` | Keep the deck overlay and the emulated tab viewport in step. |
+| `main/chassis/accessors.ts` | `activeWebContents` | The active tab's web contents, with the network tap attached. |
+| `main/chassis/accessors.ts` | `pageInfo` | The live page identity, preferring the document over the cached state. |
+| `main/chassis/accessors.ts` | `currentRevision` | When to use: reading the page revision the bridge reports. |
+| `main/chassis/accessors.ts` | `bumpRevision` | When to use: after a navigation or mutating action — bump and return the revision. |
+| `main/chassis/accessors.ts` | `queryChassisJson` | The `query_json_data` source resolution over the live network/download store. |
+| `main/chassis/accessors.ts` | `prerenderLinks` | Pre-render candidate links from the active page. |
+| `main/chassis/accessors.ts` | `readUrlRender` | A URL rendered to Markdown through the shared detached view (`read_url` fallback). |
+| `main/chassis/accessors.ts` | `captureScreenshotJpeg` | A baseline viewport JPEG for the decision model. |
 | `main/collaboration/service.ts` | `CollaborationService` | - |
 | `main/data-paths.ts` | `dataRoot` | - |
 | `main/data-paths.ts` | `dataPath` | - |

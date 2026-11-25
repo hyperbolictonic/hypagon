@@ -7,7 +7,6 @@
  * called as `createX(this)` and the chassis stops carrying a copy of every deps
  * literal.
  */
-import type { WebContents } from 'electron';
 import type { BrowserWindow } from 'electron';
 import type { ChassisState, HarvestedConstruct } from '../../shared/types.js';
 import type { HostBrowserProfile } from '../telemetry/host-fingerprint.js';
@@ -18,9 +17,7 @@ import type { HumanControlSurface } from '../input/human-control.js';
 import type { InputSurface } from '../input/input-surface.js';
 import type { TabSetupSurface } from '../tabs/tab-setup.js';
 import type { TabSurface } from '../tabs/tab-surface.js';
-import type { PageInfo } from '../tabs/page-info.js';
 import type { ZoomController } from '../zoom/controller.js';
-import type { ViewportController } from '../viewport/controller.js';
 import type { DeckController } from '../deck/controller.js';
 import type { NavigationSurface } from '../navigation/navigation-surface.js';
 import type { PageScriptSurface } from '../browser/page-script-surface.js';
@@ -43,6 +40,7 @@ import type { ConstructHarvester } from '../harvester/markdown.js';
 import type { TrayManager } from '../tray/tray-manager.js';
 import type { HilSurface } from '../hil/hil-surface.js';
 import type { DownloadSurface } from '../downloads/download-surface.js';
+import type { PrerenderEngine } from '../prerender/prerender-engine.js';
 import type { CollaborationSurface } from '../collaboration/surface.js';
 import type { ShieldBreaker, ConsentPolicy } from '../shield/shield-breaker.js';
 import type { DownloadNotice } from '../boot/window-boot.js';
@@ -60,7 +58,6 @@ export interface ChassisHost {
   readonly tabSetup: TabSetupSurface;
   readonly tabOps: TabSurface;
   readonly zoom: ZoomController;
-  readonly viewport: ViewportController;
   readonly deck: DeckController;
   readonly nav: NavigationSurface;
   readonly page: PageScriptSurface;
@@ -84,19 +81,16 @@ export interface ChassisHost {
   readonly primitives: Primitives;
   readonly actionLedger: ActionLedger;
   readonly harvester: ConstructHarvester;
+  /** Monotonic page revision; the accessors bump it. */
+  revision: number;
+  /** The prerender engine built with the harvest stack. */
+  readonly prerenderEngine: PrerenderEngine;
   /** The latest harvested construct, mirrored to the HUD. */
   latestConstruct: HarvestedConstruct | null;
   /** The tray, or null before the window is created. */
   trayManager: TrayManager | null;
-  getActiveWebContents(): WebContents;
   /** The shell window, or null before boot / after close. */
   getMainWindow(): BrowserWindow | null;
-  /** Re-assert the native view bounds after a minimize/sleep/display change. */
-  reassertViewport(): void;
-  /** Render a URL to Markdown through the detached view (the read_url fallback). */
-  readUrlRender(url: string): Promise<{ markdown: string; title: string; status: number; contentType: string | null }>;
-  /** Drop the JEV depth index before a tab change. */
-  purgeJev(): void;
   /** Adopt the shell window (boot step). */
   setMainWindow(win: BrowserWindow): void;
   /** Create the tray bound to the shell window (boot step). */
@@ -107,9 +101,4 @@ export interface ChassisHost {
   logDownload(record: DownloadNotice): void;
   /** The bound log entry point (safe to pass as a callback). */
   log(level: 'info' | 'warn' | 'action', message: string): void;
-  getPageInfo(): PageInfo;
-  getRevision(): number;
-  bumpRevision(): number;
-  /** Keep the deck overlay and the emulated tab viewport in step. */
-  setViewportVisibility(visible: boolean): void;
 }

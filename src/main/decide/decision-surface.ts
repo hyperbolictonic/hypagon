@@ -6,6 +6,7 @@
  * current page URL; nothing here decides what is right.
  */
 import type { DecisionEvent } from './decision-client.js';
+import { onDecision } from './decision-client.js';
 import type { HilSurface } from '../hil/hil-surface.js';
 
 /** Dependencies the decision surface needs from the HIL layer. */
@@ -31,6 +32,14 @@ export class DecisionSurface {
 
   events(): DecisionEvent[] {
     return this.log;
+  }
+
+  /** Mirror every decision call to a sink; the listener cannot delay or fail a decision. */
+  subscribe(sink: (event: DecisionEvent) => void): void {
+    onDecision((event) => {
+      this.record(event);
+      sink(event);
+    });
   }
 
   /**

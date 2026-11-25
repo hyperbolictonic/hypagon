@@ -6,6 +6,7 @@
  * The host supplies the tab, the research session/view and the activity hook;
  * this module owns the composition order.
  */
+import { activeWebContents, readUrlRender } from './accessors.js';
 import { engineHost } from '../search/search-engine.js';
 import { LlmSurface } from '../llm/llm-surface.js';
 import { ReadSurface } from '../llm/read-surface.js';
@@ -33,10 +34,10 @@ export function createLlmStack(host: ChassisHost): LlmStack {
   // `net.fetch` runs on Chromium's network stack (session cookies/UA/TLS); per-page
   // alternates go through a real document navigation instead of a synthetic fetch.
   const llmSurface = new LlmSurface({
-    getSession: () => host.getActiveWebContents().session,
+    getSession: () => activeWebContents(host).session,
     getActiveWebContents: () => {
       try {
-        return host.getActiveWebContents();
+        return activeWebContents(host);
       } catch {
         return null;
       }
@@ -44,7 +45,7 @@ export function createLlmStack(host: ChassisHost): LlmStack {
     navigateForText,
     userAgent: host.hostProfile.userAgent,
     log: host.log,
-    renderPage: (url) => host.readUrlRender(url),
+    renderPage: (url) => readUrlRender(host, url),
   });
 
   const researchLlmSurface = new LlmSurface({
@@ -67,7 +68,7 @@ export function createLlmStack(host: ChassisHost): LlmStack {
     probe: (url) => llmSurface.probe(url),
     fetch: (opts) => llmSurface.fetch(opts),
     readUrl: (opts) => llmSurface.readUrl(opts),
-    renderMarkdown: (url) => host.readUrlRender(url),
+    renderMarkdown: (url) => readUrlRender(host, url),
     activity,
     log: host.log,
   });

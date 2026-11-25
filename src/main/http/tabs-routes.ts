@@ -6,6 +6,7 @@
  * the bare number, and every spelling had to become `tab_<n>` before the
  * chassis call. One `tabRef()` now owns that rule.
  */
+import { activeWebContents } from '../chassis/accessors.js';
 import type { ChassisRouteContext } from './route-table.js';
 import { dispatchRoute } from './route-table.js';
 
@@ -25,7 +26,7 @@ const tabRef = (body: any): any => {
 
 /** `GET /tabs` and its explicit `list` alias serve the same summary. */
 const listTabs: TabHandler = ({ chassis, sendJson }) => {
-  sendJson({ success: true, tabs: chassis.tabs.getTabsSummary() });
+  sendJson({ success: true, tabs: chassis.tabSetup.requireManager().getTabsSummary() });
 };
 
 const ROUTES: Record<string, TabHandler> = {

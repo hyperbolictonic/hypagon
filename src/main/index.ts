@@ -1,3 +1,4 @@
+import { activeWebContents, reassertChassisViewport } from './chassis/accessors.js';
 import { app, BrowserWindow, dialog, ipcMain, safeStorage, shell } from 'electron';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
@@ -113,7 +114,7 @@ app.on('child-process-gone', (_event, details) => {
     serviceName: (details as { serviceName?: string }).serviceName,
     name: (details as { name?: string }).name,
   });
-  chassis.reassertViewport();
+  reassertChassisViewport(chassis);
 });
 
 const configuredPort = Number(process.env.HB_BRIDGE_PORT ?? process.env.KUANG_BRIDGE_PORT);
@@ -481,7 +482,7 @@ ipcMain.handle('collaboration:start-picker', async () => {
 /** Page signals for the Command Deck WEB STATE tab (breadcrumb, cookies, storage). */
 ipcMain.handle('chassis:web-state', async () => {
   try {
-    const wc = chassis.getActiveWebContents();
+    const wc = activeWebContents(chassis);
     const page = await wc.executeJavaScript(
       '(() => { ' +
       'const crumbs = (location.pathname || "").split("/").filter(Boolean);' +

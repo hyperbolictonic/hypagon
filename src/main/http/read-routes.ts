@@ -8,6 +8,7 @@
  * shape; the JEV read guard is the one rule they all pass through, so it lives
  * beside them rather than in the main handler.
  */
+import { prerenderLinks, queryChassisJson } from '../chassis/accessors.js';
 import type { ChassisRouteContext } from './route-table.js';
 import { dispatchRoute } from './route-table.js';
 
@@ -166,7 +167,7 @@ const ROUTES: Record<string, ReadHandler> = {
     const source = body.source || body.from || 'network_payload';
     const sourceId =
       body.sourceId || body.source_id || body.requestId || body.request_id || body.streamId || body.stream_id || body.filename || body.file;
-    const result = chassis.queryJsonData({
+    const result = queryChassisJson(chassis, {
       source,
       sourceId,
       jsonString: body.jsonString || body.json_string || body.json,
@@ -193,7 +194,7 @@ const ROUTES: Record<string, ReadHandler> = {
 
   'POST /prerender/links': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    const result = await chassis.prerenderLinks({
+    const result = await prerenderLinks(chassis, {
       urls: body.urls,
       selector: body.selector,
       maxPages: body.maxPages ?? body.max_pages,

@@ -8,6 +8,7 @@
  * escalation rules beside the recipe writer is what keeps a "decided" run and
  * its recorded recipe in sync.
  */
+import { captureScreenshotJpeg, pageInfo } from '../chassis/accessors.js';
 import { decisionStatus, runDecision } from '../decide/decision-client.js';
 import { decideGuarded } from '../decide/decision-guard.js';
 import { driveTask } from '../drive/driver.js';
@@ -59,7 +60,7 @@ async function buildDecisionState(
       screenshotNote =
         'disabled: the OpenCode gateway does not forward TypeSafe headers — images only work against api.typesafe.ai';
     } else if (decisionStatus().protocol === 'typesafe') {
-      const shot = await chassis.captureScreenshotJpeg().catch(() => null);
+      const shot = await captureScreenshotJpeg(chassis).catch(() => null);
       if (shot) {
         const ref = `kuang-shot-${Date.now().toString(36)}`;
         const text = typeof state === 'string' ? state : JSON.stringify(state ?? '');
@@ -94,7 +95,7 @@ function sendHumanDecisionRequired(ctx: DecisionResponseContext, body: any, resu
       options,
       reasons: result.reasons,
     },
-    ctx.chassis.getPageInfo().url,
+    pageInfo(ctx.chassis).url,
   );
   ctx.sendJson(
     {
@@ -128,7 +129,7 @@ function sendDecisionFailure(ctx: DecisionResponseContext, result: any): void {
     // so the caller gets 409 immediately with the banner already up.
     void ctx.chassis.decision.requestForGate(
       { kind: result.gate, reason: result.error?.message || 'Human required', evidence },
-      ctx.chassis.getPageInfo().url,
+      pageInfo(ctx.chassis).url,
     );
   }
   // A guarded call whose every option was rejected is handled by the caller (accepted:false) —
@@ -226,7 +227,7 @@ const ROUTES: Record<string, DecisionHandler> = {
       const steps = compileDriveSteps(result.steps as any[], { values: body?.values || {} });
       if (steps.length) {
         const saved = saveRecipe({
-          url: result.url || chassis.getPageInfo().url,
+          url: result.url || pageInfo(chassis).url,
           name: body?.recipe_name || body?.recipeName || String(body?.goal || '').slice(0, 80),
           steps,
         });
@@ -252,7 +253,7 @@ const ROUTES: Record<string, DecisionHandler> = {
     const result = useGuard
       ? await decideGuarded({
           state,
-          pageUrl: usedPageText ? chassis.getPageInfo().url : undefined,
+          pageUrl: usedPageText ? pageInfo(chassis).url : undefined,
           questions: body?.questions || {},
           model: body?.model,
           assets,
@@ -261,7 +262,7 @@ const ROUTES: Record<string, DecisionHandler> = {
         })
       : await runDecision({
           state,
-          pageUrl: usedPageText ? chassis.getPageInfo().url : undefined,
+          pageUrl: usedPageText ? pageInfo(chassis).url : undefined,
           questions: body?.questions || {},
           model: body?.model,
           assets,

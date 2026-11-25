@@ -6,6 +6,7 @@
  * network/script surfaces. The chassis supplies the active tab, state and the
  * telemetry sinks; this module owns the construction order.
  */
+import { activeWebContents, bumpRevision } from './accessors.js';
 import { InputSurface } from '../input/input-surface.js';
 import { ConstructHarvester } from '../harvester/markdown.js';
 import { ShieldBreaker } from '../shield/shield-breaker.js';
@@ -31,7 +32,7 @@ export interface InputStack {
 /** When to use: the chassis constructor — build the input/diagnostic surfaces once. */
 export function createInputStack(host: ChassisHost): InputStack {
   const input = new InputSurface({
-    activeWebContents: () => host.getActiveWebContents(),
+    activeWebContents: () => activeWebContents(host),
     onMouseMove: (point, velocity) => {
       host.state.cursor = point;
       host.telemetry.emitPointEvent('mouse_move', point, `Velocity: ${velocity.toFixed(2)} px/ms`);
@@ -66,7 +67,7 @@ export function createInputStack(host: ChassisHost): InputStack {
       },
     },
     log: host.log,
-    bumpRevision: () => host.bumpRevision(),
+    bumpRevision: () => bumpRevision(host),
   });
 
   return {
@@ -76,13 +77,13 @@ export function createInputStack(host: ChassisHost): InputStack {
     marksOverlay: new MarksOverlay(),
     downloads: new DownloadSurface({ log: host.log }),
     sessions: new SessionSurface({
-      activeWebContents: () => host.getActiveWebContents(),
+      activeWebContents: () => activeWebContents(host),
       log: host.log,
       emitHarvest: (details) => host.telemetry.emitHarvestDetails(details),
     }),
     network: new NetworkSurface({ log: host.log }),
     scripts: new ScriptsSurface({
-      activeWebContents: () => host.getActiveWebContents(),
+      activeWebContents: () => activeWebContents(host),
       log: host.log,
       reportActing: () => host.telemetry.reportActing(),
       reportIdle: () => host.telemetry.reportIdle(),

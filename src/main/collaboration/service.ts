@@ -1,3 +1,4 @@
+import { activeWebContents, pageInfo } from '../chassis/accessors.js';
 import type { BrowserChassis } from '../browser-chassis.js';
 import type {
   CollaborationFilter,
@@ -69,7 +70,7 @@ export class CollaborationService {
 
   async refreshOverlay(): Promise<void> {
     try {
-      const wc = this.chassis.getActiveWebContents();
+      const wc = activeWebContents(this.chassis);
       if (!wc || wc.isDestroyed()) return;
       if (this.isEnabled && !this.isEnabled()) {
         // Collab is gated off: make sure no stale highlights remain on the page.
@@ -80,7 +81,7 @@ export class CollaborationService {
           .catch(() => null);
         return;
       }
-      const url = this.chassis.getPageInfo().url;
+      const url = pageInfo(this.chassis).url;
       // Resolved threads are history, not active page highlights. Keeping them
       // painted after Resolve makes the user think collab mode is still active.
       const threads = this.store.list({ url }).filter((thread) => thread.status !== 'resolved');

@@ -51,6 +51,18 @@ export class TabSetupSurface {
     this.deps = deps;
   }
 
+  /** The tab manager, or the standard uninitialized failure. */
+  requireManager(): TabManager {
+    if (!this.manager) throw new Error('Browser Chassis uninitialized');
+    return this.manager;
+  }
+
+  /** The viewport controller, or the standard uninitialized failure. */
+  requireViewport(): ViewportController {
+    if (!this.viewport) throw new Error('Browser Chassis uninitialized');
+    return this.viewport;
+  }
+
   /** Bounds of the page viewport as laid out in the HUD (deck- and tab-bar-aware). */
   bounds(): ViewportBounds {
     const win = this.deps.window();

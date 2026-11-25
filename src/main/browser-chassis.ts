@@ -15,7 +15,7 @@ import { ConstructHarvester } from './harvester/markdown.js';
 import { JevController } from './jev/controller.js';
 import { DeckController } from './deck/controller.js';
 import { HarvestSurface } from './harvest/harvest-surface.js';
-import { onDecision } from './decide/decision-client.js';
+
 import { DecisionSurface } from './decide/decision-surface.js';
 import { captureScreenshotJpeg } from './capture/screenshot-jpeg.js';
 import { detectHostBrowserProfile, type HostBrowserProfile } from './telemetry/host-fingerprint.js';
@@ -56,17 +56,14 @@ import type { DownloadNotice } from './boot/window-boot.js';
 import { ShellBus } from './shell/event-bus.js';
 import { createLlmStack } from './chassis/llm-stack.js';
 import {
-  createCollaborationSurface,
+  createChromeSurfaces,
   createConsentController,
-  createDeckController,
-  createHumanSurface,
-  createHudWatchdog,
   createJevController,
   createPageScriptSurface,
   createResearchViewSurface,
   createShadowWalkSurface,
+  createTabEvents,
   createWindowBoot,
-  createZoomController,
 } from './chassis/surfaces.js';
 import { createInputStack } from './chassis/input-stack.js';
 import { createHarvestNavStack } from './chassis/harvest-nav-stack.js';
@@ -76,7 +73,9 @@ import { readPageInfo } from './tabs/page-info.js';
 import { TabManager } from './tabs/tab-manager.js';
 import { TabSurface } from './tabs/tab-surface.js';
 import { createTabEventHandlers } from './tabs/tab-events.js';
-import { reassertViewport } from './window/reassert-viewport.js';
+import { activeWebContents, bumpRevision, pageInfo } from './chassis/accessors.js';
+import { startLoops } from './boot/start-loops.js';
+
 import { TabSetupSurface } from './tabs/tab-setup.js';
 import { LlmSurface } from './llm/llm-surface.js';
 import { ReadSurface } from './llm/read-surface.js';
@@ -91,15 +90,12 @@ export class BrowserChassis {
     window: () => this.mainWindow,
     tray: () => this.trayManager,
   });
-  /** Shared controller hooks: every controller config wires the same log and telemetry. */
-  private readonly controllerLog = (level: 'info' | 'warn' | 'action', message: string): void => this.telemetry.addLog(level, message);
   /** The bound log entry point the composition roots may pass around without losing `this`. */
   readonly log = (level: 'info' | 'warn' | 'action', message: string): void => this.telemetry.addLog(level, message);
-  private readonly controllerTelemetry = (event: TelemetryEvent): void => this.telemetry.emitTelemetry(event);
   /** Decision log and the guard-driven human hand-off. */
   readonly decision = new DecisionSurface({
     hil: () => this.hil,
-    pageUrl: () => this.getPageInfo().url,
+    pageUrl: () => pageInfo(this).url,
   });
   /** Tab manager and viewport controller, built with the window. */
   readonly tabSetup!: TabSetupSurface;
@@ -118,7 +114,7 @@ export class BrowserChassis {
   trayManager: TrayManager | null = null;
   /** Human-in-the-loop and desktop notifications. */
   readonly hil!: HilSurface;
-  private prerenderEngine!: PrerenderEngine;
+  readonly prerenderEngine!: PrerenderEngine;
   readonly hostProfile: HostBrowserProfile = detectHostBrowserProfile();
   readonly primitives!: Primitives;
   private llmSurface!: LlmSurface;
@@ -148,7 +144,7 @@ export class BrowserChassis {
     return raw === 'accept' || raw === 'reject' ? (raw as ConsentPolicy) : 'essential';
   })();
   /** Monotonic page revision: bumped on navigation and every mutating action. */
-  private revision = 0;
+  revision = 0;
   /** The shell-window boot deps, kept out of the constructor. */
   /** The tab manager's lifecycle reactions. */  /** The tab manager's lifecycle reactions. */
   private tabEvents!: ReturnType<typeof createTabEventHandlers>;
@@ -198,44 +194,15 @@ export class BrowserChassis {
   /** Captured page console lines (bounded). */
   readonly consoleLogs = new ConsoleLogBuffer();
 
-  /** The surfaces the rest of the composition reads, built before anything else. */
-  private createChromeSurfaces(): void {
-    this.human = createHumanSurface(this);
-    this.deck = createDeckController(this);
-    this.zoom = createZoomController(this);
-    this.hud = createHudWatchdog(this);
-    this.collaboration = createCollaborationSurface(this);
-  }
-
-  /** The tab manager's lifecycle reactions, wired to the chassis surfaces. */
-  private createTabEvents(): ReturnType<typeof createTabEventHandlers> {
-    return createTabEventHandlers({
-      state: this.state,
-      activeTabId: () => this.tabSetup.manager?.getActiveTabId(),
-      allTabs: () => this.tabSetup.manager?.allTabs() ?? [],
-      broadcastState: () => this.telemetry.broadcastState(),
-      bumpRevision: () => this.bumpRevision(),
-      reassertViewport: () => this.reassertViewport(),
-      send: (channel, payload) => this.bus.toSurfaces(channel, payload),
-      updateTray: (pending) =>
-        this.trayManager?.updateStatus(this.state.agentStatus, this.state.tabs?.length ?? 0, pending),
-      hilPending: () => !!this.hil.manager.getActiveRequest(),
-      attachNetwork: (wc) => this.network.manager.attach(wc),
-      registerViewportTab: (tab) => this.tabSetup.viewport?.registerTab(tab),
-      syncForceOpen: (wc) => this.shadow.syncForceOpen(wc),
-      indexTab: (tab) => this.harvest.indexTabQuietly(tab),
-      ingestHuman: (message) => this.human.monitor.ingest(message),
-      noteHuman: (activity) => this.human.note(activity),
-      recordConsole: (log) => this.consoleLogs.record(log),
-      collaborationSignal: (message) => this.collaboration.handleSignal(message),
-      logEvent: (name, detail) => logMainEvent(name, detail),
-      humanListenerScript: () => humanListenerScript(),
-    });
-  }
-
   constructor() {
-    this.createChromeSurfaces();
-    this.tabEvents = this.createTabEvents();
+    const chrome = createChromeSurfaces(this);
+    this.human = chrome.human;
+    this.deck = chrome.deck;
+    this.zoom = chrome.zoom;
+    this.hud = chrome.hud;
+    this.collaboration = chrome.collaboration;
+    this.tabEvents = createTabEvents(this);
+    this.decision.subscribe((event) => this.bus.toSurfaces('chassis:decision', event));
     this.tabSetup = new TabSetupSurface({
       window: () => this.mainWindow,
       hostProfile: this.hostProfile,
@@ -252,13 +219,12 @@ export class BrowserChassis {
       tabEvents: this.tabEvents,
     });
     this.boot = createWindowBoot(this);
-    this.subscribeToDecisions();
     this.page = createPageScriptSurface(this);
     this.tabOps = new TabSurface({
-      manager: () => this.requireTabManager(),
-      activeWebContents: () => this.getActiveWebContents(),
+      manager: () => this.tabSetup.requireManager(),
+      activeWebContents: () => activeWebContents(this),
       log: (level, message) => this.telemetry.addLog(level, message),
-      purgeJev: () => this.purgeJev(),
+      purgeJev: () => this.jev.purge(),
       scheduleConsentSweep: () => this.consent.scheduleSweep(),
       refreshViewport: () => void this.tabSetup.viewport?.refreshActive(),
     });
@@ -292,36 +258,11 @@ export class BrowserChassis {
     this.search = stack.search;
     this.crawl = stack.crawl;
     this.shadow = createShadowWalkSurface(this);
-    this.startLoops();
+    startLoops(this);
   }
 
   /** Mirror every decision call into the HUD; the ring buffer lets a late renderer catch up. */
-  private subscribeToDecisions(): void {
-    // Mirror every decision call into the HUD's DECISIONS tab. The listener is passive: it cannot
-    // delay or fail a decision (see emitDecision), and the ring buffer lets a late-joining renderer
-    // catch up.
-    onDecision((event) => {
-      this.decision.record(event);
-      this.bus.toSurfaces('chassis:decision', event);
-    });
-  }
-
   /** Uptime broadcast and HUD-health watchdog. */
-  private startLoops(): void {
-    setInterval(() => {
-      this.state.stats.uptimeSeconds++;
-      this.telemetry.broadcastState();
-    }, 1000);
-
-    // A renderer can stop painting without exiting. The watchdog reloads it once
-    // if the heartbeat goes quiet while the window is visible.
-    this.hud.start();
-  }
-
-  public reassertViewport(): void {
-    reassertViewport(this.mainWindow, () => this.deck.position(), this.tabSetup.manager);
-  }
-
   // ---- Deck chrome --------------------------------------------------------------------
   // The panel view, its mode transitions, the orb geometry and the collab wiring
   // live in DeckController; the public field is the surface callers use.
@@ -334,10 +275,6 @@ export class BrowserChassis {
 
   readonly jev!: JevController;
 
-  purgeJev(): void {
-    this.jev.purge();
-  }
-
 
 
 
@@ -347,39 +284,8 @@ export class BrowserChassis {
   // The stealth research session, its settings and the per-host cooldown live in
   // ResearchSessionSurface; the crawl and search surfaces read through it.
 
-  /**
-   * The tab manager, or the standard uninitialized failure. Every tab operation
-   * begins with this check; the message is the contract agents retry on.
-   */
-  private requireTabManager(): TabManager {
-    const manager = this.tabSetup.manager;
-    if (!manager) throw new Error('Browser Chassis uninitialized');
-    return manager;
-  }
-
-  /** The tab manager; the bridge cannot reach a tab before the window exists. */
-  get tabs(): TabManager {
-    return this.requireTabManager();
-  }
-
   /** The responsive viewport controller; available once the window is set. */
   /** Keep the deck overlay and the emulated tab viewport in step. */
-  setViewportVisibility(visible: boolean): void {
-    this.tabSetup.manager?.setViewportVisibility(visible);
-    this.deck.setOverlayVisible(visible);
-  }
-
-  get viewport(): ViewportController {
-    if (!this.tabSetup.viewport) throw new Error('Browser Chassis uninitialized');
-    return this.tabSetup.viewport;
-  }
-
-  public getActiveWebContents(): Electron.WebContents {
-    const wc = this.requireTabManager().getActiveTab().view.webContents;
-    this.network.manager.attach(wc);
-    return wc;
-  }
-
   /** The shell window, or null before boot / after close. */
   public getMainWindow(): BrowserWindow | null {
     return this.mainWindow;
@@ -417,17 +323,6 @@ export class BrowserChassis {
   /** The shared Cortex database (bookmarks, history, recall). */
   readonly cortex = cortex;
 
-  public captureScreenshotJpeg(maxSide = 1400, quality = 82) {
-    return captureScreenshotJpeg(
-      {
-        capturePage: () => this.harvest.capturePageWithRetry(this.getActiveWebContents(), this.tabSetup.bounds()),
-        log: (level, message) => this.telemetry.addLog(level, message),
-      },
-      maxSide,
-      quality,
-    );
-  }
-
   // ---- Consent sweep ------------------------------------------------------------------
   // The answered-origins memory, the timed sweep and the explicit dismiss live in
   // ConsentController.
@@ -437,50 +332,6 @@ export class BrowserChassis {
   // ---- Screenshot persistence ---------------------------------------------------------
   // The screenshot store lives in the harvest stack; this class no longer owns it.
 
-  public getPageInfo() {
-    return readPageInfo(this.state, this.tabSetup.manager?.getActiveTab() ?? null);
-  }
-
-  public queryJsonData(params: JsonQueryParams): JsonQueryResult {
-    this.telemetry.addLog('action', `MCP Directive: query_json_data(${params.source}${params.sourceId ? `:${params.sourceId}` : ''}, view=${params.view || 'value'})`);
-    return queryJsonData(params, {
-      payloadJson: (sourceId) => this.network.manager.getPayload(sourceId).data,
-      streamPayloads: (sourceId, limit) =>
-        this.network.manager
-          .getStreamMessages({ streamId: sourceId, limit })
-          .map((message) => (message.jsonData !== undefined ? message.jsonData : message.data)),
-      downloadsDir: () => dataPath('downloads'),
-    });
-  }
-
-  public async prerenderLinks(options: PrerenderOptions = {}): Promise<{ prerendered: string[]; count: number }> {
-    const wc = this.getActiveWebContents();
-    this.telemetry.addLog('action', `MCP Directive: prerender_links(maxPages=${options.maxPages || 3})`);
-    return await this.prerenderEngine.prerender(wc, options);
-  }
-
-  // ---- LLM-friendly site discovery (TODO_RESEARCH_CRAWL.md §5, Feature 6) ----
-
-
-
-
-
-
-  /** Renders a URL to Markdown through the shared detached view (the read_url fallback). */
-  public readUrlRender(
-    url: string,
-  ): Promise<{ markdown: string; title: string; status: number; contentType: string | null }> {
-    return this.researchView.renderMarkdown(url);
-  }
-
   // ---- Primitives layer (observe / act / wait / extract / collect / find) ----
-
-  public getRevision(): number {
-    return this.revision;
-  }
-
-  public bumpRevision(): number {
-    return ++this.revision;
-  }
 
 }

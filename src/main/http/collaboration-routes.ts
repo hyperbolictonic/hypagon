@@ -6,6 +6,7 @@
  * that only the create path needs. Keeping them in the 1900-line handler meant
  * the guard and the 404 were re-derived by every reader.
  */
+import { pageInfo } from '../chassis/accessors.js';
 import type { BrowserChassis } from '../browser-chassis.js';
 import type { CollaborationService } from '../collaboration/service.js';
 import { dispatchRoute, type RouteTableContext } from './route-table.js';
@@ -89,8 +90,8 @@ async function createThread(
   kind: 'comment' | 'question',
 ): Promise<void> {
   const body = await readBody();
-  const info = chassis.getPageInfo();
-  const activeTab = chassis.tabs.getTabsSummary().find((tab) => tab.isActive);
+  const info = pageInfo(chassis);
+  const activeTab = chassis.tabSetup.requireManager().getTabsSummary().find((tab) => tab.isActive);
   const target = body?.target && typeof body.target === 'object'
     ? { ...body.target, url: body.target.url || info.url, tabId: body.target.tabId || activeTab?.id }
     : undefined;

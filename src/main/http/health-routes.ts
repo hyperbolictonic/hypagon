@@ -8,6 +8,7 @@
  * settings store, the last-action clock), so the main handler can stay a
  * dispatcher instead of growing a second status surface.
  */
+import { currentRevision, pageInfo } from '../chassis/accessors.js';
 import { BRIDGE_CAPABILITIES } from '../capabilities.js';
 import { APP_VERSION } from '../../shared/version.js';
 import { BRAND } from '../../shared/brand.js';
@@ -35,12 +36,12 @@ type HealthHandler = (ctx: HealthRouteContext) => Promise<void> | void;
 /** `/health` and its `/page-info` alias answer with the same full snapshot. */
 const bridgeStatus = (ctx: HealthRouteContext) => {
   const { chassis, lastActionAt } = ctx;
-  const info = chassis.getPageInfo();
+  const info = pageInfo(chassis);
   return {
     status: 'ok',
     app: BRAND.appKey,
     version: APP_VERSION,
-    revision: chassis.getRevision(),
+    revision: currentRevision(chassis),
     capabilities: BRIDGE_CAPABILITIES,
     decision: decisionStatus(),
     lastActionAt: lastActionAt(),

@@ -6,6 +6,7 @@
  * Cortex bookmarks/history and the settings/decision panel. The chassis passes
  * its surfaces in explicitly; this module owns only the channel wiring.
  */
+import { pageInfo, setViewportVisibility } from '../chassis/accessors.js';
 import { clipboard, ipcMain, type WebContents } from 'electron';
 import type { ChassisState, HarvestedConstruct, TabSummary } from '../../shared/types.js';
 import type { DecisionEvent } from '../decide/decision-client.js';
@@ -249,11 +250,11 @@ export function createIpcSurface(host: ChassisHost): IpcSurface {
       close: (id) => host.tabOps.close(id),
     },
     zoom: host.zoom,
-    viewport: host.viewport,
+    viewport: host.tabSetup.requireViewport(),
     deck: host.deck,
     toggleDevTools: () => host.tabOps.toggleDevTools(),
-    setViewportVisibility: (visible) => host.setViewportVisibility(visible),
-    pageUrl: () => host.getPageInfo().url,
+    setViewportVisibility: (visible) => setViewportVisibility(host, visible),
+    pageUrl: () => pageInfo(host).url,
     send: (channel, payload) => host.bus.toSurfaces(channel, payload),
     inputSetProfile: (profile) => host.input.simulator.setProfile(profile),
     harvestMarkdown: () => host.harvest.harvestMarkdown(),

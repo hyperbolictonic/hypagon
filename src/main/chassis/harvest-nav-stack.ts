@@ -6,6 +6,7 @@
  * store) and the navigation surface (welcome page, prerender, consent sweep) —
  * so the chassis constructor only assembles the result.
  */
+import { activeWebContents, bumpRevision, currentRevision } from './accessors.js';
 import type { WebContents, WebContentsView } from 'electron';
 import type { HarvestedConstruct, TelemetryEvent } from '../../shared/types.js';
 import type { HostBrowserProfile } from '../telemetry/host-fingerprint.js';
@@ -38,8 +39,8 @@ export function createHarvestNavStack(host: ChassisHost): HarvestNavStack {
   });
 
   const marks = new MarksSurface({
-    activeWebContents: () => host.getActiveWebContents(),
-    revision: () => host.getRevision(),
+    activeWebContents: () => activeWebContents(host),
+    revision: () => currentRevision(host),
     marksOverlay: host.marksOverlay,
     simulator: {
       clickAt: (wc, point) => host.input.simulator.clickAt(wc, point),
@@ -51,11 +52,11 @@ export function createHarvestNavStack(host: ChassisHost): HarvestNavStack {
     reportActing: () => host.telemetry.reportActing(),
     reportIdle: () => host.telemetry.reportIdle(),
     emitClick: (point, details) => host.telemetry.emitPointEvent('click', point, details),
-    bumpRevision: () => host.bumpRevision(),
+    bumpRevision: () => bumpRevision(host),
   });
 
   const harvest = new HarvestSurface({
-    activeWebContents: () => host.getActiveWebContents(),
+    activeWebContents: () => activeWebContents(host),
     viewportBounds: () => host.tabSetup.bounds(),
     zoomState: () => host.zoom.getState(),
     marks,
@@ -86,7 +87,7 @@ export function createHarvestNavStack(host: ChassisHost): HarvestNavStack {
   );
 
   const nav = new NavigationSurface({
-    activeWebContents: () => host.getActiveWebContents(),
+    activeWebContents: () => activeWebContents(host),
     welcomePagePath: () => host.tabSetup.manager?.getWelcomePagePath(),
     createTab: (url, view) => host.tabSetup.manager?.createTab(url, view),
     prerender: {
@@ -100,10 +101,10 @@ export function createHarvestNavStack(host: ChassisHost): HarvestNavStack {
     },
     log: host.log,
     bumpNav: () => bump('nav'),
-    purgeJev: () => host.purgeJev(),
+    purgeJev: () => host.jev.purge(),
     syncForceOpen: (wc) => host.shadow.syncForceOpen(wc),
     scheduleConsentSweep: () => host.consent.scheduleSweep(),
-    bumpRevision: () => host.bumpRevision(),
+    bumpRevision: () => bumpRevision(host),
     broadcastState: () => host.telemetry.broadcastState(),
   });
 

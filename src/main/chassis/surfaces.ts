@@ -7,6 +7,7 @@
  * acyclic: the surfaces with narrow deps of their own are adapted here rather
  * than imported into the host contract.
  */
+import { activeWebContents, bumpRevision, pageInfo } from './accessors.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ChassisHost } from './host.js';
@@ -24,6 +25,9 @@ import { WindowBootSurface } from '../boot/window-boot.js';
 import { decisionStatus } from '../decide/decision-client.js';
 import { displayScale } from '../zoom/display-scale.js';
 import { logMainEvent } from '../diagnostics/main-log.js';
+import { reassertViewport } from '../window/reassert-viewport.js';
+import { createTabEventHandlers } from '../tabs/tab-events.js';
+import { humanListenerScript } from '../input/human-activity.js';
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -37,7 +41,7 @@ interface Bounds {
 /** When to use: the chassis constructor — the page-script surface over the host's tab. */
 export function createPageScriptSurface(host: ChassisHost): PageScriptSurface {
   return new PageScriptSurface({
-    activeWebContents: () => host.getActiveWebContents(),
+    activeWebContents: () => activeWebContents(host),
     log: host.log,
   });
 }
@@ -45,11 +49,11 @@ export function createPageScriptSurface(host: ChassisHost): PageScriptSurface {
 /** When to use: the chassis constructor — Shadow Walk policy and frame reads over the host's tabs. */
 export function createShadowWalkSurface(host: ChassisHost): ShadowWalkSurface {
   return new ShadowWalkSurface({
-    activeWebContents: () => host.getActiveWebContents(),
+    activeWebContents: () => activeWebContents(host),
     allTabs: () => host.tabSetup.manager?.allTabs() ?? [],
     log: host.log,
     pressKey: (wc, key) => host.input.simulator.pressKey(wc, key),
-    bumpRevision: () => host.bumpRevision(),
+    bumpRevision: () => bumpRevision(host),
     capturePage: (wc, bounds) => host.harvest.capturePageWithRetry(wc, bounds),
   });
 }
@@ -63,8 +67,8 @@ export function createResearchViewSurface(host: ChassisHost): ResearchViewSurfac
     hilManager: () => host.hil.manager,
     researchSettings: () => host.research.settings(),
     viewportBounds: () => viewportBoundsOf(host),
-    reassertViewport: () => host.reassertViewport(),
-    activeWebContents: () => host.getActiveWebContents(),
+    reassertViewport: () => reassertViewport(host.getMainWindow(), () => host.deck.position(), host.tabSetup.manager),
+    activeWebContents: () => activeWebContents(host),
     log: host.log,
   });
 }
@@ -93,7 +97,7 @@ export function createHumanSurface(host: ChassisHost): HumanControlSurface {
       }),
     focusActiveTab: () => {
       try {
-        const wc = host.getActiveWebContents();
+        const wc = activeWebContents(host);
         host.getMainWindow()?.focus();
         wc.focus();
       } catch {
@@ -121,8 +125,8 @@ export function createDeckController(host: ChassisHost): DeckController {
       }
     },
     popupPreloadPath: path.join(moduleDir, '../preload/index.js'),
-    activeWebContents: () => host.getActiveWebContents(),
-    pageUrl: () => host.getPageInfo().url,
+    activeWebContents: () => activeWebContents(host),
+    pageUrl: () => pageInfo(host).url,
     log: host.log,
     onModeChanged: () => host.tabSetup.manager?.updateActiveTabBounds(),
     sendToShell: (channel, payload) => host.bus.toShell(channel, payload),
@@ -135,7 +139,7 @@ export function createDeckController(host: ChassisHost): DeckController {
 export function createJevController(host: ChassisHost): JevController {
   return new JevController({
     policy: () => ({ available: false, enforce: false }),
-    pageInfo: () => host.getPageInfo(),
+    pageInfo: () => pageInfo(host),
     evaluate: (script) => host.page.quiet(script),
     harvest: () => host.harvest.harvestMarkdown(),
   });
@@ -156,7 +160,7 @@ export function createZoomController(host: ChassisHost): ZoomController {
 /** When to use: the chassis constructor — the consent sweep over the active page. */
 export function createConsentController(host: ChassisHost): ConsentController {
   return new ConsentController({
-    activeWebContents: () => host.getActiveWebContents(),
+    activeWebContents: () => activeWebContents(host),
     shieldBreaker: () => host.shieldBreaker,
     policy: () => host.consentPolicy,
     log: host.log,
@@ -168,7 +172,7 @@ export function createConsentController(host: ChassisHost): ConsentController {
 export function createHudWatchdog(host: ChassisHost): HudWatchdog {
   return new HudWatchdog({
     window: () => host.getMainWindow(),
-    reassertViewport: () => host.reassertViewport(),
+    reassertViewport: () => reassertViewport(host.getMainWindow(), () => host.deck.position(), host.tabSetup.manager),
     applyZoomToAllTabs: () => host.zoom.applyToAllTabs(),
     logEvent: (name) => logMainEvent(name),
   });
@@ -177,7 +181,7 @@ export function createHudWatchdog(host: ChassisHost): HudWatchdog {
 /** When to use: the chassis constructor — the page overlay picker and its signal channel. */
 export function createCollaborationSurface(host: ChassisHost): CollaborationSurface {
   return new CollaborationSurface({
-    activeWebContents: () => host.getActiveWebContents(),
+    activeWebContents: () => activeWebContents(host),
     pageInset: () => host.deck.pageInset(),
     setCollabMode: (open) => host.deck.setCollabMode(open),
     resolveNote: (id) => host.deck.resolveNote(id),
@@ -234,4 +238,50 @@ async function viewportBoundsOf(host: ChassisHost): Promise<Bounds> {
     /* fall back to the static calculation */
   }
   return host.tabSetup.bounds();
+}
+
+/** The five surfaces the rest of the composition reads, built first. */
+export interface ChromeSurfaces {
+  human: HumanControlSurface;
+  deck: DeckController;
+  zoom: ZoomController;
+  hud: HudWatchdog;
+  collaboration: CollaborationSurface;
+}
+
+/** When to use: the chassis constructor — build the chrome surfaces first. */
+export function createChromeSurfaces(host: ChassisHost): ChromeSurfaces {
+  return {
+    human: createHumanSurface(host),
+    deck: createDeckController(host),
+    zoom: createZoomController(host),
+    hud: createHudWatchdog(host),
+    collaboration: createCollaborationSurface(host),
+  };
+}
+
+/** When to use: the chassis constructor — the tab manager lifecycle reactions. */
+export function createTabEvents(host: ChassisHost): ReturnType<typeof createTabEventHandlers> {
+  return createTabEventHandlers({
+    state: host.state,
+    activeTabId: () => host.tabSetup.manager?.getActiveTabId(),
+    allTabs: () => host.tabSetup.manager?.allTabs() ?? [],
+    broadcastState: () => host.telemetry.broadcastState(),
+    bumpRevision: () => bumpRevision(host),
+    reassertViewport: () => reassertViewport(host.getMainWindow(), () => host.deck.position(), host.tabSetup.manager),
+    send: (channel, payload) => host.bus.toSurfaces(channel, payload),
+    updateTray: (pending) =>
+      host.trayManager?.updateStatus(host.state.agentStatus, host.state.tabs?.length ?? 0, pending),
+    hilPending: () => !!host.hil.manager.getActiveRequest(),
+    attachNetwork: (wc) => host.network.manager.attach(wc),
+    registerViewportTab: (tab) => host.tabSetup.viewport?.registerTab(tab),
+    syncForceOpen: (wc) => host.shadow.syncForceOpen(wc),
+    indexTab: (tab) => host.harvest.indexTabQuietly(tab),
+    ingestHuman: (message) => host.human.monitor.ingest(message),
+    noteHuman: (activity) => host.human.note(activity),
+    recordConsole: (log) => host.consoleLogs.record(log),
+    collaborationSignal: (message) => host.collaboration.handleSignal(message),
+    logEvent: (name, detail) => logMainEvent(name, detail),
+    humanListenerScript: () => humanListenerScript(),
+  });
 }

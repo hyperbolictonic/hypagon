@@ -6,6 +6,7 @@
  * marks and harvest plumbing so they stay on the humanlike path; the host
  * contract supplies those surfaces without a copied deps literal.
  */
+import { activeWebContents, currentRevision, pageInfo } from './accessors.js';
 import type { WebContents } from 'electron';
 import { HilSurface } from '../hil/hil-surface.js';
 import { ActionLedger } from '../telemetry/action-ledger.js';
@@ -28,7 +29,7 @@ export function createInteractionStack(host: ChassisHost): InteractionStack {
   const hil = new HilSurface({
     activeWebContents: () => {
       try {
-        return host.getActiveWebContents();
+        return activeWebContents(host);
       } catch {
         return null;
       }
@@ -63,22 +64,22 @@ export function createInteractionStack(host: ChassisHost): InteractionStack {
   });
 
   const primitives = new Primitives({
-    webContents: () => host.getActiveWebContents(),
+    webContents: () => activeWebContents(host),
     log: host.log,
     evaluate: (script) => host.page.quiet(script),
     harvest: (opts) => host.harvest.harvestMarkdown(opts),
     guardPageRead: (input) => host.jev.guardPageRead(input),
     precheckPageRead: (input) => host.jev.precheckPageRead(input),
-    injectMarks: (opts) => host.marks.scan(host.getActiveWebContents(), opts || {}),
-    removeMarks: () => host.marksOverlay.removeMarks(host.getActiveWebContents()),
+    injectMarks: (opts) => host.marks.scan(activeWebContents(host), opts || {}),
+    removeMarks: () => host.marksOverlay.removeMarks(activeWebContents(host)),
     getMarks: () => host.marks.getActive(),
     getMarkTarget: (id) =>
       Number(id) >= 100
-        ? resolveFrameMark(host.getActiveWebContents(), Number(id))
-        : host.marksOverlay.getMarkTarget(host.getActiveWebContents(), id),
+        ? resolveFrameMark(activeWebContents(host), Number(id))
+        : host.marksOverlay.getMarkTarget(activeWebContents(host), id),
     getFrames: (opts) => host.shadow.getFrames(opts),
     evaluateInFrames: (script, opts) => host.page.evaluateInFrames(script, opts),
-    resolveSealedToken: (token) => resolveSealedToken(host.getActiveWebContents(), token),
+    resolveSealedToken: (token) => resolveSealedToken(activeWebContents(host), token),
     clickMark: (id) => host.marks.clickMark(id),
     typeMark: (id, text, opts) => host.marks.typeMark(id, text, opts),
     clickElement: (selector, coords) => host.input.clickElement(selector, coords),
@@ -86,13 +87,13 @@ export function createInteractionStack(host: ChassisHost): InteractionStack {
     findSealed: (opts) => host.marks.findSealed(opts),
     componentSurfaceEnabled: () => loadShadowWalkSettings().shadow.componentSurface,
     insertText: (text) => host.input.insertText(text),
-    pasteText: (text) => host.input.simulator.pasteText(host.getActiveWebContents(), text),
+    pasteText: (text) => host.input.simulator.pasteText(activeWebContents(host), text),
     moveMouseTo: (target) => host.input.moveMouse(target),
     pressKey: (key) => host.input.pressKey(key),
     snapshotRenderedPage: (opts) => host.marks.snapshotRenderedPage(opts),
     getNetworkTraffic: (filter) => host.network.traffic(filter),
-    getPageInfo: () => host.getPageInfo(),
-    revision: () => host.getRevision(),
+    getPageInfo: () => pageInfo(host),
+    revision: () => currentRevision(host),
     windowFocused: () => host.window.isFocused(),
     recordTransition: (record) => actionLedger.record(record),
   });
