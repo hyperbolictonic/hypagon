@@ -20,6 +20,7 @@ interface ProfileFile {
   profiles: DeviceProfile[];
 }
 
+/** When to use: the human Viewport toolbar — save and list custom device profiles. */
 export class DeviceProfileStore {
   readonly file: string;
   #profiles: DeviceProfile[];

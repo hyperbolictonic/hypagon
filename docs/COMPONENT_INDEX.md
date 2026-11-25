@@ -17,9 +17,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 
 | File | Export | When to use |
 |---|---|---|
-| `main/utils/json-navigator.ts` | `JsonNavigator` | - |
+| `main/utils/json-navigator.ts` | `JsonNavigator` | When to use: `query_json_data` — path/view/limit slicing of a large JSON body. |
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
-| `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
+| `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | When to use: one JSON navigator reply — the resolved path, the view name and the sliced data. |
 | `main/utils/json-query.ts` | `queryJsonData` | When to use: the bridge route — resolve a JSON source and query it. |
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
@@ -101,7 +101,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/cortex/embedder.ts` | `setEmbeddingProvider` | Select the active provider by id. Throws when the id is unknown. |
 | `main/cortex/embedder.ts` | `getEmbeddingProvider` | The provider used for all new embeddings. |
 | `main/cortex/embedder.ts` | `embedText` | Embed `text` with the active provider. |
-| `main/cortex/embedder.ts` | `generateEmbedding` | - |
+| `main/cortex/embedder.ts` | `generateEmbedding` | When to use: legacy synchronous embeddings only — prefer `embedText` so stored vectors match |
 | `main/cortex/embedder.ts` | `DEFAULT_PROVIDER_ID` | When to use: naming the built-in `hash-128` embedding provider in settings and stored metadata. |
 | `main/cortex/embedder.ts` | `EMBEDDING_DIM` | Legacy dimension constant for the default provider (kept for compatibility). |
 | `main/cortex/embedder.ts` | `EmbeddingProvider` *(type)* | Kuang Grade Mark Eleven - Cortex Embedding Provider |
@@ -137,7 +137,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/decide/decision-surface.ts` | `DecisionSurfaceDeps` *(type)* | Dependencies the decision surface needs from the HIL layer. |
 | `main/decide/sensitive-gate.ts` | `detectSensitiveGate` | Inspect the state Kuang is about to send. `state` may be the composed page text or the component |
 | `main/decide/sensitive-gate.ts` | `SensitiveGate` *(type)* | Sensitive gates — situations where the correct action is **a human**, never a click. |
-| `main/decide/sensitive-gate.ts` | `GateDetection` *(type)* | - |
+| `main/decide/sensitive-gate.ts` | `GateDetection` *(type)* | When to use: the decide path stopping before the model — the gate kind, evidence and reason. |
 | `main/decide/types.ts` | `DecisionProtocol` *(type)* | When to use: naming the transport in config and results. |
 | `main/decide/types.ts` | `DecisionConfig` *(type)* | When to use: resolving what `decide` will call. |
 | `main/decide/types.ts` | `DecisionCall` *(type)* | When to use: passing a page state and typed questions to the model. |
@@ -228,7 +228,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/input/human-activity.ts` | `humanListenerScript` | Self-contained listener. Idempotent: a second injection is a no-op. |
 | `main/input/human-activity.ts` | `SYNTHETIC_GRACE_MS` | How long after our own dispatch a trusted event is still considered synthetic. |
 | `main/input/human-activity.ts` | `HUMAN_CONSOLE_PREFIX` | Console prefix the page uses; anything else is ignored. |
-| `main/input/human-activity.ts` | `HumanActivityMonitor` | - |
+| `main/input/human-activity.ts` | `HumanActivityMonitor` | When to use: the input simulator and the bridge — decide whether trusted input is the human taking over. |
 | `main/input/human-activity.ts` | `HumanActivity` *(type)* | Human takeover detection. |
 | `main/input/human-control.ts` | `HumanControlSurface` | The explicit human-takeover latch and its activity monitor. |
 | `main/input/human-control.ts` | `HumanControlDeps` *(type)* | Dependencies the latch needs from the agent status and telemetry. |
@@ -274,7 +274,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/jev/read-contract.ts` | `PrecheckPageReadResult` *(type)* | Cheap pre-harvest check: refuse an obviously oversized read in ~30 ms. |
 | `main/jev/read-contract.ts` | `GuardPageReadInput` *(type)* | The guard adds the post-harvest facts (tokens, url, title, content). |
 | `main/jev/read-contract.ts` | `PageReadRefusal` *(type)* | What a refusal names: the page facts, the next call to make, the override. |
-| `main/jev/read-contract.ts` | `GuardPageReadResult` *(type)* | - |
+| `main/jev/read-contract.ts` | `GuardPageReadResult` *(type)* | When to use: the JEV funnel's verdict for a page read — allowed plus the reason, note and refusal. |
 | `main/llm/probe-transport.ts` | `ProbeTransport` | When to use: any `llm_surface` request — well-known files, a HEAD, or a gated fetch. |
 | `main/llm/probe-transport.ts` | `ProbeResponse` *(type)* | What one probe request returned. |
 | `main/llm/probe-transport.ts` | `ProbeTransportDeps` *(type)* | When to use: constructing the transport — the session comes from the chassis. |
@@ -315,7 +315,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/media/binaries.ts` | `MediaBinary` *(type)* | When to use: a resolved yt-dlp that can run — path, version and where it came from. |
 | `main/media/binaries.ts` | `MediaBinaryError` *(type)* | When to use: `ensureYtDlp` refusing — the code the downloader reports and the message a human reads. |
 | `main/media/cookies.ts` | `writeCookieFile` | Write the cookies for `url` (the browser would send this host) to a temp file. |
-| `main/media/cookies.ts` | `CookieFile` *(type)* | - |
+| `main/media/cookies.ts` | `CookieFile` *(type)* | When to use: a yt-dlp run that needs the signed-in session — the scoped cookie file and its cleanup. |
 | `main/media/exec.ts` | `runYtDlpProcess` | When to use: a short yt-dlp call (metadata, transcript, preview) that returns a payload rather than streaming progress. |
 | `main/media/exec.ts` | `CommandResult` *(type)* | When to use: reading a finished yt-dlp call — code/signal, output, and the timeout/overflow flags. |
 | `main/media/ffmpeg.ts` | `platformKey` | When to use: naming the managed download folder for the current or a given platform. |
@@ -340,7 +340,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/media/job-types.ts` | `MediaProgress` *(type)* | When to use: the parsed `--newline` progress of a running job. |
 | `main/media/job-types.ts` | `MediaJob` *(type)* | When to use: `media jobs` — one queued, running or finished download. |
 | `main/media/job-types.ts` | `MediaJobInput` *(type)* | When to use: the enqueue call the bridge makes. |
-| `main/media/jobs.ts` | `MediaJobs` | - |
+| `main/media/jobs.ts` | `MediaJobs` | When to use: `media jobs` — enqueue a yt-dlp download and poll its progress. |
 | `main/media/jobs.ts` | `MediaJobsOptions` *(type)* | When to use: constructing the queue — paths, binary resolution and the cookie hook. |
 | `main/media/media-reader.ts` | `MediaReader` | When to use: `/media/info`, `/media/transcript` and `/media/preview`. |
 | `main/media/media-reader.ts` | `MediaReaderDeps` *(type)* | When to use: constructing the reader — the facade owns the binary promise and cookies. |
@@ -365,23 +365,23 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/media/platform.ts` | `YtDlpRuntime` *(type)* | When to use: spawning yt-dlp — the extra runtime args, env and Node version it should report. |
 | `main/media/process-failure.ts` | `processFailure` | When to use: mapping a `CommandResult` to the media error result, or null on success. |
 | `main/media/process-failure.ts` | `ProcessFailureCopy` *(type)* | The per-call wording for a failed one-shot run. |
-| `main/media/service.ts` | `MediaService` | - |
+| `main/media/service.ts` | `MediaService` | When to use: the media tools — metadata, transcript, preview and downloads over one service. |
 | `main/media/service.ts` | `MediaServiceOptions` *(type)* | When to use: the boot — `rootDir` defaults to `<userData>/media`. |
 | `main/media/transcript.ts` | `parseVtt` | VTT → plain text. |
 | `main/media/transcript.ts` | `transcriptDocument` | The document stored in Cortex for one transcript. |
 | `main/media/transcript.ts` | `fetchArtifacts` | Fetch captions (and optionally the thumbnail) into `dir`. |
-| `main/media/transcript.ts` | `SubtitleArtifacts` *(type)* | - |
-| `main/media/transcript.ts` | `ArtifactResult` *(type)* | - |
+| `main/media/transcript.ts` | `SubtitleArtifacts` *(type)* | When to use: the transcript/preview reply — caption text, language, auto flag, tracks and poster images. |
+| `main/media/transcript.ts` | `ArtifactResult` *(type)* | When to use: reading a transcript or thumbnail fetch — the artifacts or the failure code. |
 | `main/media/updater.ts` | `jitter` | ±10% jitter so a fleet of installs does not hit GitHub on the same second. |
-| `main/media/updater.ts` | `MediaUpdater` | - |
-| `main/media/updater.ts` | `MediaUpdaterOptions` *(type)* | - |
+| `main/media/updater.ts` | `MediaUpdater` | When to use: the yt-dlp self-update — check the tagged release and install it without racing `latest`. |
+| `main/media/updater.ts` | `MediaUpdaterOptions` *(type)* | When to use: constructing the updater — the binary path, version reader, settings and callbacks. |
 | `main/menu/context-menu.ts` | `attachContextMenu` | When to use: attach the right-click menu to a browsing tab's WebContents. Builds the |
 | `main/menu/context-menu.ts` | `ContextMenuOptions` *(type)* | When to use: attachContextMenu options — the window the menu pops over, plus the new-tab and log hooks. |
 | `main/migrate-user-data.ts` | `migrateLegacyUserData` | Import a previous release's Electron `userData` into the current one. |
-| `main/migrate-user-data.ts` | `UserDataMigration` *(type)* | - |
+| `main/migrate-user-data.ts` | `UserDataMigration` *(type)* | When to use: first launch — whether legacy user data was copied and where. |
 | `main/navigation/navigation-surface.ts` | `NavigationSurface` | The active-tab navigate/history/reload surface. |
 | `main/navigation/navigation-surface.ts` | `NavigationSurfaceDeps` *(type)* | Dependencies the navigation surface needs from the active tab and chassis state. |
-| `main/navigation-error.ts` | `classifyNavigationFailure` | - |
+| `main/navigation-error.ts` | `classifyNavigationFailure` | When to use: a failed `loadURL` — map it to the stable code and message the bridge returns. |
 | `main/navigation-error.ts` | `NavigationFailure` *(type)* | Turn Electron `loadURL` failures into stable, user-facing navigation errors. |
 | `main/network/cdp-events.ts` | `NetworkEvents` | When to use: `NetworkInterceptor` — dispatch every debugger message here. |
 | `main/network/cdp-events.ts` | `CdpEventDeps` *(type)* | When to use: `new NetworkInterceptor` — the buffers the events write into. |
@@ -433,8 +433,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/primitives/dom-targeting.ts` | `inputProbeInstallScript` | Install a one-shot input probe around a typing action: snapshot the addressed control's |
 | `main/primitives/dom-targeting.ts` | `inputProbeReadScript` | Read and remove the probe installed by {@link inputProbeInstallScript}. |
 | `main/primitives/dom-targeting.ts` | `DEEP_DOM_HELPERS` | Shared helper functions, inlined into every script below. |
-| `main/primitives/dom-targeting.ts` | `TargetLocator` *(type)* | - |
-| `main/primitives/dom-targeting.ts` | `TargetBox` *(type)* | - |
+| `main/primitives/dom-targeting.ts` | `TargetLocator` *(type)* | When to use: resolving an action target — mark id, selector or viewport point. |
+| `main/primitives/dom-targeting.ts` | `TargetBox` *(type)* | When to use: the resolved control box — coordinates, control flag, text and viewport facts. |
 | `main/primitives/frame-controls.ts` | `addressedFrameControls` | When to use: turning a `getFrames({ includeControls: true })` result into |
 | `main/primitives/frame-controls.ts` | `AddressedFrameControl` *(type)* | One addressable control plus the frame it lives in. |
 | `main/primitives/observe-controller.ts` | `ObserveController` | When to use: `Primitives` — own the observe projections. |
@@ -449,8 +449,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/primitives/text-target.ts` | `TextTargetMatch` *(type)* | When to use: one resolved target — text, tag, viewport box, document-order index and optional component surface. |
 | `main/primitives/text-target.ts` | `TextTargetResult` *(type)* | When to use: the text-target reply — the query, ranked matches and whether one is unambiguous. |
 | `main/recipes/compile.ts` | `compileDriveSteps` | Map drive steps to recipe steps. Click steps always become `click`; a `type_text` step becomes a |
-| `main/recipes/compile.ts` | `DriveStepLike` *(type)* | - |
-| `main/recipes/compile.ts` | `CompileOptions` *(type)* | - |
+| `main/recipes/compile.ts` | `DriveStepLike` *(type)* | When to use: `recipe_compile` — one verified drive step to turn into a recipe step. |
+| `main/recipes/compile.ts` | `CompileOptions` *(type)* | When to use: `recipe_compile` — the typed values that let a `type_text` step be replayed. |
 | `main/recipes/recipe-store.ts` | `loadRecipes` | When to use: matching or mutating a recipe; a missing or malformed file reads as an empty store. |
 | `main/recipes/recipe-store.ts` | `originOf` | When to use: keying a recipe to its site — the URL's origin, or an empty string when the URL is not absolute. |
 | `main/recipes/recipe-store.ts` | `recipesFor` | Recipes for this URL, most-recently-verified first. |
@@ -502,8 +502,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/remote/settings.ts` | `RemoteSettings` *(type)* | When to use: the remote-access settings document — its schema version plus the stored tunnel and port options. |
 | `main/remote/tunnel.ts` | `RemoteTunnel` | When to use: `RemoteService` — one tunnel per service. |
 | `main/remote/tunnel.ts` | `RemoteTunnelDeps` *(type)* | When to use: the service constructor — the paths and the gateway it fronts. |
-| `main/research/anchor-store.ts` | `AnchorStore` | - |
-| `main/research/anchor-store.ts` | `StoredAnchor` *(type)* | - |
+| `main/research/anchor-store.ts` | `AnchorStore` | When to use: `revalidate_citations` and research — persist anchors and record their re-checks. |
+| `main/research/anchor-store.ts` | `StoredAnchor` *(type)* | When to use: one durable citation anchor and its last revalidation outcome. |
 | `main/research/anchors.ts` | `relocateCitation` | Revalidate a stored anchor against fresh HTML. |
 | `main/research/anchors.ts` | `relocateCitations` | When to use: `revalidate_citations` — re-check a page's stored anchors in small batches. |
 | `main/research/anchors.ts` | `anchorHighlights` | When to use: `research_topic` and the crawl feed — pick the query-relevant blocks and fingerprint them. |
@@ -556,8 +556,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/stealth-session.ts` | `StealthSession` | When to use: `ResearchSessionController.stealth` — one per controller. |
 | `main/research/stealth-session.ts` | `StealthSessionDeps` *(type)* | When to use: `new ResearchSessionController` — the profile the session must present. |
 | `main/research/surface-activity.ts` | `SurfaceActivityDeps` *(type)* | The activity feed + directive log every research surface takes. |
-| `main/scripts/script-vault.ts` | `ScriptVault` | - |
-| `main/scripts/script-vault.ts` | `SavedScriptMeta` *(type)* | - |
+| `main/scripts/script-vault.ts` | `ScriptVault` | When to use: `save_script`/`list_scripts`/`run_script` — store scripts and index them in Cortex. |
+| `main/scripts/script-vault.ts` | `SavedScriptMeta` *(type)* | When to use: the script vault — one saved script's name, code, domain and tags. |
 | `main/scripts/scripts-surface.ts` | `ScriptsSurface` | The saved-script vault behind the script routes. |
 | `main/scripts/scripts-surface.ts` | `ScriptsSurfaceDeps` *(type)* | Dependencies the script surface needs from the active tab and telemetry. |
 | `main/search/search-engine.ts` | `engineHost` | The host an engine loads in; the custom engine resolves the settings template. |
@@ -573,8 +573,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/search/search-surface.ts` | `SearchSurfaceDeps` *(type)* | Dependencies the search surface needs from the research policy and hub. |
 | `main/session/session-surface.ts` | `SessionSurface` | The named cookie/session snapshots behind the session routes. |
 | `main/session/session-surface.ts` | `SessionSurfaceDeps` *(type)* | Dependencies the session surface needs from the active tab and telemetry. |
-| `main/session/session-vault.ts` | `SessionVault` | - |
-| `main/session/session-vault.ts` | `SessionSnapshot` *(type)* | - |
+| `main/session/session-vault.ts` | `SessionVault` | When to use: `save_session`/`load_session` — capture and restore cookies plus storage. |
+| `main/session/session-vault.ts` | `SessionSnapshot` *(type)* | When to use: `save_session`/`load_session` — one vaulted cookie + storage snapshot. |
 | `main/settings/jev.ts` | `DEFAULT_JEV_SETTINGS` | When to use: the settings panel's initial values and the fallback when the file is unreadable. |
 | `main/settings/jev.ts` | `JevSettingsStore` | JEV is an optional feature (not an experimental one): it is offered only when |
 | `main/settings/jev.ts` | `JevMode` *(type)* | When to use: the JEV settings and the read gate — 'prefer' steers reads, 'enforce' refuses unscoped dumps. |
@@ -588,8 +588,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/cdp.ts` | `contentRect` | When to use: turning a `DOM.getBoxModel` response into a drawable rect; null without a box. |
 | `main/shadow-walk/cdp.ts` | `cdpSend` | When to use: a CDP send that targets the root session when no session id is given. |
 | `main/shadow-walk/cdp.ts` | `ContentRect` *(type)* | The axis-aligned viewport rect a CDP box model describes. |
-| `main/shadow-walk/component-signature.ts` | `componentSignatureOf` | - |
-| `main/shadow-walk/component-signature.ts` | `normalizeSurface` | - |
+| `main/shadow-walk/component-signature.ts` | `componentSignatureOf` | When to use: `observe` and recipe steps — derive the stable `tag:hash` component anchor. |
+| `main/shadow-walk/component-signature.ts` | `normalizeSurface` | When to use: parsing a page-reported component surface before signing it. |
 | `main/shadow-walk/component-signature.ts` | `COMPONENT_SIGNATURE_HELPERS` | Page-side helpers, inlined into the marks/observe and text-target scripts. |
 | `main/shadow-walk/component-signature.ts` | `ComponentSurface` *(type)* | Component signatures. |
 | `main/shadow-walk/force-open.ts` | `isForceOpenArmed` | When to use: deciding whether the Shadow Walk force-open overlay is armed for a view. |
@@ -597,7 +597,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/force-open.ts` | `detectForceOpen` | Ask the current document what a fingerprinting script would see. |
 | `main/shadow-walk/force-open.ts` | `ForceOpenSyncResult` *(type)* | When to use: the result of syncing the force-open overlay — armed, changed and the error. |
 | `main/shadow-walk/force-open.ts` | `ForceOpenDetection` *(type)* | When to use: the detection probe's reply — whether the overlay is armed and what was found. |
-| `main/shadow-walk/part-highlight-css.ts` | `buildPartHighlightCss` | - |
+| `main/shadow-walk/part-highlight-css.ts` | `buildPartHighlightCss` | When to use: the part-highlight screenshot lever — build the outline rules for the exported parts. |
 | `main/shadow-walk/part-highlight-css.ts` | `PartHost` *(type)* | Pure part-highlight rule builder. |
 | `main/shadow-walk/sealed-cdp.ts` | `sessionOf` | When to use: resolving a frame's OOPIF session; undefined means the parent session. |
 | `main/shadow-walk/sealed-cdp.ts` | `attachOopifSessions` | When to use: the start of a scan or a measurement — attach each OOPIF target |
@@ -634,8 +634,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shell/event-bus.ts` | `ShellBusDeps` *(type)* | Dependencies the bus needs to reach the two render surfaces. |
 | `main/shield/consent-controller.ts` | `ConsentController` | When to use: the chassis — own the consent sweep: answered-origins memory, timed attempts and the explicit dismiss. |
 | `main/shield/consent-controller.ts` | `ConsentControllerDeps` *(type)* | When to use: building the chassis — the wall breaker, the policy and the log/telemetry come from it. |
-| `main/shield/shield-breaker.ts` | `ShieldBreaker` | - |
-| `main/shield/shield-breaker.ts` | `ShieldDismissResult` *(type)* | - |
+| `main/shield/shield-breaker.ts` | `ShieldBreaker` | When to use: a consent wall during navigation — answer it the way a person would. |
+| `main/shield/shield-breaker.ts` | `ShieldDismissResult` *(type)* | When to use: the shield-breaker reply — dismissed/blocked, the chosen control and the intent. |
 | `main/shield/shield-breaker.ts` | `ConsentPolicy` *(type)* | How to answer a consent wall. This is a *preference*, not a licence to click anything that says |
 | `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotEngine` | When to use: `snapshot` — settle the page, read the chosen format and optionally write it. |
 | `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotOptions` *(type)* | When to use: `snapshot` — the output format and the optional save path. |
@@ -665,7 +665,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/tabs/window-open-policy.ts` | `isPopupWindowRequest` | True when this request needs a real window to keep its opener relationship intact. |
 | `main/tabs/window-open-policy.ts` | `popupWindowSize` | Window size requested by a `window.open` features string, clamped to something usable. |
 | `main/tabs/window-open-policy.ts` | `WindowOpenRequest` *(type)* | How a renderer's `window.open()` / `target="_blank"` request should be handled. |
-| `main/tabs/window-open-policy.ts` | `PopupSize` *(type)* | - |
+| `main/tabs/window-open-policy.ts` | `PopupSize` *(type)* | When to use: a sign-in popup — the window size parsed from its features string. |
 | `main/telemetry/action-ledger.ts` | `ActionLedger` | When to use: the primitives layer recording each action, and `/ledger` reading it back. |
 | `main/telemetry/action-ledger.ts` | `FieldFacts` *(type)* | Typed facts about the form control an action addressed. |
 | `main/telemetry/action-ledger.ts` | `TransitionTarget` *(type)* | When to use: a ledger record's target — mark id/selector plus the form-control facts when it was a field. |
@@ -676,17 +676,17 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/telemetry/action-ledger.ts` | `ActionLedgerOptions` *(type)* | When to use: constructing the ledger — its directory, rotation size and log sink. |
 | `main/telemetry/chaos-kinematics.ts` | `generateChaosTrajectory` | Generates an advanced bio-kinematic trajectory incorporating chaos math, |
 | `main/telemetry/chaos-kinematics.ts` | `Point` *(type)* | Kuang Grade Mark Eleven — Bio-Kinematic Chaos & Neuromotor Mouse Engine |
-| `main/telemetry/chaos-kinematics.ts` | `PathStep` *(type)* | - |
-| `main/telemetry/chaos-kinematics.ts` | `ChaosKinematicsOptions` *(type)* | - |
+| `main/telemetry/chaos-kinematics.ts` | `PathStep` *(type)* | When to use: a generated pointer path — one point plus its delay, velocity and curvature. |
+| `main/telemetry/chaos-kinematics.ts` | `ChaosKinematicsOptions` *(type)* | When to use: tuning `generateChaosTrajectory` — step count, deviation, pacing and noise. |
 | `main/telemetry/host-fingerprint.ts` | `detectHostBrowserProfile` | Clean, zero-subprocess host browser profile detector. |
-| `main/telemetry/host-fingerprint.ts` | `HostBrowserProfile` *(type)* | - |
+| `main/telemetry/host-fingerprint.ts` | `HostBrowserProfile` *(type)* | When to use: telemetry and the static tier — the host browser's UA and client-hint profile. |
 | `main/telemetry/input/context.ts` | `InputState` | When to use: `HumanizedInputSimulator` — one state object per simulator. |
 | `main/telemetry/input/context.ts` | `InputTelemetryReporter` *(type)* | When to use: a caller that wants input telemetry (the HUD and the replay recorder). |
 | `main/telemetry/input/context.ts` | `HumanProfile` *(type)* | The human pacing knobs; replaced at runtime by Settings → INPUT. |
 | `main/telemetry/input-profile.ts` | `loadInputProfile` | Resolve the active profile: defaults, then the file, then env overrides. |
 | `main/telemetry/input-profile.ts` | `saveInputProfile` | Persist a (partial) profile, clamped, and return the profile that is now active. |
-| `main/telemetry/input-profile.ts` | `DEFAULT_INPUT_PROFILE` | - |
-| `main/telemetry/input-profile.ts` | `InputProfile` *(type)* | - |
+| `main/telemetry/input-profile.ts` | `DEFAULT_INPUT_PROFILE` | When to use: Settings → Input's initial values and the fallback when no profile file exists. |
+| `main/telemetry/input-profile.ts` | `InputProfile` *(type)* | When to use: the human input simulator and Settings → Input — pointer speed, typing pace and click dwell. |
 | `main/telemetry/telemetry-surface.ts` | `TelemetrySurface` | The log ring, state broadcast and telemetry fan-out shared by every chassis surface. |
 | `main/telemetry/telemetry-surface.ts` | `LogEntry` *(type)* | One HUD log line; newest entries sit at the head of the ring. |
 | `main/telemetry/telemetry-surface.ts` | `TelemetrySurfaceDeps` *(type)* | Dependencies the telemetry surface needs from the chassis and its renderers. |
@@ -696,8 +696,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/tools/settings.ts` | `ToolSettingsValidation` *(type)* | When to use: the tool-settings save result — ok plus the validation errors. |
 | `main/tray/close-to-tray.ts` | `CloseToTray` | When to use: `TrayManager.closeToTray` — one per tray. |
 | `main/tray/close-to-tray.ts` | `CloseToTrayDeps` *(type)* | When to use: `new TrayManager` — the window to watch plus the manager's callbacks. |
-| `main/tray/tray-manager.ts` | `TrayManager` | - |
-| `main/tray/tray-manager.ts` | `TrayManagerOptions` *(type)* | - |
+| `main/tray/tray-manager.ts` | `TrayManager` | When to use: app startup — own the tray icon, its menu and the close-to-tray behaviour. |
+| `main/tray/tray-manager.ts` | `TrayManagerOptions` *(type)* | When to use: constructing the tray — the window plus the quit/show/hide hooks. |
 | `main/tray/tray-menu.ts` | `trayMenuTemplate` | When to use: `Menu.buildFromTemplate` in the tray manager. |
 | `main/tray/tray-menu.ts` | `TrayMenuState` *(type)* | When to use: `TrayManager.updateMenu` — the state the menu labels read. |
 | `main/tray/tray-menu.ts` | `TrayMenuActions` *(type)* | When to use: `TrayManager.updateMenu` — the actions the menu items invoke. |
@@ -718,11 +718,11 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/window/window-surface.ts` | `WindowSurface` | The shell window's visibility, focus and tray behaviour. |
 | `main/window/window-surface.ts` | `WindowSurfaceDeps` *(type)* | Dependencies the window surface needs from the chassis lifecycle. |
 | `main/wrap/anyapi/executor.ts` | `coreGate` | Features the core cannot reproduce yet, and therefore stay on the legacy executor. |
-| `main/wrap/anyapi/executor.ts` | `AnyApiWrapExecutor` | - |
+| `main/wrap/anyapi/executor.ts` | `AnyApiWrapExecutor` | When to use: `wrap_run`/`wrap_test` — run gated wrappers on the package core and hand the rest to the legacy executor. |
 | `main/wrap/anyapi/executor.ts` | `CoreGate` *(type)* | When to use: deciding whether a wrapper may run on the package core or must stay on the legacy executor. |
 | `main/wrap/anyapi/executor.ts` | `AnyApiExecutorOptions` *(type)* | When to use: constructing `AnyApiWrapExecutor` — the legacy fallback, the secret source and the transport limits. |
 | `main/wrap/anyapi/maps.ts` | `projectWrapMaps` | `wrappersDir` is the `<userData>/wrap/wrappers` directory. |
-| `main/wrap/anyapi/maps.ts` | `WrapMapProjection` *(type)* | - |
+| `main/wrap/anyapi/maps.ts` | `WrapMapProjection` *(type)* | When to use: projecting the wrapper directory through the map loader — maps plus load issues. |
 | `main/wrap/anyapi/result.ts` | `splitBlockedHost` | The core has one refusal code for three situations the wrapper surface |
 | `main/wrap/anyapi/result.ts` | `wrapErrorCode` | 401/403 means the credential is the actionable problem, not the transport. |
 | `main/wrap/anyapi/result.ts` | `wrapFailure` | When to use: the anyapi executor turning a package runtime error into the wrapper's published `WrapRunResult`. |
@@ -736,16 +736,16 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/anyapi/secrets.ts` | `WrapSecretSource` *(type)* | When to use: injecting the encrypted store into `createSecretAdapter` (list plus host-scoped resolve). |
 | `main/wrap/anyapi/secrets.ts` | `WrapSecretRefusal` *(type)* | When to use: reporting a secret the core cannot bind — its name and the human-readable reason. |
 | `main/wrap/anyapi/secrets.ts` | `WrapSecretAdapter` *(type)* | When to use: handing the core its binding table, provider and the refusals to surface. |
-| `main/wrap/audit.ts` | `WrapAuditLog` | - |
-| `main/wrap/audit.ts` | `WrapAuditEntry` *(type)* | - |
+| `main/wrap/audit.ts` | `WrapAuditLog` | When to use: the executor's audit sink — one redacted row per wrapper call. |
+| `main/wrap/audit.ts` | `WrapAuditEntry` *(type)* | When to use: one audit row — wrapper, host, status, bytes, duration and error code. |
 | `main/wrap/core.ts` | `WrapRunOptions` *(type)* | When to use: `wrap_run` — the output format, raw payload inclusion and the page cap. |
 | `main/wrap/core.ts` | `WrapTestInput` *(type)* | When to use: `wrap_test` — run a stored or inline wrapper with sample args and an optional dry run. |
 | `main/wrap/core.ts` | `WrapCore` *(type)* | When to use: the wrapper surface the factory returns — status, run, preview and test. |
 | `main/wrap/execute-pipeline.ts` | `executeWrapper` | Run one wrapper call end to end. |
 | `main/wrap/execute-pipeline.ts` | `ExecuteOptions` *(type)* | Per-call switches: dry run, raw payload and the page override. |
 | `main/wrap/execute-pipeline.ts` | `ExecuteContext` *(type)* | Shared state every run step needs, assembled by the executor. |
-| `main/wrap/executor.ts` | `WrapExecutor` | - |
-| `main/wrap/executor.ts` | `ExecutorOptions` *(type)* | - |
+| `main/wrap/executor.ts` | `WrapExecutor` | When to use: `wrap_run`/`wrap_test` on the legacy core — validate, build, fetch and render a wrapper request. |
+| `main/wrap/executor.ts` | `ExecutorOptions` *(type)* | When to use: constructing the legacy `WrapExecutor` — page/item caps, the index sink, secrets and the audit log. |
 | `main/wrap/factory.ts` | `wrapCoreMode` | When to use: startup and the factory reading the environment to choose the wrapper core. |
 | `main/wrap/factory.ts` | `createWrapExecutor` | When to use: building the wrapper surface — the package core by default, the legacy executor on request or as fallback. |
 | `main/wrap/factory.ts` | `WrapCoreMode` *(type)* | When to use: the `HB_WRAP_CORE`/`KUANG_WRAP_CORE` switch between the package core and the legacy executor. |
@@ -817,8 +817,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/security.ts` | `resolveHosts` | The resolver the policy uses when the host injects none. Exported so a second |
 | `main/wrap/security.ts` | `WrapSecurityError` | When to use: catching a refused wrapper destination — `code` is the published refusal code. |
 | `main/wrap/security.ts` | `UrlPolicy` *(type)* | When to use: calling `assertSafeUrl` — the opt-in private/HTTP exceptions and an injectable resolver. |
-| `main/wrap/store.ts` | `WrapStore` | - |
-| `main/wrap/store.ts` | `StoreResult` *(type)* | - |
+| `main/wrap/store.ts` | `WrapStore` | When to use: `wrap_create`/`wrap_update`/`wrap_delete` — the file-backed wrapper policy. |
+| `main/wrap/store.ts` | `StoreResult` *(type)* | When to use: a wrapper store mutation — ok plus the saved wrapper or the validation errors. |
 | `main/wrap/transport.ts` | `fetchWithPolicy` | Fetch one page while enforcing URL policy, redirects, timeout and the byte cap. |
 | `main/wrap/transport.ts` | `WrapTransportError` | A transport-policy failure with a stable code callers can match on. |
 | `main/wrap/transport.ts` | `TransportContext` *(type)* | The transport fields both executor cores resolve from `WrapLimits`. |
@@ -998,7 +998,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/browser/stealth.ts` | `stealthHeaders` | When to use: any request that must carry the host's client hints. |
 | `main/browser/stealth.ts` | `applyHostProfile` | When to use: a `WebContents` that must present as the host browser. |
 | `main/browser/stealth.ts` | `applyStealthHeaders` | When to use: a bare session (the research view) that only needs the headers. |
-| `main/browser-chassis.ts` | `BrowserChassis` | - |
+| `main/browser-chassis.ts` | `BrowserChassis` | When to use: main-process startup and every surface — the window, tabs, input, telemetry and research wiring. |
 | `main/capabilities.ts` | `BRIDGE_CAPABILITIES` | The bridge capabilities advertised by `bridge_health`. |
 | `main/chassis/accessors.ts` | `reassertChassisViewport` | Re-assert the shell and tab views after a window/display transition. |
 | `main/chassis/accessors.ts` | `setViewportVisibility` | Keep the deck overlay and the emulated tab viewport in step. |
@@ -1016,7 +1016,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/collaboration/assets/overlay-body.ts` | `OVERLAY_BODY_A` | When to use: composing the overlay — the part before the exit-prefix line. |
 | `main/collaboration/assets/overlay-body.ts` | `OVERLAY_BODY_C` | When to use: composing the overlay — the part after the exit-prefix line. |
 | `main/collaboration/assets/picker-body.ts` | `PICKER_BODY` | When to use: composing the picker script after its drawer/inset head. |
-| `main/collaboration/service.ts` | `CollaborationService` | - |
+| `main/collaboration/service.ts` | `CollaborationService` | When to use: collaboration mode and the collab tools — threads, targets and the in-page overlay. |
 | `main/cortex/bookmark-store.ts` | `BookmarkStore` | When to use: constructing `CortexDB` — the store shares the connection. |
 | `main/cortex/connection.ts` | `seedHistoryRow` | The history table's seed row: the manual page an agent can always recall. |
 | `main/cortex/connection.ts` | `CortexConnection` | When to use: constructing `CortexDB` — one connection per storage directory. |
@@ -1063,12 +1063,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/http/tabs-routes.ts` | `handleTabRoutes` | When to use: the bridge request handler — dispatch `/tabs/*`. Returns false |
 | `main/http/window-routes.ts` | `handleWindowRoutes` | When to use: the bridge request handler — dispatch `/window/*`. Returns |
 | `main/http/workspace-routes.ts` | `handleWorkspaceRoutes` | When to use: the bridge request handler — dispatch `/zoom` and `/viewport`. |
-| `main/http-bridge.ts` | `startHttpBridge` | - |
+| `main/http-bridge.ts` | `startHttpBridge` | When to use: app startup — start the local HTTP bridge over the chassis, wrapper and media services. |
 | `main/ipc/media-ipc.ts` | `registerMediaIpc` | When to use: once at startup — reads the service lazily, because boot creates it. |
 | `main/ipc/recording-ipc.ts` | `registerRecordingIpc` | When to use: once at startup, before the first window exists. |
 | `main/ipc/web-state-ipc.ts` | `registerWebStateIpc` | When to use: once at startup — the handler reads the active tab on demand. |
 | `main/llm/alternates.ts` | `readAlternates` | When to use: `SurfaceProbe.probePage` — the live page's declared/anchored alternates. |
-| `main/llm/llm-surface.ts` | `LlmSurface` | - |
+| `main/llm/llm-surface.ts` | `LlmSurface` | When to use: `llm_surface`/`llm_fetch` — probe well-known LLM representations and fetch the chosen one. |
 | `main/llm/surface-url.ts` | `isPageUrl` | A URL with a non-root path is "a page", which should prefer a page-level representation. |
 | `main/llm/surface-url.ts` | `kindScope` | Origin-level kinds cover the whole site; markdown/text cover one page. |
 | `main/llm/surface-url.ts` | `resolveSurfaceUrl` | The URL the caller meant: the explicit one, or the active tab's. Anything |
@@ -1111,7 +1111,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/primitives/page-scripts.ts` | `SIGNATURE_SCRIPT` | When to use: pageState and diff — one cheap signature round trip, no DOM mutation. |
 | `main/primitives/page-scripts.ts` | `STABILITY_SCRIPT` | When to use: the `stable` wait condition — the height/text/nodes triple it compares. |
 | `main/primitives/page-scripts.ts` | `PROBE_HELPERS` | When to use: every probe that needs clean / isVisible / accName / resolveRoot. |
-| `main/primitives/primitives.ts` | `Primitives` | - |
+| `main/primitives/primitives.ts` | `Primitives` | When to use: the tool layer and the drive loop — the observe/act/wait/extract/collect facade over the chassis. |
 | `main/primitives/projection.ts` | `markLine` | When to use: any view that prints one mark — the shared badge format. |
 | `main/primitives/projection.ts` | `componentsText` | When to use: observe(components) — compact, region-grouped rendering of the table. |
 | `main/primitives/projection.ts` | `pageText` | When to use: every observe view — one envelope with the page identity, the |
@@ -1131,17 +1131,17 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/settings/experimental.ts` | `ExperimentalSettingsStore` | Experimental feature flags persisted next to the other user settings. |
 | `main/shadow-walk/ax-controls.ts` | `findSealedControls` | Find interactive controls inside closed shadow roots. |
 | `main/shadow-walk/guard.ts` | `assertShadowSurface` | When to use: before a surface that Settings → Shadow Walk can disable. |
-| `main/shadow-walk/part-highlight.ts` | `injectPartHighlight` | - |
-| `main/shadow-walk/part-highlight.ts` | `removePartHighlight` | - |
+| `main/shadow-walk/part-highlight.ts` | `injectPartHighlight` | When to use: a screenshot with the part-highlight lever on — outline the exported parts. |
+| `main/shadow-walk/part-highlight.ts` | `removePartHighlight` | When to use: after that screenshot — remove the injected stylesheet. |
 | `main/shadow-walk/part-highlight.ts` | `withPartHighlight` | Run a screenshot capture with exported parts outlined when the lever is on. |
 | `main/shadow-walk/sealed-gate.ts` | `SealedRateLimitError` | When to use: caught by the tool layer to return a retry hint instead of a failure. |
 | `main/shadow-walk/sealed-gate.ts` | `SealedScanGate` | When to use: `findSealedControls` — one gate per call, shared state per tab. |
 | `main/shadow-walk/sealed-measure.ts` | `measureSealedControls` | When to use: after the identity filter — measures the matching controls, in |
 | `main/shadow-walk/sealed-scan.ts` | `SealedScanner` | When to use: `findSealedControls` — one scan of one frame set. |
-| `main/shadow-walk/sealed-targets.ts` | `clearSealedTokens` | - |
-| `main/shadow-walk/sealed-targets.ts` | `issueSealedToken` | - |
+| `main/shadow-walk/sealed-targets.ts` | `clearSealedTokens` | When to use: a fresh sealed scan or a navigation — invalidate the tab's sealed tokens. |
+| `main/shadow-walk/sealed-targets.ts` | `issueSealedToken` | When to use: a sealed result — mint an opaque token that can scroll and measure the node later. |
 | `main/shadow-walk/sealed-targets.ts` | `resolveSealedToken` | Resolve a sealed token to a live top-level viewport centre, scrolling the real node into view. |
-| `main/tabs/tab-manager.ts` | `TabManager` | - |
+| `main/tabs/tab-manager.ts` | `TabManager` | When to use: the window and the tab tools — create, switch, close and lay out the tab views. |
 | `main/tabs/tab-registry.ts` | `TabRegistry` | When to use: `TabManager` — one registry per window. |
 | `main/tabs/welcome-page.ts` | `welcomePagePath` | When to use: a tab with no URL, or the last tab being reset to the manual. |
 | `main/takeover-key.ts` | `isTakeoverShortcut` | When to use: a `before-input-event` handler that must fire the takeover toggle. |
@@ -1152,29 +1152,29 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/telemetry/input/keys.ts` | `keyDescriptor` | Best-effort US-layout descriptor for a single typed character. |
 | `main/telemetry/input/keys.ts` | `keyEventParams` | The CDP `Input.dispatchKeyEvent` payload for a descriptor; `phase` picks down or up. |
 | `main/telemetry/input/pointer.ts` | `HumanPointer` | When to use: `HumanizedInputSimulator` — everything that moves the pointer. |
-| `main/telemetry/input-simulator.ts` | `HumanizedInputSimulator` | - |
+| `main/telemetry/input-simulator.ts` | `HumanizedInputSimulator` | When to use: act/drive and the shield breaker — dispatch humanised pointer and keyboard input. |
 | `main/tools/ipc.ts` | `registerToolSettingsIpc` | Human-only writes over IPC. The bridge exposes a read-only config route to MCP processes. |
-| `main/tools/state.ts` | `sanitizeToolSettings` | - |
-| `main/tools/state.ts` | `buildToolManagerState` | - |
+| `main/tools/state.ts` | `sanitizeToolSettings` | When to use: loading or saving the tool settings — keep only advertised names and valid instructions. |
+| `main/tools/state.ts` | `buildToolManagerState` | When to use: the tools panel and `tools/list` — merge the saved order/disabled/instructions with the catalog. |
 | `main/tools/tool-order.ts` | `byConfiguredRank` | When to use: sort a tool list by the user's configured rank, with a stable |
 | `main/tray/notifications.ts` | `showDesktopNotification` | When to use: any surface that needs a silent desktop notification. |
 | `main/tray/notifications.ts` | `notifyTrayHidden` | When to use: the first time a close is intercepted — explain where the app went. |
 | `main/ui/menu-popup.ts` | `MenuPopup` | Themed, frameless dropdown hosted in its own small transparent window. |
 | `main/viewport/catalog.ts` | `ProfileCatalog` | When to use: `ViewportController` — one catalogue per controller. |
-| `main/viewport/profiles.ts` | `DeviceProfileStore` | - |
+| `main/viewport/profiles.ts` | `DeviceProfileStore` | When to use: the human Viewport toolbar — save and list custom device profiles. |
 | `main/window/reassert-viewport.ts` | `reassertViewport` | When to use: after show/restore/focus/resume — re-position the deck and repaint every view. |
-| `main/wrap/auth.ts` | `tokenFromHeaders` | - |
-| `main/wrap/auth.ts` | `isWrapAuthorized` | - |
+| `main/wrap/auth.ts` | `tokenFromHeaders` | When to use: the wrap bridge authorising a request — read the Bearer or x-kuang-wrap-token header. |
+| `main/wrap/auth.ts` | `isWrapAuthorized` | When to use: the wrap bridge comparing the supplied token with the configured one in constant time. |
 | `main/wrap/manifest.ts` | `manifestOf` | When to use: `WrapStore.manifest` — one wrapper summarised for a list. |
 | `main/wrap/secret-file.ts` | `SecretFileStore` | When to use: `SecretStore` — one document per wrap data directory. |
 | `main/wrap/secret-tokens.ts` | `OAuthTokens` | When to use: `SecretStore.resolve` on a kind=oauth2 credential. |
-| `main/wrap/secrets.ts` | `SecretStore` | - |
+| `main/wrap/secrets.ts` | `SecretStore` | When to use: Settings → Secrets and the executor's resolve — list, save, delete and host-check encrypted credentials. |
 | `main/wrap/wrapper-files.ts` | `WrapperFiles` | When to use: `WrapStore` — one directory per wrap data dir. |
 | `main/zoom/display-scale.ts` | `displayScale` | When to use: building the zoom controller — the display scale behind the window. |
 | `main/zoom/settings.ts` | `ZoomSettingsStore` | The browser zoom policy lives next to the other human settings. The HTTP |
 | `mcp/browser-mcp.ts` | `flushLogSync` | Synchronous drain used only on shutdown paths, where async I/O cannot run. |
-| `mcp/browser-mcp.ts` | `logMcp` | - |
-| `mcp/browser-mcp.ts` | `createBridgeMcpServer` | - |
+| `mcp/browser-mcp.ts` | `logMcp` | When to use: an MCP tool call or server event that must reach `data/logs/mcp-server.log` without touching stdout. |
+| `mcp/browser-mcp.ts` | `createBridgeMcpServer` | When to use: the hb-browser stdio entry point — build the MCP server and register the catalog. |
 | `mcp/help-content.ts` | `HELP_CATEGORIES` | When to use: the `help` tool, when the caller names a category. |
 | `mcp/mcp-resources.ts` | `registerBridgeResources` | When to use: `createBridgeMcpServer` — register every `mark-eleven://` resource. |
 | `mcp/normalize-params.ts` | `normalizeIncomingParams` | When to use: the tools/call interceptor — one call's parameters, normalized. |
@@ -1212,9 +1212,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/tools-catalog-order.ts` | `CATALOG_ORDER` | The pinned visible order of the catalog. |
 | `mcp/tools-catalog-research.ts` | `RESEARCH_TOOLS` | When to use: the catalog segment fronting URL-to-Markdown, multi-engine search, crawling and cited topic research. |
 | `mcp/tools-catalog-workspace.ts` | `WORKSPACE_TOOLS` | When to use: the catalog segment fronting the stateful workspace: tabs, zoom, viewport, downloads, contexts, recordings and the script vault. |
-| `mcp/tools-catalog.ts` | `TOOLS_CATALOG` | - |
+| `mcp/tools-catalog.ts` | `TOOLS_CATALOG` | When to use: `tools/list`, the contract test and the tools panel — the ordered, tiered tool table. |
 | `mcp/tools-catalog.ts` | `TIER_LABELS` | Discoverability tiers (docs/TOOL_CATALOG_REVIEW.md §3, Phase 4). |
-| `mcp/tools-catalog.ts` | `TOOL_TIERS` | - |
+| `mcp/tools-catalog.ts` | `TOOL_TIERS` | When to use: `tools/list` and the tools panel — each tool's preferred tier. |
 | `mcp/tools-catalog.ts` | `DEFAULT_TOOL_ORDER` | Curated default order for `tools/list` and the Settings -> Tools list. |
 | `mcp/wrap-config.ts` | `BRIDGE_URL` | The Cyberdeck bridge base URL (no trailing slash). |
 | `mcp/wrap-config.ts` | `BRIDGE_TIMEOUT_MS` | Ceiling on one bridge round-trip; generous for a paged wrapper run. |
@@ -1233,7 +1233,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/wrap-format.ts` | `wrapperRejection` | The wrapper write tools report a validation failure the same way. |
 | `mcp/wrap-log.ts` | `logWrap` | When to use: every route in this server — boot, each call, and each bridge failure. |
 | `mcp/wrap-messages.ts` | `errorText` | The standard failure line: `**CODE:** message`. |
-| `mcp/wrap-server.ts` | `createWrapMcpServer` | - |
+| `mcp/wrap-server.ts` | `createWrapMcpServer` | When to use: the hb-rest stdio entry point — build the wrapper MCP server and register its tools. |
 | `mcp/wrap-tool-result.ts` | `clampText` | A response longer than the cap is truncated with a hint to narrow it. |
 | `mcp/wrap-tool-result.ts` | `toolSuccess` | The MCP success shape. |
 | `mcp/wrap-tool-result.ts` | `toolError` | The MCP failure shape. |
@@ -1275,10 +1275,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `renderer/deck/webstate.ts` | `refreshWebState` | When to use: the WEB STATE refresh button and the LOGS tab. |
 | `renderer/deck/webstate.ts` | `initWebState` | When to use: the HUD boot — wire the refresh button and the events disclosure. |
 | `renderer/dom.ts` | `byId` | When to use: resolving a control declared in index.html by its id. |
-| `renderer/menu-popup.ts` | `bootMenuPopup` | - |
+| `renderer/menu-popup.ts` | `bootMenuPopup` | When to use: the app menu's popup window — restore the menu and route its actions. |
 | `renderer/research/controls.ts` | `wireResearchControls` | When to use: `initResearchPanel` — wire the four controls once. |
 | `renderer/research/stats.ts` | `ResearchStats` | When to use: `initResearchPanel` — one strip per panel. |
-| `renderer/research-panel.ts` | `initResearchPanel` | - |
+| `renderer/research-panel.ts` | `initResearchPanel` | When to use: booting the Settings → Research panel — wire the controls and load the stored settings. |
 | `renderer/settings-clients.ts` | `loadConnectPanel` | Read the connect info (once) and repaint the selected client snippet. |
 | `renderer/settings-clients.ts` | `initConnectPanel` | Wire the client picker once, after the settings modal markup exists. |
 | `renderer/settings-input.ts` | `loadInputSettings` | Read the input profile and paint the sliders. |
@@ -1296,10 +1296,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `renderer/settings-wrap-secrets.ts` | `loadWrapSettings` | Read the credential list and repaint the secret panel and the editor picker. |
 | `renderer/settings-wrap-secrets.ts` | `initWrapSecrets` | Wire the credential panel and the wrapper editor once. |
 | `renderer/settings-wrap-secrets.ts` | `activeWrapTab` | The wrap subtab the user last selected (credentials or wrappers). |
-| `renderer/tools-panel.ts` | `initToolsPanel` | - |
-| `renderer/tools-panel.ts` | `refreshToolsPanel` | - |
+| `renderer/tools-panel.ts` | `initToolsPanel` | When to use: booting the Settings → Tools panel — wire save/reset and render the tool rows. |
+| `renderer/tools-panel.ts` | `refreshToolsPanel` | When to use: settings changed elsewhere — re-render the tool rows. |
 | `renderer/update-banner.ts` | `initUpdateBanner` | Wire the banner and the install action once. |
-| `renderer/viewport-controls.ts` | `initViewportControls` | - |
+| `renderer/viewport-controls.ts` | `initViewportControls` | When to use: booting the human Viewport toolbar — wire the device list and the resize actions. |
 | `shared/brand.ts` | `BRAND` | Single source of truth for user-facing brand strings. |
 | `shared/brand.ts` | `LEGACY_USER_DATA_NAMES` | Directory names a previous release used for Electron's `userData`. |
 | `shared/version.ts` | `APP_VERSION` | Single source of truth for the application version. |

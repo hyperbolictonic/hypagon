@@ -20,6 +20,7 @@ import { welcomePagePath } from './welcome-page.js';
 
 export type { TabInstance, TabManagerOptions } from './tab-types.js';
 
+/** When to use: the window and the tab tools — create, switch, close and lay out the tab views. */
 export class TabManager {
   private readonly options: TabManagerOptions;
   private counter = 0;

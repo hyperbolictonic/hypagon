@@ -120,9 +120,10 @@ export interface AnyApiExecutorOptions extends ExecutorOptions {
   secretSource?: Pick<SecretStore, 'list' | 'resolve'>;
 }
 
-/** When to use: `wrap_run`/`wrap_test` — run gated wrappers on the package core and hand the rest to the legacy executor. */
+/** When to use: the `WrapCore` shape the anyapi executor exposes — status, run, preview and test. */
 export interface AnyApiWrapExecutor extends WrapCore {}
 
+/** When to use: `wrap_run`/`wrap_test` — run gated wrappers on the package core and hand the rest to the legacy executor. */
 export class AnyApiWrapExecutor {
   readonly store: WrapStore;
   private readonly legacy: WrapExecutor;

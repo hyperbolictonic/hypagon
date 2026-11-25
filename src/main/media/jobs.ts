@@ -71,6 +71,7 @@ async function runCookieCleanup(cleanups: Map<string, () => Promise<void>>, id: 
   await cleanup();
 }
 
+/** When to use: `media jobs` — enqueue a yt-dlp download and poll its progress. */
 export class MediaJobs {
   private readonly jobs = new Map<string, MediaJob>();
   private readonly running = new Map<string, ChildProcess>();

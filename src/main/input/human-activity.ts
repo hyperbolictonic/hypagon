@@ -65,6 +65,7 @@ export function humanListenerScript(): string {
   })()`;
 }
 
+/** When to use: the input simulator and the bridge — decide whether trusted input is the human taking over. */
 export class HumanActivityMonitor {
   private lastSyntheticAt = 0;
   private lastHuman: HumanActivity | null = null;

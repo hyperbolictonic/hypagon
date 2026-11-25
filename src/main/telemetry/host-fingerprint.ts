@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+/** When to use: telemetry and the static tier — the host browser's UA and client-hint profile. */
 export interface HostBrowserProfile {
   name: string;
   version: string;

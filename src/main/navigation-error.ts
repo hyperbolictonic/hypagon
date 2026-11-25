@@ -18,6 +18,7 @@ function hostOf(url: string): string {
   }
 }
 
+/** When to use: a failed `loadURL` — map it to the stable code and message the bridge returns. */
 export function classifyNavigationFailure(url: string, error: any): NavigationFailure {
   const cause = String(error?.code || error?.message || error || 'unknown error');
   const host = hostOf(url);

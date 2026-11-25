@@ -36,6 +36,7 @@ export interface PageReadRefusal {
   override: Record<string, any>;
 }
 
+/** When to use: the JEV funnel's verdict for a page read — allowed plus the reason, note and refusal. */
 export interface GuardPageReadResult {
   allowed: boolean;
   reason: string;

@@ -9,6 +9,7 @@
  */
 import type { RecipeStep } from './recipe-store.js';
 
+/** When to use: `recipe_compile` — one verified drive step to turn into a recipe step. */
 export interface DriveStepLike {
   operation: string;
   target?: number | string;
@@ -19,6 +20,7 @@ export interface DriveStepLike {
   note?: string;
 }
 
+/** When to use: `recipe_compile` — the typed values that let a `type_text` step be replayed. */
 export interface CompileOptions {
   /** Values the caller supplied to drive, keyed by field name or component id. */
   values?: Record<string, string>;

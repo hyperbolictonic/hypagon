@@ -382,6 +382,7 @@ function resetTool(): void {
   renderDetail();
 }
 
+/** When to use: booting the Settings → Tools panel — wire save/reset and render the tool rows. */
 export function initToolsPanel(): void {
   if (initialized) return;
   initialized = true;
@@ -418,6 +419,7 @@ export function initToolsPanel(): void {
   });
 }
 
+/** When to use: settings changed elsewhere — re-render the tool rows. */
 export function refreshToolsPanel(): void {
   initToolsPanel();
   void refresh();

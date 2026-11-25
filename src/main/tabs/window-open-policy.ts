@@ -79,6 +79,7 @@ export function isPopupWindowRequest(request: WindowOpenRequest): boolean {
   return isAuthPopupUrl(request.url);
 }
 
+/** When to use: a sign-in popup — the window size parsed from its features string. */
 export interface PopupSize {
   width: number;
   height: number;

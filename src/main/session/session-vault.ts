@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { Session, WebContents, CookiesSetDetails } from 'electron';
 import { dataPath } from '../data-paths.js';
 
+/** When to use: `save_session`/`load_session` — one vaulted cookie + storage snapshot. */
 export interface SessionSnapshot {
   name: string;
   domain?: string;
@@ -13,6 +14,7 @@ export interface SessionSnapshot {
   storage?: Record<string, string>;
 }
 
+/** When to use: `save_session`/`load_session` — capture and restore cookies plus storage. */
 export class SessionVault {
   private sessionsDir: string;
 

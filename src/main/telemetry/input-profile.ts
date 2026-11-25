@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { dataPath } from '../data-paths.js';
 
+/** When to use: the human input simulator and Settings → Input — pointer speed, typing pace and click dwell. */
 export interface InputProfile {
   /** Pointer speed used to derive the glide budget for a given distance. */
   mouseSpeedPxPerSec: number;
@@ -23,6 +24,7 @@ export interface InputProfile {
   clickDwellMs: number;
 }
 
+/** When to use: Settings → Input's initial values and the fallback when no profile file exists. */
 export const DEFAULT_INPUT_PROFILE: InputProfile = {
   mouseSpeedPxPerSec: 1400,
   typingWpm: 160,

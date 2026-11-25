@@ -39,6 +39,7 @@ export type {
   WrapSecretMetadata,
 } from './secret-types.ts';
 
+/** When to use: Settings → Secrets and the executor's resolve — list, save, delete and host-check encrypted credentials. */
 export class SecretStore {
   readonly dir: string;
   private readonly cipher: SecretCipher;

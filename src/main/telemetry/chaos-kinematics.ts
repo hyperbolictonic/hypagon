@@ -18,6 +18,7 @@ export interface Point {
   y: number;
 }
 
+/** When to use: a generated pointer path — one point plus its delay, velocity and curvature. */
 export interface PathStep extends Point {
   delayMs: number;
   velocity: number; // pixels per ms
@@ -26,6 +27,7 @@ export interface PathStep extends Point {
   isCorrective?: boolean; // true during saccadic post-overshoot recoil
 }
 
+/** When to use: tuning `generateChaosTrajectory` — step count, deviation, pacing and noise. */
 export interface ChaosKinematicsOptions {
   steps?: number;
   deviationMultiplier?: number;

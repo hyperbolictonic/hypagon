@@ -8,6 +8,7 @@
 
 import crypto from 'node:crypto';
 
+/** When to use: the wrap bridge authorising a request — read the Bearer or x-kuang-wrap-token header. */
 export function tokenFromHeaders(headers: Record<string, string | string[] | undefined>): string {
   const authorization = headers.authorization;
   if (typeof authorization === 'string') {
@@ -21,6 +22,7 @@ export function tokenFromHeaders(headers: Record<string, string | string[] | und
   return '';
 }
 
+/** When to use: the wrap bridge comparing the supplied token with the configured one in constant time. */
 export function isWrapAuthorized(supplied: string, expected: string): boolean {
   if (!supplied || !expected) return false;
   const left = Buffer.from(supplied);

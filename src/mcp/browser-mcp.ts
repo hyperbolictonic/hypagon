@@ -117,6 +117,7 @@ function preview(value: unknown, max = 2000): string {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
+/** When to use: an MCP tool call or server event that must reach `data/logs/mcp-server.log` without touching stdout. */
 export function logMcp(message: string, level: LogLevel = 'call'): void {
   const timestamp = new Date().toISOString();
   if (LOG_TO_FILE) {
@@ -373,6 +374,7 @@ function registerToolGroup(
   );
 }
 
+/** When to use: the hb-browser stdio entry point — build the MCP server and register the catalog. */
 export async function createBridgeMcpServer() {
   const server = new McpServer({
     name: 'hb-browser',

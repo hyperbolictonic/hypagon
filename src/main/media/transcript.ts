@@ -68,6 +68,7 @@ export function parseVtt(input: string): string {
   return out.join('\n');
 }
 
+/** When to use: the transcript/preview reply — caption text, language, auto flag, tracks and poster images. */
 export interface SubtitleArtifacts {
   readonly text: string;
   readonly language: string;
@@ -99,6 +100,7 @@ export function transcriptDocument(input: {
   ].join('\n');
 }
 
+/** When to use: reading a transcript or thumbnail fetch — the artifacts or the failure code. */
 export type ArtifactResult =
   | { readonly ok: true; readonly artifacts: SubtitleArtifacts }
   | { readonly ok: false; readonly code: string; readonly error: string };

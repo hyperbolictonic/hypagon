@@ -18,6 +18,7 @@ const MUTATING_PATHS = new Set([
   '/marks/click', '/marks/type', '/act',
 ]);
 
+/** When to use: app startup — start the local HTTP bridge over the chassis, wrapper and media services. */
 export function startHttpBridge(
   chassis: BrowserChassis,
   port: number = 4111,

@@ -22,6 +22,7 @@ import type { WrapAuditLog } from './audit.ts';
 export type { WrapIndexContext, WrapIndexDocument };
 export { WrapTransportError } from './transport.ts';
 
+/** When to use: constructing the legacy `WrapExecutor` — page/item caps, the index sink, secrets and the audit log. */
 export interface ExecutorOptions extends WrapTransportOptions {
   /** Maximum pages followed when a recipe declares pagination. Default 10, capped at 25. */
   maxPages?: number;
@@ -40,8 +41,10 @@ export interface ExecutorOptions extends WrapTransportOptions {
 /** Overall item cap when a recipe does not declare `limits.maxItems` (mirrors the renderer). */
 const DEFAULT_MAX_ITEMS = 50;
 
+/** When to use: the `WrapCore` shape the legacy executor exposes. */
 export interface WrapExecutor extends WrapCore {}
 
+/** When to use: `wrap_run`/`wrap_test` on the legacy core — validate, build, fetch and render a wrapper request. */
 export class WrapExecutor {
   readonly store: WrapStore;
   private readonly transport: WrapLimits;

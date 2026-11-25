@@ -9,6 +9,7 @@ import type {
 import { CollaborationStore, type CreateThreadInput } from './store.js';
 import { collaborationOverlayScript } from './overlay.js';
 
+/** When to use: collaboration mode and the collab tools — threads, targets and the in-page overlay. */
 export class CollaborationService {
   readonly store: CollaborationStore;
   private readonly chassis: BrowserChassis;

@@ -147,8 +147,10 @@ export function embedText(text: string): Promise<number[]> {
 }
 
 /**
- * @deprecated Synchronous embedding via the default hash provider only. Use
- * `embedText` (active provider) for anything that must match stored vectors.
+ * When to use: legacy synchronous embeddings only — prefer `embedText` so stored vectors match
+ * the active provider.
+ *
+ * @deprecated Synchronous embedding via the default hash provider only.
  */
 export function generateEmbedding(text: string): number[] {
   return hashEmbed(text);

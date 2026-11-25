@@ -8,6 +8,7 @@
  */
 import type { PopupMenuItem } from '../shared/menu.js';
 
+/** When to use: the app menu's popup window — restore the menu and route its actions. */
 export function bootMenuPopup(): void {
   const host = document.getElementById('menu-popup-host');
   const api = (window as unknown as {

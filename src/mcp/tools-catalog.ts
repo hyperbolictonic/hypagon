@@ -28,6 +28,7 @@ const SEGMENTS = [
 const byName = new Map(SEGMENTS.map((tool) => [tool.name, tool]));
 const pinned = new Set(CATALOG_ORDER);
 
+/** When to use: `tools/list`, the contract test and the tools panel — the ordered, tiered tool table. */
 export const TOOLS_CATALOG: ToolCatalogItem[] = CATALOG_ORDER.map((name) => {
   const tool = byName.get(name);
   if (!tool) throw new Error(`Catalog order names an unknown tool: ${name}`);
@@ -66,6 +67,7 @@ export const TIER_LABELS: Record<1 | 2 | 3, string> = {
   3: 'TIER 3 · use deliberately',
 };
 
+/** When to use: `tools/list` and the tools panel — each tool's preferred tier. */
 export const TOOL_TIERS: Record<string, 1 | 2 | 3> = {
   navigate_to: 1,
   // TIER 1 — first choice for the job.

@@ -83,6 +83,7 @@ import { SearchSurface } from './search/search-surface.js';
 import { SearchHub } from './search/search-engine.js';
 
 
+/** When to use: main-process startup and every surface — the window, tabs, input, telemetry and research wiring. */
 export class BrowserChassis {
   private mainWindow: BrowserWindow | null = null;
   /** Window visibility, focus and close-to-tray behaviour. */

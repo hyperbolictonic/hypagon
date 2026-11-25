@@ -25,10 +25,12 @@ interface SealedTarget {
 const targets = new WeakMap<WebContents, Map<string, SealedTarget>>();
 const TTL_MS = 120000;
 
+/** When to use: a fresh sealed scan or a navigation — invalidate the tab's sealed tokens. */
 export function clearSealedTokens(wc: WebContents): void {
   targets.delete(wc);
 }
 
+/** When to use: a sealed result — mint an opaque token that can scroll and measure the node later. */
 export function issueSealedToken(wc: WebContents, backendNodeId: number, frameId: string): string {
   if (!wc || !backendNodeId || !frameId) return '';
   let map = targets.get(wc);

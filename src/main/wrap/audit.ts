@@ -9,6 +9,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+/** When to use: one audit row — wrapper, host, status, bytes, duration and error code. */
 export interface WrapAuditEntry {
   at: string;
   wrapper: string;
@@ -21,6 +22,7 @@ export interface WrapAuditEntry {
   code?: string;
 }
 
+/** When to use: the executor's audit sink — one redacted row per wrapper call. */
 export class WrapAuditLog {
   readonly file: string;
 

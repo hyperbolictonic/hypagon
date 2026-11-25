@@ -2,6 +2,7 @@ import type { WebContents } from 'electron';
 import type { HumanizedInputSimulator } from '../telemetry/input-simulator.js';
 import { evaluateInFrames } from '../browser/frame-eval.js';
 
+/** When to use: the shield-breaker reply — dismissed/blocked, the chosen control and the intent. */
 export interface ShieldDismissResult {
   dismissed: boolean;
   /** A consent wall was detected but no usable control matched — do not force it. */
@@ -148,6 +149,7 @@ function consentScanScript(order: Array<'reject' | 'accept'>): string {
   })()`;
 }
 
+/** When to use: a consent wall during navigation — answer it the way a person would. */
 export class ShieldBreaker {
   constructor(private simulator: HumanizedInputSimulator) {}
 

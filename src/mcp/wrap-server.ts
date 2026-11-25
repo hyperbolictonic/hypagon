@@ -31,6 +31,7 @@ import { GeneratedTools } from './wrap-generated-tools.js';
 import { logWrap } from './wrap-log.js';
 import { registerWrapTools } from './wrap-tools.js';
 
+/** When to use: the hb-rest stdio entry point — build the wrapper MCP server and register its tools. */
 export async function createWrapMcpServer() {
   const server = new McpServer({
     name: 'hb-rest',

@@ -19,6 +19,7 @@ export interface ComponentSurface {
   signature: string;
 }
 
+/** When to use: `observe` and recipe steps — derive the stable `tag:hash` component anchor. */
 export function componentSignatureOf(surface: Omit<ComponentSurface, 'signature'>): string {
   const base = [
     surface.tag,
@@ -33,6 +34,7 @@ export function componentSignatureOf(surface: Omit<ComponentSurface, 'signature'
   return `${surface.tag}:${hash.toString(16).padStart(8, '0')}`;
 }
 
+/** When to use: parsing a page-reported component surface before signing it. */
 export function normalizeSurface(input: {
   tag?: unknown;
   defined?: unknown;

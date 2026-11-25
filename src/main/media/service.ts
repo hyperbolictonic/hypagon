@@ -50,6 +50,7 @@ export interface MediaServiceOptions {
 const MEDIA_KINDS: readonly MediaKind[] = ['video', 'audio'];
 const MEDIA_QUALITIES: readonly MediaQuality[] = ['best', '1080', '720', '480', 'worst'];
 
+/** When to use: the media tools — metadata, transcript, preview and downloads over one service. */
 export class MediaService {
   private binaryPromise: Promise<MediaBinary | MediaBinaryError> | null = null;
   private readonly rootDir: string;

@@ -4,6 +4,7 @@ import type { WebContents } from 'electron';
 import { cortex, type ScriptItem } from '../cortex/cortex-db.js';
 import { dataPath } from '../data-paths.js';
 
+/** When to use: the script vault — one saved script's name, code, domain and tags. */
 export interface SavedScriptMeta {
   name: string;
   description: string;
@@ -14,6 +15,7 @@ export interface SavedScriptMeta {
   updatedAt: string;
 }
 
+/** When to use: `save_script`/`list_scripts`/`run_script` — store scripts and index them in Cortex. */
 export class ScriptVault {
   private scriptsDir: string;
 

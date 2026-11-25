@@ -8,6 +8,7 @@ import { LEGACY_USER_DATA_NAMES } from '../shared/brand.ts';
  */
 const MARKER = '.migrated-user-data';
 
+/** When to use: first launch — whether legacy user data was copied and where. */
 export interface UserDataMigration {
   /** Directory the data was copied from, or null when nothing was migrated. */
   from: string | null;

@@ -16,12 +16,14 @@ import { validateWrapper } from './validate-wrapper.ts';
 import { manifestOf } from './manifest.ts';
 import { WrapperFiles } from './wrapper-files.ts';
 
+/** When to use: a wrapper store mutation — ok plus the saved wrapper or the validation errors. */
 export interface StoreResult {
   ok: boolean;
   wrapper?: WrapWrapper;
   errors: string[];
 }
 
+/** When to use: `wrap_create`/`wrap_update`/`wrap_delete` — the file-backed wrapper policy. */
 export class WrapStore {
   readonly dir: string;
   private readonly files: WrapperFiles;

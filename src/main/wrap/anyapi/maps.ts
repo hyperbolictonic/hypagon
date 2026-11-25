@@ -9,6 +9,7 @@
 import { loadLocation } from 'anyapi-to-mcp/map';
 import type { MapDocument, MapLoadIssue } from 'anyapi-to-mcp/map';
 
+/** When to use: projecting the wrapper directory through the map loader — maps plus load issues. */
 export type WrapMapProjection = {
   readonly maps: readonly MapDocument[];
   readonly issues: readonly MapLoadIssue[];

@@ -13,6 +13,7 @@ import { notifyTrayHidden } from './notifications.js';
 import { trayMenuTemplate } from './tray-menu.js';
 import { WindowVisibility } from './window-visibility.js';
 
+/** When to use: constructing the tray — the window plus the quit/show/hide hooks. */
 export interface TrayManagerOptions {
   mainWindow: BrowserWindow;
   onQuit?: () => void;
@@ -21,6 +22,7 @@ export interface TrayManagerOptions {
   closeToTrayDefault?: boolean;
 }
 
+/** When to use: app startup — own the tray icon, its menu and the close-to-tray behaviour. */
 export class TrayManager {
   private tray: Tray | null = null;
   private agentStatus: string = 'IDLE';

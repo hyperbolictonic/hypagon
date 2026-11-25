@@ -63,6 +63,7 @@ export type {
   ReadUrlResult,
 } from './surface-types.js';
 
+/** When to use: `llm_surface`/`llm_fetch` — probe well-known LLM representations and fetch the chosen one. */
 export class LlmSurface {
   private readonly transport: ProbeTransport;
   private readonly probeSurface: SurfaceProbe;

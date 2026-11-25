@@ -17,6 +17,7 @@ import { session as electronSession, type Cookie, type Session } from 'electron'
 
 import { toNetscape } from './cookie-format.ts';
 
+/** When to use: a yt-dlp run that needs the signed-in session — the scoped cookie file and its cleanup. */
 export interface CookieFile {
   readonly path: string;
   readonly count: number;

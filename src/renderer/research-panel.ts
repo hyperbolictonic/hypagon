@@ -28,6 +28,7 @@ import { ResearchStats } from './research/stats.js';
 
 const api = (window as unknown as { electronAPI?: ElectronAPI }).electronAPI;
 
+/** When to use: booting the Settings → Research panel — wire the controls and load the stored settings. */
 export function initResearchPanel(): void {
   const elements = collectResearchElements();
   if (!elements) return;

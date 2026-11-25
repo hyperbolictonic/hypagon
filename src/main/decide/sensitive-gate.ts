@@ -15,6 +15,7 @@
 
 export type SensitiveGate = 'age_verification' | 'captcha';
 
+/** When to use: the decide path stopping before the model — the gate kind, evidence and reason. */
 export interface GateDetection {
   kind: SensitiveGate;
   /** Lines/copy that triggered the rule, for the record and for the human. */

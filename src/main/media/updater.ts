@@ -40,6 +40,7 @@ interface ReleaseResponse {
   readonly assets?: ReleaseAsset[];
 }
 
+/** When to use: constructing the updater — the binary path, version reader, settings and callbacks. */
 export interface MediaUpdaterOptions {
   readonly binaryPath: () => string;
   readonly readVersion: (binary: string) => Promise<string | null>;
@@ -70,6 +71,7 @@ function autoUpdateEnabled(settings: MediaSettings): boolean {
   return settings.autoUpdate && process.env.HB_MEDIA_AUTOUPDATE !== '0';
 }
 
+/** When to use: the yt-dlp self-update — check the tagged release and install it without racing `latest`. */
 export class MediaUpdater {
   private readonly options: MediaUpdaterOptions;
   private readonly fetchImpl: typeof fetch;

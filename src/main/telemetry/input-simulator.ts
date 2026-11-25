@@ -21,6 +21,7 @@ export type { HumanProfile, InputTelemetryReporter } from './input/context.js';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** When to use: act/drive and the shield breaker — dispatch humanised pointer and keyboard input. */
 export class HumanizedInputSimulator {
   private readonly state: InputState;
 

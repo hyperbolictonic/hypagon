@@ -11,6 +11,7 @@ import type { Fingerprint } from 'hypagon-scrap';
 
 import type { CitationAnchor, CitationRelocation } from './anchors.js';
 
+/** When to use: one durable citation anchor and its last revalidation outcome. */
 export interface StoredAnchor {
   url: string;
   text: string;
@@ -24,6 +25,7 @@ export interface StoredAnchor {
 
 const MAX_RECORDS = 2000;
 
+/** When to use: `revalidate_citations` and research — persist anchors and record their re-checks. */
 export class AnchorStore {
   readonly file: string;
   #records: StoredAnchor[];

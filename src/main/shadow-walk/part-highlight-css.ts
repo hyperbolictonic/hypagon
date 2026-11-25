@@ -8,6 +8,7 @@ export interface PartHost {
   parts: string[];
 }
 
+/** When to use: the part-highlight screenshot lever — build the outline rules for the exported parts. */
 export function buildPartHighlightCss(hosts: PartHost[]): string {
   const rules = new Set<string>();
   for (const host of hosts) {

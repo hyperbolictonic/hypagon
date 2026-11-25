@@ -49,6 +49,7 @@ export type {
 } from './contracts.js';
 export type { CollectOptions, ExtractOptions, WaitCondition } from './options.js';
 
+/** When to use: the tool layer and the drive loop — the observe/act/wait/extract/collect facade over the chassis. */
 export class Primitives {
   /** Cheap state snapshots and diffs. */
   readonly state: StateController;

@@ -61,6 +61,7 @@ function insertScript(css: string): string {
   })()`;
 }
 
+/** When to use: a screenshot with the part-highlight lever on — outline the exported parts. */
 export async function injectPartHighlight(wc: WebContents): Promise<number> {
   if (!wc || wc.isDestroyed()) return 0;
   try {
@@ -75,6 +76,7 @@ export async function injectPartHighlight(wc: WebContents): Promise<number> {
   }
 }
 
+/** When to use: after that screenshot — remove the injected stylesheet. */
 export async function removePartHighlight(wc: WebContents): Promise<void> {
   if (!wc || wc.isDestroyed()) return;
   await wc

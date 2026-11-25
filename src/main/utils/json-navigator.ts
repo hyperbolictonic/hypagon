@@ -12,6 +12,7 @@ export interface JsonQueryOptions {
   filterPredicate?: string;
 }
 
+/** When to use: one JSON navigator reply — the resolved path, the view name and the sliced data. */
 export interface JsonQueryResult {
   path: string;
   view: string;
@@ -130,6 +131,7 @@ function valueView(current: any, ctx: JsonViewContext): JsonQueryResult {
   };
 }
 
+/** When to use: `query_json_data` — path/view/limit slicing of a large JSON body. */
 export class JsonNavigator {
   /**
    * Evaluates a query against a JSON structure.

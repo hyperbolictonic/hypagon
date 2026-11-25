@@ -244,6 +244,7 @@ class ViewportControls {
   }
 }
 
+/** When to use: booting the human Viewport toolbar — wire the device list and the resize actions. */
 export function initViewportControls(): void {
   const presetSelect = byId<HTMLSelectElement>('viewport-preset');
   if (!presetSelect) return;

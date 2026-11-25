@@ -169,6 +169,7 @@ function kqDescribe(el) {
 }
 `;
 
+/** When to use: resolving an action target — mark id, selector or viewport point. */
 export interface TargetLocator {
   markId?: number;
   selector?: string;
@@ -185,6 +186,7 @@ export function elementExpr(locator: TargetLocator): string {
   return 'null';
 }
 
+/** When to use: the resolved control box — coordinates, control flag, text and viewport facts. */
 export interface TargetBox {
   x: number;
   y: number;

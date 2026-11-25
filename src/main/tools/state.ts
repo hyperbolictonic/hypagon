@@ -19,6 +19,7 @@ const GROUP_ACTIONS = new Map(
   TOOL_GROUPS.map((group) => [group.name, new Set(group.actions.map((action) => action.action))]),
 );
 
+/** When to use: loading or saving the tool settings — keep only advertised names and valid instructions. */
 export function sanitizeToolSettings(input: unknown): ToolSettings {
   const source = input && typeof input === 'object' ? (input as Record<string, unknown>) : {};
   const names = (value: unknown): string[] =>
@@ -42,6 +43,7 @@ export function sanitizeToolSettings(input: unknown): ToolSettings {
   };
 }
 
+/** When to use: the tools panel and `tools/list` — merge the saved order/disabled/instructions with the catalog. */
 export function buildToolManagerState(settings: ToolSettings): ToolManagerState {
   const defaultOrder = [
     ...DEFAULT_TOOL_ORDER,
