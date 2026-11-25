@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 430 files, 1251 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 433 files, 1255 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (950)
+## Types (953)
 
 | File | Export | When to use |
 |---|---|---|
@@ -514,6 +514,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/citation-fetch.ts` | `CitationFetcher` | When to use: `CitationController` — one fetcher per controller. |
 | `main/research/citation-fetch.ts` | `CitationFetch` *(type)* | What one citation fetch produced. |
 | `main/research/citation-fetch.ts` | `CitationFetcherDeps` *(type)* | When to use: `CitationController` — the settings and the shared research view. |
+| `main/research/cooldowns.ts` | `Cooldowns` | When to use: `ResearchSessionController.cooldowns` — one per controller. |
+| `main/research/cooldowns.ts` | `CooldownDeps` *(type)* | When to use: `new ResearchSessionController` — the settings to honour and the log. |
 | `main/research/crawl-orchestrator.ts` | `CrawlOrchestrator` | When to use: the chassis — own how crawl and topic research runs are orchestrated. |
 | `main/research/crawl-orchestrator.ts` | `CrawlSessionPolicy` *(type)* | The session policy a crawl run needs: cooldown guards and engine defaults. |
 | `main/research/crawl-orchestrator.ts` | `CrawlOrchestratorDeps` *(type)* | When to use: building the chassis — the five collaborators a run composes. |
@@ -539,7 +541,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/researcher.ts` | `ResearchSource` *(type)* | - |
 | `main/research/researcher.ts` | `ResearchOutcome` *(type)* | - |
 | `main/research/researcher.ts` | `ResearcherDeps` *(type)* | - |
-| `main/research/session-controller.ts` | `researchError` | When to use: declaring the error contract shared by the research surfaces. |
 | `main/research/session-controller.ts` | `ResearchSessionController` | When to use: the chassis — own the stealth research session, its settings and WAF cooldowns. |
 | `main/research/session-controller.ts` | `ResearchSessionDeps` *(type)* | When to use: building the chassis — the collaborators the research session reads through. |
 | `main/research/settings.ts` | `normalizeResearchSettings` | - |
@@ -549,6 +550,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/settings.ts` | `ResearchSettingsStore` | - |
 | `main/research/settings.ts` | `ResearchSettings` *(type)* | - |
 | `main/research/settings.ts` | `ResearchSettingsResult` *(type)* | - |
+| `main/research/stealth-session.ts` | `StealthSession` | When to use: `ResearchSessionController.stealth` — one per controller. |
+| `main/research/stealth-session.ts` | `StealthSessionDeps` *(type)* | When to use: `new ResearchSessionController` — the profile the session must present. |
 | `main/research/surface-activity.ts` | `SurfaceActivityDeps` *(type)* | The activity feed + directive log every research surface takes. |
 | `main/scripts/script-vault.ts` | `ScriptVault` | - |
 | `main/scripts/script-vault.ts` | `SavedScriptMeta` *(type)* | - |
@@ -979,7 +982,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (293)
+## Modules (294)
 
 | File | Export | When to use |
 |---|---|---|
@@ -1113,6 +1116,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/primitives/wait-controller.ts` | `WaitController` | When to use: `Primitives` — the wait_for / expect entry points. |
 | `main/remote/cloudflared.ts` | `findCloudflared` | Find cloudflared without installing or downloading it. |
 | `main/remote/ipc.ts` | `registerRemoteIpc` | When to use: main-process startup — register every `remote:*` channel. The |
+| `main/research/errors.ts` | `researchError` | When to use: a research failure an agent should see by code rather than by message. |
 | `main/research/handoff-probe.ts` | `ACTIONABLE_PROBE` | When to use: `HumanHandoff.probeActionable` — the actionable-page probe. |
 | `main/security/capability-token.ts` | `tokenPathIn` | The token file path inside a capability directory. |
 | `main/security/capability-token.ts` | `createCapabilityToken` | Create (or rotate) the token in `dir`. The caller owns the directory. |

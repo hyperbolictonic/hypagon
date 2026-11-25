@@ -39,7 +39,7 @@ import { Primitives } from './primitives/primitives.js';
 import { ScriptsSurface } from './scripts/scripts-surface.js';
 import { TrayManager } from './tray/tray-manager.js';
 import { WindowSurface } from './window/window-surface.js';
-import { researchError } from './research/session-controller.js';
+import { researchError } from './research/errors.js';
 import { ResearchViewSurface } from './research/research-view-surface.js';
 import { ResearchSessionSurface } from './research/research-session-surface.js';
 import { CrawlSurface } from './research/crawl-surface.js';

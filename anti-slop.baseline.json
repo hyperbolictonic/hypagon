@@ -143,9 +143,6 @@
       "main/network/network-interceptor.ts": {
         "function": 1
       },
-      "main/research/session-controller.ts": {
-        "class": 1
-      },
       "main/search/search-engine.ts": {
         "function": 1
       },

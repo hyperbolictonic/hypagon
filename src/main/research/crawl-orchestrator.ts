@@ -17,7 +17,7 @@ import type { Researcher, ResearchOptions, ResearchOutcome } from '../research/r
 import type { CitationAnchor } from './anchors.js';
 import type { DetachedViewController } from './detached-view.js';
 import type { CitationController } from './citation-controller.js';
-import { researchError } from './session-controller.js';
+import { researchError } from './errors.js';
 
 /** The running totals of one BFS crawl, mirrored into the research feed. */
 interface CrawlTally {

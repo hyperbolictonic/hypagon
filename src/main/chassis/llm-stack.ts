@@ -13,7 +13,7 @@ import { ReadSurface } from '../llm/read-surface.js';
 import { SearchHub } from '../search/search-engine.js';
 import { SearchSurface } from '../search/search-surface.js';
 import { CrawlSurface } from '../research/crawl-surface.js';
-import { researchError } from '../research/session-controller.js';
+import { researchError } from '../research/errors.js';
 import { cortex } from '../cortex/cortex-db.js';
 import type { ChassisHost } from './host.js';
 

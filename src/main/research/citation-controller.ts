@@ -17,7 +17,7 @@ import { relocateCitation as relocateAgainstHtml } from './anchors.js';
 import { CitationAnchors, type RevalidationSummary } from './citation-anchors.js';
 import { CitationFetcher } from './citation-fetch.js';
 import { HumanHandoff, type HandoffEnvironment, type HumanHandoffResult } from './handoff.js';
-import { researchError } from './session-controller.js';
+import { researchError } from './errors.js';
 import type { CitationAnchor, CitationRelocation } from './anchors.js';
 import type { HumanAssistInfo } from '../crawl/crawler.js';
 import type { BrowserWindow, WebContents } from 'electron';
