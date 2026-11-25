@@ -182,7 +182,13 @@ const ROUTES: Record<string, DecisionHandler> = {
         sendJson({ success: false, error: 'no recipe matched that id or url', code: 'NO_RECIPE' }, 404);
         return;
       }
-      const result = await replayRecipe(chassis.primitives as unknown as RecipeRunner, target, {
+      const primitives = chassis.primitives;
+      const runner: RecipeRunner = {
+        act: (options) => primitives.act(options as never),
+        waitFor: (conditions, options) => primitives.waitFor(conditions as never, options),
+        componentSignature: (targetText) => primitives.read.componentSignature(targetText),
+      };
+      const result = await replayRecipe(runner, target, {
         expectTimeoutMs: body?.expect_timeout_ms !== undefined ? Number(body.expect_timeout_ms) : undefined,
       });
       if (result.code === 'SIGNATURE_MISMATCH') {

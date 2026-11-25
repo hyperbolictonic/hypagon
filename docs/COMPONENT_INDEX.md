@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 353 files, 1080 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 366 files, 1101 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (873)
+## Types (882)
 
 | File | Export | When to use |
 |---|---|---|
@@ -399,6 +399,24 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/network/network-surface.ts` | `NetworkSurfaceDeps` *(type)* | Dependencies the network surface needs for directive logging. |
 | `main/prerender/types.ts` | `PrerenderItem` *(type)* | When to use: one warm background view in the prerender pool. |
 | `main/prerender/types.ts` | `PrerenderOptions` *(type)* | When to use: the `prerender_links` tool call. |
+| `main/primitives/act-address.ts` | `ActAddressResolver` | When to use: `ActController` — resolve whichever address the caller gave. |
+| `main/primitives/act-address.ts` | `ActPlan` *(type)* | The addressing decision `act` makes once, before it touches the page. |
+| `main/primitives/act-address.ts` | `ResolvedAddress` *(type)* | What resolving the address produced: the label, the centre and the control facts. |
+| `main/primitives/act-controller.ts` | `ActController` | When to use: `Primitives` — own the act flow and its evidence. |
+| `main/primitives/act-controller.ts` | `ActControllerDeps` *(type)* | When to use: the facade — the host and the readiness gate act may call. |
+| `main/primitives/act-target.ts` | `actSnapshot` | When to use: act — one cheap read of the identity it reports a delta against. |
+| `main/primitives/act-target.ts` | `ActTarget` | When to use: `ActController` — resolving a locator to page geometry and facts. |
+| `main/primitives/act-target.ts` | `ActSnapshot` *(type)* | When to use: act's delta — the cheap identity of the page at one moment. |
+| `main/primitives/contracts.ts` | `DEFAULT_MARKDOWN_BUDGET` | When to use: observe(markdown) — the default view size when the caller gives no budget. |
+| `main/primitives/contracts.ts` | `PrimitiveError` | When to use: every refusal the primitives raise — code, message and optional detail. |
+| `main/primitives/contracts.ts` | `PrimitivesHost` *(type)* | When to use: the chassis — what the primitives may ask of the active tab. |
+| `main/primitives/contracts.ts` | `PrimitiveErrorCode` *(type)* | When to use: a thrown primitive failure — the code the tool layer maps to a hint. |
+| `main/primitives/contracts.ts` | `ConditionResult` *(type)* | When to use: wait_for — one condition’s outcome and evidence. |
+| `main/primitives/contracts.ts` | `WaitResult` *(type)* | When to use: wait_for / expect — the whole poll result. |
+| `main/primitives/contracts.ts` | `PageState` *(type)* | When to use: page_state — the cheap identity snapshot diff() compares. |
+| `main/primitives/contracts.ts` | `ObserveOptions` *(type)* | When to use: observe() — the view, the region, the budget and the JEV switch. |
+| `main/primitives/contracts.ts` | `FindOptions` *(type)* | When to use: find() — the semantic query and the optional sources. |
+| `main/primitives/contracts.ts` | `ActOptions` *(type)* | When to use: act() — the address, the action and the awaited conditions. |
 | `main/primitives/control-facts.ts` | `controlFactsExpression` | Build the self-contained expression. Callers only ever pass plain JSON-able options. |
 | `main/primitives/control-facts.ts` | `parseControlFacts` | Parse the expression result into typed facts, tolerating an adapter that returned a string. |
 | `main/primitives/control-facts.ts` | `ControlAction` *(type)* | - |
@@ -416,20 +434,11 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/primitives/dom-targeting.ts` | `TargetBox` *(type)* | - |
 | `main/primitives/frame-controls.ts` | `addressedFrameControls` | When to use: turning a `getFrames({ includeControls: true })` result into |
 | `main/primitives/frame-controls.ts` | `AddressedFrameControl` *(type)* | One addressable control plus the frame it lives in. |
+| `main/primitives/observe-controller.ts` | `ObserveController` | When to use: `Primitives` — own the observe projections. |
+| `main/primitives/observe-controller.ts` | `ObserveControllerDeps` *(type)* | When to use: `Primitives` — the host, the read tools and the read funnel. |
 | `main/primitives/options.ts` | `WaitCondition` *(type)* | When to use: wait_for and expect — one declarative readiness condition. |
 | `main/primitives/options.ts` | `ExtractOptions` *(type)* | When to use: extract() — which structure to read and where. |
 | `main/primitives/options.ts` | `CollectOptions` *(type)* | When to use: collect_all() — which container to scroll and how far. |
-| `main/primitives/primitives.ts` | `DEFAULT_MARKDOWN_BUDGET` | Default view size for `observe(as:"markdown")` when the caller gives no budget. |
-| `main/primitives/primitives.ts` | `PrimitiveError` | - |
-| `main/primitives/primitives.ts` | `Primitives` | - |
-| `main/primitives/primitives.ts` | `PrimitivesHost` *(type)* | Primitives — the orthogonal observe / act / wait layer. |
-| `main/primitives/primitives.ts` | `PrimitiveErrorCode` *(type)* | - |
-| `main/primitives/primitives.ts` | `ConditionResult` *(type)* | - |
-| `main/primitives/primitives.ts` | `WaitResult` *(type)* | - |
-| `main/primitives/primitives.ts` | `PageState` *(type)* | - |
-| `main/primitives/primitives.ts` | `ObserveOptions` *(type)* | - |
-| `main/primitives/primitives.ts` | `FindOptions` *(type)* | - |
-| `main/primitives/primitives.ts` | `ActOptions` *(type)* | A target can be addressed three ways, in order of preference: |
 | `main/primitives/text-target.ts` | `textTargetExpression` | Deepest visible element whose trimmed text matches. "Deepest" matters: a card <div> and its |
 | `main/primitives/text-target.ts` | `parseTextTargets` | - |
 | `main/primitives/text-target.ts` | `resolveTextTargets` | Convenience for callers that already hold a WebContents. |
@@ -902,7 +911,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (199)
+## Modules (211)
 
 | File | Export | When to use |
 |---|---|---|
@@ -1013,12 +1022,24 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/prerender/prerender-engine.ts` | `PrerenderEngine` | When to use: the chassis — own the warm views and the background harvest. |
 | `main/prerender/url.ts` | `normalizePrerenderUrl` | When to use: comparing a requested URL to a pooled one (query order-insensitive). |
 | `main/prerender/view-factory.ts` | `spawnPrerenderView` | When to use: `PrerenderEngine.prerender` — one warm view for `targetUrl`, |
+| `main/primitives/act-verdicts.ts` | `ActVerdicts` | When to use: `ActController` — the typing/verdict and gate-warning reads. |
+| `main/primitives/find-controller.ts` | `FindController` | When to use: `Primitives` — own the find merge. |
+| `main/primitives/net-controller.ts` | `NetController` | When to use: `Primitives` — the trafficSince / export_har surface. |
 | `main/primitives/page-scripts.ts` | `buildWaitProbe` | When to use: wait_for and expect — the declarative condition probe. |
 | `main/primitives/page-scripts.ts` | `buildExtractScript` | When to use: extract() and observe(list\|table\|app_data). |
 | `main/primitives/page-scripts.ts` | `buildCollectScript` | When to use: collect_all — the scroll-and-dedupe collector (bindings, then the loop). |
 | `main/primitives/page-scripts.ts` | `SIGNATURE_SCRIPT` | When to use: pageState and diff — one cheap signature round trip, no DOM mutation. |
 | `main/primitives/page-scripts.ts` | `STABILITY_SCRIPT` | When to use: the `stable` wait condition — the height/text/nodes triple it compares. |
 | `main/primitives/page-scripts.ts` | `PROBE_HELPERS` | When to use: every probe that needs clean / isVisible / accName / resolveRoot. |
+| `main/primitives/primitives.ts` | `Primitives` | - |
+| `main/primitives/projection.ts` | `markLine` | When to use: any view that prints one mark — the shared badge format. |
+| `main/primitives/projection.ts` | `componentsText` | When to use: observe(components) — compact, region-grouped rendering of the table. |
+| `main/primitives/projection.ts` | `pageText` | When to use: every observe view — one envelope with the page identity, the |
+| `main/primitives/projection.ts` | `renderExtract` | When to use: observe(list\|table\|app_data) — the one-line preview of an extract. |
+| `main/primitives/read-controller.ts` | `ReadController` | When to use: `Primitives` — the read tools that are not page dumps. |
+| `main/primitives/read-funnel.ts` | `PageReadFunnel` | When to use: `ObserveController` — the read policy for unscoped page dumps. |
+| `main/primitives/state-controller.ts` | `StateController` | When to use: `Primitives` — the state()/diff() pair. |
+| `main/primitives/wait-controller.ts` | `WaitController` | When to use: `Primitives` — the wait_for / expect entry points. |
 | `main/remote/cloudflared.ts` | `findCloudflared` | Find cloudflared without installing or downloading it. |
 | `main/remote/ipc.ts` | `registerRemoteIpc` | When to use: main-process startup — register every `remote:*` channel. The |
 | `main/security/capability-token.ts` | `tokenPathIn` | The token file path inside a capability directory. |

@@ -45,7 +45,7 @@
       "main/network/network-interceptor.ts": 5,
       "main/primitives/control-facts.ts": 3,
       "main/primitives/dom-targeting.ts": 2,
-      "main/primitives/primitives.ts": 8,
+      "main/primitives/primitives.ts": 1,
       "main/primitives/text-target.ts": 4,
       "main/recipes/compile.ts": 2,
       "main/recipes/recipe-store.ts": 8,
@@ -147,10 +147,6 @@
       },
       "main/primitives/control-facts.ts": {
         "function": 1
-      },
-      "main/primitives/primitives.ts": {
-        "file": 1,
-        "function": 4
       },
       "main/research/citation-controller.ts": {
         "class": 1,

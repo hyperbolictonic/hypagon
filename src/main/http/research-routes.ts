@@ -137,7 +137,7 @@ const ROUTES: Record<string, ResearchHandler> = {
 
   'POST /collect': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
-    const data = await chassis.primitives.collectAll({
+    const data = await chassis.primitives.read.collectAll({
       ref: body?.ref !== undefined && body.ref !== null ? Number(body.ref) : undefined,
       selector: body?.selector,
       scroll: body?.scroll === 'window' ? 'window' : 'container',
