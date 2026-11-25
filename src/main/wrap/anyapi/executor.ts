@@ -26,7 +26,7 @@ import { wrapDryRun, wrapFailure, wrapSuccess } from './result.ts';
 import { createSecretAdapter } from './secrets.ts';
 import { clampInt, failure, previewUrl, redactDeep, redactText, renderPayload, secretVariants } from '../render.ts';
 import { resolveHosts } from '../security.ts';
-import { resolveWrapLimits } from '../limits.ts';
+import { resolveWrapLimits, type WrapLimits } from '../limits.ts';
 import { resolveWrapper } from '../resolve.ts';
 import type { WrapExecutor } from '../executor.ts';
 import type { ExecutorOptions } from '../executor.ts';
@@ -119,14 +119,7 @@ export interface AnyApiExecutorOptions extends ExecutorOptions {
 export class AnyApiWrapExecutor {
   readonly store: WrapStore;
   private readonly legacy: WrapExecutor;
-  private readonly fetchImpl: typeof fetch;
-  private readonly resolveHost: (hostname: string) => Promise<readonly string[]>;
-  private readonly allowPrivateHosts: boolean;
-  private readonly allowHttp: boolean;
-  private readonly maxRedirects: number;
-  private readonly maxResponseBytes: number;
-  private readonly maxResultChars: number;
-  private readonly defaultTimeoutMs: number;
+  private readonly transport: WrapLimits;
   private readonly secretSource?: Pick<SecretStore, 'list' | 'resolve'>;
   private readonly audit?: ExecutorOptions['audit'];
   private readonly payloadStore = new EphemeralStore();
@@ -134,21 +127,13 @@ export class AnyApiWrapExecutor {
   constructor(store: WrapStore, options: AnyApiExecutorOptions) {
     this.store = store;
     this.legacy = options.legacy;
-    const limits = resolveWrapLimits(options);
-    this.fetchImpl = limits.fetchImpl;
-    this.resolveHost = limits.resolveHost ?? resolveHosts;
-    this.allowPrivateHosts = limits.allowPrivateHosts;
-    this.allowHttp = limits.allowHttp;
-    this.maxRedirects = limits.maxRedirects;
-    this.maxResponseBytes = limits.maxResponseBytes;
-    this.maxResultChars = limits.maxResultChars;
-    this.defaultTimeoutMs = limits.defaultTimeoutMs;
+    this.transport = resolveWrapLimits(options);
     this.secretSource = options.secretSource;
     this.audit = options.audit;
   }
 
   status(): { wrappers: number; allowPrivateHosts: boolean } {
-    return { wrappers: this.store.count(), allowPrivateHosts: this.allowPrivateHosts };
+    return { wrappers: this.store.count(), allowPrivateHosts: this.transport.allowPrivateHosts };
   }
 
   async run(
@@ -276,18 +261,19 @@ export class AnyApiWrapExecutor {
 
     const runOptions: RunOptions = {
       baseUrl: map.baseUrl,
-      fetch: this.fetchImpl,
+      fetch: this.transport.fetchImpl,
       policy: {
-        allowPrivateHosts: this.allowPrivateHosts,
-        allowPlainHttpHosts: this.allowHttp ? [host] : [],
-        maxRedirects: this.maxRedirects,
-        timeoutMs: clampInt(wrapper.request.timeoutMs ?? this.defaultTimeoutMs, 1_000, 60_000),
-        maxBytes: this.maxResponseBytes,
+        allowPrivateHosts: this.transport.allowPrivateHosts,
+        allowPlainHttpHosts: this.transport.allowHttp ? [host] : [],
+        maxRedirects: this.transport.maxRedirects,
+        timeoutMs: clampInt(wrapper.request.timeoutMs ?? this.transport.defaultTimeoutMs, 1_000, 60_000),
+        maxBytes: this.transport.maxResponseBytes,
       },
       ...(secrets === undefined
         ? {}
         : { secrets: secrets.provider as SecretProvider, bindings: bindings as BindingTable }),
-      ...(this.resolveHost === undefined ? {} : { lookup: this.resolveHost }),      ...(this.audit === undefined ? {} : { audit: this.auditSink(wrapper) }),
+      lookup: this.transport.resolveHost ?? resolveHosts,
+      ...(this.audit === undefined ? {} : { audit: this.auditSink(wrapper) }),
       store: this.payloadStore,
     };
 
@@ -303,7 +289,7 @@ export class AnyApiWrapExecutor {
     const raw = executedResult.payload;
     const text = typeof raw === 'string' ? redactText(raw, secretValues) : '';
     const json = typeof raw === 'string' ? undefined : redactDeep(raw, secretValues);
-    const rendered = renderPayload(wrapper, json, text, '', { maxChars: this.maxResultChars });
+    const rendered = renderPayload(wrapper, json, text, '', { maxChars: this.transport.maxResultChars });
 
     const result = wrapSuccess({
       wrapper: identity,

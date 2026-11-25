@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 212 files, 761 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 215 files, 773 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (648)
+## Types (660)
 
 | File | Export | When to use |
 |---|---|---|
@@ -496,9 +496,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/core.ts` | `WrapRunOptions` *(type)* | - |
 | `main/wrap/core.ts` | `WrapTestInput` *(type)* | - |
 | `main/wrap/core.ts` | `WrapCore` *(type)* | - |
-| `main/wrap/executor.ts` | `WrapTransportError` | - |
 | `main/wrap/executor.ts` | `WrapExecutor` | - |
-| `main/wrap/executor.ts` | `WrapIndexDocument` *(type)* | One rendered document handed to an opt-in indexer (Cortex). |
 | `main/wrap/executor.ts` | `WrapIndexContext` *(type)* | - |
 | `main/wrap/executor.ts` | `ExecutorOptions` *(type)* | - |
 | `main/wrap/factory.ts` | `wrapCoreMode` | - |
@@ -515,6 +513,14 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/limits.ts` | `resolveWrapLimits` | When to use: constructing an executor core. Resolves the shared transport |
 | `main/wrap/limits.ts` | `WrapTransportOptions` *(type)* | Options every executor core accepts for transport safety. |
 | `main/wrap/limits.ts` | `WrapLimits` *(type)* | Resolved transport limits: every value present, environment defaults applied. |
+| `main/wrap/pagination.ts` | `pagePlan` | The paging contract derived from the recipe, or `active: false` for a single request. |
+| `main/wrap/pagination.ts` | `itemsOf` | The list a recipe selects from one page, or null when the selection is not a list. |
+| `main/wrap/pagination.ts` | `nextPageToken` | Whether another page exists, and what to send next. |
+| `main/wrap/pagination.ts` | `mergePages` | Merge several pages into one render. The common case (a `select` that resolves to a |
+| `main/wrap/pagination.ts` | `documentsToIndex` | What an opt-in indexer receives: one entry per rendered document when the recipe used |
+| `main/wrap/pagination.ts` | `sameOrigin` | Whether two URLs share an origin. |
+| `main/wrap/pagination.ts` | `WrapIndexDocument` *(type)* | One rendered document handed to an opt-in indexer (Cortex). |
+| `main/wrap/pagination.ts` | `PagePlan` *(type)* | The paging contract derived from `recipe.pagination` for one run. |
 | `main/wrap/render.ts` | `renderPayload` | Recipe rendering for one payload, with the legacy fallbacks. |
 | `main/wrap/render.ts` | `safeHost` | - |
 | `main/wrap/render.ts` | `previewUrl` | The preview URL for a plan. |
@@ -529,6 +535,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/render.ts` | `isPlainObject` | - |
 | `main/wrap/render.ts` | `clampInt` | - |
 | `main/wrap/render.ts` | `Rendered` *(type)* | - |
+| `main/wrap/rendering.ts` | `renderWrapped` | Render one page (or a merged selection) through the wrapper's recipe. |
+| `main/wrap/rendering.ts` | `Rendered` *(type)* | The markdown, records and documents a recipe produced for one or more pages. |
 | `main/wrap/resolve.ts` | `resolveWrapper` | When to use: `run` / `preview` / `test` on either executor core — resolve the |
 | `main/wrap/resolve.ts` | `WrapperResolution` *(type)* | When to use: the result of resolving an id-or-inline wrapper — the wrapper, or the code and message to return. |
 | `main/wrap/secrets.ts` | `SecretStore` | - |
@@ -550,6 +558,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/security.ts` | `UrlPolicy` *(type)* | - |
 | `main/wrap/store.ts` | `WrapStore` | - |
 | `main/wrap/store.ts` | `StoreResult` *(type)* | - |
+| `main/wrap/transport.ts` | `fetchWithPolicy` | Fetch one page while enforcing URL policy, redirects, timeout and the byte cap. |
+| `main/wrap/transport.ts` | `WrapTransportError` | A transport-policy failure with a stable code callers can match on. |
+| `main/wrap/transport.ts` | `TransportContext` *(type)* | The transport fields both executor cores resolve from `WrapLimits`. |
+| `main/wrap/transport.ts` | `FetchedResponse` *(type)* | One fetched page after URL policy, redirects and the byte cap. |
 | `main/wrap/types.ts` | `WrapMethod` *(type)* | - |
 | `main/wrap/types.ts` | `WrapFormat` *(type)* | - |
 | `main/wrap/types.ts` | `WrapInputSchema` *(type)* | The subset of JSON Schema used by wrapper inputs. |

@@ -96,7 +96,7 @@
       "main/wrap/audit.ts": 2,
       "main/wrap/auth.ts": 2,
       "main/wrap/core.ts": 3,
-      "main/wrap/executor.ts": 4,
+      "main/wrap/executor.ts": 3,
       "main/wrap/factory.ts": 3,
       "main/wrap/input-schema.ts": 3,
       "main/wrap/interpolate.ts": 5,
@@ -146,8 +146,8 @@
       "main/tabs/tab-manager.ts": 25,
       "main/telemetry/input-simulator.ts": 34,
       "main/tools/state.ts": 11,
-      "main/wrap/anyapi/executor.ts": 49,
-      "main/wrap/executor.ts": 48,
+      "main/wrap/anyapi/executor.ts": 42,
+      "main/wrap/executor.ts": 40,
       "main/wrap/interpolate.ts": 30,
       "main/wrap/store.ts": 12,
       "mcp/browser-mcp.ts": 18,
@@ -166,7 +166,7 @@
       "renderer/research-panel.ts": 5,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 911
+    "totalDuplicatedLines": 896
   },
   "modularity": {
     "files": {
@@ -323,7 +323,6 @@
         "function": 1
       },
       "main/wrap/executor.ts": {
-        "file": 1,
         "function": 1
       },
       "main/wrap/secrets.ts": {
@@ -347,8 +346,7 @@
         "function": 1
       },
       "renderer/main.ts": {
-        "file": 1,
-        "function": 1
+        "file": 1
       },
       "renderer/recording.ts": {
         "function": 1

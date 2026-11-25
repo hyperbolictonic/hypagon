@@ -7,12 +7,10 @@
  * and will keep values in the main process, not here.
  */
 
-import { renderRecipe, resolvePath } from '../../../packages/recipe/src/index.ts';
-import type { Recipe, RenderMeta, RenderedDocument } from '../../../packages/recipe/src/index.ts';
 import { validateArgs } from './input-schema.ts';
 import { buildRequest, redactHeaders, BuildRequestError } from './interpolate.ts';
-import { assertSafeUrl, WrapSecurityError } from './security.ts';
-import { resolveWrapLimits, type WrapTransportOptions } from './limits.ts';
+import { WrapSecurityError } from './security.ts';
+import { resolveWrapLimits, type WrapLimits, type WrapTransportOptions } from './limits.ts';
 import { resolveWrapper } from './resolve.ts';
 import {
   clampInt,
@@ -21,20 +19,27 @@ import {
   parseJson,
   redactDeep,
   redactText,
-  renderPayload,
   safeHost,
   secretVariants,
 } from './render.ts';
+import { fetchWithPolicy, WrapTransportError, type FetchedResponse } from './transport.ts';
+import { renderWrapped } from './rendering.ts';
+import {
+  documentsToIndex,
+  itemsOf,
+  mergePages,
+  nextPageToken,
+  pagePlan,
+  sameOrigin,
+  type WrapIndexDocument,
+} from './pagination.ts';
 import type { WrapFormat, WrapPreview, WrapRunResult, WrapWrapper } from './types.ts';
 import type { WrapStore } from './store.ts';
 import type { SecretStore } from './secrets.ts';
 import type { WrapAuditLog } from './audit.ts';
 
-/** One rendered document handed to an opt-in indexer (Cortex). */
-export interface WrapIndexDocument {
-  title: string;
-  markdown: string;
-}
+export type { WrapIndexDocument };
+export { WrapTransportError };
 
 export interface WrapIndexContext {
   wrapperId: string;
@@ -67,61 +72,10 @@ interface ExecuteOptions {
 
 /** Overall item cap when a recipe does not declare `limits.maxItems` (mirrors the renderer). */
 const DEFAULT_MAX_ITEMS = 50;
-/** Page size when a paginated recipe does not declare `pagination.pageSize`. */
-const DEFAULT_PAGE_SIZE = 50;
-/** Safety cap on how many rendered documents one run may index. */
-const MAX_INDEX_DOCUMENTS = 50;
-
-interface FetchedResponse {
-  response: Response;
-  url: string;
-  text: string;
-  bytes: number;
-  truncated: boolean;
-  durationMs: number;
-  contentType: string;
-}
-
-interface Rendered {
-  markdown: string;
-  records: Record<string, unknown>[];
-  documents?: RenderedDocument[];
-  meta?: RenderMeta;
-}
-
-/** The paging contract derived from `recipe.pagination` for one run. */
-interface PagePlan {
-  active: boolean;
-  type: 'none' | 'cursor' | 'offset' | 'link';
-  pageSize: number;
-  limitParam?: string;
-  offsetParam?: string;
-  cursorParam?: string;
-  nextPath?: string;
-  hasMorePath?: string;
-  nextUrlPath?: string;
-}
-
-export class WrapTransportError extends Error {
-  readonly code: string;
-
-  constructor(code: string, message: string) {
-    super(message);
-    this.name = 'WrapTransportError';
-    this.code = code;
-  }
-}
 
 export class WrapExecutor {
   readonly store: WrapStore;
-  private readonly fetchImpl: typeof fetch;
-  private readonly resolveHost?: (hostname: string) => Promise<string[]>;
-  private readonly allowPrivateHosts: boolean;
-  private readonly allowHttp: boolean;
-  private readonly maxRedirects: number;
-  private readonly maxResponseBytes: number;
-  private readonly maxResultChars: number;
-  private readonly defaultTimeoutMs: number;
+  private readonly transport: WrapLimits;
   private readonly maxPages: number;
   private readonly defaultMaxItems: number;
   private readonly indexDocuments?: (documents: WrapIndexDocument[], context: WrapIndexContext) => Promise<number>;
@@ -130,15 +84,7 @@ export class WrapExecutor {
 
   constructor(store: WrapStore, options: ExecutorOptions = {}) {
     this.store = store;
-    const limits = resolveWrapLimits(options);
-    this.fetchImpl = limits.fetchImpl;
-    this.resolveHost = limits.resolveHost;
-    this.allowPrivateHosts = limits.allowPrivateHosts;
-    this.allowHttp = limits.allowHttp;
-    this.maxRedirects = limits.maxRedirects;
-    this.maxResponseBytes = limits.maxResponseBytes;
-    this.maxResultChars = limits.maxResultChars;
-    this.defaultTimeoutMs = limits.defaultTimeoutMs;
+    this.transport = resolveWrapLimits(options);
     this.maxPages = clampInt(options.maxPages ?? 10, 1, 25);
     this.defaultMaxItems = clampInt(options.maxItems ?? DEFAULT_MAX_ITEMS, 1, 5_000);
     this.indexDocuments = options.indexDocuments;
@@ -147,7 +93,7 @@ export class WrapExecutor {
   }
 
   status(): { wrappers: number; allowPrivateHosts: boolean } {
-    return { wrappers: this.store.count(), allowPrivateHosts: this.allowPrivateHosts };
+    return { wrappers: this.store.count(), allowPrivateHosts: this.transport.allowPrivateHosts };
   }
 
   async run(
@@ -245,7 +191,7 @@ export class WrapExecutor {
       secretRefreshable = Boolean(resolved.refreshable);
     }
 
-    const plan = this.pagePlan(wrapper, built);
+    const plan = pagePlan(wrapper, built);
     const maxPages = plan.active ? clampInt(options.maxPages ?? this.maxPages, 1, this.maxPages) : 1;
     const itemCap = wrapper.response?.limits?.maxItems ?? this.defaultMaxItems;
 
@@ -285,7 +231,7 @@ export class WrapExecutor {
 
     try {
       for (let index = 0; index < maxPages; index++) {
-        const fetched = await this.fetchWithPolicy(wrapper, { ...built, url }, secretHeader);
+        const fetched = await fetchWithPolicy(this.transport, wrapper, { ...built, url }, secretHeader);
         const pageOk = fetched.response.ok;
 
         this.audit?.append({
@@ -327,14 +273,14 @@ export class WrapExecutor {
         if (!plan.active) break;
 
         // Auto-paging only makes sense for a list selection.
-        const items = this.itemsOf(wrapper.response, safeJson);
+        const items = itemsOf(wrapper.response, safeJson);
         if (!items || items.length === 0) {
           more = false;
           break;
         }
         accumulated += items.length;
 
-        const next = this.nextPageToken(plan, safeJson, items.length);
+        const next = nextPageToken(plan, safeJson, items.length);
         if (next === null) {
           more = false;
           break;
@@ -385,8 +331,8 @@ export class WrapExecutor {
     const firstJson = rawPages[0];
     const rendered =
       rawPages.length > 1
-        ? this.mergePages(wrapper, rawPages, itemCap)
-        : this.render(wrapper, firstJson, safeFirstText, first.contentType);
+        ? mergePages(wrapper, rawPages, itemCap, this.transport.maxResultChars)
+        : renderWrapped(wrapper, firstJson, safeFirstText, first.contentType, this.transport.maxResultChars);
 
     const ok = !failed && pages.every((page) => page.response.ok);
 
@@ -394,7 +340,7 @@ export class WrapExecutor {
     // never turns a successful upstream call into a failure.
     let indexed: WrapRunResult['indexed'];
     if (ok && wrapper.response?.index === 'cortex' && this.indexDocuments) {
-      const documents = this.documentsToIndex(wrapper, rendered);
+      const documents = documentsToIndex(wrapper, rendered);
       if (documents.length > 0) {
         try {
           const chunks = await this.indexDocuments(documents, {
@@ -469,142 +415,15 @@ export class WrapExecutor {
     return result;
   }
 
-  /** The paging contract derived from the recipe, or `active: false` for a single request. */
-  private pagePlan(wrapper: WrapWrapper, built: ReturnType<typeof buildRequest>): PagePlan {
-    const spec = wrapper.response?.pagination;
-    const type = (spec?.type ?? 'none') as PagePlan['type'];
-    const active = type !== 'none' && !!wrapper.response;
-
-    let pageSize = spec?.pageSize ?? 0;
-    if (active && spec?.limitParam && !pageSize) {
-      try {
-        const current = Number(new URL(built.url).searchParams.get(spec.limitParam));
-        if (Number.isFinite(current) && current > 0) pageSize = Math.floor(current);
-      } catch {
-        /* keep the default */
-      }
-    }
-
-    return {
-      active,
-      type,
-      pageSize: pageSize || DEFAULT_PAGE_SIZE,
-      limitParam: spec?.limitParam,
-      offsetParam: spec?.offsetParam,
-      cursorParam: spec?.cursorParam,
-      nextPath: spec?.next,
-      hasMorePath: spec?.hasMore,
-      nextUrlPath: spec?.nextUrl,
-    };
-  }
-
-  /** The list a recipe selects from one page, or null when the selection is not a list. */
-  private itemsOf(recipe: Recipe | undefined, page: unknown): unknown[] | null {
-    if (!recipe?.select) return null;
-    const value = resolvePath(page, recipe.select);
-    return Array.isArray(value) ? value : null;
-  }
-
-  /**
-   * Whether another page exists, and what to send next.
-   * `true` for offset paging, the cursor/next-URL string for cursor/link paging.
-   */
-  private nextPageToken(plan: PagePlan, page: unknown, pageCount: number): string | true | null {
-    if (plan.type === 'offset') {
-      if (plan.hasMorePath) {
-        const more = resolvePath(page, plan.hasMorePath);
-        if (more === undefined || more === null || more === false || more === 0) return null;
-      }
-      return pageCount >= plan.pageSize ? true : null;
-    }
-    if (plan.type === 'cursor') {
-      const next = plan.nextPath ? resolvePath(page, plan.nextPath) : undefined;
-      return next === undefined || next === null || next === '' ? null : String(next);
-    }
-    if (plan.type === 'link') {
-      const next = plan.nextUrlPath ? resolvePath(page, plan.nextUrlPath) : undefined;
-      return next === undefined || next === null || next === '' ? null : String(next);
-    }
-    return null;
-  }
-
-  /**
-   * Merge several pages into one render. The common case (a `select` that resolves to a
-   * list) concatenates the lists and renders once, so the agent gets one table rather
-   * than N tables with repeated headings.
-   */
-  private mergePages(wrapper: WrapWrapper, rawPages: unknown[], itemCap: number): Rendered {
-    const recipe = wrapper.response;
-    const merged = this.mergeSelection(recipe, rawPages);
-
-    if (merged && merged.length > 0) {
-      try {
-        const result = renderRecipe(
-          { __kuang_pages: merged },
-          { ...(recipe as Recipe), select: '$.__kuang_pages' },
-          { maxChars: this.maxResultChars, maxItems: itemCap },
-        );
-        return {
-          markdown: result.markdown,
-          records: result.records,
-          documents: result.documents,
-          meta: result.meta,
-        };
-      } catch {
-        /* fall through to the per-page join */
-      }
-    }
-
-    const parts = rawPages.map((page) => this.render(wrapper, page, '', '', itemCap));
-    const markdown = parts.map((part) => part.markdown).filter(Boolean).join('\n\n---\n\n');
-    const records = parts.flatMap((part) => part.records).slice(0, itemCap);
-    const documents = parts.flatMap((part) => part.documents ?? []);
-    const selected = parts.reduce((total, part) => total + (part.meta?.selected ?? 0), 0);
-    return {
-      markdown,
-      records,
-      documents,
-      meta: {
-        mode: parts[0]?.meta?.mode ?? 'table',
-        select: parts[0]?.meta?.select ?? '$',
-        selected,
-        rendered: records.length,
-        truncated: selected > records.length,
-        chars: markdown.length,
-      },
-    };
-  }
-
-  private mergeSelection(recipe: Recipe | undefined, rawPages: unknown[]): unknown[] | null {
-    if (!recipe?.select) return null;
-    const out: unknown[] = [];
-    for (const page of rawPages) {
-      const value = resolvePath(page, recipe.select);
-      if (!Array.isArray(value)) return null;
-      out.push(...value);
-    }
-    return out;
-  }
-
-  /**
-   * What an opt-in indexer receives: one entry per rendered document when the recipe used
-   * documents mode, otherwise one entry for the whole rendered result. Capped so a large
-   * table cannot turn into hundreds of embeddings.
-   */
-  private documentsToIndex(wrapper: WrapWrapper, rendered: Rendered): WrapIndexDocument[] {
-    const documents = (rendered.documents ?? [])
-      .filter((document) => document.markdown && document.markdown.trim())
-      .map((document) => ({ title: document.title || wrapper.name, markdown: document.markdown }));
-
-    if (documents.length > 0) return documents.slice(0, MAX_INDEX_DOCUMENTS);
-
-    const markdown = rendered.markdown?.trim();
-    if (!markdown) return [];
-    return [{ title: wrapper.response?.name || wrapper.name, markdown }].slice(0, MAX_INDEX_DOCUMENTS);
-  }
 
   private async renderSample(wrapper: WrapWrapper, sample: unknown): Promise<WrapRunResult> {
-    const rendered = this.render(wrapper, sample, typeof sample === 'string' ? sample : '', 'application/json');
+    const rendered = renderWrapped(
+      wrapper,
+      sample,
+      typeof sample === 'string' ? sample : '',
+      'application/json',
+      this.transport.maxResultChars,
+    );
     return {
       ok: true,
       wrapper: { id: wrapper.id, name: wrapper.name },
@@ -615,133 +434,6 @@ export class WrapExecutor {
     };
   }
 
-  private render(
-    wrapper: WrapWrapper,
-    json: unknown,
-    text: string,
-    contentType: string,
-    maxItems?: number,
-  ): Rendered {
-    return renderPayload(wrapper, json, text, contentType, { maxChars: this.maxResultChars, maxItems });
-  }
-
-  private async fetchWithPolicy(
-    wrapper: WrapWrapper,
-    built: ReturnType<typeof buildRequest>,
-    secretHeader?: string,
-  ): Promise<FetchedResponse> {
-    const timeoutMs = clampInt(wrapper.request.timeoutMs ?? this.defaultTimeoutMs, 1_000, 60_000);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-    let url = built.url;
-    let method = built.method;
-    let body = built.body;
-    let authHeader = secretHeader;
-    const headers = { ...built.headers };
-    const started = Date.now();
-
-    try {
-      for (let redirects = 0; ; redirects++) {
-        const safe = await assertSafeUrl(url, {
-          allowPrivateHosts: this.allowPrivateHosts,
-          allowHttp: this.allowHttp,
-          resolveHost: this.resolveHost,
-        });
-
-        const init: RequestInit = {
-          method,
-          headers,
-          redirect: 'manual',
-          signal: controller.signal,
-        };
-        if (body !== undefined) init.body = body;
-
-        const response = await this.fetchImpl(safe.toString(), init);
-        const location = response.headers.get('location');
-
-        if (isRedirect(response.status) && location) {
-          if (redirects >= this.maxRedirects) {
-            await response.body?.cancel();
-            throw new WrapTransportError('TOO_MANY_REDIRECTS', `Exceeded ${this.maxRedirects} redirects.`);
-          }
-
-          const next = new URL(location, safe).toString();
-          await response.body?.cancel();
-
-          // Never carry an injected credential across an origin boundary.
-          if (authHeader && new URL(next).origin !== safe.origin) {
-            deleteHeader(headers, authHeader);
-            authHeader = undefined;
-          }
-
-          if (response.status === 303 || ((response.status === 301 || response.status === 302) && method !== 'GET' && method !== 'HEAD')) {
-            method = 'GET';
-            body = undefined;
-            delete headers['content-type'];
-            delete headers['Content-Type'];
-            delete headers['content-length'];
-            delete headers['Content-Length'];
-          }
-
-          url = next;
-          continue;
-        }
-
-        return await this.readResponse(response, safe.toString(), started);
-      }
-    } catch (err: any) {
-      if (err?.name === 'AbortError' || err?.name === 'TimeoutError') {
-        throw new WrapTransportError('TIMEOUT', `Request timed out after ${timeoutMs} ms.`);
-      }
-      if (err instanceof WrapSecurityError || err instanceof WrapTransportError) throw err;
-      throw new WrapTransportError('NETWORK_ERROR', err?.message || String(err));
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  private async readResponse(response: Response, url: string, started: number): Promise<FetchedResponse> {
-    const contentType = response.headers.get('content-type') || '';
-    const reader = response.body?.getReader();
-    const chunks: Uint8Array[] = [];
-    let bytes = 0;
-    let truncated = false;
-
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (!value) continue;
-
-        const next = bytes + value.byteLength;
-        if (next > this.maxResponseBytes) {
-          const remaining = this.maxResponseBytes - bytes;
-          if (remaining > 0) {
-            chunks.push(value.subarray(0, remaining));
-            bytes += remaining;
-          }
-          truncated = true;
-          await reader.cancel();
-          break;
-        }
-
-        chunks.push(value);
-        bytes = next;
-      }
-    }
-
-    const text = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk))).toString('utf8');
-    return {
-      response,
-      url,
-      text,
-      bytes,
-      truncated,
-      durationMs: Date.now() - started,
-      contentType,
-    };
-  }
 
   private resolve(
     id: string | undefined,
@@ -751,20 +443,3 @@ export class WrapExecutor {
   }
 }
 
-function isRedirect(status: number): boolean {
-  return status === 301 || status === 302 || status === 303 || status === 307 || status === 308;
-}
-
-function deleteHeader(headers: Record<string, string>, name: string): void {
-  for (const key of Object.keys(headers)) {
-    if (key.toLowerCase() === name.toLowerCase()) delete headers[key];
-  }
-}
-
-function sameOrigin(a: string, b: string): boolean {
-  try {
-    return new URL(a).origin === new URL(b).origin;
-  } catch {
-    return false;
-  }
-}
