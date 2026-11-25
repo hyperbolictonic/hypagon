@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 196 files, 727 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 209 files, 745 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (626)
+## Types (632)
 
 | File | Export | When to use |
 |---|---|---|
@@ -118,10 +118,16 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/hil/hil-manager.ts` | `NotificationOptions` *(type)* | - |
 | `main/http/collaboration-routes.ts` | `handleCollaborationRoutes` | When to use: the bridge request handler — dispatch `/collaboration/*` before |
 | `main/http/collaboration-routes.ts` | `CollaborationRouteContext` *(type)* | When to use: building the collaboration dispatcher — the service plus the page context it reads. |
+| `main/http/dispatch.ts` | `dispatchBridgeRoutes` | When to use: the bridge request handler — run the family table until one |
+| `main/http/dispatch.ts` | `BridgeDispatchContext` *(type)* | When to use: wiring the bridge dispatcher — every optional service plus the last-action clock. |
+| `main/http/health-routes.ts` | `handleHealthRoutes` | When to use: the bridge request handler — dispatch the health, telemetry and |
+| `main/http/health-routes.ts` | `HealthRouteContext` *(type)* | When to use: the bridge request handler — the health family also needs the |
 | `main/http/media-routes.ts` | `handleMediaRoutes` | When to use: the bridge request handler — dispatch `/media/*` before the |
 | `main/http/media-routes.ts` | `MediaRouteContext` *(type)* | When to use: building the media dispatcher — the media service, or undefined when the feature is off. |
 | `main/http/network-routes.ts` | `handleNetworkRoutes` | When to use: the bridge request handler — dispatch `/network/*`. Returns |
 | `main/http/network-routes.ts` | `NetworkRouteContext` *(type)* | When to use: building the network dispatcher — the bridge supplies the moving timestamp. |
+| `main/http/request-context.ts` | `createRequestContext` | When to use: the bridge request handler — build the helpers for one request. |
+| `main/http/request-context.ts` | `BridgeRequestContext` *(type)* | When to use: a route family needs the request body reader and the JSON senders. |
 | `main/http/route-table.ts` | `dispatchRoute` | When to use: the end of every family handler — look up the entry for this |
 | `main/http/route-table.ts` | `RouteTableContext` *(type)* | When to use: a family handler needs the request facts and the bridge's JSON sender. |
 | `main/http/route-table.ts` | `ChassisRouteContext` *(type)* | When to use: a family whose only dependency is the browser chassis — tabs, |
@@ -645,7 +651,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (98)
+## Modules (110)
 
 | File | Export | When to use |
 |---|---|---|
@@ -662,15 +668,27 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/diagnostics/main-log.ts` | `mainLogFile` | - |
 | `main/diagnostics/main-log.ts` | `logMainEvent` | - |
 | `main/http/bookmarks-routes.ts` | `handleBookmarkRoutes` | When to use: the bridge request handler — dispatch `/bookmarks`. Returns |
+| `main/http/bridge-errors.ts` | `sendBridgeError` | When to use: the bridge's catch block — translate a thrown error into the |
+| `main/http/bridge-log.ts` | `logBridge` | Write one bridge line to the console and to `data/logs/http-bridge.log`. |
+| `main/http/bridge-log.ts` | `redactLogValue` | Keep bridge logs useful without copying credentials or wrapper payload secrets into them. |
 | `main/http/cortex-routes.ts` | `handleCortexRoutes` | When to use: the bridge request handler — dispatch `/cortex/*`. Returns false |
+| `main/http/decision-routes.ts` | `handleDecisionRoutes` | When to use: the bridge request handler — dispatch the recipe store and the |
 | `main/http/hil-routes.ts` | `handleHumanInterventionRoutes` | When to use: the bridge request handler — dispatch `/hil/*`. Returns false |
+| `main/http/human-control.ts` | `refuseWhileHumanActive` | When to use: the top of the bridge handler — answer 409 and report true when a |
 | `main/http/jev-routes.ts` | `handleJevRoutes` | When to use: the bridge request handler — dispatch `/jev/*`. Returns false |
 | `main/http/marks-routes.ts` | `handleMarkRoutes` | When to use: the bridge request handler — dispatch `/marks/*`. Returns false |
+| `main/http/nav-routes.ts` | `handleNavRoutes` | When to use: the bridge request handler — dispatch navigation and direct |
+| `main/http/primitives-routes.ts` | `handlePrimitiveRoutes` | When to use: the bridge request handler — dispatch the primitive verbs. |
+| `main/http/read-routes.ts` | `handleReadRoutes` | When to use: the bridge request handler — dispatch page reads and capture. |
 | `main/http/recording-routes.ts` | `handleRecordingRoutes` | When to use: the bridge request handler — dispatch `/recording/*`. Returns |
+| `main/http/research-routes.ts` | `handleResearchRoutes` | When to use: the bridge request handler — dispatch the research routes. |
 | `main/http/scripts-routes.ts` | `handleScriptRoutes` | When to use: the bridge request handler — dispatch `/scripts/*`. Returns |
+| `main/http/server-lifecycle.ts` | `logListenError` | When to use: the server `error` event — explain a port clash instead of a bare EADDRINUSE. |
+| `main/http/server-lifecycle.ts` | `announceListening` | When to use: the `listen` callback — announce the active gateway in the console and activity log. |
 | `main/http/session-routes.ts` | `handleSessionRoutes` | When to use: the bridge request handler — dispatch `/session/*` and the |
 | `main/http/tabs-routes.ts` | `handleTabRoutes` | When to use: the bridge request handler — dispatch `/tabs/*`. Returns false |
 | `main/http/window-routes.ts` | `handleWindowRoutes` | When to use: the bridge request handler — dispatch `/window/*`. Returns |
+| `main/http/workspace-routes.ts` | `handleWorkspaceRoutes` | When to use: the bridge request handler — dispatch `/zoom` and `/viewport`. |
 | `main/http-bridge.ts` | `startHttpBridge` | - |
 | `main/marks/format-mark.ts` | `formatMark` | Renders one Set-of-Marks entry as a compact, accessibility-aware line: |
 | `main/media/auth.ts` | `needsLogin` | Does yt-dlp's output say the site wants a signed-in session? |

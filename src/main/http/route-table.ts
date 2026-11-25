@@ -23,6 +23,11 @@ export interface RouteTableContext {
   url: URL;
   readBody: () => Promise<any>;
   sendJson: (data: any, status?: number) => void;
+  /**
+   * The success tail most routes share: `sendJson({ success: true, ...result })`.
+   * Owned by the request context so a family never rebuilds the envelope by hand.
+   */
+  sendOk: (result: any, extra?: Record<string, unknown>) => void;
 }
 
 /**
