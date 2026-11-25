@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BrowserWindow, app, ipcMain, clipboard, powerMonitor, screen, session, WebContentsView, type WebContents } from 'electron';
+import { BrowserWindow, app, ipcMain, clipboard, screen, session, WebContentsView, type WebContents } from 'electron';
 import type { AgentStatus, ChassisState, HarvestedConstruct, TelemetryEvent, TabSummary } from '../shared/types.js';
 import { DeviceProfileStore } from './viewport/profiles.js';
 import { ViewportController } from './viewport/controller.js';
@@ -62,6 +62,8 @@ import { ConsoleLogBuffer } from './diagnostics/console-log.js';
 import { RenderedSnapshotEngine } from './snapshots/rendered-snapshot.js';
 import { PrerenderEngine, type PrerenderOptions } from './prerender/prerender-engine.js';
 import { isTakeoverShortcut } from './takeover-key.js';
+import { HudWatchdog } from './boot/hud-watchdog.js';
+import { readPageInfo } from './tabs/page-info.js';
 import { LlmSurface } from './llm/llm-surface.js';
 import { ReadSurface } from './llm/read-surface.js';
 import { SearchHub, engineHost } from './search/search-engine.js';
@@ -164,10 +166,13 @@ export class BrowserChassis {
   private onCollaborationNote?: (input: { target: CollaborationTarget; text: string; tags: string[] }) => void;
   /** Page zoom policy: fit the page to the OS display scale, or honour Windows scale. */
   /** Explicit zoom from the toolbar or an agent; null means use the policy base. */
-  /** Global display/power listeners must be installed once, not per window. */
-  private systemViewportListenersBound = false;
-  /** Last proof that the HUD renderer is alive and painting. */
-  private hudLastHeartbeat = Date.now();
+  /** HUD heartbeat and viewport-recovery watchdog. */
+  readonly hud = new HudWatchdog({
+    window: () => this.mainWindow,
+    reassertViewport: () => this.reassertViewport(),
+    applyZoomToAllTabs: () => this.zoom.applyToAllTabs(),
+    logEvent: (name) => logMainEvent(name),
+  });
 
   private state: ChassisState = {
     currentUrl: 'about:blank',
@@ -602,16 +607,15 @@ export class BrowserChassis {
       this.telemetry.broadcastState();
     }, 1000);
 
-    // A renderer can stop painting without exiting. If the HUD heartbeat goes
-    // quiet while the window is visible, reload it once and repaint the views.
-    setInterval(() => this.checkHudHealth(), 5000);
+    // A renderer can stop painting without exiting. The watchdog reloads it once
+    // if the heartbeat goes quiet while the window is visible.
+    this.hud.start();
   }
 
   public setWindow(win: BrowserWindow) {
     this.mainWindow = win;
-    this.hudLastHeartbeat = Date.now();
     this.hil.manager.setWindow(win);
-    this.bindViewportRecovery(win);
+    this.hud.watch(win);
     if (!this.hudShortcutBound) {
       this.hudShortcutBound = true;
       win.webContents.on('before-input-event', (event, input) => {
@@ -635,37 +639,6 @@ export class BrowserChassis {
     this.deck.setup();
   }
 
-  /**
-   * A packaged window can come back from minimise/sleep with its native views
-   * unpainted, which looks like a white browsing surface until the next resize.
-   * Re-assert bounds and invalidate on every transition that can lose a frame.
-   */
-  private bindViewportRecovery(win: BrowserWindow): void {
-    const reassert = () => this.reassertViewport();
-    win.on('show', reassert);
-    win.on('restore', reassert);
-    win.on('focus', reassert);
-
-    if (this.systemViewportListenersBound) return;
-    this.systemViewportListenersBound = true;
-    try {
-      powerMonitor.on('resume', () => {
-        this.hudLastHeartbeat = Date.now();
-        reassert();
-      });
-    } catch {
-      // Not available on every platform/test harness.
-    }
-    try {
-      screen.on('display-metrics-changed', () => {
-        this.zoom.applyToAllTabs();
-        reassert();
-      });
-    } catch {
-      // `screen` is unavailable before app.whenReady.
-    }
-  }
-
   public reassertViewport(): void {
     if (!this.mainWindow || this.mainWindow.isDestroyed()) return;
     try {
@@ -686,24 +659,6 @@ export class BrowserChassis {
         // Tab closed during the sweep.
       }
     }
-  }
-
-  private checkHudHealth(): void {
-    const win = this.mainWindow;
-    if (!win || win.isDestroyed() || win.isMinimized() || !win.isVisible()) {
-      this.hudLastHeartbeat = Date.now();
-      return;
-    }
-    if (Date.now() - this.hudLastHeartbeat < 15_000) return;
-
-    this.hudLastHeartbeat = Date.now();
-    logMainEvent('hud-heartbeat-lost');
-    try {
-      win.webContents.reload();
-    } catch {
-      // Window is closing; nothing to recover.
-    }
-    this.reassertViewport();
   }
 
 /** The deps both LlmSurface instances share: navigation, fingerprint UA and the log. */
@@ -1129,7 +1084,7 @@ export class BrowserChassis {
 
   private registerCoreIpc() {
     ipcMain.on('chassis:hud-heartbeat', () => {
-      this.hudLastHeartbeat = Date.now();
+      this.hud.touch();
     });
     ipcMain.handle('chassis:get-state', () => this.state);
     ipcMain.handle('chassis:get-latest-construct', () => this.latestConstruct);
@@ -1522,33 +1477,8 @@ export class BrowserChassis {
 
 
 
-  public getPageInfo(): { url: string; title: string; isLoading: boolean; activeTabId?: string } {
-    // Read the live document URL/title. Reddit (and most SPAs) navigate with pushState, which fires
-    // no did-navigate event — the cached tab URL then stays stale and an `act` delta reports
-    // urlChanged:false for a click that actually worked.
-    let url = this.state.currentUrl;
-    let title = this.state.pageTitle;
-    try {
-      const active = this.tabManager?.getActiveTab();
-      const live = active?.view?.webContents;
-      if (live && !live.isDestroyed()) {
-        const liveUrl = live.getURL();
-        const liveTitle = live.getTitle();
-        if (liveUrl) url = liveUrl;
-        if (liveTitle) title = liveTitle;
-        // Keep the tab bar's cached values in step with what the page actually is.
-        if (active.url !== url) active.url = url;
-        if (active.title !== title) active.title = title;
-      }
-    } catch {
-      // No active tab yet — fall back to the cached state.
-    }
-    return {
-      url,
-      title,
-      isLoading: this.state.isLoading,
-      activeTabId: this.state.activeTabId,
-    };
+  public getPageInfo() {
+    return readPageInfo(this.state, this.tabManager?.getActiveTab() ?? null);
   }
 
   public queryJsonData(params: JsonQueryParams): JsonQueryResult {

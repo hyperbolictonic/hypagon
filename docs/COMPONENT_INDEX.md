@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 253 files, 859 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 255 files, 863 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,10 +17,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (728)
+## Types (732)
 
 | File | Export | When to use |
 |---|---|---|
+| `main/boot/hud-watchdog.ts` | `HudWatchdog` | The HUD heartbeat and viewport-recovery watchdog. |
+| `main/boot/hud-watchdog.ts` | `HudWatchdogDeps` *(type)* | Dependencies the watchdog needs from the shell window and views. |
 | `main/browser/frame-eval.ts` | `evaluateInFrames` | - |
 | `main/browser/frame-eval.ts` | `FrameEvalOptions` *(type)* | - |
 | `main/browser/frame-eval.ts` | `FrameEvalResult` *(type)* | - |
@@ -482,6 +484,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotEngine` | - |
 | `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotOptions` *(type)* | - |
 | `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotResult` *(type)* | - |
+| `main/tabs/page-info.ts` | `readPageInfo` | When to use: reading the active page — prefers the live document over cached state. |
+| `main/tabs/page-info.ts` | `PageInfo` *(type)* | The page identity the primitives, JEV and HUD read. |
 | `main/tabs/tab-manager.ts` | `TabManager` | - |
 | `main/tabs/tab-manager.ts` | `TabInstance` *(type)* | - |
 | `main/tabs/tab-manager.ts` | `TabManagerOptions` *(type)* | - |
