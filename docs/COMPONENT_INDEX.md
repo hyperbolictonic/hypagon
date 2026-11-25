@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 262 files, 880 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 264 files, 884 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (749)
+## Types (752)
 
 | File | Export | When to use |
 |---|---|---|
@@ -504,6 +504,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/tabs/tab-manager.ts` | `TabManager` | - |
 | `main/tabs/tab-manager.ts` | `TabInstance` *(type)* | - |
 | `main/tabs/tab-manager.ts` | `TabManagerOptions` *(type)* | - |
+| `main/tabs/tab-setup.ts` | `TabSetupSurface` | The tab manager and responsive viewport controller, built once per window. |
+| `main/tabs/tab-setup.ts` | `ViewportBounds` *(type)* | The page viewport rect inside the shell window. |
+| `main/tabs/tab-setup.ts` | `TabSetupDeps` *(type)* | Dependencies the tab setup needs from the shell window and controllers. |
 | `main/tabs/tab-surface.ts` | `TabSurface` | The tab verbs behind the MCP tools, routes and renderer IPC. |
 | `main/tabs/tab-surface.ts` | `TabSurfaceDeps` *(type)* | Dependencies the tab surface needs from the chassis. |
 | `main/tabs/window-open-policy.ts` | `isAuthPopupUrl` | True when the URL looks like an interactive sign-in or authorization endpoint. Used as a |
@@ -771,7 +774,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (125)
+## Modules (126)
 
 | File | Export | When to use |
 |---|---|---|
@@ -844,6 +847,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/viewport/profiles.ts` | `DeviceProfileStore` | - |
 | `main/wrap/auth.ts` | `tokenFromHeaders` | - |
 | `main/wrap/auth.ts` | `isWrapAuthorized` | - |
+| `main/zoom/display-scale.ts` | `displayScale` | When to use: building the zoom controller — the display scale behind the window. |
 | `main/zoom/settings.ts` | `ZoomSettingsStore` | The browser zoom policy lives next to the other human settings. The HTTP |
 | `mcp/browser-mcp.ts` | `flushLogSync` | Synchronous drain used only on shutdown paths, where async I/O cannot run. |
 | `mcp/browser-mcp.ts` | `logMcp` | - |

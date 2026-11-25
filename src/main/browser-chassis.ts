@@ -2,7 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BrowserWindow, app, screen, session, WebContentsView, type WebContents } from 'electron';
 import type { AgentStatus, ChassisState, HarvestedConstruct, TelemetryEvent, TabSummary } from '../shared/types.js';
-import { DeviceProfileStore } from './viewport/profiles.js';
+
 import { ViewportController } from './viewport/controller.js';
 import { ZoomController } from './zoom/controller.js';
 import { InputSurface } from './input/input-surface.js';
@@ -62,6 +62,8 @@ import { IpcSurface } from './ipc/ipc-surface.js';
 import { readPageInfo } from './tabs/page-info.js';
 import { TabSurface } from './tabs/tab-surface.js';
 import { createTabEventHandlers } from './tabs/tab-events.js';
+import { TabSetupSurface } from './tabs/tab-setup.js';
+import { displayScale } from './zoom/display-scale.js';
 import { LlmSurface } from './llm/llm-surface.js';
 import { ReadSurface } from './llm/read-surface.js';
 import { SearchHub, engineHost } from './search/search-engine.js';
@@ -94,7 +96,8 @@ export class BrowserChassis {
   });
   /** Throttle for gate-triggered human hand-offs (one per URL per few minutes). */
   private lastGateHil: { url: string; at: number } | null = null;
-  private tabManager: TabManager | null = null;
+  /** Tab manager and viewport controller, built with the window. */
+  readonly tabSetup!: TabSetupSurface;
   readonly input!: InputSurface;
   private harvester!: ConstructHarvester;
   /** JEV page compaction: surface index + in-memory depth store. */
@@ -134,8 +137,7 @@ export class BrowserChassis {
   /** Origins a human has authenticated; skip the anonymous static tier for them. */
   /** Only one human hand-off at a time (the shared research view is serialized). */
   /** Why the last hand-off was skipped (surfaced in the WAF error). */
-  /** Responsive device emulation; one controller for the whole browser. */
-  private viewportController: ViewportController | null = null;
+
 
   private sidebarView: WebContentsView | null = null;
   private sidebarMode: 'docked' | 'floating' | 'collapsed' = 'floating';
@@ -239,8 +241,8 @@ export class BrowserChassis {
     state: this.state,
     send: (channel, payload) => this.sendToSurfaces(channel, payload),
     zoomState: () => this.zoom.getState(),
-    viewportState: () => this.viewportController?.state(),
-    activeWebContents: () => this.tabManager?.getActiveTab()?.view?.webContents ?? null,
+    viewportState: () => this.tabSetup.viewport?.state(),
+    activeWebContents: () => this.tabSetup.manager?.getActiveTab()?.view?.webContents ?? null,
   });
 
   private latestConstruct: HarvestedConstruct | null = null;
@@ -250,8 +252,8 @@ export class BrowserChassis {
   constructor() {
     this.tabEvents = createTabEventHandlers({
       state: this.state,
-      activeTabId: () => this.tabManager?.getActiveTabId(),
-      allTabs: () => this.tabManager?.allTabs() ?? [],
+      activeTabId: () => this.tabSetup.manager?.getActiveTabId(),
+      allTabs: () => this.tabSetup.manager?.allTabs() ?? [],
       broadcastState: () => this.telemetry.broadcastState(),
       bumpRevision: () => this.bumpRevision(),
       reassertViewport: () => this.reassertViewport(),
@@ -260,7 +262,7 @@ export class BrowserChassis {
         this.trayManager?.updateStatus(this.state.agentStatus, this.state.tabs?.length ?? 0, pending),
       hilPending: () => !!this.hil.manager.getActiveRequest(),
       attachNetwork: (wc) => this.network.manager.attach(wc),
-      registerViewportTab: (tab) => this.viewportController?.registerTab(tab),
+      registerViewportTab: (tab) => this.tabSetup.viewport?.registerTab(tab),
       syncForceOpen: (wc) => this.shadow.syncForceOpen(wc),
       indexTab: (tab) => this.harvest.indexTabQuietly(tab),
       ingestHuman: (message) => this.human.monitor.ingest(message),
@@ -270,6 +272,21 @@ export class BrowserChassis {
       logEvent: (name, detail) => logMainEvent(name, detail),
       humanListenerScript: () => humanListenerScript(),
     });
+    this.tabSetup = new TabSetupSurface({
+      window: () => this.mainWindow,
+      hostProfile: this.hostProfile,
+      deviceProfilesPath: () => path.join(app.getPath('userData'), 'device-profiles.json'),
+      docked: () => this.deck.getMode() === 'docked',
+      log: (level, message) => this.telemetry.addLog(level, message),
+      broadcastState: () => this.telemetry.broadcastState(),
+      positionDeck: () => this.deck.position(),
+      bringDeckToFront: () => this.deck.bringToFront(),
+      applyZoomStep: (action) => this.zoom.setZoom({ action }),
+      applyZoom: (wc) => this.zoom.applyTo(wc),
+      setInputScale: (wc, scale) => this.input.simulator.setViewportScale(wc, scale),
+      toggleHuman: () => this.human.toggle(),
+      tabEvents: this.tabEvents,
+    });
     this.subscribeToDecisions();
     this.page = this.createPageScriptSurface();
     this.tabOps = new TabSurface({
@@ -278,7 +295,7 @@ export class BrowserChassis {
       log: (level, message) => this.telemetry.addLog(level, message),
       purgeJev: () => this.purgeJevDepthStore(),
       scheduleConsentSweep: () => this.consent.scheduleSweep(),
-      refreshViewport: () => void this.viewportController?.refreshActive(),
+      refreshViewport: () => void this.tabSetup.viewport?.refreshActive(),
     });
     const inputSurfaces = this.createInputSurfaces();
     this.input = inputSurfaces.input;
@@ -405,7 +422,7 @@ export class BrowserChassis {
     });
     const harvest = new HarvestSurface({
       activeWebContents: () => this.getActiveWebContents(),
-      viewportBounds: () => this.getViewportBounds(),
+      viewportBounds: () => this.tabSetup.bounds(),
       zoomState: () => this.zoom.getState(),
       marks,
       marksOverlay: this.marksOverlay,
@@ -434,9 +451,9 @@ export class BrowserChassis {
     );
     const nav = new NavigationSurface({
       activeWebContents: () => this.getActiveWebContents(),
-      welcomePagePath: () => this.tabManager?.getWelcomePagePath(),
+      welcomePagePath: () => this.tabSetup.manager?.getWelcomePagePath(),
       createTab: (url, view) => {
-        this.tabManager?.createTab(url, view);
+        this.tabSetup.manager?.createTab(url, view);
       },
       prerender: {
         normalizeUrl: (url) => this.prerenderEngine.normalizeUrl(url),
@@ -611,7 +628,7 @@ export class BrowserChassis {
   /** Bounds of the browser viewport as actually laid out in the HUD (zoom-aware). */
   private async computeViewportBounds(): Promise<{ x: number; y: number; width: number; height: number }> {
     const win = this.mainWindow;
-    if (!win || win.isDestroyed()) return this.getViewportBounds();
+    if (!win || win.isDestroyed()) return this.tabSetup.bounds();
     try {
       const rect = await win.webContents.executeJavaScript(
         `(() => {
@@ -633,7 +650,7 @@ export class BrowserChassis {
     } catch {
       /* fall back to the static calculation */
     }
-    return this.getViewportBounds();
+    return this.tabSetup.bounds();
   }
 
   /** The shared detached view plus citations and the human hand-off. */
@@ -663,7 +680,7 @@ export class BrowserChassis {
   private createShadowWalkSurface(): ShadowWalkSurface {
     return new ShadowWalkSurface({
       activeWebContents: () => this.getActiveWebContents(),
-      allTabs: () => this.tabManager?.allTabs() ?? [],
+      allTabs: () => this.tabSetup.manager?.allTabs() ?? [],
       log: (level, message) => this.telemetry.addLog(level, message),
       pressKey: (wc, key) => this.input.simulator.pressKey(wc, key),
       bumpRevision: () => this.bumpRevision(),
@@ -705,7 +722,7 @@ export class BrowserChassis {
       this.telemetry.addLog('info', `Download Complete: "${record.filename}" (${record.totalBytes} bytes) saved to data/downloads/`);
       this.telemetry.emitSimpleEvent('harvest', `File Download Complete: ${record.filename}`);
     });
-    this.setupTabManager();
+    this.tabSetup.setup();
     this.ipc = this.createIpcSurface();
     this.ipc.register();
     this.deck.setup();
@@ -718,13 +735,13 @@ export class BrowserChassis {
     } catch {
       // A settings surface can temporarily hide the sidebar.
     }
-    this.tabManager?.updateActiveTabBounds();
+    this.tabSetup.manager?.updateActiveTabBounds();
     try {
       this.mainWindow.webContents.invalidate();
     } catch {
       // Window is closing.
     }
-    for (const tab of this.tabManager?.allTabs() ?? []) {
+    for (const tab of this.tabSetup.manager?.allTabs() ?? []) {
       try {
         if (!tab.view.webContents.isDestroyed()) tab.view.webContents.invalidate();
       } catch {
@@ -739,82 +756,6 @@ export class BrowserChassis {
       navigateForText: (url: string) => this.researchView.navigateForText(url),
       userAgent: this.hostProfile.userAgent,
       log: (level: 'info' | 'warn' | 'action', msg: string) => this.telemetry.addLog(level, msg),
-    };
-  }
-
-  private setupTabManager(): void {
-    if (!this.mainWindow) return;
-    this.createViewportController();
-    this.createTabManager();
-  }
-
-  private createViewportController(): void {
-    this.viewportController = new ViewportController({
-      store: new DeviceProfileStore(path.join(app.getPath('userData'), 'device-profiles.json')),
-      available: () => this.getViewportBounds(),
-      getTab: (tabId) => this.tabManager?.getTab(tabId) ?? null,
-      getActiveTabId: () => this.tabManager?.getActiveTabId() ?? '',
-      applyZoom: (wc) => this.applyZoom(wc),
-      setInputScale: (wc, scale) => this.input.simulator.setViewportScale(wc, scale),
-      relayout: () => this.tabManager?.updateActiveTabBounds(),
-      broadcast: () => this.telemetry.broadcastState(),
-      log: (level, message) => this.telemetry.addLog(level, message),
-    });
-  }
-
-  private createTabManager(): void {
-    const mainWindow = this.mainWindow;
-    if (!mainWindow) return;
-    this.tabManager = new TabManager({
-      mainWindow,
-      hostProfile: this.hostProfile,
-      getViewportBounds: () => this.getViewportBounds(),
-      getTabBounds: (tabId) =>
-        this.viewportController?.frameFor(tabId, this.getViewportBounds()) ?? this.getViewportBounds(),
-      applyZoom: (wc) => this.applyZoom(wc),
-      onZoomShortcut: (action) => {
-        this.zoom.setZoom({ action });
-      },
-      onTakeoverShortcut: () => this.human.toggle(),
-      onRendererGone: this.tabEvents.onRendererGone,
-      onTabUpdated: this.tabEvents.onTabUpdated,
-      onTabsChanged: this.tabEvents.onTabsChanged,
-      onTabCreated: this.tabEvents.onTabCreated,
-      onViewAdded: () => this.deck.bringToFront(),
-      onTabClosed: (tabId) => this.viewportController?.unregisterTab(tabId),
-      onLog: (level, msg) => this.telemetry.addLog(level, msg),
-      onConsoleLog: this.tabEvents.onConsoleLog,
-    });
-
-    this.telemetry.addLog('info', `Stealth Profile Active: Spoofing host ${this.hostProfile.name} v${this.hostProfile.version}`);
-
-    // Create initial default tab
-    this.tabManager.createTab('about:blank');
-
-    mainWindow.on('resize', () => {
-      this.deck.position();
-      this.tabManager?.updateActiveTabBounds();
-      this.viewportController?.scheduleRefresh();
-    });
-  }
-
-  public getViewportBounds(): { x: number; y: number; width: number; height: number } {
-    if (!this.mainWindow) return { x: 0, y: 0, width: 0, height: 0 };
-    // Child-view bounds are relative to the content area (excluding the title
-    // bar and menu), so size the page viewport from the content size.
-    const [winWidth, winHeight] = this.mainWindow.getContentSize();
-    const rightPanelWidth = this.deck.getMode() === 'docked' ? 420 : 0;
-    // With tab bar, top bar height is 100px (64px navbar + 36px tab bar)
-    const topBarHeight = 100;
-
-    const viewportWidth = Math.max(400, winWidth - rightPanelWidth);
-    const viewportHeight = Math.max(300, winHeight - topBarHeight);
-
-    return {
-      x: 0,
-      y: topBarHeight,
-      width: viewportWidth,
-      height: viewportHeight,
     };
   }
 
@@ -840,7 +781,7 @@ export class BrowserChassis {
     activeWebContents: () => this.getActiveWebContents(),
     pageUrl: () => this.getPageInfo().url,
     log: (level, message) => this.telemetry.addLog(level, message),
-    onModeChanged: () => this.tabManager?.updateActiveTabBounds(),
+    onModeChanged: () => this.tabSetup.manager?.updateActiveTabBounds(),
     sendToShell: (channel, payload) => this.sendToShellWindow(channel, payload),
     onPanelLoaded: () => this.deck.sendToPanel('chassis:decision-status', decisionStatus()),
     stopSelection: () => this.collaboration.stopSelection(),
@@ -915,9 +856,10 @@ export class BrowserChassis {
    * The tab manager, or the standard uninitialized failure. Every tab operation
    * begins with this check; the message is the contract agents retry on.
    */
-  private requireTabManager(): NonNullable<BrowserChassis['tabManager']> {
-    if (!this.tabManager) throw new Error('Browser Chassis uninitialized');
-    return this.tabManager;
+  private requireTabManager(): TabManager {
+    const manager = this.tabSetup.manager;
+    if (!manager) throw new Error('Browser Chassis uninitialized');
+    return manager;
   }
 
   /** The tab manager; the bridge cannot reach a tab before the window exists. */
@@ -927,8 +869,8 @@ export class BrowserChassis {
 
   /** The responsive viewport controller; available once the window is set. */
   get viewport(): ViewportController {
-    if (!this.viewportController) throw new Error('Browser Chassis uninitialized');
-    return this.viewportController;
+    if (!this.tabSetup.viewport) throw new Error('Browser Chassis uninitialized');
+    return this.tabSetup.viewport;
   }
 
   public getActiveWebContents(): Electron.WebContents {
@@ -943,47 +885,15 @@ export class BrowserChassis {
   // delegations keep the chassis's public surface unchanged.
 
   readonly zoom = new ZoomController({
-    displayScale: () => this.getDisplayScale(),
-    viewportState: () => this.viewportController?.state() ?? null,
-    isEmulated: (wc) => Boolean(this.viewportController?.isEmulated(wc as any)),
-    bounds: () => this.getViewportBounds(),
-    webContentsList: () => (this.tabManager?.allTabs() ?? []).map((tab) => ({ webContents: tab.view.webContents })),
+    displayScale: () => displayScale(this.mainWindow),
+    viewportState: () => this.tabSetup.viewport?.state() ?? null,
+    isEmulated: (wc) => Boolean(this.tabSetup.viewport?.isEmulated(wc as any)),
+    bounds: () => this.tabSetup.bounds(),
+    webContentsList: () => (this.tabSetup.manager?.allTabs() ?? []).map((tab) => ({ webContents: tab.view.webContents })),
     onChanged: () => this.telemetry.broadcastState(),
   });
 
 
-  /** Scale factor of the display containing the main window. */
-  private getDisplayScale(): number {
-    try {
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        return screen.getDisplayMatching(this.mainWindow.getBounds()).scaleFactor || 1;
-      }
-    } catch {
-      // Fall through to the primary display (window not created yet).
-    }
-    try {
-      return screen.getPrimaryDisplay().scaleFactor || 1;
-    } catch {
-      // `screen` is unavailable before `app.whenReady`; assume unscaled.
-      return 1;
-    }
-  }
-
-
-  private applyZoom(wc: WebContents): void {
-    this.zoom.applyTo(wc);
-  }
-
-
-  /**
-   * Change page zoom for every tab.
-   *
-   * `mode` follows the human policy; `action` is a Chrome-like step; `factor`
-   * is an exact zoom from an agent. An explicit change overrides the policy base
-   * until `reset` or a mode switch.
-   */
-
-  /** The renderer IPC surface, wired to the chassis surfaces. */
   private createIpcSurface(): IpcSurface {
     return new IpcSurface({
       state: this.state,
@@ -996,9 +906,9 @@ export class BrowserChassis {
         status: () => this.human.status(),
       },
       nav: this.nav,
-      activeWebContents: () => this.tabManager?.getActiveTab()?.view?.webContents ?? null,
+      activeWebContents: () => this.tabSetup.manager?.getActiveTab()?.view?.webContents ?? null,
       tabs: {
-        summary: () => this.tabManager?.getTabsSummary() ?? [],
+        summary: () => this.tabSetup.manager?.getTabsSummary() ?? [],
         create: (url) => this.tabOps.create(url),
         switchTo: (id) => this.tabOps.switchTo(id),
         close: (id) => this.tabOps.close(id),
@@ -1008,7 +918,7 @@ export class BrowserChassis {
       deck: this.deck,
       toggleDevTools: () => this.tabOps.toggleDevTools(),
       setViewportVisibility: (visible) => {
-        this.tabManager?.setViewportVisibility(visible);
+        this.tabSetup.manager?.setViewportVisibility(visible);
         this.deck.setOverlayVisible(visible);
       },
       pageUrl: () => this.getPageInfo().url,
@@ -1025,7 +935,7 @@ export class BrowserChassis {
   public captureScreenshotJpeg(maxSide = 1400, quality = 82) {
     return captureScreenshotJpeg(
       {
-        capturePage: () => this.harvest.capturePageWithRetry(this.getActiveWebContents(), this.getViewportBounds()),
+        capturePage: () => this.harvest.capturePageWithRetry(this.getActiveWebContents(), this.tabSetup.bounds()),
         log: (level, message) => this.telemetry.addLog(level, message),
       },
       maxSide,
@@ -1059,7 +969,7 @@ export class BrowserChassis {
 
 
   public getPageInfo() {
-    return readPageInfo(this.state, this.tabManager?.getActiveTab() ?? null);
+    return readPageInfo(this.state, this.tabSetup.manager?.getActiveTab() ?? null);
   }
 
   public queryJsonData(params: JsonQueryParams): JsonQueryResult {
