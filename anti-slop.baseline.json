@@ -139,8 +139,8 @@
       "main/shadow-walk/ax-controls.ts": 25,
       "main/shadow-walk/sealed-targets.ts": 10,
       "main/shadow-walk/tab-walk.ts": 15,
-      "main/tools/state.ts": 11,
-      "mcp/browser-mcp.ts": 18,
+      "main/tools/state.ts": 4,
+      "mcp/browser-mcp.ts": 4,
       "mcp/tool-groups-data.ts": 135,
       "mcp/tools-catalog-actuate.ts": 33,
       "mcp/tools-catalog-capture.ts": 26,
@@ -156,7 +156,7 @@
       "renderer/settings-clients.ts": 38,
       "renderer/viewport-controls.ts": 4
     },
-    "totalDuplicatedLines": 596
+    "totalDuplicatedLines": 575
   },
   "modularity": {
     "files": {

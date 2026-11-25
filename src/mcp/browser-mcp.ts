@@ -15,6 +15,7 @@ import { clampText, renderMediaPreview, renderFrames, renderImageTool, renderCom
 import { APP_VERSION } from '../shared/version.js';
 import { BRAND } from '../shared/brand.js';
 import { decisionStatus } from '../main/decide/decision-client.js';
+import { byConfiguredRank } from '../main/tools/tool-order.js';
 
 const BRIDGE_URL = process.env.HB_BRIDGE_URL || process.env.KUANG_BRIDGE_URL || 'http://127.0.0.1:4111';
 
@@ -435,17 +436,12 @@ export async function createBridgeMcpServer() {
   const configuredRank = new Map(toolPreferences.order.map((name, index) => [name, index]));
   const orderedTools = baseTools
     .filter((tool) => !disabledTools.has(tool.name))
-    .sort((a, b) => {
-      const aRank = configuredRank.get(a.name);
-      const bRank = configuredRank.get(b.name);
-      if (aRank !== undefined || bRank !== undefined) {
-        if (aRank === undefined) return 1;
-        if (bRank === undefined) return -1;
-        if (aRank !== bRank) return aRank - bRank;
-      }
-      return (baseRank.get(a.name) ?? Number.MAX_SAFE_INTEGER) -
-        (baseRank.get(b.name) ?? Number.MAX_SAFE_INTEGER);
-    });
+    .sort(
+      byConfiguredRank(configuredRank, (a, b) =>
+        (baseRank.get(a.name) ?? Number.MAX_SAFE_INTEGER) -
+        (baseRank.get(b.name) ?? Number.MAX_SAFE_INTEGER),
+      ),
+    );
 
   for (const tool of orderedTools) {
     // The decision model is opt-in: when no backend is configured, `decide`/`drive` are not
@@ -801,16 +797,7 @@ Rules of thumb:
         const surfaceRank = new Map(surfaceOrder.map((name, index) => [name, index]));
         const visible = result.tools
           .filter((t: any) => !HIDDEN_TOOLS.has(t.name) && !CONSOLIDATED_HIDDEN_TOOLS.has(t.name))
-          .sort((a: any, b: any) => {
-            const aRank = surfaceRank.get(a.name);
-            const bRank = surfaceRank.get(b.name);
-            if (aRank !== undefined || bRank !== undefined) {
-              if (aRank === undefined) return 1;
-              if (bRank === undefined) return -1;
-              if (aRank !== bRank) return aRank - bRank;
-            }
-            return a.name.localeCompare(b.name);
-          });
+          .sort(byConfiguredRank(surfaceRank, (a: any, b: any) => a.name.localeCompare(b.name)));
         result.tools = visible.map((t: any) => withGuaranteedToolSchema(t));
       }
       return result;

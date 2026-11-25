@@ -5,6 +5,7 @@ import {
   TOOL_GROUPS,
 } from '../../mcp/tool-groups.js';
 import type { ToolManagerEntry, ToolManagerState, ToolSettings } from '../../shared/tool-settings.js';
+import { byConfiguredRank } from './tool-order.ts';
 
 const ADVERTISED_CATALOG = TOOLS_CATALOG.filter(
   (tool) => !tool.hidden && !CONSOLIDATED_HIDDEN_TOOLS.has(tool.name),
@@ -90,16 +91,11 @@ export function buildToolManagerState(settings: ToolSettings): ToolManagerState 
     })),
   }));
 
-  const tools = [...catalogEntries, ...groupedEntries].sort((a, b) => {
-    const aRank = rank.get(a.name);
-    const bRank = rank.get(b.name);
-    if (aRank !== undefined || bRank !== undefined) {
-      if (aRank === undefined) return 1;
-      if (bRank === undefined) return -1;
-      if (aRank !== bRank) return aRank - bRank;
-    }
-    return (fallback.get(a.name) ?? Number.MAX_SAFE_INTEGER) -
-      (fallback.get(b.name) ?? Number.MAX_SAFE_INTEGER);
-  });
+  const tools = [...catalogEntries, ...groupedEntries].sort(
+    byConfiguredRank(rank, (a, b) =>
+      (fallback.get(a.name) ?? Number.MAX_SAFE_INTEGER) -
+      (fallback.get(b.name) ?? Number.MAX_SAFE_INTEGER),
+    ),
+  );
   return { tools, settings };
 }

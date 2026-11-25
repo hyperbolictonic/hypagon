@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 236 files, 824 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 237 files, 825 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -718,7 +718,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (122)
+## Modules (123)
 
 | File | Export | When to use |
 |---|---|---|
@@ -784,6 +784,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/tools/ipc.ts` | `registerToolSettingsIpc` | Human-only writes over IPC. The bridge exposes a read-only config route to MCP processes. |
 | `main/tools/state.ts` | `sanitizeToolSettings` | - |
 | `main/tools/state.ts` | `buildToolManagerState` | - |
+| `main/tools/tool-order.ts` | `byConfiguredRank` | When to use: sort a tool list by the user's configured rank, with a stable |
 | `main/ui/menu-popup.ts` | `MenuPopup` | Themed, frameless dropdown hosted in its own small transparent window. |
 | `main/viewport/profiles.ts` | `DeviceProfileStore` | - |
 | `main/wrap/auth.ts` | `tokenFromHeaders` | - |
