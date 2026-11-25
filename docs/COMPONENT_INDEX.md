@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 217 files, 779 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 218 files, 781 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -685,7 +685,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (110)
+## Modules (112)
 
 | File | Export | When to use |
 |---|---|---|
@@ -793,6 +793,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/wrap-tool-schema.ts` | `isToolName` | True when `name` is a legal MCP tool name (exported for tests). |
 | `renderer/menu-popup.ts` | `bootMenuPopup` | - |
 | `renderer/research-panel.ts` | `initResearchPanel` | - |
+| `renderer/settings-remote.ts` | `loadRemotePanel` | Read the gateway, tunnel and cloudflared status and paint the panel. |
+| `renderer/settings-remote.ts` | `initRemotePanel` | Wire the panel once, after the settings modal markup exists. |
 | `renderer/tools-panel.ts` | `initToolsPanel` | - |
 | `renderer/tools-panel.ts` | `refreshToolsPanel` | - |
 | `renderer/viewport-controls.ts` | `initViewportControls` | - |
