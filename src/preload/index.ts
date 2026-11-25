@@ -24,6 +24,20 @@ function subscribe<T>(channel: string, callback: (value: T) => void, map?: (raw:
   return () => ipcRenderer.removeListener(channel, handler);
 }
 
+/**
+ * Invoke a channel that answers with its own result object: spread it under `ok: true`, and turn
+ * a thrown IPC error into `{ ok: false, error }`. The human take-over pair used to repeat this.
+ */
+type InvokeResult<T> = { ok: boolean; error?: string } & Partial<T>;
+
+async function invokeResult<T extends Record<string, unknown>>(channel: string): Promise<InvokeResult<T>> {
+  try {
+    return { ok: true, ...(await ipcRenderer.invoke(channel)) };
+  } catch (error: any) {
+    return { ok: false, error: error?.message || String(error) } as InvokeResult<T>;
+  }
+}
+
 /** When to use: the preload bridge surface — every renderer call goes through `window.electronAPI`. */
 export interface ElectronAPI {
   getState: () => Promise<ChassisState>;
@@ -272,20 +286,8 @@ const api: ElectronAPI = {
   getState: () => ipcRenderer.invoke('chassis:get-state'),
   getLatestConstruct: () => ipcRenderer.invoke('chassis:get-latest-construct'),
   getLogs: () => ipcRenderer.invoke('chassis:get-logs'),
-  resumeAgent: async () => {
-    try {
-      return { ok: true, ...(await ipcRenderer.invoke('chassis:resume-human')) };
-    } catch (error: any) {
-      return { ok: false, error: error?.message || String(error) };
-    }
-  },
-  takeOverAgent: async () => {
-    try {
-      return { ok: true, ...(await ipcRenderer.invoke('chassis:take-over-human')) };
-    } catch (error: any) {
-      return { ok: false, error: error?.message || String(error) };
-    }
-  },
+  resumeAgent: () => invokeResult<{ resumed?: boolean }>('chassis:resume-human'),
+  takeOverAgent: () => invokeResult<{ control?: 'human' }>('chassis:take-over-human'),
   getHumanStatus: () => ipcRenderer.invoke('chassis:get-human-status'),
   navigate: (url: string) => ipcRenderer.invoke('chassis:navigate', url),
   goBack: () => ipcRenderer.invoke('chassis:go-back'),

@@ -117,11 +117,9 @@
       "mcp/tools-catalog-memory.ts": 21,
       "mcp/tools-catalog-observe.ts": 6,
       "mcp/tools-catalog-research.ts": 30,
-      "mcp/tools-catalog-workspace.ts": 21,
-      "preload/index.ts": 14,
-      "renderer/settings-clients.ts": 20
+      "mcp/tools-catalog-workspace.ts": 21
     },
-    "totalDuplicatedLines": 352
+    "totalDuplicatedLines": 318
   },
   "modularity": {
     "files": {}

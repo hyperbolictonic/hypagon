@@ -72,10 +72,21 @@ function runtimeParts(info: ConnectInfo, runtime: ConnectRuntime, server: Connec
 const withEnv = (entry: Record<string, any>, env: Record<string, string>) =>
   Object.keys(env).length ? { ...entry, env } : entry;
 
-const claudeStyle = (info: ConnectInfo, runtime: ConnectRuntime, server: ConnectServer) => {
-  const { command, args, env } = runtimeParts(info, runtime, server);
-  return JSON.stringify({ mcpServers: { [serverName(server)]: withEnv({ command, args }, env) } }, null, 2);
-};
+/** The resolved command/args/env for one client and server choice. */
+type RuntimeParts = ReturnType<typeof runtimeParts>;
+
+/**
+ * A snippet body over the resolved runtime, so each client entry reads as its own config shape
+ * and the destructure lives in one place (five clients used to repeat it).
+ */
+const snippetFrom =
+  (build: (parts: RuntimeParts, server: ConnectServer) => string) =>
+  (info: ConnectInfo, runtime: ConnectRuntime, server: ConnectServer): string =>
+    build(runtimeParts(info, runtime, server), server);
+
+const claudeStyle = snippetFrom(({ command, args, env }, server) =>
+  JSON.stringify({ mcpServers: { [serverName(server)]: withEnv({ command, args }, env) } }, null, 2),
+);
 
 const quote = (value: string) => `"${value}"`;
 
@@ -88,8 +99,7 @@ const CONNECT_CLIENTS: ConnectClient[] = [
     id: 'opencode',
     label: 'OpenCode',
     file: (info) => `${hpath(info, '.config', 'opencode', 'opencode.json')} (global) · opencode.json (project)`,
-    snippet: (info, runtime, server) => {
-      const { command, args, env } = runtimeParts(info, runtime, server);
+    snippet: snippetFrom(({ command, args, env }, server) => {
       const entry: Record<string, any> = { type: 'local', command: [command, ...args], enabled: true };
       if (Object.keys(env).length) entry.environment = env;
       return JSON.stringify(
@@ -97,7 +107,7 @@ const CONNECT_CLIENTS: ConnectClient[] = [
         null,
         2
       );
-    },
+    }),
     note: 'Restart OpenCode after saving. Tools appear under the server name shown in the snippet.',
   },
   {
@@ -116,13 +126,12 @@ const CONNECT_CLIENTS: ConnectClient[] = [
     id: 'claude-code',
     label: 'Claude Code',
     file: () => 'Run once in a terminal · or commit .mcp.json to the project',
-    snippet: (info, runtime, server) => {
-      const { command, args, env } = runtimeParts(info, runtime, server);
+    snippet: snippetFrom(({ command, args, env }, server) => {
       const parts = ['claude', 'mcp', 'add', serverName(server)];
       for (const [key, value] of Object.entries(env)) parts.push('--env', `${key}=${value}`);
       parts.push('--', quote(command), ...args.map(quote));
       return parts.join(' ');
-    },
+    }),
     note: 'Use `claude mcp list` to verify. A project .mcp.json with the Claude Desktop shape also works.',
   },
   {
@@ -136,14 +145,13 @@ const CONNECT_CLIENTS: ConnectClient[] = [
     id: 'vscode',
     label: 'VS Code (Copilot)',
     file: () => '.vscode/mcp.json in the workspace',
-    snippet: (info, runtime, server) => {
-      const { command, args, env } = runtimeParts(info, runtime, server);
-      return JSON.stringify(
+    snippet: snippetFrom(({ command, args, env }, server) =>
+      JSON.stringify(
         { servers: { [serverName(server)]: withEnv({ type: 'stdio', command, args }, env) } },
         null,
         2
-      );
-    },
+      ),
+    ),
     note: 'Needs an agent-mode request; run “MCP: List Servers” to start the server.',
   },
   {
@@ -179,9 +187,8 @@ const CONNECT_CLIENTS: ConnectClient[] = [
     id: 'zed',
     label: 'Zed',
     file: (info) => hpath(info, '.config', 'zed', 'settings.json'),
-    snippet: (info, runtime, server) => {
-      const { command, args, env } = runtimeParts(info, runtime, server);
-      return JSON.stringify(
+    snippet: snippetFrom(({ command, args, env }, server) =>
+      JSON.stringify(
         {
           context_servers: {
             [serverName(server)]: { source: 'custom', command: { path: command, args, env } },
@@ -189,8 +196,8 @@ const CONNECT_CLIENTS: ConnectClient[] = [
         },
         null,
         2
-      );
-    },
+      ),
+    ),
     note: 'Zed calls them context servers; they appear in the agent panel.',
   },
   {
