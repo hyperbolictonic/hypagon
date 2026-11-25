@@ -47,18 +47,18 @@ const ROUTES: Record<string, ResearchHandler> = {
 
   'POST /llm/surface': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
-    sendOk(await chassis.probeLlmSurface(body?.url));
+    sendOk(await chassis.llm.probe(body?.url));
   },
 
   'POST /llm/fetch': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
-    sendOk(await chassis.fetchLlmSurface({ url: body?.url, as: body?.as }));
+    sendOk(await chassis.llm.fetch({ url: body?.url, as: body?.as }));
   },
 
   'POST /read/url': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
     sendOk(
-      await chassis.readUrl({
+      await chassis.llm.readUrl({
         url: body?.url,
         maxChars: body?.max_chars ?? body?.maxChars,
         cursor: body?.cursor,
@@ -70,7 +70,7 @@ const ROUTES: Record<string, ResearchHandler> = {
   'POST /search/web': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
     sendOk(
-      await chassis.searchWeb(body?.query, {
+      await chassis.search.web(body?.query, {
         engine: body?.engine,
         engines: Array.isArray(body?.engines) ? body.engines : undefined,
         urlTemplate: body?.url_template ?? body?.urlTemplate,

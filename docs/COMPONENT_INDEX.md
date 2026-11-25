@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 226 files, 797 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 229 files, 803 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (666)
+## Types (672)
 
 | File | Export | When to use |
 |---|---|---|
@@ -173,6 +173,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/llm/llm-surface.ts` | `LlmFetchResult` *(type)* | - |
 | `main/llm/llm-surface.ts` | `ReadUrlResult` *(type)* | Result of the composite `read_url`: always Markdown text, paged for long documents. |
 | `main/llm/llm-surface.ts` | `LlmSurfaceDeps` *(type)* | - |
+| `main/llm/read-surface.ts` | `ReadSurface` | The agent-facing read surface over LlmSurface. |
+| `main/llm/read-surface.ts` | `ReadSurfaceDeps` *(type)* | Dependencies the read surface needs from the chassis transports. |
 | `main/marks/marks-overlay.ts` | `MarksOverlay` | - |
 | `main/marks/marks-overlay.ts` | `MarkItem` *(type)* | - |
 | `main/media/binaries.ts` | `bundledYtDlpPath` | - |
@@ -370,6 +372,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/settings.ts` | `ResearchSettingsStore` | - |
 | `main/research/settings.ts` | `ResearchSettings` *(type)* | - |
 | `main/research/settings.ts` | `ResearchSettingsResult` *(type)* | - |
+| `main/research/surface-activity.ts` | `SurfaceActivityDeps` *(type)* | The activity feed + directive log every research surface takes. |
 | `main/scripts/script-vault.ts` | `ScriptVault` | - |
 | `main/scripts/script-vault.ts` | `SavedScriptMeta` *(type)* | - |
 | `main/search/search-engine.ts` | `KNOWN_ENGINES` | - |
@@ -379,6 +382,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/search/search-engine.ts` | `SearchAttempt` *(type)* | - |
 | `main/search/search-engine.ts` | `SearchOutcome` *(type)* | - |
 | `main/search/search-engine.ts` | `SearchHubDeps` *(type)* | - |
+| `main/search/search-surface.ts` | `SearchSurface` | The agent-facing web-search adapter over SearchHub. |
+| `main/search/search-surface.ts` | `SearchPolicyTarget` *(type)* | The subset of search options the engine policy rewrites. |
+| `main/search/search-surface.ts` | `SearchSurfaceDeps` *(type)* | Dependencies the search surface needs from the research policy and hub. |
 | `main/session/session-vault.ts` | `SessionVault` | - |
 | `main/session/session-vault.ts` | `SessionSnapshot` *(type)* | - |
 | `main/settings/jev.ts` | `DEFAULT_JEV_SETTINGS` | - |

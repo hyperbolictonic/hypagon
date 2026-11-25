@@ -83,8 +83,10 @@ import { JsonNavigator, type JsonQueryOptions, type JsonQueryResult } from './ut
 import { RenderedSnapshotEngine, type RenderedSnapshotOptions, type RenderedSnapshotResult } from './snapshots/rendered-snapshot.js';
 import { PrerenderEngine, type PrerenderOptions } from './prerender/prerender-engine.js';
 import { isTakeoverShortcut } from './takeover-key.js';
-import { LlmSurface, type LlmSurfaceReport, type LlmSurfaceKind, type LlmFetchResult, type ReadUrlResult } from './llm/llm-surface.js';
-import { SearchHub, type SearchOutcome } from './search/search-engine.js';
+import { LlmSurface } from './llm/llm-surface.js';
+import { ReadSurface } from './llm/read-surface.js';
+import { SearchHub } from './search/search-engine.js';
+import { SearchSurface } from './search/search-surface.js';
 import { Crawler, type CrawlOptions, type CrawlOutcome, type HumanAssistInfo } from './crawl/crawler.js';
 import { type CitationAnchor, type CitationRelocation } from './research/anchors.js';
 import { CitationController, type HumanHandoffResult, type RevalidationSummary } from './research/citation-controller.js';
@@ -103,6 +105,13 @@ export class BrowserChassis {
   /** Shared controller hooks: every controller config wires the same log and telemetry. */
   private readonly controllerLog = (level: 'info' | 'warn' | 'action', message: string): void => this.addLog(level, message);
   private readonly controllerTelemetry = (event: TelemetryEvent): void => this.emitTelemetry(event);
+  /** The research activity feed hook shared by the read/search surfaces. */
+  private readonly surfaceActivity = <T>(
+    tool: string,
+    summary: string,
+    describe: (result: T) => string,
+    run: () => Promise<T>,
+  ): Promise<T> => this.withResearchActivity(tool, summary, describe, run);
   /** Recent decision-model calls, mirrored to the HUD (newest last, capped at 50). */
   private decisionLog: DecisionEvent[] = [];
   /** Throttle for gate-triggered human hand-offs (one per URL per few minutes). */
@@ -125,6 +134,9 @@ export class BrowserChassis {
   private llmSurface: LlmSurface;
   private researchLlmSurface: LlmSurface;
   private searchHub: SearchHub;
+  /** The agent-facing read/search adapters; the transports stay private. */
+  readonly llm: ReadSurface;
+  readonly search: SearchSurface;
   private crawler: Crawler;
   private researcher: Researcher;
   private actionLedger: ActionLedger;
@@ -346,6 +358,27 @@ export class BrowserChassis {
     this.searchHub = new SearchHub({
       load: (url, script, opts) => this.loadDetached(url, script, opts),
       log: (level, msg) => this.addLog(level, msg),
+    });
+
+    this.llm = new ReadSurface({
+      probe: (url) => this.llmSurface.probe(url),
+      fetch: (opts) => this.llmSurface.fetch(opts),
+      readUrl: (opts) => this.llmSurface.readUrl(opts),
+      renderMarkdown: (url) => this.readUrlRender(url),
+      activity: this.surfaceActivity,
+      log: this.controllerLog,
+    });
+
+    this.search = new SearchSurface({
+      hub: this.searchHub,
+      settings: () => this.researchSettings,
+      applyEnginePolicy: (effective) => this.applyResearchEnginePolicy(effective),
+      isCooling: (host) => this.isResearchCooling(host),
+      markCooldown: (host, reason) => this.markResearchCooldown(host, reason),
+      engineHost: (engine) => this.engineHost(engine),
+      error: (code, message) => this.researchError(code, message),
+      activity: this.surfaceActivity,
+      log: this.controllerLog,
     });
 
     // Autonomous multi-page crawl (TODO_RESEARCH_CRAWL.md §5, Feature 1).
@@ -2115,10 +2148,6 @@ export class BrowserChassis {
 
   // ---- LLM-friendly site discovery (TODO_RESEARCH_CRAWL.md §5, Feature 6) ----
 
-  public async probeLlmSurface(url?: string): Promise<LlmSurfaceReport> {
-    this.addLog('action', `MCP Directive: llm_surface(${url || 'active tab'})`);
-    return await this.llmSurface.probe(url);
-  }
 
   /**
    * Run a research tool with the activity events the research feed expects: a
@@ -2163,26 +2192,7 @@ export class BrowserChassis {
     }
   }
 
-  public async fetchLlmSurface(opts: { url?: string; as?: LlmSurfaceKind } = {}): Promise<LlmFetchResult> {
-    this.addLog('action', `MCP Directive: llm_fetch(${opts.url || 'active tab'}, as=${opts.as || 'auto'})`);
-    const summary = opts.url || 'active tab';
-    return this.withResearchActivity('llm_fetch', summary, () => summary, () => this.llmSurface.fetch(opts));
-  }
 
-  /**
-   * Composite read (issue #1): site-provided Markdown/Text when advertised, else a detached
-   * render distilled to Markdown — one call, always text, paged for long documents.
-   */
-  public async readUrl(
-    opts: { url?: string; maxChars?: number; cursor?: number | string; as?: LlmSurfaceKind } = {},
-  ): Promise<ReadUrlResult> {
-    this.addLog(
-      'action',
-      `MCP Directive: read_url(${opts.url || 'active tab'}${opts.maxChars ? `, max_chars=${opts.maxChars}` : ''}${opts.cursor ? `, cursor=${opts.cursor}` : ''})`,
-    );
-    const summary = opts.url || 'active tab';
-    return this.withResearchActivity('read_url', summary, () => summary, () => this.llmSurface.readUrl(opts));
-  }
 
   /**
    * Renders a URL in the shared detached view and distils it to Markdown — the composite
@@ -2251,49 +2261,6 @@ export class BrowserChassis {
     this.researchSessionController.applyEnginePolicy(effective);
   }
 
-  public async searchWeb(
-    query: string,
-    opts: { engine?: string; engines?: string[]; urlTemplate?: string; max?: number } = {},
-  ): Promise<SearchOutcome> {
-    const effective = { ...opts };
-    if (effective.max === undefined) effective.max = this.researchSettings.searchMaxResults;
-    if (this.researchSettings.enabled) {
-      this.applyResearchEnginePolicy(effective);
-
-      const chain = effective.engines || (effective.engine ? [effective.engine] : []);
-      if (chain.length > 0) {
-        const allowed = chain.filter((engine) => !this.isResearchCooling(this.engineHost(engine)));
-        if (allowed.length === 0) {
-          throw this.researchError(
-            'RESEARCH_COOLDOWN',
-            'All selected search engines are cooling down after WAF/challenge responses.',
-          );
-        }
-        effective.engines = allowed;
-        effective.engine = undefined;
-      }
-    }
-
-    this.addLog(
-      'action',
-      `MCP Directive: search_web("${query}", engine=${effective.engine || (effective.engines ? effective.engines.join('>') : 'auto')}${this.researchSettings.enabled ? ', stealth' : ''})`,
-    );
-    return this.withResearchActivity(
-      'search_web',
-      query,
-      (outcome) =>
-        `${outcome.results?.length ?? 0} result(s)${outcome.engine ? ` via ${outcome.engine}` : ''}${outcome.blocked ? ' (provider blocked)' : ''}`,
-      async () => {
-        const outcome = await this.searchHub.search(query, effective);
-        if (this.researchSettings.enabled && outcome.blocked) {
-          for (const attempt of outcome.attempts) {
-            if (attempt.blocked) this.markResearchCooldown(this.engineHost(attempt.engine), 'bot-check/consent');
-          }
-        }
-        return outcome;
-      },
-    );
-  }
 
   /** Bounds of the browser viewport as actually laid out in the HUD (zoom-aware). */
   private async computeViewportBounds(): Promise<{ x: number; y: number; width: number; height: number }> {

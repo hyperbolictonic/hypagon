@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-226 modules, 797 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+229 modules, 803 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -69,6 +69,7 @@
 | `main/jev/policy.ts` | 6: decideFunnel, DEFAULT_FUNNEL_MIN_TOKENS, FunnelBreaker, FunnelReason, FunnelInput, FunnelDecision |
 | `main/jev/read-contract.ts` | 5: PageReadRequest, PrecheckPageReadResult, GuardPageReadInput, PageReadRefusal, GuardPageReadResult |
 | `main/llm/llm-surface.ts` | 10: LlmSurface, LlmSurfaceKind, LlmSurfaceScope, LlmSurfaceNext, LlmSurfaceEndpoint, LlmSurfaceLink, LlmSurfaceReport, LlmFetchResult, … (10) |
+| `main/llm/read-surface.ts` | 2: ReadSurface, ReadSurfaceDeps |
 | `main/marks/format-mark.ts` | 1: formatMark |
 | `main/marks/marks-overlay.ts` | 2: MarksOverlay, MarkItem |
 | `main/media/auth.ts` | 1: needsLogin |
@@ -112,8 +113,10 @@
 | `main/research/researcher.ts` | 6: extractHighlights, Researcher, ResearchOptions, ResearchSource, ResearchOutcome, ResearcherDeps |
 | `main/research/session-controller.ts` | 3: researchError, ResearchSessionController, ResearchSessionDeps |
 | `main/research/settings.ts` | 7: normalizeResearchSettings, looksLikeChallenge, RESEARCH_ENGINES, DEFAULT_RESEARCH_SETTINGS, ResearchSettingsStore, ResearchSettings, ResearchSettingsResult |
+| `main/research/surface-activity.ts` | 1: SurfaceActivityDeps |
 | `main/scripts/script-vault.ts` | 2: ScriptVault, SavedScriptMeta |
 | `main/search/search-engine.ts` | 7: KNOWN_ENGINES, DEFAULT_ENGINE_CHAIN, SearchHub, SearchResult, SearchAttempt, SearchOutcome, SearchHubDeps |
+| `main/search/search-surface.ts` | 3: SearchSurface, SearchPolicyTarget, SearchSurfaceDeps |
 | `main/security/capability-token.ts` | 3: tokenPathIn, createCapabilityToken, readCapabilityToken |
 | `main/session/session-vault.ts` | 2: SessionVault, SessionSnapshot |
 | `main/settings/experimental.ts` | 1: ExperimentalSettingsStore |
@@ -123,10 +126,7 @@
 | `main/shadow-walk/force-open.ts` | 5: isForceOpenArmed, syncForceOpen, detectForceOpen, ForceOpenSyncResult, ForceOpenDetection |
 | `main/shadow-walk/part-highlight-css.ts` | 2: buildPartHighlightCss, PartHost |
 | `main/shadow-walk/part-highlight.ts` | 3: injectPartHighlight, removePartHighlight, withPartHighlight |
-| `main/shadow-walk/sealed-targets.ts` | 3: clearSealedTokens, issueSealedToken, resolveSealedToken |
-| `main/shadow-walk/settings.ts` | 14: normalizeShadowWalkSettings, loadShadowWalkSettings, saveShadowWalkSettings, shadowWalkStatus, shadowWalkRefusal, SHADOW_WALK_SETTINGS_FILE, DEFAULT_SHADOW_WALK_SETTINGS, shadowWalkSettings, … (14) |
-| `main/shadow-walk/tab-walk.ts` | 4: runTabWalk, TabWalkOptions, TabWalkStep, TabWalkResult |
 
-… and 100 more module(s) — grep the full index.
+… and 103 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.
