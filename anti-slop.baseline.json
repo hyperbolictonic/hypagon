@@ -169,9 +169,6 @@
       "main/tray/tray-manager.ts": {
         "class": 1
       },
-      "main/viewport/controller.ts": {
-        "class": 1
-      },
       "main/wrap/anyapi/executor.ts": {
         "function": 1
       },

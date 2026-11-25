@@ -134,11 +134,11 @@ export class IpcSurface {
     ipcMain.handle('chassis:viewport:set', (_, input: Parameters<ViewportController['set']>[0] = {}) =>
       deps.viewport.set(input),
     );
-    ipcMain.handle('chassis:viewport:reset', () => deps.viewport.reset());
+    ipcMain.handle('chassis:viewport:reset', () => deps.viewport.set({ action: 'reset' }));
     ipcMain.handle('viewport:profile:save', (_, input: { name?: unknown; spec?: unknown }) =>
-      deps.viewport.saveProfile(input ?? {}),
+      deps.viewport.catalog.save(input ?? {}),
     );
-    ipcMain.handle('viewport:profile:delete', (_, id: unknown) => deps.viewport.deleteProfile(id));
+    ipcMain.handle('viewport:profile:delete', (_, id: unknown) => deps.viewport.catalog.remove(id));
     ipcMain.handle('chassis:devtools:open', () => deps.toggleDevTools());
 
     const setVisibility = (_: any, visible: boolean) => deps.setViewportVisibility(visible);

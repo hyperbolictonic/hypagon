@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 396 files, 1160 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 398 files, 1163 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (919)
+## Types (921)
 
 | File | Export | When to use |
 |---|---|---|
@@ -700,6 +700,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/viewport/controller.ts` | `ViewportController` | - |
 | `main/viewport/controller.ts` | `ViewportControllerDeps` *(type)* | - |
 | `main/viewport/controller.ts` | `ViewportSetInput` *(type)* | - |
+| `main/viewport/emulation.ts` | `DeviceEmulation` | When to use: `ViewportController` — one driver per controller. |
+| `main/viewport/emulation.ts` | `DeviceEmulationDeps` *(type)* | When to use: `ViewportController` — the emulation driver plus the app's hooks. |
 | `main/window/window-surface.ts` | `WindowSurface` | The shell window's visibility, focus and tray behaviour. |
 | `main/window/window-surface.ts` | `WindowSurfaceDeps` *(type)* | Dependencies the window surface needs from the chassis lifecycle. |
 | `main/wrap/anyapi/executor.ts` | `coreGate` | Features the core cannot reproduce yet, and therefore stay on the legacy executor. |
@@ -948,7 +950,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (233)
+## Modules (234)
 
 | File | Export | When to use |
 |---|---|---|
@@ -1117,6 +1119,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/tools/state.ts` | `buildToolManagerState` | - |
 | `main/tools/tool-order.ts` | `byConfiguredRank` | When to use: sort a tool list by the user's configured rank, with a stable |
 | `main/ui/menu-popup.ts` | `MenuPopup` | Themed, frameless dropdown hosted in its own small transparent window. |
+| `main/viewport/catalog.ts` | `ProfileCatalog` | When to use: `ViewportController` — one catalogue per controller. |
 | `main/viewport/profiles.ts` | `DeviceProfileStore` | - |
 | `main/window/reassert-viewport.ts` | `reassertViewport` | When to use: after show/restore/focus/resume — re-position the deck and repaint every view. |
 | `main/wrap/auth.ts` | `tokenFromHeaders` | - |
