@@ -94,7 +94,7 @@ const ROUTES: Record<string, ReadHandler> = {
     // Frame mode is opt-in: every frame costs two CDP commands, so the default stays the
     // single main-frame evaluate.
     if (body.frames === true || body.include_frames === true) {
-      const frames = await chassis.evaluateInFrames(script, {
+      const frames = await chassis.page.evaluateInFrames(script, {
         maxFrames: body.max_frames !== undefined ? Number(body.max_frames) : undefined,
         timeoutMs: body.timeout_ms !== undefined ? Number(body.timeout_ms) : undefined,
         includeBlank: body.include_blank === true,
@@ -102,14 +102,14 @@ const ROUTES: Record<string, ReadHandler> = {
       sendJson({ success: true, frames });
       return;
     }
-    const result = await chassis.evaluateJavaScript(script);
+    const result = await chassis.page.evaluate(script);
     sendJson({ success: true, result });
   },
 
   // Shared control facts (marks / find / guard / recipes). Read-only, one injected expression.
   'POST /dom/facts': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    const facts = await chassis.describeControls({
+    const facts = await chassis.page.describeControls({
       selector: body?.selector,
       limit: body?.limit !== undefined ? Number(body.limit) : undefined,
       includeOffscreen: body?.include_offscreen !== false,

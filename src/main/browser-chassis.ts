@@ -33,14 +33,13 @@ import { cortex, CortexDB } from './cortex/cortex-db.js';
 import { DownloadManager, type DownloadRecord } from './downloads/download-manager.js';
 import { ShieldBreaker, type ConsentPolicy } from './shield/shield-breaker.js';
 import { ConsentController } from './shield/consent-controller.js';
-import { evaluateInFrames, type FrameEvalOptions, type FrameEvalResult } from './browser/frame-eval.js';
 import { resolveFrameMark } from './browser/frame-marks.js';
 import { resolveSealedToken as resolveSealedTarget } from './shadow-walk/sealed-targets.js';
 import { ScreenshotStore } from './harvest/screenshots.js';
 import { loadShadowWalkSettings } from './shadow-walk/settings.js';
 import { assertShadowSurface } from './shadow-walk/guard.js';
 import { ShadowWalkSurface } from './shadow-walk/shadow-surface.js';
-import { controlFactsExpression, parseControlFacts, type ControlFacts, type ControlFactsOptions } from './primitives/control-facts.js';
+import { PageScriptSurface } from './browser/page-script-surface.js';
 import { dataPath } from './data-paths.js';
 import { logMainEvent } from './diagnostics/main-log.js';
 import { SessionVault, type SessionSnapshot } from './session/session-vault.js';
@@ -123,6 +122,8 @@ export class BrowserChassis {
   readonly crawl!: CrawlSurface;
   /** Shadow Walk policy, frame reads and the trusted Tab walk. */
   readonly shadow!: ShadowWalkSurface;
+  /** Script evaluation and the shared control description. */
+  readonly page!: PageScriptSurface;
   private actionLedger!: ActionLedger;
   /** Reused off-screen view for detached reads (SERPs, Markdown alternates, crawls). */
   /** Origins a human has authenticated; skip the anonymous static tier for them. */
@@ -199,6 +200,7 @@ export class BrowserChassis {
 
   constructor() {
     this.subscribeToDecisions();
+    this.page = this.createPageScriptSurface();
     this.input = this.createInputSurfaces();
     this.research = this.createResearchSession();
     const harvestNav = this.createHarvestNavigationSurfaces();
@@ -388,7 +390,7 @@ export class BrowserChassis {
     this.primitives = new Primitives({
       webContents: () => this.getActiveWebContents(),
       log: (level, msg) => this.telemetry.addLog(level, msg),
-      evaluate: (script) => this.evaluateQuiet(script),
+      evaluate: (script) => this.page.quiet(script),
       harvest: (opts) => this.harvest.harvestMarkdown(opts),
     guardPageRead: (input) => this.jev.guardPageRead(input),
     precheckPageRead: (input) => this.jev.precheckPageRead(input),
@@ -400,7 +402,7 @@ export class BrowserChassis {
           ? resolveFrameMark(this.getActiveWebContents(), Number(id))
           : this.marksOverlay.getMarkTarget(this.getActiveWebContents(), id),
       getFrames: (opts) => this.shadow.getFrames(opts),
-      evaluateInFrames: (script, opts) => this.evaluateInFrames(script, opts),
+      evaluateInFrames: (script, opts) => this.page.evaluateInFrames(script, opts),
       resolveSealedToken: (token) => resolveSealedTarget(this.getActiveWebContents(), token),
       clickMark: (id) => this.clickMark(id),
       typeMark: (id, text, opts) => this.typeMark(id, text, opts),
@@ -492,6 +494,14 @@ export class BrowserChassis {
       log: (level, message) => this.telemetry.addLog(level, message),
     });
   }
+  /** Script evaluation and control description over the active tab. */
+  private createPageScriptSurface(): PageScriptSurface {
+    return new PageScriptSurface({
+      activeWebContents: () => this.getActiveWebContents(),
+      log: (level, message) => this.telemetry.addLog(level, message),
+    });
+  }
+
   /** Shadow Walk policy and frame reads over the active tab. */
   private createShadowWalkSurface(): ShadowWalkSurface {
     return new ShadowWalkSurface({
@@ -844,7 +854,7 @@ export class BrowserChassis {
   readonly jev = new JevController({
     policy: () => ({ available: false, enforce: false }),
     pageInfo: () => this.getPageInfo(),
-    evaluate: (script) => this.evaluateQuiet(script),
+    evaluate: (script) => this.page.quiet(script),
     harvest: () => this.harvest.harvestMarkdown(),
   });
 
@@ -1432,34 +1442,6 @@ export class BrowserChassis {
 
 
 
-  public async evaluateJavaScript(script: string): Promise<any> {
-    const wc = this.getActiveWebContents();
-    this.telemetry.addLog('action', `MCP Directive: evaluate_javascript("${script.substring(0, 30)}...")`);
-    const result = await wc.executeJavaScript(script);
-    return result;
-  }
-
-  /**
-   * Evaluate in the main frame and its child frames (cross-origin included), via CDP isolated
-   * worlds. Opt-in: two CDP commands per frame, so callers pass a frame budget.
-   */
-  public async evaluateInFrames(script: string, options?: FrameEvalOptions): Promise<FrameEvalResult[]> {
-    const wc = this.getActiveWebContents();
-    this.telemetry.addLog('action', `MCP Directive: evaluate_in_frames(${options?.maxFrames ?? 8} max)`);
-    return evaluateInFrames(wc, script, options);
-  }
-
-  /**
-   * Shared control description used by marks, find, the decision guard and recipes.
-   * One injected expression, no per-element round trips.
-   */
-  public async describeControls(options: ControlFactsOptions = {}): Promise<{ url?: string; controls: ControlFacts[] }> {
-    if (options.deep === true) assertShadowSurface('deepOpenRoots');
-    const wc = this.getActiveWebContents();
-    const raw = await wc.executeJavaScript(controlFactsExpression(options)).catch(() => null);
-    return parseControlFacts(raw);
-  }
-
 
   public getPageInfo(): { url: string; title: string; isLoading: boolean; activeTabId?: string } {
     // Read the live document URL/title. Reddit (and most SPAs) navigate with pushState, which fires
@@ -2007,12 +1989,6 @@ export class BrowserChassis {
 
   public bumpRevision(): number {
     return ++this.revision;
-  }
-
-  /** Executes page script without per-poll log spam (used by primitives probes). */
-  public async evaluateQuiet(script: string): Promise<any> {
-    const wc = this.getActiveWebContents();
-    return await wc.executeJavaScript(script);
   }
 
   /** Advertised capability surface for `bridge_health`. */

@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 242 files, 837 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 243 files, 839 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (710)
+## Types (712)
 
 | File | Export | When to use |
 |---|---|---|
@@ -30,6 +30,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/browser/frames.ts` | `listFrames` | List the main frame and its children with top-level content-box rects. |
 | `main/browser/frames.ts` | `FrameRect` *(type)* | - |
 | `main/browser/frames.ts` | `FrameInfo` *(type)* | - |
+| `main/browser/page-script-surface.ts` | `PageScriptSurface` | The script-evaluation and control-description surface over the active tab. |
+| `main/browser/page-script-surface.ts` | `PageScriptSurfaceDeps` *(type)* | Dependencies the page-script surface needs from the active tab. |
 | `main/collaboration/overlay.ts` | `collaborationNoteDrawerScript` | Anchored note composer. The drawer is mounted next to the picked element, |
 | `main/collaboration/overlay.ts` | `collaborationPickerScript` | - |
 | `main/collaboration/overlay.ts` | `collaborationOverlayScript` | Pure in-page projection for collaboration threads. The overlay is read-only in |

@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-242 modules, 837 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+243 modules, 839 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -13,6 +13,7 @@
 | `main/browser/frame-tree.ts` | 3: discoverFrames, FrameHandle, FrameContext |
 | `main/browser/frames-inventory.ts` | 3: inventoryFrames, FrameInventoryResult, FramesInventoryDeps |
 | `main/browser/frames.ts` | 3: listFrames, FrameRect, FrameInfo |
+| `main/browser/page-script-surface.ts` | 2: PageScriptSurface, PageScriptSurfaceDeps |
 | `main/collaboration/overlay.ts` | 8: collaborationNoteDrawerScript, collaborationPickerScript, collaborationOverlayScript, COLLABORATION_NOTE_PREFIX, COLLABORATION_CLASS_PREFIX, COLLABORATION_RESOLVE_PREFIX, COLLABORATION_EXIT_PREFIX, CollaborationPickerOptions |
 | `main/collaboration/service.ts` | 1: CollaborationService |
 | `main/collaboration/store.ts` | 2: CollaborationStore, CreateThreadInput |
@@ -125,8 +126,7 @@
 | `main/search/search-engine.ts` | 8: engineHost, KNOWN_ENGINES, DEFAULT_ENGINE_CHAIN, SearchHub, SearchResult, SearchAttempt, SearchOutcome, SearchHubDeps |
 | `main/search/search-surface.ts` | 3: SearchSurface, SearchPolicyTarget, SearchSurfaceDeps |
 | `main/security/capability-token.ts` | 3: tokenPathIn, createCapabilityToken, readCapabilityToken |
-| `main/session/session-vault.ts` | 2: SessionVault, SessionSnapshot |
 
-… and 117 more module(s) — grep the full index.
+… and 118 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.
