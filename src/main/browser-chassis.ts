@@ -4,10 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { BrowserWindow, app, nativeImage, ipcMain, clipboard, powerMonitor, screen, session, WebContentsView, type Session, type WebContents } from 'electron';
 import type { AgentStatus, ChassisState, HarvestedConstruct, TelemetryEvent, TabSummary } from '../shared/types.js';
-import type { ViewportState } from '../shared/viewport.js';
 import { DeviceProfileStore } from './viewport/profiles.js';
 import { ViewportController } from './viewport/controller.js';
-import type { ZoomMode, ZoomSettings, ZoomState } from '../shared/zoom.js';
 import { ZoomController } from './zoom/controller.js';
 import { HumanizedInputSimulator } from './telemetry/input-simulator.js';
 import { loadInputProfile, saveInputProfile, type InputProfile } from './telemetry/input-profile.js';
@@ -92,12 +90,6 @@ import { type CitationAnchor, type CitationRelocation } from './research/anchors
 import { CitationController, type HumanHandoffResult, type RevalidationSummary } from './research/citation-controller.js';
 import { CrawlOrchestrator, type RenderCrawlOptions, type RenderCrawlResult } from './research/crawl-orchestrator.js';
 import { Researcher, type ResearchOptions, type ResearchOutcome } from './research/researcher.js';
-
-/** The viewport profile endpoints' shared result shape. */
-type ViewportProfileResult = {
-  ok: boolean;
-  profiles: ReturnType<ViewportController['profiles']>;
-};
 
 
 export class BrowserChassis {
@@ -293,7 +285,7 @@ export class BrowserChassis {
     const harvest = new HarvestSurface({
       activeWebContents: () => this.getActiveWebContents(),
       viewportBounds: () => this.getViewportBounds(),
-      zoomState: () => this.getZoomState(),
+      zoomState: () => this.zoom.getState(),
       marks,
       marksOverlay: this.marksOverlay,
       harvester: this.harvester,
@@ -636,7 +628,7 @@ export class BrowserChassis {
     }
     try {
       screen.on('display-metrics-changed', () => {
-        this.applyZoomToAllTabs();
+        this.zoom.applyToAllTabs();
         reassert();
       });
     } catch {
@@ -724,7 +716,7 @@ export class BrowserChassis {
         this.viewportController?.frameFor(tabId, this.getViewportBounds()) ?? this.getViewportBounds(),
       applyZoom: (wc) => this.applyZoom(wc),
       onZoomShortcut: (action) => {
-        this.setZoom({ action });
+        this.zoom.setZoom({ action });
       },
       onTakeoverShortcut: () => this.toggleHumanControl(),
       onRendererGone: (tab, details) => this.handleRendererGone(tab, details),
@@ -1033,6 +1025,17 @@ export class BrowserChassis {
     return this.tabManager;
   }
 
+  /** The tab manager; the bridge cannot reach a tab before the window exists. */
+  get tabs(): TabManager {
+    return this.requireTabManager();
+  }
+
+  /** The responsive viewport controller; available once the window is set. */
+  get viewport(): ViewportController {
+    if (!this.viewportController) throw new Error('Browser Chassis uninitialized');
+    return this.viewportController;
+  }
+
   public getActiveWebContents(): Electron.WebContents {
     const wc = this.requireTabManager().getActiveTab().view.webContents;
     this.networkInterceptor.attach(wc);
@@ -1067,17 +1070,13 @@ export class BrowserChassis {
     tabManager.closeTab(tabId);
   }
 
-  public getTabsSummary(): TabSummary[] {
-    if (!this.tabManager) return [];
-    return this.tabManager.getTabsSummary();
-  }
 
   /** Install the persisted page-zoom policy (compensate vs Windows scale). */
   // ---- Page zoom ----------------------------------------------------------------------
   // Mode, override and the display-scale base factor live in ZoomController; these
   // delegations keep the chassis's public surface unchanged.
 
-  private readonly zoomController = new ZoomController({
+  readonly zoom = new ZoomController({
     displayScale: () => this.getDisplayScale(),
     viewportState: () => this.viewportController?.state() ?? null,
     isEmulated: (wc) => Boolean(this.viewportController?.isEmulated(wc as any)),
@@ -1086,13 +1085,6 @@ export class BrowserChassis {
     onChanged: () => this.broadcastState(),
   });
 
-  public setZoomSettings(settings: ZoomSettings): void {
-    this.zoomController.setSettings(settings);
-  }
-
-  public getZoomMode(): ZoomMode {
-    return this.zoomController.getMode();
-  }
 
   /** Scale factor of the display containing the main window. */
   private getDisplayScale(): number {
@@ -1111,59 +1103,11 @@ export class BrowserChassis {
     }
   }
 
-  public getZoomState(): ZoomState {
-    return this.zoomController.getState();
-  }
 
   private applyZoom(wc: WebContents): void {
-    this.zoomController.applyTo(wc);
+    this.zoom.applyTo(wc);
   }
 
-  public applyZoomToAllTabs(): void {
-    this.zoomController.applyToAllTabs();
-  }
-
-  public getViewportState(): ViewportState {
-    if (this.viewportController) return this.viewportController.state();
-    const available = this.getViewportBounds();
-    return {
-      active: false,
-      spec: null,
-      orientation: 'portrait',
-      available: { width: available.width, height: available.height },
-      frame: { x: 0, y: 0, width: available.width, height: available.height },
-      scale: 1,
-      profiles: [],
-    };
-  }
-
-  public async setViewport(input: {
-    action?: 'status' | 'set' | 'rotate' | 'reset';
-    preset?: string;
-    width?: number;
-    height?: number;
-    deviceScaleFactor?: number;
-    mobile?: boolean;
-    touch?: boolean;
-  } = {}): Promise<ViewportState> {
-    if (!this.viewportController) throw new Error('Browser Chassis uninitialized');
-    return await this.viewportController.set(input);
-  }
-
-  public async resetViewport(): Promise<ViewportState> {
-    if (!this.viewportController) throw new Error('Browser Chassis uninitialized');
-    return await this.viewportController.reset();
-  }
-
-  public saveDeviceProfile(input: { name?: unknown; spec?: unknown }): ViewportProfileResult {
-    if (!this.viewportController) return { ok: false, profiles: [] };
-    return this.viewportController.saveProfile(input);
-  }
-
-  public deleteDeviceProfile(id: unknown): ViewportProfileResult {
-    if (!this.viewportController) return { ok: false, profiles: [] };
-    return this.viewportController.deleteProfile(id);
-  }
 
   /** Open or close the native Chromium DevTools for the active tab. */
   public toggleDevTools(): boolean {
@@ -1187,13 +1131,6 @@ export class BrowserChassis {
    * is an exact zoom from an agent. An explicit change overrides the policy base
    * until `reset` or a mode switch.
    */
-  public setZoom(input: {
-    action?: 'status' | 'in' | 'out' | 'reset';
-    factor?: number;
-    mode?: ZoomMode;
-  } = {}): ZoomState {
-    return this.zoomController.setZoom(input);
-  }
 
   private registerIpcHandlers() {
     this.registerCoreIpc();
@@ -1249,7 +1186,7 @@ export class BrowserChassis {
 
   private registerTabViewportIpc() {
     // Tab IPC Handlers
-    ipcMain.handle('chassis:get-tabs', () => this.getTabsSummary());
+    ipcMain.handle('chassis:get-tabs', () => this.tabs.getTabsSummary());
     ipcMain.handle('chassis:create-tab', (_, url?: string) => this.createTab(url));
     ipcMain.handle('chassis:switch-tab', (_, tabId: string) => this.switchTab(tabId));
     ipcMain.handle('chassis:close-tab', (_, tabId?: string) => this.closeTab(tabId));
@@ -1257,22 +1194,22 @@ export class BrowserChassis {
     // Page zoom: a runtime view control. The persisted mode is written from the
     // main process IPC handler (`chassis:zoom:mode`) so the bridge cannot change
     // a human setting by accident.
-    ipcMain.handle('chassis:zoom:get', () => this.getZoomState());
+    ipcMain.handle('chassis:zoom:get', () => this.zoom.getState());
     ipcMain.handle('chassis:zoom:set', (_, input: { action?: 'status' | 'in' | 'out' | 'reset'; factor?: number } = {}) =>
-      this.setZoom(input),
+      this.zoom.setZoom(input),
     );
 
     // Responsive device emulation. The agent path is intentionally tiny (status/set/reset);
     // profile management is a human-only convenience.
-    ipcMain.handle('chassis:viewport:get', () => this.getViewportState());
-    ipcMain.handle('chassis:viewport:set', (_, input: Parameters<BrowserChassis['setViewport']>[0] = {}) =>
-      this.setViewport(input),
+    ipcMain.handle('chassis:viewport:get', () => this.viewport.state());
+    ipcMain.handle('chassis:viewport:set', (_, input: Parameters<ViewportController['set']>[0] = {}) =>
+      this.viewport.set(input),
     );
-    ipcMain.handle('chassis:viewport:reset', () => this.resetViewport());
+    ipcMain.handle('chassis:viewport:reset', () => this.viewport.reset());
     ipcMain.handle('viewport:profile:save', (_, input: { name?: unknown; spec?: unknown }) =>
-      this.saveDeviceProfile(input ?? {}),
+      this.viewport.saveProfile(input ?? {}),
     );
-    ipcMain.handle('viewport:profile:delete', (_, id: unknown) => this.deleteDeviceProfile(id));
+    ipcMain.handle('viewport:profile:delete', (_, id: unknown) => this.viewport.deleteProfile(id));
     ipcMain.handle('chassis:devtools:open', () => this.toggleDevTools());
 
     const setVisibility = (_: any, visible: boolean) => {
@@ -1572,7 +1509,7 @@ export class BrowserChassis {
     return id;
   }
   private broadcastState() {
-    this.state.zoom = this.getZoomState();
+    this.state.zoom = this.zoom.getState();
     this.state.viewport = this.viewportController?.state();
     // History availability is read at broadcast time, not cached on navigation: SPAs use pushState,
     // which fires no navigation event, and a tab switch swaps the history stack under the toolbar.
@@ -2243,7 +2180,7 @@ export class BrowserChassis {
       const textMarks = await this.marks.scan(wc, { includeOffscreen });
       await this.marksOverlay.removeMarks(wc);
       const viewport = this.getViewportBounds();
-      const zoom = this.getZoomState();
+      const zoom = this.zoom.getState();
       return {
         screenshot: {
           base64Image: '',
@@ -2272,7 +2209,7 @@ export class BrowserChassis {
 
     // 3. Immediately clean up marks from DOM
     await this.marksOverlay.removeMarks(wc);
-    const zoom = this.getZoomState();
+    const zoom = this.zoom.getState();
     const nativeSize = image.getSize();
 
     // Economy mode: downscale to max 640px wide and encode as JPEG (~10-20x smaller payload)

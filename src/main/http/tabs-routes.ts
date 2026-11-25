@@ -25,7 +25,7 @@ const tabRef = (body: any): any => {
 
 /** `GET /tabs` and its explicit `list` alias serve the same summary. */
 const listTabs: TabHandler = ({ chassis, sendJson }) => {
-  sendJson({ success: true, tabs: chassis.getTabsSummary() });
+  sendJson({ success: true, tabs: chassis.tabs.getTabsSummary() });
 };
 
 const ROUTES: Record<string, TabHandler> = {

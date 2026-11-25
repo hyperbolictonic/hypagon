@@ -324,7 +324,7 @@ ipcMain.handle('chassis:zoom:mode', (_event, mode: unknown) => {
     activeZoomSettings = new ZoomSettingsStore(path.join(app.getPath('userData'), 'zoom-settings.json'));
   }
   activeZoomSettings.savePatch({ mode: next });
-  return chassis.setZoom({ mode: next });
+  return chassis.zoom.setZoom({ mode: next });
 });
 
 ipcMain.handle('research:settings:get', () => {
@@ -537,7 +537,7 @@ async function createWindow() {
   // load. Later windows reuse the same store and keep any manual zoom.
   if (!activeZoomSettings) {
     activeZoomSettings = new ZoomSettingsStore(path.join(app.getPath('userData'), 'zoom-settings.json'));
-    chassis.setZoomSettings(activeZoomSettings.get());
+    chassis.zoom.setSettings(activeZoomSettings.get());
   }
 
   mainWindow = new BrowserWindow({

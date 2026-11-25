@@ -24,7 +24,7 @@ const ROUTES: Record<string, BookmarkHandler> = {
 
   'POST /bookmarks/add': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    const activeUrl = chassis.getTabsSummary().find((t) => t.isActive)?.url || 'about:blank';
+    const activeUrl = chassis.tabs.getTabsSummary().find((t) => t.isActive)?.url || 'about:blank';
     const bookmark = await chassis.getCortex().addBookmark({
       url: body.url || activeUrl,
       title: body.title,

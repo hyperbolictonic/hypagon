@@ -90,7 +90,7 @@ async function createThread(
 ): Promise<void> {
   const body = await readBody();
   const info = chassis.getPageInfo();
-  const activeTab = chassis.getTabsSummary().find((tab) => tab.isActive);
+  const activeTab = chassis.tabs.getTabsSummary().find((tab) => tab.isActive);
   const target = body?.target && typeof body.target === 'object'
     ? { ...body.target, url: body.target.url || info.url, tabId: body.target.tabId || activeTab?.id }
     : undefined;

@@ -14,7 +14,7 @@ type WorkspaceHandler = (ctx: ChassisRouteContext) => Promise<void> | void;
 
 const ROUTES: Record<string, WorkspaceHandler> = {
   'GET /zoom': ({ chassis, sendJson }) => {
-    sendJson({ success: true, zoom: chassis.getZoomState() });
+    sendJson({ success: true, zoom: chassis.zoom.getState() });
   },
 
   'POST /zoom': async ({ chassis, readBody, sendJson }) => {
@@ -32,12 +32,12 @@ const ROUTES: Record<string, WorkspaceHandler> = {
       sendJson({ success: false, error: 'factor must be between 0.25 and 5.', code: 'BAD_REQUEST' }, 400);
       return;
     }
-    const zoom = chassis.setZoom({ action, factor });
+    const zoom = chassis.zoom.setZoom({ action, factor });
     sendJson({ success: true, zoom });
   },
 
   'GET /viewport': ({ chassis, sendJson }) => {
-    sendJson({ success: true, viewport: chassis.getViewportState() });
+    sendJson({ success: true, viewport: chassis.viewport.state() });
   },
 
   'POST /viewport': async ({ chassis, readBody, sendJson }) => {
@@ -49,7 +49,7 @@ const ROUTES: Record<string, WorkspaceHandler> = {
           ? 'set'
           : 'status';
     try {
-      const viewport = await chassis.setViewport({
+      const viewport = await chassis.viewport.set({
         action: requested,
         preset: typeof body?.preset === 'string' ? body.preset : undefined,
         width: body?.width !== undefined ? Number(body.width) : undefined,

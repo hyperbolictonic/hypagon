@@ -48,7 +48,7 @@ const bridgeStatus = (ctx: HealthRouteContext) => {
     human: { paused: chassis.isHumanActive(), ...chassis.getHumanStatus() },
     metrics: summary(),
     shadowWalk: { ...shadowWalkStatus(), forceOpenArmed: chassis.forceOpenArmed() },
-    zoom: chassis.getZoomState(),
+    zoom: chassis.zoom.getState(),
     info,
   };
 };
