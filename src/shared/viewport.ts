@@ -7,8 +7,10 @@
  * area by `fitViewport`.
  */
 
+/** When to use: reporting whether a viewport is taller than it is wide. */
 export type Orientation = 'portrait' | 'landscape';
 
+/** When to use: a selectable device preset — shipped with the app or saved by a human. */
 export interface DeviceProfile {
   id: string;
   name: string;
@@ -24,6 +26,7 @@ export interface DeviceProfile {
   builtin?: boolean;
 }
 
+/** When to use: the emulation applied to one tab — a profile's values, or a custom size. */
 export interface ViewportSpec {
   /** Profile id, or `custom` after the human edits width/height/DPR by hand. */
   profileId: string;
@@ -35,6 +38,7 @@ export interface ViewportSpec {
   userAgent?: string;
 }
 
+/** When to use: a rectangle in DIP — the browsing area, or the emulated frame inside it. */
 export interface ViewportRect {
   x: number;
   y: number;
@@ -42,6 +46,7 @@ export interface ViewportRect {
   height: number;
 }
 
+/** When to use: the HUD and `browser_viewport` status read — spec, frame, scale and profiles. */
 export interface ViewportState {
   active: boolean;
   spec: ViewportSpec | null;
@@ -55,6 +60,7 @@ export interface ViewportState {
   profiles: DeviceProfile[];
 }
 
+/** When to use: the device dropdown and preset lookup — the phones, tablets and desktop sizes shipped with the app. */
 export const BUILTIN_PROFILES: DeviceProfile[] = [
   {
     id: 'iphone-15',
@@ -138,10 +144,15 @@ export const BUILTIN_PROFILES: DeviceProfile[] = [
   },
 ];
 
+/** When to use: validating or clamping a custom width/height. */
 export const MIN_VIEWPORT_DIMENSION = 200;
+/** When to use: validating or clamping a custom width/height. */
 export const MAX_VIEWPORT_DIMENSION = 5000;
+/** When to use: validating or clamping a custom device scale factor. */
 export const MIN_DEVICE_SCALE = 0.5;
+/** When to use: validating or clamping a custom device scale factor. */
 export const MAX_DEVICE_SCALE = 5;
+/** When to use: the saved-device limit the profile store enforces. */
 export const MAX_CUSTOM_PROFILES = 50;
 
 /** Empty space kept around the emulated device inside the browsing area. */
@@ -161,6 +172,7 @@ function clampDeviceScale(value: unknown, fallback: number): number {
   return Math.round(clampNumber(value, fallback, MIN_DEVICE_SCALE, MAX_DEVICE_SCALE) * 100) / 100;
 }
 
+/** When to use: applying a preset — the spec a `DeviceProfile` emulates. */
 export function specFromProfile(profile: DeviceProfile): ViewportSpec {
   return {
     profileId: profile.id,
@@ -173,6 +185,7 @@ export function specFromProfile(profile: DeviceProfile): ViewportSpec {
   };
 }
 
+/** When to use: a `browser_viewport` set — clamp the requested size and DPR into a usable spec. */
 export function normalizeViewportSpec(input: unknown, fallback?: ViewportSpec): ViewportSpec {
   const source = input && typeof input === 'object' && !Array.isArray(input) ? (input as Record<string, unknown>) : {};
   const base = fallback ?? specFromProfile(BUILTIN_PROFILES[0]!);
@@ -189,6 +202,7 @@ export function normalizeViewportSpec(input: unknown, fallback?: ViewportSpec): 
   };
 }
 
+/** When to use: saving a device — validate a human's profile, or null when it is unusable. */
 export function normalizeDeviceProfile(input: unknown): DeviceProfile | null {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
   const source = input as Record<string, unknown>;
@@ -211,6 +225,7 @@ export function normalizeDeviceProfile(input: unknown): DeviceProfile | null {
   };
 }
 
+/** When to use: the status read and the rotate result. */
 export function orientationOf(spec: ViewportSpec): Orientation {
   return spec.width > spec.height ? 'landscape' : 'portrait';
 }
@@ -252,6 +267,7 @@ export function fitViewport(
   };
 }
 
+/** When to use: resolving a preset id from the catalogue. */
 export function findProfile(profiles: DeviceProfile[], id: string): DeviceProfile | undefined {
   return profiles.find((profile) => profile.id === id);
 }

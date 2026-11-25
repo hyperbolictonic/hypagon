@@ -117,7 +117,6 @@
       "shared/research-events.ts": 3,
       "shared/tool-settings.ts": 4,
       "shared/types.ts": 6,
-      "shared/viewport.ts": 15,
       "shared/zoom.ts": 6
     }
   },

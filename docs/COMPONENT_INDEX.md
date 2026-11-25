@@ -956,25 +956,25 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/types.ts` | `HarvestedConstruct` *(type)* | - |
 | `shared/types.ts` | `TabSummary` *(type)* | - |
 | `shared/types.ts` | `ChassisState` *(type)* | - |
-| `shared/viewport.ts` | `specFromProfile` | - |
-| `shared/viewport.ts` | `normalizeViewportSpec` | - |
-| `shared/viewport.ts` | `normalizeDeviceProfile` | - |
-| `shared/viewport.ts` | `orientationOf` | - |
+| `shared/viewport.ts` | `specFromProfile` | When to use: applying a preset — the spec a `DeviceProfile` emulates. |
+| `shared/viewport.ts` | `normalizeViewportSpec` | When to use: a `browser_viewport` set — clamp the requested size and DPR into a usable spec. |
+| `shared/viewport.ts` | `normalizeDeviceProfile` | When to use: saving a device — validate a human's profile, or null when it is unusable. |
+| `shared/viewport.ts` | `orientationOf` | When to use: the status read and the rotate result. |
 | `shared/viewport.ts` | `rotateSpec` | Swap width/height, keeping the physical device size. |
 | `shared/viewport.ts` | `fitViewport` | Fit an emulated device inside the browsing area. |
-| `shared/viewport.ts` | `findProfile` | - |
-| `shared/viewport.ts` | `BUILTIN_PROFILES` | - |
-| `shared/viewport.ts` | `MIN_VIEWPORT_DIMENSION` | - |
-| `shared/viewport.ts` | `MAX_VIEWPORT_DIMENSION` | - |
-| `shared/viewport.ts` | `MIN_DEVICE_SCALE` | - |
-| `shared/viewport.ts` | `MAX_DEVICE_SCALE` | - |
-| `shared/viewport.ts` | `MAX_CUSTOM_PROFILES` | - |
+| `shared/viewport.ts` | `findProfile` | When to use: resolving a preset id from the catalogue. |
+| `shared/viewport.ts` | `BUILTIN_PROFILES` | When to use: the device dropdown and preset lookup — the phones, tablets and desktop sizes shipped with the app. |
+| `shared/viewport.ts` | `MIN_VIEWPORT_DIMENSION` | When to use: validating or clamping a custom width/height. |
+| `shared/viewport.ts` | `MAX_VIEWPORT_DIMENSION` | When to use: validating or clamping a custom width/height. |
+| `shared/viewport.ts` | `MIN_DEVICE_SCALE` | When to use: validating or clamping a custom device scale factor. |
+| `shared/viewport.ts` | `MAX_DEVICE_SCALE` | When to use: validating or clamping a custom device scale factor. |
+| `shared/viewport.ts` | `MAX_CUSTOM_PROFILES` | When to use: the saved-device limit the profile store enforces. |
 | `shared/viewport.ts` | `VIEWPORT_MARGIN` | Empty space kept around the emulated device inside the browsing area. |
-| `shared/viewport.ts` | `Orientation` *(type)* | Responsive / device emulation contract. |
-| `shared/viewport.ts` | `DeviceProfile` *(type)* | - |
-| `shared/viewport.ts` | `ViewportSpec` *(type)* | - |
-| `shared/viewport.ts` | `ViewportRect` *(type)* | - |
-| `shared/viewport.ts` | `ViewportState` *(type)* | - |
+| `shared/viewport.ts` | `Orientation` *(type)* | When to use: reporting whether a viewport is taller than it is wide. |
+| `shared/viewport.ts` | `DeviceProfile` *(type)* | When to use: a selectable device preset — shipped with the app or saved by a human. |
+| `shared/viewport.ts` | `ViewportSpec` *(type)* | When to use: the emulation applied to one tab — a profile's values, or a custom size. |
+| `shared/viewport.ts` | `ViewportRect` *(type)* | When to use: a rectangle in DIP — the browsing area, or the emulated frame inside it. |
+| `shared/viewport.ts` | `ViewportState` *(type)* | When to use: the HUD and `browser_viewport` status read — spec, frame, scale and profiles. |
 | `shared/web-state.ts` | `WebPageState` *(type)* | Page-level signals collected for the WEB STATE tab on the Command Deck. |
 | `shared/zoom.ts` | `normalizeZoomSettings` | - |
 | `shared/zoom.ts` | `nextZoomStep` | - |
