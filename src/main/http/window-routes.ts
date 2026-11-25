@@ -14,15 +14,15 @@ type WindowHandler = (ctx: ChassisRouteContext) => Promise<void> | void;
 /** The visibility payload both methods answer with. */
 const visibilityState = (chassis: ChassisRouteContext['chassis']) => ({
   success: true,
-  visible: chassis.isWindowVisible(),
-  focused: chassis.isWindowFocused(),
+  visible: chassis.window.isVisible(),
+  focused: chassis.window.isFocused(),
 });
 
 const ROUTES: Record<string, WindowHandler> = {
   'POST /window/visibility': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    chassis.setWindowVisibility(!!body.visible);
-    if (body.visible && body.focus !== false) chassis.focusWindow();
+    chassis.window.setVisible(!!body.visible);
+    if (body.visible && body.focus !== false) chassis.window.focus();
     sendJson(visibilityState(chassis));
   },
 
@@ -31,19 +31,19 @@ const ROUTES: Record<string, WindowHandler> = {
   },
 
   'POST /window/focus': ({ chassis, sendJson }) => {
-    sendJson({ success: true, focused: chassis.focusWindow() });
+    sendJson({ success: true, focused: chassis.window.focus() });
   },
 
   'POST /window/tray': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
     if (typeof body.closeToTray === 'boolean') {
-      chassis.setCloseToTray(body.closeToTray);
+      chassis.window.setCloseToTray(body.closeToTray);
     }
-    sendJson({ success: true, closeToTray: chassis.isCloseToTray() });
+    sendJson({ success: true, closeToTray: chassis.window.isCloseToTray() });
   },
 
   'GET /window/tray': ({ chassis, sendJson }) => {
-    sendJson({ success: true, closeToTray: chassis.isCloseToTray() });
+    sendJson({ success: true, closeToTray: chassis.window.isCloseToTray() });
   },
 };
 

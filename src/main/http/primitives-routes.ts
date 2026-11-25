@@ -8,6 +8,7 @@
  * object as their collaborator, and several aliases (`GET` and `POST` for
  * `/page-state`) are declared side by side so the two spellings cannot drift.
  */
+import { BRIDGE_CAPABILITIES } from '../capabilities.js';
 import type { ChassisRouteContext } from './route-table.js';
 import { dispatchRoute } from './route-table.js';
 
@@ -53,7 +54,7 @@ const ROUTES: Record<string, PrimitiveHandler> = {
 
   // ---- Primitives layer (observe / act / wait / extract / collect / find) ----
   'GET /page-version': ({ chassis, sendJson }) => {
-    sendJson({ success: true, revision: chassis.getRevision(), capabilities: chassis.getCapabilities() });
+    sendJson({ success: true, revision: chassis.getRevision(), capabilities: BRIDGE_CAPABILITIES });
   },
 
   'GET /page-state': pageState,

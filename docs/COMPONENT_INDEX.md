@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 249 files, 851 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 251 files, 854 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (724)
+## Types (726)
 
 | File | Export | When to use |
 |---|---|---|
@@ -524,6 +524,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/viewport/controller.ts` | `ViewportController` | - |
 | `main/viewport/controller.ts` | `ViewportControllerDeps` *(type)* | - |
 | `main/viewport/controller.ts` | `ViewportSetInput` *(type)* | - |
+| `main/window/window-surface.ts` | `WindowSurface` | The shell window's visibility, focus and tray behaviour. |
+| `main/window/window-surface.ts` | `WindowSurfaceDeps` *(type)* | Dependencies the window surface needs from the chassis lifecycle. |
 | `main/wrap/anyapi/executor.ts` | `coreGate` | Features the core cannot reproduce yet, and therefore stay on the legacy executor. |
 | `main/wrap/anyapi/executor.ts` | `AnyApiWrapExecutor` | - |
 | `main/wrap/anyapi/executor.ts` | `CoreGate` *(type)* | - |
@@ -743,7 +745,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (124)
+## Modules (125)
 
 | File | Export | When to use |
 |---|---|---|
@@ -753,6 +755,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/browser/frame-marks.ts` | `registerFrameMarks` | - |
 | `main/browser/frame-marks.ts` | `resolveFrameMark` | Resolve a frame mark to a live page-space target. Returns null when the frame navigated, the |
 | `main/browser-chassis.ts` | `BrowserChassis` | - |
+| `main/capabilities.ts` | `BRIDGE_CAPABILITIES` | The bridge capabilities advertised by `bridge_health`. |
 | `main/collaboration/service.ts` | `CollaborationService` | - |
 | `main/data-paths.ts` | `dataRoot` | - |
 | `main/data-paths.ts` | `dataPath` | - |

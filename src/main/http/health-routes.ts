@@ -8,6 +8,7 @@
  * settings store, the last-action clock), so the main handler can stay a
  * dispatcher instead of growing a second status surface.
  */
+import { BRIDGE_CAPABILITIES } from '../capabilities.js';
 import { APP_VERSION } from '../../shared/version.js';
 import { BRAND } from '../../shared/brand.js';
 import { shadowWalkStatus } from '../shadow-walk/settings.js';
@@ -40,10 +41,10 @@ const bridgeStatus = (ctx: HealthRouteContext) => {
     app: BRAND.appKey,
     version: APP_VERSION,
     revision: chassis.getRevision(),
-    capabilities: chassis.getCapabilities(),
+    capabilities: BRIDGE_CAPABILITIES,
     decision: decisionStatus(),
     lastActionAt: lastActionAt(),
-    window: { visible: chassis.isWindowVisible(), focused: chassis.isWindowFocused() },
+    window: { visible: chassis.window.isVisible(), focused: chassis.window.isFocused() },
     input: { transport: chassis.input.simulator.lastInputTransport },
     human: { paused: chassis.isHumanActive(), ...chassis.getHumanStatus() },
     metrics: summary(),

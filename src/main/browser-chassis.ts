@@ -49,6 +49,7 @@ import { Primitives } from './primitives/primitives.js';
 import { ScriptsSurface } from './scripts/scripts-surface.js';
 import type { ScriptItem } from './cortex/cortex-db.js';
 import { TrayManager } from './tray/tray-manager.js';
+import { WindowSurface } from './window/window-surface.js';
 import { researchError } from './research/session-controller.js';
 import { ResearchViewSurface } from './research/research-view-surface.js';
 import { ResearchSessionSurface } from './research/research-session-surface.js';
@@ -69,6 +70,11 @@ import { type CitationRelocation } from './research/anchors.js';
 
 export class BrowserChassis {
   private mainWindow: BrowserWindow | null = null;
+  /** Window visibility, focus and close-to-tray behaviour. */
+  readonly window = new WindowSurface({
+    window: () => this.mainWindow,
+    tray: () => this.trayManager,
+  });
   /** Shared controller hooks: every controller config wires the same log and telemetry. */
   private readonly controllerLog = (level: 'info' | 'warn' | 'action', message: string): void => this.telemetry.addLog(level, message);
   private readonly controllerTelemetry = (event: TelemetryEvent): void => this.telemetry.emitTelemetry(event);
@@ -445,7 +451,7 @@ export class BrowserChassis {
       getNetworkTraffic: (filter) => this.network.traffic(filter),
       getPageInfo: () => this.getPageInfo(),
       revision: () => this.revision,
-      windowFocused: () => this.isWindowFocused(),
+      windowFocused: () => this.window.isFocused(),
       recordTransition: (record) => this.actionLedger.record(record),
     });
     return hil;
@@ -1654,49 +1660,6 @@ export class BrowserChassis {
     return { markdown: r.after || '', title: r.result?.title || url, status: r.status, contentType: r.contentType };
   }
 
-  // System Tray & Window Visibility
-  public setWindowVisibility(visible: boolean): void {
-    if (visible) {
-      this.trayManager?.showWindow();
-    } else {
-      this.trayManager?.hideWindow();
-    }
-  }
-
-  public isWindowVisible(): boolean {
-    return this.trayManager ? this.trayManager.isWindowVisible() : true;
-  }
-
-  /** True when the app window currently owns OS focus (required for synthetic input). */
-  public isWindowFocused(): boolean {
-    try {
-      return Boolean(this.mainWindow && !this.mainWindow.isDestroyed() && this.mainWindow.isFocused());
-    } catch {
-      return false;
-    }
-  }
-
-  /** Brings the app window to the foreground (best effort). */
-  public focusWindow(): boolean {
-    try {
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        if (!this.mainWindow.isVisible()) this.trayManager?.showWindow();
-        this.mainWindow.show();
-        this.mainWindow.focus();
-        this.mainWindow.moveTop();
-      }
-    } catch {}
-    return this.isWindowFocused();
-  }
-
-  public setCloseToTray(enabled: boolean): void {
-    this.trayManager?.setCloseToTray(enabled);
-  }
-
-  public isCloseToTray(): boolean {
-    return this.trayManager ? this.trayManager.isCloseToTray() : true;
-  }
-
   // ---- Primitives layer (observe / act / wait / extract / collect / find) ----
 
   public getPrimitives(): Primitives {
@@ -1711,29 +1674,4 @@ export class BrowserChassis {
     return ++this.revision;
   }
 
-  /** Advertised capability surface for `bridge_health`. */
-  public getCapabilities(): string[] {
-    return [
-      'observe:v2',
-      'wait_for',
-      'extract:list,table,app_data',
-      'collect_all',
-      'find',
-      'expect',
-      'act',
-      'page_state',
-      'diff',
-      'network_since',
-      'export_har',
-      'contexts',
-      'marks_offscreen',
-      'llm_surface',
-      'llm_fetch',
-      'read_url',
-      'search_web',
-      'deep_crawl',
-      'research_topic',
-      'zoom',
-    ];
-  }
 }
