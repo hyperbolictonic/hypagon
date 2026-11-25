@@ -16,7 +16,7 @@ type ScriptHandler = (ctx: ChassisRouteContext) => Promise<void> | void;
 /** `recall` accepts the same filters from a POST body or a GET query string. */
 const recallScripts = async ({ chassis, method, url, readBody, sendJson }: ChassisRouteContext) => {
   const body = method === 'POST' ? await readBody() : {};
-  const scripts = await chassis.recallScripts(body.query, {
+  const scripts = await chassis.scripts.recall(body.query, {
     domain: body.domain,
     tag: body.tag,
     limit: body.limit,
@@ -27,7 +27,7 @@ const recallScripts = async ({ chassis, method, url, readBody, sendJson }: Chass
 const ROUTES: Record<string, ScriptHandler> = {
   'POST /scripts/save': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    sendJson({ success: true, script: await chassis.saveScript(body) });
+    sendJson({ success: true, script: await chassis.scripts.save(body) });
   },
 
   // Explicit registry variants: the tool layer calls recall with a body.
@@ -36,7 +36,7 @@ const ROUTES: Record<string, ScriptHandler> = {
 
   'POST /scripts/run': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    sendJson({ success: true, execution: await chassis.runScript(body.name, body.args) });
+    sendJson({ success: true, execution: await chassis.scripts.run(body.name, body.args) });
   },
 
   'GET /scripts/list': async ({ chassis, url, sendJson }) => {
@@ -44,7 +44,7 @@ const ROUTES: Record<string, ScriptHandler> = {
     const limit = limitParam ? parseInt(limitParam, 10) : 100;
     // Tree search when a query is present, otherwise enumerate
     // (recallScripts lists all when query is undefined).
-    const scripts = await chassis.recallScripts(url.searchParams.get('q') || undefined, {
+    const scripts = await chassis.scripts.recall(url.searchParams.get('q') || undefined, {
       tag: url.searchParams.get('tag') || undefined,
       limit,
     });
@@ -53,7 +53,7 @@ const ROUTES: Record<string, ScriptHandler> = {
 
   'POST /scripts/delete': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    sendJson({ success: true, deleted: await chassis.deleteScript(body.name) });
+    sendJson({ success: true, deleted: await chassis.scripts.remove(body.name) });
   },
 };
 

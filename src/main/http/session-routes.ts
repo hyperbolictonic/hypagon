@@ -3,57 +3,55 @@
  *
  * Why one module: the named-context endpoints are documented as thin aliases
  * over the same chassis session vault — same calls, different response keys and
- * (for `open`) an extra required-name check. Keeping both spellings side by side
- * is what makes the alias relationship auditable; separating them would invite
- * the two to drift again.
+ * (for `open`) an extra required-name check. The table below spells the alias
+ * relationship out once per route; the handlers are shared so the two spellings
+ * cannot drift.
  */
 import type { ChassisRouteContext } from './route-table.js';
 import { dispatchRoute } from './route-table.js';
 
 type SessionHandler = (ctx: ChassisRouteContext) => Promise<void> | void;
 
+const save: SessionHandler = async ({ chassis, readBody, sendJson }) => {
+  const body = await readBody();
+  sendJson({ success: true, result: await chassis.sessions.save(body?.name) });
+};
+
+const restore: SessionHandler = async ({ chassis, readBody, sendJson }) => {
+  const body = await readBody();
+  sendJson({ success: true, result: await chassis.sessions.restore(body.name) });
+};
+
+const open: SessionHandler = async ({ chassis, readBody, sendJson }) => {
+  const body = await readBody();
+  if (!body?.name) {
+    sendJson({ success: false, error: 'Provide { name }', code: 'BAD_REQUEST' }, 400);
+    return;
+  }
+  sendJson({ success: true, result: await chassis.sessions.restore(body.name) });
+};
+
+const list = (key: 'sessions' | 'contexts'): SessionHandler => ({ chassis, sendJson }) => {
+  sendJson({ success: true, [key]: chassis.sessions.list() });
+};
+
+const remove: SessionHandler = async ({ chassis, readBody, sendJson }) => {
+  const body = await readBody();
+  sendJson({ success: true, deleted: chassis.sessions.remove(body?.name) });
+};
+
 const ROUTES: Record<string, SessionHandler> = {
-  'POST /session/save': async ({ chassis, readBody, sendJson }) => {
-    const body = await readBody();
-    sendJson({ success: true, result: await chassis.saveSession(body.name) });
-  },
+  'POST /session/save': save,
+  'POST /context/save': save,
 
-  'POST /session/restore': async ({ chassis, readBody, sendJson }) => {
-    const body = await readBody();
-    sendJson({ success: true, result: await chassis.restoreSession(body.name) });
-  },
+  'POST /session/restore': restore,
+  'POST /context/open': open,
 
-  'GET /session/list': ({ chassis, sendJson }) => {
-    sendJson({ success: true, sessions: chassis.listSessions() });
-  },
+  'GET /session/list': list('sessions'),
+  'GET /context/list': list('contexts'),
 
-  'POST /session/delete': async ({ chassis, readBody, sendJson }) => {
-    const body = await readBody();
-    sendJson({ success: true, deleted: chassis.deleteSession(body.name) });
-  },
-
-  'POST /context/save': async ({ chassis, readBody, sendJson }) => {
-    const body = await readBody();
-    sendJson({ success: true, result: await chassis.saveSession(body?.name) });
-  },
-
-  'POST /context/open': async ({ chassis, readBody, sendJson }) => {
-    const body = await readBody();
-    if (!body?.name) {
-      sendJson({ success: false, error: 'Provide { name }', code: 'BAD_REQUEST' }, 400);
-      return;
-    }
-    sendJson({ success: true, result: await chassis.restoreSession(body.name) });
-  },
-
-  'GET /context/list': ({ chassis, sendJson }) => {
-    sendJson({ success: true, contexts: chassis.listSessions() });
-  },
-
-  'POST /context/delete': async ({ chassis, readBody, sendJson }) => {
-    const body = await readBody();
-    sendJson({ success: true, deleted: chassis.deleteSession(body?.name) });
-  },
+  'POST /session/delete': remove,
+  'POST /context/delete': remove,
 };
 
 /**

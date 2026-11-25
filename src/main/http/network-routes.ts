@@ -26,7 +26,7 @@ type NetworkHandler = (ctx: NetworkRouteContext) => Promise<void> | void;
  */
 const trafficHandler: NetworkHandler = async ({ chassis, method, readBody, sendJson, lastActionAt }) => {
   const filter = method === 'POST' ? await readBody() : undefined;
-  let traffic = chassis.getNetworkTraffic(filter);
+  let traffic = chassis.network.traffic(filter);
   if (filter) {
     const since = filter.since === 'last_action' ? lastActionAt() : Number(filter.since);
     if (since && !Number.isNaN(since)) {
@@ -42,11 +42,11 @@ const ROUTES: Record<string, NetworkHandler> = {
 
   'POST /network/payload': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    sendJson({ success: true, payload: chassis.getApiPayload(body.requestId) });
+    sendJson({ success: true, payload: chassis.network.payload(body.requestId) });
   },
 
   'POST /network/clear': ({ chassis, sendJson }) => {
-    chassis.clearNetworkTraffic();
+    chassis.network.clear();
     sendJson({ success: true, message: 'Network traffic buffer cleared' });
   },
 

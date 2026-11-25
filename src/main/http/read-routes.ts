@@ -151,13 +151,13 @@ const ROUTES: Record<string, ReadHandler> = {
   },
 
   'GET /downloads': ({ chassis, sendJson }) => {
-    const downloads = chassis.getDownloads();
+    const downloads = chassis.downloads.list();
     sendJson({ success: true, downloads });
   },
 
   'POST /downloads/read': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    const document = await chassis.readDownloadedDocument(body.filename || body.id);
+    const document = await chassis.downloads.readDocument(body.filename || body.id);
     sendJson({ success: true, document });
   },
 
@@ -204,25 +204,25 @@ const ROUTES: Record<string, ReadHandler> = {
   },
 
   'GET /streams/list': ({ chassis, sendJson }) => {
-    const streams = chassis.getRealtimeStreams({});
+    const streams = chassis.network.streams({});
     sendJson({ success: true, streams });
   },
 
   'POST /streams/list': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    const streams = chassis.getRealtimeStreams(body);
+    const streams = chassis.network.streams(body);
     sendJson({ success: true, streams });
   },
 
   'POST /streams/messages': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    const messages = chassis.getStreamMessages(body);
+    const messages = chassis.network.streamMessages(body);
     sendJson({ success: true, messages });
   },
 
   'POST /streams/clear': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    chassis.clearStreamMessages(body.streamId);
+    chassis.network.clearStreamMessages(body.streamId);
     sendJson({ success: true, message: 'Stream message buffer cleared' });
   },
 
@@ -231,11 +231,11 @@ const ROUTES: Record<string, ReadHandler> = {
     const scope = body?.scope || 'all';
     const cleared: string[] = [];
     if (scope === 'all' || scope === 'network') {
-      chassis.clearNetworkTraffic();
+      chassis.network.clear();
       cleared.push('network');
     }
     if (scope === 'all' || scope === 'streams') {
-      chassis.clearStreamMessages();
+      chassis.network.clearStreamMessages();
       cleared.push('streams');
     }
     sendJson({

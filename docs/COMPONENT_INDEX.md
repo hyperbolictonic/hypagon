@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 245 files, 843 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 249 files, 851 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (716)
+## Types (724)
 
 | File | Export | When to use |
 |---|---|---|
@@ -103,6 +103,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/deck/controller.ts` | `DeckControllerDeps` *(type)* | When to use: building the chassis — everything the deck reads through. |
 | `main/downloads/download-manager.ts` | `DownloadManager` | - |
 | `main/downloads/download-manager.ts` | `DownloadRecord` *(type)* | - |
+| `main/downloads/download-surface.ts` | `DownloadSurface` | The download list and downloaded-document reader. |
+| `main/downloads/download-surface.ts` | `DownloadSurfaceDeps` *(type)* | Dependencies the download surface needs for directive logging. |
 | `main/drive/driver.ts` | `driveTask` | Run the loop until a stop condition. Never throws: every failure is a typed status. |
 | `main/drive/driver.ts` | `DriveStatus` *(type)* | - |
 | `main/drive/driver.ts` | `DriveStep` *(type)* | - |
@@ -270,6 +272,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/network/network-interceptor.ts` | `RealtimeStream` *(type)* | - |
 | `main/network/network-interceptor.ts` | `StreamMessage` *(type)* | - |
 | `main/network/network-interceptor.ts` | `NetworkFilter` *(type)* | - |
+| `main/network/network-surface.ts` | `NetworkSurface` | The captured traffic, payloads and stream reads. |
+| `main/network/network-surface.ts` | `NetworkSurfaceDeps` *(type)* | Dependencies the network surface needs for directive logging. |
 | `main/prerender/prerender-engine.ts` | `PrerenderEngine` | - |
 | `main/prerender/prerender-engine.ts` | `PrerenderItem` *(type)* | - |
 | `main/prerender/prerender-engine.ts` | `PrerenderOptions` *(type)* | - |
@@ -398,6 +402,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/surface-activity.ts` | `SurfaceActivityDeps` *(type)* | The activity feed + directive log every research surface takes. |
 | `main/scripts/script-vault.ts` | `ScriptVault` | - |
 | `main/scripts/script-vault.ts` | `SavedScriptMeta` *(type)* | - |
+| `main/scripts/scripts-surface.ts` | `ScriptsSurface` | The saved-script vault behind the script routes. |
+| `main/scripts/scripts-surface.ts` | `ScriptsSurfaceDeps` *(type)* | Dependencies the script surface needs from the active tab and telemetry. |
 | `main/search/search-engine.ts` | `engineHost` | The host an engine loads in; the custom engine resolves the settings template. |
 | `main/search/search-engine.ts` | `KNOWN_ENGINES` | - |
 | `main/search/search-engine.ts` | `DEFAULT_ENGINE_CHAIN` | Default fallback chain: JS-free, consent-resistant providers first; Google last (it challenges often). |
@@ -409,6 +415,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/search/search-surface.ts` | `SearchSurface` | The agent-facing web-search adapter over SearchHub. |
 | `main/search/search-surface.ts` | `SearchPolicyTarget` *(type)* | The subset of search options the engine policy rewrites. |
 | `main/search/search-surface.ts` | `SearchSurfaceDeps` *(type)* | Dependencies the search surface needs from the research policy and hub. |
+| `main/session/session-surface.ts` | `SessionSurface` | The named cookie/session snapshots behind the session routes. |
+| `main/session/session-surface.ts` | `SessionSurfaceDeps` *(type)* | Dependencies the session surface needs from the active tab and telemetry. |
 | `main/session/session-vault.ts` | `SessionVault` | - |
 | `main/session/session-vault.ts` | `SessionSnapshot` *(type)* | - |
 | `main/settings/jev.ts` | `DEFAULT_JEV_SETTINGS` | - |

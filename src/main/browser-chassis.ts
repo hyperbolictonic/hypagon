@@ -29,7 +29,7 @@ import { readStoredDecisionConfig, saveDecisionConfig, decisionStatus, runDecisi
 import { detectHostBrowserProfile, type HostBrowserProfile } from './telemetry/host-fingerprint.js';
 import { TabManager, type TabInstance } from './tabs/tab-manager.js';
 import { cortex, CortexDB } from './cortex/cortex-db.js';
-import { DownloadManager, type DownloadRecord } from './downloads/download-manager.js';
+import { DownloadSurface } from './downloads/download-surface.js';
 import { ShieldBreaker, type ConsentPolicy } from './shield/shield-breaker.js';
 import { ConsentController } from './shield/consent-controller.js';
 import { resolveFrameMark } from './browser/frame-marks.js';
@@ -41,18 +41,12 @@ import { ShadowWalkSurface } from './shadow-walk/shadow-surface.js';
 import { PageScriptSurface } from './browser/page-script-surface.js';
 import { dataPath } from './data-paths.js';
 import { logMainEvent } from './diagnostics/main-log.js';
-import { SessionVault, type SessionSnapshot } from './session/session-vault.js';
-import {
-  NetworkInterceptor,
-  type CapturedNetworkRequest,
-  type NetworkFilter,
-  type RealtimeStream,
-  type StreamMessage,
-} from './network/network-interceptor.js';
+import { SessionSurface } from './session/session-surface.js';
+import { NetworkSurface } from './network/network-surface.js';
 import { MarksOverlay } from './marks/marks-overlay.js';
 import { MarksSurface } from './marks/marks-surface.js';
 import { Primitives } from './primitives/primitives.js';
-import { ScriptVault } from './scripts/script-vault.js';
+import { ScriptsSurface } from './scripts/scripts-surface.js';
 import type { ScriptItem } from './cortex/cortex-db.js';
 import { TrayManager } from './tray/tray-manager.js';
 import { researchError } from './research/session-controller.js';
@@ -94,14 +88,14 @@ export class BrowserChassis {
   private harvester!: ConstructHarvester;
   /** JEV page compaction: surface index + in-memory depth store. */
   private shieldBreaker!: ShieldBreaker;
-  private downloadManager!: DownloadManager;
-  private sessionVault!: SessionVault;
-  private networkInterceptor!: NetworkInterceptor;
+  readonly downloads!: DownloadSurface;
+  readonly sessions!: SessionSurface;
+  readonly network!: NetworkSurface;
   private marksOverlay!: MarksOverlay;
   readonly marks: MarksSurface;
   readonly harvest: HarvestSurface;
   readonly nav: NavigationSurface;
-  private scriptVault!: ScriptVault;
+  readonly scripts!: ScriptsSurface;
   private trayManager: TrayManager | null = null;
   /** Human-in-the-loop and desktop notifications. */
   readonly hil!: HilSurface;
@@ -201,7 +195,12 @@ export class BrowserChassis {
   constructor() {
     this.subscribeToDecisions();
     this.page = this.createPageScriptSurface();
-    this.input = this.createInputSurfaces();
+    const inputSurfaces = this.createInputSurfaces();
+    this.input = inputSurfaces.input;
+    this.downloads = inputSurfaces.downloads;
+    this.sessions = inputSurfaces.sessions;
+    this.network = inputSurfaces.network;
+    this.scripts = inputSurfaces.scripts;
     this.research = this.createResearchSession();
     this.researchView = this.createResearchViewSurface();
     const harvestNav = this.createHarvestNavigationSurfaces();
@@ -230,7 +229,13 @@ export class BrowserChassis {
   }
 
   /** Input simulation, downloads, sessions, the network tap and the script vault. */
-  private createInputSurfaces(): InputSurface {
+  private createInputSurfaces(): {
+    input: InputSurface;
+    downloads: DownloadSurface;
+    sessions: SessionSurface;
+    network: NetworkSurface;
+    scripts: ScriptsSurface;
+  } {
     this.harvester = new ConstructHarvester();
     const input = new InputSurface({
       activeWebContents: () => this.getActiveWebContents(),
@@ -272,12 +277,22 @@ export class BrowserChassis {
     });
 
     this.shieldBreaker = new ShieldBreaker(input.simulator);
-    this.downloadManager = new DownloadManager();
-    this.sessionVault = new SessionVault();
-    this.networkInterceptor = new NetworkInterceptor();
+    const downloads = new DownloadSurface({ log: this.controllerLog });
+    const sessions = new SessionSurface({
+      activeWebContents: () => this.getActiveWebContents(),
+      log: this.controllerLog,
+      emitHarvest: (details) => this.telemetry.emitHarvestDetails(details),
+    });
+    const network = new NetworkSurface({ log: this.controllerLog });
+    const scripts = new ScriptsSurface({
+      activeWebContents: () => this.getActiveWebContents(),
+      log: this.controllerLog,
+      reportActing: () => this.telemetry.reportActing(),
+      reportIdle: () => this.telemetry.reportIdle(),
+      emitHarvest: (details) => this.telemetry.emitHarvestDetails(details),
+    });
     this.marksOverlay = new MarksOverlay();
-    this.scriptVault = new ScriptVault();
-    return input;
+    return { input, downloads, sessions, network, scripts };
   }
 
   /** Marks, harvest and navigation, in dependency order (prerender before nav). */
@@ -427,7 +442,7 @@ export class BrowserChassis {
       moveMouseTo: (target) => this.input.moveMouse(target),
       pressKey: (key) => this.input.pressKey(key),
       snapshotRenderedPage: (opts) => this.marks.snapshotRenderedPage(opts),
-      getNetworkTraffic: (filter) => this.getNetworkTraffic(filter),
+      getNetworkTraffic: (filter) => this.network.traffic(filter),
       getPageInfo: () => this.getPageInfo(),
       revision: () => this.revision,
       windowFocused: () => this.isWindowFocused(),
@@ -600,8 +615,8 @@ export class BrowserChassis {
       mainWindow: win,
       closeToTrayDefault: false,
     });
-    this.downloadManager.attachToSession(win.webContents.session);
-    this.downloadManager.onDownloadComplete((record) => {
+    this.downloads.manager.attachToSession(win.webContents.session);
+    this.downloads.manager.onDownloadComplete((record) => {
       this.telemetry.addLog('info', `Download Complete: "${record.filename}" (${record.totalBytes} bytes) saved to data/downloads/`);
       this.telemetry.emitSimpleEvent('harvest', `File Download Complete: ${record.filename}`);
     });
@@ -794,7 +809,7 @@ export class BrowserChassis {
   }
 
   private handleTabCreated(tab: TabInstance): void {
-        this.networkInterceptor.attach(tab.view.webContents);
+        this.network.manager.attach(tab.view.webContents);
         this.viewportController?.registerTab(tab);
         // A tab created while force-open is armed must be patched *before* its document runs.
         // onTabCreated fires before the first load, but CDP arming is async; if the first document
@@ -1001,7 +1016,7 @@ export class BrowserChassis {
 
   public getActiveWebContents(): Electron.WebContents {
     const wc = this.requireTabManager().getActiveTab().view.webContents;
-    this.networkInterceptor.attach(wc);
+    this.network.manager.attach(wc);
     return wc;
   }
 
@@ -1536,72 +1551,6 @@ export class BrowserChassis {
     return this.hostProfile;
   }
 
-  public getDownloads(): DownloadRecord[] {
-    return this.downloadManager.getDownloads();
-  }
-
-  public async readDownloadedDocument(filenameOrId: string) {
-    this.telemetry.addLog('action', `MCP Directive: read_download("${filenameOrId}")`);
-    return await this.downloadManager.readDocumentContent(filenameOrId);
-  }
-
-  public async saveSession(name?: string) {
-    this.telemetry.addLog('action', `MCP Directive: save_session("${name || 'auto'}")`);
-    const result = await this.sessionVault.saveSession(this.getActiveWebContents().session, this.getActiveWebContents(), name);
-    this.telemetry.emitHarvestDetails(`Saved session "${result.name}" with ${result.cookiesCount} cookies`);
-    return result;
-  }
-
-  public async restoreSession(name: string) {
-    this.telemetry.addLog('action', `MCP Directive: restore_session("${name}")`);
-    const wc = this.getActiveWebContents();
-    const result = await this.sessionVault.restoreSession(wc.session, wc, name);
-    this.telemetry.emitHarvestDetails(`Restored session "${result.name}" (${result.cookiesRestored} cookies)`);
-    return result;
-  }
-
-  public listSessions() {
-    return this.sessionVault.listSessions();
-  }
-
-  public deleteSession(name: string) {
-    this.telemetry.addLog('action', `MCP Directive: delete_session("${name}")`);
-    return this.sessionVault.deleteSession(name);
-  }
-
-  public getNetworkTraffic(filter?: NetworkFilter): CapturedNetworkRequest[] {
-    return this.networkInterceptor.getTraffic(filter);
-  }
-
-  public getApiPayload(requestId: string) {
-    this.telemetry.addLog('action', `MCP Directive: get_api_payload("${requestId}")`);
-    return this.networkInterceptor.getPayload(requestId);
-  }
-
-  public clearNetworkTraffic(): void {
-    this.telemetry.addLog('action', 'MCP Directive: clear_network_traffic()');
-    this.networkInterceptor.clear();
-  }
-
-  public getRealtimeStreams(options?: { type?: 'websocket' | 'sse'; activeOnly?: boolean }): RealtimeStream[] {
-    return this.networkInterceptor.getStreams(options);
-  }
-
-  public getStreamMessages(options?: {
-    streamId?: string;
-    type?: 'websocket' | 'sse';
-    direction?: 'sent' | 'received';
-    limit?: number;
-  }): StreamMessage[] {
-    this.telemetry.addLog('action', `MCP Directive: get_stream_messages(${options?.type || 'all'})`);
-    return this.networkInterceptor.getStreamMessages(options);
-  }
-
-  public clearStreamMessages(streamId?: string): void {
-    this.telemetry.addLog('action', 'MCP Directive: clear_stream_messages()');
-    this.networkInterceptor.clearStreamMessages(streamId);
-  }
-
   public queryJsonData(params: {
     source: 'network_payload' | 'stream_messages' | 'download_file' | 'inline_json';
     sourceId?: string;
@@ -1619,13 +1568,13 @@ export class BrowserChassis {
     switch (params.source) {
       case 'network_payload': {
         if (!params.sourceId) throw new Error('Missing "sourceId" (requestId) for source "network_payload"');
-        const payload = this.networkInterceptor.getPayload(params.sourceId);
+        const payload = this.network.manager.getPayload(params.sourceId);
         targetData = payload.data;
         break;
       }
 
       case 'stream_messages': {
-        const messages = this.networkInterceptor.getStreamMessages({
+        const messages = this.network.manager.getStreamMessages({
           streamId: params.sourceId,
           limit: params.limit || 50,
         });
@@ -1703,49 +1652,6 @@ export class BrowserChassis {
       },
     );
     return { markdown: r.after || '', title: r.result?.title || url, status: r.status, contentType: r.contentType };
-  }
-
-  public async saveScript(data: {
-    name: string;
-    code: string;
-    description?: string;
-    domain?: string;
-    tags?: string[];
-  }): Promise<ScriptItem> {
-    this.telemetry.addLog('action', `MCP Directive: save_script("${data.name}")`);
-    const saved = await this.scriptVault.saveScript(data);
-    this.telemetry.emitSimpleEvent('harvest', `Saved & indexed script "${saved.name}" in Cortex Vault`);
-    return saved;
-  }
-
-  public async recallScripts(query?: string, options?: { domain?: string; tag?: string; limit?: number }): Promise<ScriptItem[]> {
-    this.telemetry.addLog('action', `MCP Directive: recall_scripts("${query || '*'}")`);
-    return await this.scriptVault.recallScripts(query, options);
-  }
-
-  public async runScript(name: string, args: Record<string, any> = {}) {
-    const wc = this.getActiveWebContents();
-    this.telemetry.addLog('action', `MCP Directive: run_script("${name}")`);
-    this.telemetry.reportActing();
-
-    try {
-      const res = await this.scriptVault.runScript(wc, name, args);
-      this.telemetry.reportIdle();
-      this.telemetry.emitSimpleEvent('harvest', `Executed macro "${name}" in ${res.executionDurationMs}ms`);
-      return res;
-    } catch (err: any) {
-      this.telemetry.reportIdle();
-      throw err;
-    }
-  }
-
-  public async listScripts(domain?: string, tag?: string): Promise<ScriptItem[]> {
-    return await this.scriptVault.listScripts(domain, tag);
-  }
-
-  public async deleteScript(name: string): Promise<boolean> {
-    this.telemetry.addLog('action', `MCP Directive: delete_script("${name}")`);
-    return await this.scriptVault.deleteScript(name);
   }
 
   // System Tray & Window Visibility

@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-245 modules, 843 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+249 modules, 851 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -30,6 +30,7 @@
 | `main/deck/controller.ts` | 3: DeckController, DeckMode, DeckControllerDeps |
 | `main/diagnostics/main-log.ts` | 2: mainLogFile, logMainEvent |
 | `main/downloads/download-manager.ts` | 2: DownloadManager, DownloadRecord |
+| `main/downloads/download-surface.ts` | 2: DownloadSurface, DownloadSurfaceDeps |
 | `main/drive/driver.ts` | 5: driveTask, DriveStatus, DriveStep, DriveResult, DriveOptions |
 | `main/harvest/harvest-surface.ts` | 2: HarvestSurface, HarvestSurfaceDeps |
 | `main/harvest/screenshots.ts` | 3: ScreenshotStore, ScreenshotStoreDeps, ScreenshotPayload |
@@ -98,6 +99,7 @@
 | `main/navigation/navigation-surface.ts` | 2: NavigationSurface, NavigationSurfaceDeps |
 | `main/network/impersonate.ts` | 7: resolveCurlBinaryPath, hostPlatformHeaders, impersonateAvailable, isChallenge, fetchStatic, StaticFetchResult, StaticFetchOutcome |
 | `main/network/network-interceptor.ts` | 5: NetworkInterceptor, CapturedNetworkRequest, RealtimeStream, StreamMessage, NetworkFilter |
+| `main/network/network-surface.ts` | 2: NetworkSurface, NetworkSurfaceDeps |
 | `main/prerender/prerender-engine.ts` | 3: PrerenderEngine, PrerenderItem, PrerenderOptions |
 | `main/primitives/control-facts.ts` | 5: controlFactsExpression, parseControlFacts, ControlAction, ControlFacts, ControlFactsOptions |
 | `main/primitives/dom-targeting.ts` | 10: elementExpr, targetBoxScript, fieldFactsScript, focusControlScript, diagnosticsScript, inputProbeInstallScript, inputProbeReadScript, DEEP_DOM_HELPERS, … (10) |
@@ -124,9 +126,7 @@
 | `main/research/session-controller.ts` | 3: researchError, ResearchSessionController, ResearchSessionDeps |
 | `main/research/settings.ts` | 7: normalizeResearchSettings, looksLikeChallenge, RESEARCH_ENGINES, DEFAULT_RESEARCH_SETTINGS, ResearchSettingsStore, ResearchSettings, ResearchSettingsResult |
 | `main/research/surface-activity.ts` | 1: SurfaceActivityDeps |
-| `main/scripts/script-vault.ts` | 2: ScriptVault, SavedScriptMeta |
-| `main/search/search-engine.ts` | 8: engineHost, KNOWN_ENGINES, DEFAULT_ENGINE_CHAIN, SearchHub, SearchResult, SearchAttempt, SearchOutcome, SearchHubDeps |
 
-… and 120 more module(s) — grep the full index.
+… and 124 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.
