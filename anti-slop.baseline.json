@@ -152,8 +152,7 @@
   "modularity": {
     "files": {
       "main/browser-chassis.ts": {
-        "class": 1,
-        "file": 1
+        "class": 1
       },
       "main/browser/frame-eval.ts": {
         "function": 1
@@ -273,7 +272,6 @@
       },
       "main/tabs/tab-manager.ts": {
         "class": 1,
-        "file": 1,
         "function": 1
       },
       "main/telemetry/chaos-kinematics.ts": {

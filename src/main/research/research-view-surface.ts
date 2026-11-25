@@ -9,6 +9,7 @@
  */
 import type { BrowserWindow, WebContents } from 'electron';
 import type { HilManager } from '../hil/hil-manager.js';
+import { RenderedSnapshotEngine } from '../snapshots/rendered-snapshot.js';
 import type { CitationRelocation } from './anchors.js';
 import {
   CitationController,
@@ -88,6 +89,22 @@ export class ResearchViewSurface {
   /** Revalidate a stored citation anchor against the page's current markup. */
   relocateCitation(opts: { url: string; fingerprint: unknown; threshold?: number }): Promise<CitationRelocation> {
     return this.citations.relocateCitation(opts);
+  }
+
+  /**
+   * Renders a URL in the shared detached view and distils it to Markdown — the composite
+   * `read_url` fallback. Deliberately not crawlRenderPage: read_url is a single-page read.
+   */
+  async renderMarkdown(url: string): Promise<{ markdown: string; title: string; status: number; contentType: string | null }> {
+    const r = await this.detached.load<{ title: string }>(
+      url,
+      '(() => ({ title: document.title || "" }))()',
+      {
+        timeoutMs: 25000,
+        after: async (wc) => (await RenderedSnapshotEngine.capture(wc, { format: 'markdown', waitUntilIdleMs: 400 })).content,
+      },
+    );
+    return { markdown: r.after || '', title: r.result?.title || url, status: r.status, contentType: r.contentType };
   }
 
   /** Revalidate every stored anchor for one URL (or the most recent URLs). */

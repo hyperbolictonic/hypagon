@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 272 files, 902 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 273 files, 911 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -789,7 +789,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (129)
+## Modules (138)
 
 | File | Export | When to use |
 |---|---|---|
@@ -803,6 +803,14 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/chassis/surfaces.ts` | `createPageScriptSurface` | When to use: the chassis constructor — the page-script surface over the host's tab. |
 | `main/chassis/surfaces.ts` | `createShadowWalkSurface` | When to use: the chassis constructor — Shadow Walk policy and frame reads over the host's tabs. |
 | `main/chassis/surfaces.ts` | `createResearchViewSurface` | When to use: the chassis constructor — the detached research view plus citations/hand-off. |
+| `main/chassis/surfaces.ts` | `createHumanSurface` | When to use: the chassis constructor — the explicit human-takeover latch. |
+| `main/chassis/surfaces.ts` | `createDeckController` | When to use: the chassis constructor — the deck panel, its modes and the collab wiring. |
+| `main/chassis/surfaces.ts` | `createJevController` | When to use: the chassis constructor — JEV page compaction over the active page. |
+| `main/chassis/surfaces.ts` | `createZoomController` | When to use: the chassis constructor — the page-zoom policy. |
+| `main/chassis/surfaces.ts` | `createConsentController` | When to use: the chassis constructor — the consent sweep over the active page. |
+| `main/chassis/surfaces.ts` | `createHudWatchdog` | When to use: the chassis constructor — the HUD heartbeat and viewport-recovery watchdog. |
+| `main/chassis/surfaces.ts` | `createCollaborationSurface` | When to use: the chassis constructor — the page overlay picker and its signal channel. |
+| `main/chassis/surfaces.ts` | `createWindowBoot` | When to use: the chassis constructor — the ordered shell-window boot sequence. |
 | `main/collaboration/service.ts` | `CollaborationService` | - |
 | `main/data-paths.ts` | `dataRoot` | - |
 | `main/data-paths.ts` | `dataPath` | - |
@@ -863,6 +871,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/tools/tool-order.ts` | `byConfiguredRank` | When to use: sort a tool list by the user's configured rank, with a stable |
 | `main/ui/menu-popup.ts` | `MenuPopup` | Themed, frameless dropdown hosted in its own small transparent window. |
 | `main/viewport/profiles.ts` | `DeviceProfileStore` | - |
+| `main/window/reassert-viewport.ts` | `reassertViewport` | When to use: after show/restore/focus/resume — re-position the deck and repaint every view. |
 | `main/wrap/auth.ts` | `tokenFromHeaders` | - |
 | `main/wrap/auth.ts` | `isWrapAuthorized` | - |
 | `main/zoom/display-scale.ts` | `displayScale` | When to use: building the zoom controller — the display scale behind the window. |

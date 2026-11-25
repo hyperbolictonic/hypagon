@@ -42,6 +42,10 @@ import type { ActionLedger } from '../telemetry/action-ledger.js';
 import type { ConstructHarvester } from '../harvester/markdown.js';
 import type { TrayManager } from '../tray/tray-manager.js';
 import type { HilSurface } from '../hil/hil-surface.js';
+import type { DownloadSurface } from '../downloads/download-surface.js';
+import type { CollaborationSurface } from '../collaboration/surface.js';
+import type { ShieldBreaker, ConsentPolicy } from '../shield/shield-breaker.js';
+import type { DownloadNotice } from '../boot/window-boot.js';
 
 /** The chassis surfaces and accessors a composition root may read. */
 export interface ChassisHost {
@@ -70,9 +74,13 @@ export interface ChassisHost {
   readonly researchView: ResearchViewSurface;
   readonly crawl: CrawlSurface;
   readonly network: NetworkSurface;
+  readonly downloads: DownloadSurface;
   readonly decision: DecisionSurface;
   readonly consoleLogs: ConsoleLogBuffer;
   readonly hil: HilSurface;
+  readonly collaboration: CollaborationSurface;
+  readonly shieldBreaker: ShieldBreaker;
+  readonly consentPolicy: ConsentPolicy;
   readonly primitives: Primitives;
   readonly actionLedger: ActionLedger;
   readonly harvester: ConstructHarvester;
@@ -89,6 +97,14 @@ export interface ChassisHost {
   readUrlRender(url: string): Promise<{ markdown: string; title: string; status: number; contentType: string | null }>;
   /** Drop the JEV depth index before a tab change. */
   purgeJev(): void;
+  /** Adopt the shell window (boot step). */
+  setMainWindow(win: BrowserWindow): void;
+  /** Create the tray bound to the shell window (boot step). */
+  createTray(win: BrowserWindow): void;
+  /** Register the renderer IPC channels (boot step). */
+  registerIpc(): void;
+  /** Log a completed download to the HUD and telemetry. */
+  logDownload(record: DownloadNotice): void;
   /** The bound log entry point (safe to pass as a callback). */
   log(level: 'info' | 'warn' | 'action', message: string): void;
   getPageInfo(): PageInfo;

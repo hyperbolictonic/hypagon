@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-272 modules, 902 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+273 modules, 911 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -23,7 +23,7 @@
 | `main/chassis/input-stack.ts` | 2: createInputStack, InputStack |
 | `main/chassis/interaction-stack.ts` | 2: createInteractionStack, InteractionStack |
 | `main/chassis/llm-stack.ts` | 2: createLlmStack, LlmStack |
-| `main/chassis/surfaces.ts` | 3: createPageScriptSurface, createShadowWalkSurface, createResearchViewSurface |
+| `main/chassis/surfaces.ts` | 11: createPageScriptSurface, createShadowWalkSurface, createResearchViewSurface, createHumanSurface, createDeckController, createJevController, createZoomController, createConsentController, … (11) |
 | `main/collaboration/overlay.ts` | 8: collaborationNoteDrawerScript, collaborationPickerScript, collaborationOverlayScript, COLLABORATION_NOTE_PREFIX, COLLABORATION_CLASS_PREFIX, COLLABORATION_RESOLVE_PREFIX, COLLABORATION_EXIT_PREFIX, CollaborationPickerOptions |
 | `main/collaboration/service.ts` | 1: CollaborationService |
 | `main/collaboration/store.ts` | 2: CollaborationStore, CreateThreadInput |
@@ -127,6 +127,6 @@
 | `main/remote/cloudflared.ts` | 1: findCloudflared |
 | `main/remote/ipc.ts` | 1: registerRemoteIpc |
 
-… and 147 more module(s) — grep the full index.
+… and 148 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.
