@@ -27,7 +27,7 @@ import { ConstructHarvester } from './harvester/markdown.js';
 import { fetchStatic } from './network/impersonate.js';
 import { JevController } from './jev/controller.js';
 import { DeckController } from './deck/controller.js';
-import { captureComposedDom } from './harvester/dom-serializer.js';
+import { HarvestSurface } from './harvest/harvest-surface.js';
 import { readStoredDecisionConfig, saveDecisionConfig, decisionStatus, runDecision, onDecision, type DecisionEvent } from './decide/decision-client.js';
 import { DEEP_DOM_HELPERS } from './primitives/dom-targeting.js';
 import { InputActionsController } from './input-actions.js';
@@ -126,6 +126,7 @@ export class BrowserChassis {
   private networkInterceptor: NetworkInterceptor;
   private marksOverlay: MarksOverlay;
   readonly marks: MarksSurface;
+  readonly harvest: HarvestSurface;
   private scriptVault: ScriptVault;
   private trayManager: TrayManager | null = null;
   private hilManager: HilManager;
@@ -260,6 +261,30 @@ export class BrowserChassis {
       refuseShadow: (surface) => this.refuseShadow(surface),
       log: this.controllerLog,
     });
+    this.harvest = new HarvestSurface({
+      activeWebContents: () => this.getActiveWebContents(),
+      viewportBounds: () => this.getViewportBounds(),
+      zoomState: () => this.getZoomState(),
+      marks: this.marks,
+      marksOverlay: this.marksOverlay,
+      harvester: this.harvester,
+      screenshotStore: this.screenshotStore,
+      beginHarvest: () => {
+        this.state.agentStatus = 'HARVESTING';
+        this.broadcastState();
+      },
+      onConstruct: (construct) => {
+        this.latestConstruct = construct;
+        this.sendToSurfaces('chassis:construct-harvested', construct);
+      },
+      addTokens: (tokens) => {
+        this.state.stats.tokensHarvested += tokens;
+      },
+      reportIdle: () => this.reportIdle(),
+      emitHarvest: (details) => this.emitSimpleEvent('harvest', details),
+      log: this.controllerLog,
+      indexPage: (url, title, content) => cortex.indexPage(url, title, content),
+    });
     this.scriptVault = new ScriptVault();
 
     this.prerenderEngine = new PrerenderEngine(
@@ -310,7 +335,7 @@ export class BrowserChassis {
       webContents: () => this.getActiveWebContents(),
       log: (level, msg) => this.addLog(level, msg),
       evaluate: (script) => this.evaluateQuiet(script),
-      harvest: (opts) => this.harvestMarkdown(opts),
+      harvest: (opts) => this.harvest.harvestMarkdown(opts),
     guardPageRead: (input) => this.jev.guardPageRead(input),
     precheckPageRead: (input) => this.jev.precheckPageRead(input),
       injectMarks: (opts) => this.marks.scan(this.getActiveWebContents(), opts || {}),
@@ -651,7 +676,7 @@ export class BrowserChassis {
             void tab.view.webContents.executeJavaScript(humanListenerScript()).catch(() => null);
           }
           if (this.tabReadyForBackgroundWork(tab)) {
-            this.indexTabQuietly(tab);
+            this.harvest.indexTabQuietly(tab);
           }
         }
       },
@@ -794,7 +819,7 @@ export class BrowserChassis {
     policy: () => ({ available: false, enforce: false }),
     pageInfo: () => this.getPageInfo(),
     evaluate: (script) => this.evaluateQuiet(script),
-    harvest: () => this.harvestMarkdown(),
+    harvest: () => this.harvest.harvestMarkdown(),
   });
 
   private purgeJevDepthStore(): void {
@@ -1122,7 +1147,7 @@ export class BrowserChassis {
     });
 
     ipcMain.handle('chassis:harvest', async () => {
-      return await this.harvestMarkdown();
+      return await this.harvest.harvestMarkdown();
     });
 
   }
@@ -1260,7 +1285,7 @@ export class BrowserChassis {
   public async captureScreenshotJpeg(maxSide = 1400, quality = 82): Promise<{ base64: string; width: number; height: number } | null> {
     try {
       const wc = this.getActiveWebContents();
-      const image = await this.capturePageWithRetry(wc, this.getViewportBounds());
+      const image = await this.harvest.capturePageWithRetry(wc, this.getViewportBounds());
       if (!image || image.isEmpty()) return null;
       const size = image.getSize();
       if (!size.width || !size.height) return null;
@@ -1451,25 +1476,6 @@ export class BrowserChassis {
     void pending.catch(() => null); // resolves when the human acts; we do not block the HTTP call
     return id;
   }
-  private async indexTabQuietly(tab: TabInstance) {
-    try {
-      const url = tab.url;
-      const title = tab.title;
-      if (!url || url === 'about:blank' || url.startsWith('mark-eleven:') || url.startsWith('file:')) return;
-      
-      const wc = tab.view.webContents;
-      const composed = await captureComposedDom(wc);
-      const rawHtml = composed.html;
-      const construct = this.harvester.harvest(rawHtml, url, title, { shadowRoots: composed.shadowRoots });
-      const indexedCount = await cortex.indexPage(url, construct.title, construct.content);
-      if (indexedCount > 0) {
-        this.addLog('info', `Cortex indexed: ${construct.title} (${indexedCount} semantic chunks)`);
-      }
-    } catch {
-      // Background indexing failure is non-fatal
-    }
-  }
-
   private broadcastState() {
     this.state.zoom = this.getZoomState();
     this.state.viewport = this.viewportController?.state();
@@ -1682,100 +1688,6 @@ export class BrowserChassis {
     telemetry: this.controllerTelemetry,
   });
 
-  public getScreenshotsDir(): string {
-    return this.screenshotStore.dir();
-  }
-
-  public cleanupScreenshots(maxFiles: number = 50, maxAgeMs: number = 7 * 24 * 60 * 60 * 1000): { prunedCount: number; remainingCount: number } {
-    return this.screenshotStore.cleanup(maxFiles, maxAgeMs);
-  }
-
-  private async capturePageWithRetry(
-    wc: Electron.WebContents,
-    bounds: { x: number; y: number; width: number; height: number },
-    maxRetries: number = 3
-  ): Promise<Electron.NativeImage> {
-    return this.screenshotStore.captureWithRetry(wc, bounds, maxRetries);
-  }
-
-  private persistScreenshot(args: Parameters<ScreenshotStore['persist']>[0]): ReturnType<ScreenshotStore['persist']> {
-    return this.screenshotStore.persist(args);
-  }
-
-  public async takeScreenshot(opts: {
-    maxWidth?: number;
-    format?: 'jpeg' | 'png';
-    quality?: number;
-  } = {}): Promise<{
-    base64Image: string;
-    filePath: string;
-    width: number;
-    height: number;
-    mimeType: string;
-    zoom: ZoomState;
-    nativeWidth: number;
-    nativeHeight: number;
-    coordinateScale: number;
-  }> {
-    const wc = this.getActiveWebContents();
-    this.addLog('action', 'MCP Directive: take_screenshot()');
-
-    const bounds = this.getViewportBounds();
-    const rawImage = await this.capturePageWithRetry(wc, bounds);
-    const zoom = this.getZoomState();
-    const nativeSize = rawImage.getSize();
-
-    const maxWidth = opts.maxWidth !== undefined ? opts.maxWidth : 768;
-    const format = opts.format || 'jpeg';
-    const quality = opts.quality !== undefined ? opts.quality : 70;
-
-    let outImage = rawImage;
-    if (maxWidth > 0 && rawImage.getSize().width > maxWidth) {
-      outImage = rawImage.resize({ width: maxWidth, quality: 'good' });
-    }
-
-    return this.persistScreenshot({
-      image: outImage,
-      jpeg: format === 'jpeg',
-      quality,
-      prefix: 'screenshot_',
-      details: (facts) =>
-        `Captured live viewport screenshot: ${facts.width}x${facts.height}px (${facts.mimeType}, ${(facts.bytes / 1024).toFixed(1)} KB), saved to ${facts.filePath}`,
-      zoom,
-      nativeSize,
-    });
-  }
-
-  public async harvestMarkdown(opts: { includeMarks?: boolean; includeOffscreen?: boolean } = {}): Promise<HarvestedConstruct> {
-    const wc = this.getActiveWebContents();
-    this.state.agentStatus = 'HARVESTING';
-    this.broadcastState();
-    this.addLog('action', `MCP Directive: get_page_markdown(include_marks=${opts.includeMarks ?? true}${opts.includeOffscreen ? ', include_offscreen' : ''})`);
-
-    // Ensure interactive elements have data-mark-id stamps for grounded markdown
-    if (opts.includeMarks !== false) {
-      await this.marks.scan(wc, { includeOffscreen: Boolean(opts.includeOffscreen) });
-      await this.marksOverlay.removeMarks(wc); // Strips visual badges, keeps data-mark-id
-    }
-
-    const composed = await captureComposedDom(wc);
-    const rawHtml = composed.html;
-    const url = wc.getURL();
-    const title = wc.getTitle();
-
-    const construct = this.harvester.harvest(rawHtml, url, title, { shadowRoots: composed.shadowRoots });
-    this.latestConstruct = construct;
-    this.sendToSurfaces('chassis:construct-harvested', construct);
-
-    this.state.stats.tokensHarvested += construct.estimatedTokens;
-    this.reportIdle();
-
-    this.emitSimpleEvent('harvest', `Construct extracted: ${construct.estimatedTokens} tokens (${construct.markdownLength} bytes)`);
-
-    this.addLog('info', `Construct harvested: ${construct.title} (~${construct.estimatedTokens} tokens)`);
-    cortex.indexPage(url, construct.title, construct.content).catch(() => {});
-    return construct;
-  }
 
   public async pressKey(key: string): Promise<string> {
     const wc = this.getActiveWebContents();
@@ -1910,7 +1822,7 @@ export class BrowserChassis {
     this.refuseShadow('frames');
     return inventoryFrames(this.getActiveWebContents(), options, {
       log: (level, message) => this.addLog(level, message),
-      capturePage: (wc, bounds) => this.capturePageWithRetry(wc, bounds),
+      capturePage: (wc, bounds) => this.harvest.capturePageWithRetry(wc, bounds),
     });
   }
 
@@ -2368,7 +2280,7 @@ export class BrowserChassis {
 
     // 2. Capture annotated screenshot
     const bounds = this.getViewportBounds();
-    const image = await this.capturePageWithRetry(wc, bounds);
+    const image = await this.harvest.capturePageWithRetry(wc, bounds);
 
     // 3. Immediately clean up marks from DOM
     await this.marksOverlay.removeMarks(wc);
@@ -2382,7 +2294,7 @@ export class BrowserChassis {
       outImage = image.resize({ width: ECONOMY_MAX_WIDTH, quality: 'good' });
     }
 
-    const screenshot = this.persistScreenshot({
+    const screenshot = this.harvest.persistScreenshot({
       image: outImage,
       jpeg: economy,
       quality: 45,

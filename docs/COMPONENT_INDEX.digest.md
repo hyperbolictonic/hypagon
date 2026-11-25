@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-230 modules, 805 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+231 modules, 807 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -29,6 +29,7 @@
 | `main/diagnostics/main-log.ts` | 2: mainLogFile, logMainEvent |
 | `main/downloads/download-manager.ts` | 2: DownloadManager, DownloadRecord |
 | `main/drive/driver.ts` | 5: driveTask, DriveStatus, DriveStep, DriveResult, DriveOptions |
+| `main/harvest/harvest-surface.ts` | 2: HarvestSurface, HarvestSurfaceDeps |
 | `main/harvest/screenshots.ts` | 3: ScreenshotStore, ScreenshotStoreDeps, ScreenshotPayload |
 | `main/harvester/dom-serializer.ts` | 3: captureComposedDom, COMPOSE_DOM_SCRIPT, ComposedDom |
 | `main/harvester/markdown.ts` | 2: ConstructHarvester, HarvestStats |
@@ -125,8 +126,7 @@
 | `main/shadow-walk/ax-controls.ts` | 6: findSealedControls, SealedRateLimitError, SealedRect, SealedControl, SealedFindOptions, SealedFindResult |
 | `main/shadow-walk/component-signature.ts` | 4: componentSignatureOf, normalizeSurface, COMPONENT_SIGNATURE_HELPERS, ComponentSurface |
 | `main/shadow-walk/force-open.ts` | 5: isForceOpenArmed, syncForceOpen, detectForceOpen, ForceOpenSyncResult, ForceOpenDetection |
-| `main/shadow-walk/part-highlight-css.ts` | 2: buildPartHighlightCss, PartHost |
 
-… and 104 more module(s) — grep the full index.
+… and 105 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

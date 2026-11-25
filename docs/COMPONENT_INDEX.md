@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 230 files, 805 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 231 files, 807 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -14,7 +14,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-navigator.ts` | `JsonQueryOptions` *(type)* | JSON Navigator Engine |
 | `main/utils/json-navigator.ts` | `JsonQueryResult` *(type)* | - |
 
-## Types (674)
+## Types (676)
 
 | File | Export | When to use |
 |---|---|---|
@@ -104,6 +104,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/drive/driver.ts` | `DriveStep` *(type)* | - |
 | `main/drive/driver.ts` | `DriveResult` *(type)* | - |
 | `main/drive/driver.ts` | `DriveOptions` *(type)* | - |
+| `main/harvest/harvest-surface.ts` | `HarvestSurface` | The agent-facing harvest and screenshot surface. |
+| `main/harvest/harvest-surface.ts` | `HarvestSurfaceDeps` *(type)* | Dependencies the harvest surface needs from the active tab and chassis state. |
 | `main/harvest/screenshots.ts` | `ScreenshotStore` | When to use: the chassis — own screenshot persistence: directory, retention, capture retry and the encode/save tail. |
 | `main/harvest/screenshots.ts` | `ScreenshotStoreDeps` *(type)* | When to use: building the chassis — log and telemetry come from the chassis. |
 | `main/harvest/screenshots.ts` | `ScreenshotPayload` *(type)* | The screenshot payload both capture paths (live viewport and annotated marks) return. |

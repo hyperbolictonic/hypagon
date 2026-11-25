@@ -39,7 +39,7 @@ const ROUTES: Record<string, ReadHandler> = {
       );
       return;
     }
-    const construct = await chassis.harvestMarkdown({ includeMarks, includeOffscreen });
+    const construct = await chassis.harvest.harvestMarkdown({ includeMarks, includeOffscreen });
     const guard: { allowed: boolean; note?: string; refusal?: Record<string, any> } = pre.note
       ? { allowed: true, note: pre.note }
       : chassis.jev.guardPageRead({
@@ -76,7 +76,7 @@ const ROUTES: Record<string, ReadHandler> = {
     const qualityParam = url.searchParams.get('quality');
     const quality = qualityParam !== null ? Number(qualityParam) : 70;
 
-    const screenshot = await chassis.takeScreenshot({ maxWidth, format, quality });
+    const screenshot = await chassis.harvest.takeScreenshot({ maxWidth, format, quality });
     sendJson({ success: true, screenshot });
   },
 
@@ -84,7 +84,7 @@ const ROUTES: Record<string, ReadHandler> = {
     const body = await readBody();
     const maxFiles = body.maxFiles !== undefined ? Number(body.maxFiles) : 50;
     const maxAgeMs = body.maxAgeDays !== undefined ? Number(body.maxAgeDays) * 86400000 : 7 * 86400000;
-    const cleanupResult = chassis.cleanupScreenshots(maxFiles, maxAgeMs);
+    const cleanupResult = chassis.harvest.cleanupScreenshots(maxFiles, maxAgeMs);
     sendJson({ success: true, ...cleanupResult });
   },
 
