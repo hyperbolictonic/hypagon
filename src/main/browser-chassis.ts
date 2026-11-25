@@ -64,6 +64,7 @@ import { isTakeoverShortcut } from './takeover-key.js';
 import { HudWatchdog } from './boot/hud-watchdog.js';
 import { IpcSurface } from './ipc/ipc-surface.js';
 import { readPageInfo } from './tabs/page-info.js';
+import { TabSurface } from './tabs/tab-surface.js';
 import { LlmSurface } from './llm/llm-surface.js';
 import { ReadSurface } from './llm/read-surface.js';
 import { SearchHub, engineHost } from './search/search-engine.js';
@@ -168,6 +169,8 @@ export class BrowserChassis {
   /** Explicit zoom from the toolbar or an agent; null means use the policy base. */
   /** Renderer IPC channels. */
   ipc!: IpcSurface;
+  /** Open/switch/close and the DevTools toggle. */
+  readonly tabOps!: TabSurface;
   /** HUD heartbeat and viewport-recovery watchdog. */
   readonly hud = new HudWatchdog({
     window: () => this.mainWindow,
@@ -210,6 +213,14 @@ export class BrowserChassis {
   constructor() {
     this.subscribeToDecisions();
     this.page = this.createPageScriptSurface();
+    this.tabOps = new TabSurface({
+      manager: () => this.requireTabManager(),
+      activeWebContents: () => this.getActiveWebContents(),
+      log: (level, message) => this.telemetry.addLog(level, message),
+      purgeJev: () => this.purgeJevDepthStore(),
+      scheduleConsentSweep: () => this.consent.scheduleSweep(),
+      refreshViewport: () => void this.viewportController?.refreshActive(),
+    });
     const inputSurfaces = this.createInputSurfaces();
     this.input = inputSurfaces.input;
     this.downloads = inputSurfaces.downloads;
@@ -957,14 +968,6 @@ export class BrowserChassis {
     return !tab.isLoading && Boolean(tab.url) && !tab.url!.startsWith('mark-eleven:') && tab.url !== 'about:blank';
   }
 
-    /** The tab-op prologue: the manager, the directive log and the JEV purge. */
-  private beginTabOperation(directive: string): NonNullable<BrowserChassis['tabManager']> {
-    const tabManager = this.requireTabManager();
-    this.telemetry.addLog('action', directive);
-    this.purgeJevDepthStore();
-    return tabManager;
-  }
-
   private requireTabManager(): NonNullable<BrowserChassis['tabManager']> {
     if (!this.tabManager) throw new Error('Browser Chassis uninitialized');
     return this.tabManager;
@@ -986,35 +989,6 @@ export class BrowserChassis {
     this.network.manager.attach(wc);
     return wc;
   }
-
-  // Tab Operations
-  public createTab(url?: string): TabSummary {
-    this.purgeJevDepthStore();
-    const tab = this.requireTabManager().createTab(url);
-    this.telemetry.addLog('action', `MCP Directive: new_tab(${url || 'about:blank'})`);
-    // A tab opened directly at a URL is a navigation too: arm the same late-consent sweep, or a
-    // cookie wall on a freshly opened tab would never be dismissed.
-    if (url && /^https?:/i.test(url)) this.consent.scheduleSweep();
-    return {
-      id: tab.id,
-      title: tab.title,
-      url: tab.url,
-      isLoading: tab.isLoading,
-      isActive: true,
-    };
-  }
-
-  public switchTab(tabId: string): void {
-    const tabManager = this.beginTabOperation(`MCP Directive: switch_tab(${tabId})`);
-    tabManager.switchTab(tabId);
-    void this.viewportController?.refreshActive();
-  }
-
-  public closeTab(tabId?: string): void {
-    const tabManager = this.beginTabOperation(`MCP Directive: close_tab(${tabId || 'active'})`);
-    tabManager.closeTab(tabId);
-  }
-
 
   /** Install the persisted page-zoom policy (compensate vs Windows scale). */
   // ---- Page zoom ----------------------------------------------------------------------
@@ -1054,21 +1028,6 @@ export class BrowserChassis {
   }
 
 
-  /** Open or close the native Chromium DevTools for the active tab. */
-  public toggleDevTools(): boolean {
-    try {
-      const wc = this.getActiveWebContents();
-      if (wc.isDevToolsOpened()) {
-        wc.closeDevTools();
-        return false;
-      }
-      wc.openDevTools({ mode: 'detach' });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   /**
    * Change page zoom for every tab.
    *
@@ -1093,14 +1052,14 @@ export class BrowserChassis {
       activeWebContents: () => this.tabManager?.getActiveTab()?.view?.webContents ?? null,
       tabs: {
         summary: () => this.tabManager?.getTabsSummary() ?? [],
-        create: (url) => this.createTab(url),
-        switchTo: (id) => this.switchTab(id),
-        close: (id) => this.closeTab(id),
+        create: (url) => this.tabOps.create(url),
+        switchTo: (id) => this.tabOps.switchTo(id),
+        close: (id) => this.tabOps.close(id),
       },
       zoom: this.zoom,
       viewport: this.viewport,
       deck: this.deck,
-      toggleDevTools: () => this.toggleDevTools(),
+      toggleDevTools: () => this.tabOps.toggleDevTools(),
       setViewportVisibility: (visible) => {
         this.tabManager?.setViewportVisibility(visible);
         this.deck.setOverlayVisible(visible);

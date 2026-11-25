@@ -34,20 +34,20 @@ const ROUTES: Record<string, TabHandler> = {
 
   'POST /tabs/new': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    sendJson({ success: true, tab: chassis.createTab(body.url) });
+    sendJson({ success: true, tab: chassis.tabOps.create(body.url) });
   },
 
   'POST /tabs/switch': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
     const id = tabRef(body);
-    chassis.switchTab(id);
+    chassis.tabOps.switchTo(id);
     sendJson({ success: true, message: `Switched to tab ${id}` });
   },
 
   'POST /tabs/close': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
     const id = tabRef(body);
-    chassis.closeTab(id);
+    chassis.tabOps.close(id);
     sendJson({ success: true, message: `Closed tab ${id || 'active'}` });
   },
 };

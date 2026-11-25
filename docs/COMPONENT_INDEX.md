@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 256 files, 865 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 257 files, 867 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (734)
+## Types (736)
 
 | File | Export | When to use |
 |---|---|---|
@@ -491,6 +491,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/tabs/tab-manager.ts` | `TabManager` | - |
 | `main/tabs/tab-manager.ts` | `TabInstance` *(type)* | - |
 | `main/tabs/tab-manager.ts` | `TabManagerOptions` *(type)* | - |
+| `main/tabs/tab-surface.ts` | `TabSurface` | The tab verbs behind the MCP tools, routes and renderer IPC. |
+| `main/tabs/tab-surface.ts` | `TabSurfaceDeps` *(type)* | Dependencies the tab surface needs from the chassis. |
 | `main/tabs/window-open-policy.ts` | `isAuthPopupUrl` | True when the URL looks like an interactive sign-in or authorization endpoint. Used as a |
 | `main/tabs/window-open-policy.ts` | `isPopupWindowRequest` | True when this request needs a real window to keep its opener relationship intact. |
 | `main/tabs/window-open-policy.ts` | `popupWindowSize` | Window size requested by a `window.open` features string, clamped to something usable. |
