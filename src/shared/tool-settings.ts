@@ -11,6 +11,7 @@ export interface ToolSettings {
   actionInstructions: Record<string, Record<string, string>>;
 }
 
+/** When to use: the Tools panel — one action of a grouped tool and its instruction override. */
 export interface ToolManagerAction {
   name: string;
   description: string;
@@ -18,6 +19,7 @@ export interface ToolManagerAction {
   instruction: string;
 }
 
+/** When to use: the Tools panel list — one advertised tool with its tier, state and overrides. */
 export interface ToolManagerEntry {
   name: string;
   description: string;
@@ -28,11 +30,13 @@ export interface ToolManagerEntry {
   actions?: ToolManagerAction[];
 }
 
+/** When to use: `get_tool_manager` — the catalogue plus the saved settings. */
 export interface ToolManagerState {
   tools: ToolManagerEntry[];
   settings: ToolSettings;
 }
 
+/** When to use: the tool-manager IPC replies. */
 export interface ToolManagerResult {
   ok: boolean;
   state?: ToolManagerState;

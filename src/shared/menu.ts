@@ -13,6 +13,7 @@ export interface PopupMenuItem {
   };
 }
 
+/** When to use: what the themed popup reports back when a row (or its secondary action) is chosen. */
 export interface PopupMenuSelection {
   id: string;
   action?: string;

@@ -7,6 +7,7 @@
  */
 export type ResearchTier = 'llm' | 'static' | 'render';
 
+/** When to use: a research event that moved to the render tier, and the outcome carrying its reason. */
 export interface ResearchEscalation {
   from: 'llm' | 'static';
   to: 'render';
@@ -14,12 +15,14 @@ export interface ResearchEscalation {
   reason: string;
 }
 
+/** When to use: a source's captured anchor — text, path and fingerprint for revalidation. */
 export interface ResearchAnchorDetail {
   text: string;
   path: string;
   fingerprint: Record<string, unknown>;
 }
 
+/** When to use: `onResearchEvent` — the run timeline the panel renders and the agent observes. */
 export type ResearchEvent =
   | { type: 'run-start'; runId: string; query: string; maxSources: number; at: number }
   | {

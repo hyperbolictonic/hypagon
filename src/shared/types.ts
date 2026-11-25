@@ -1,14 +1,17 @@
 import type { ZoomState } from './zoom.js';
 import type { ViewportState } from './viewport.js';
 
+/** When to use: the HUD status badge and the tray menu status line. */
 export type AgentStatus = 'IDLE' | 'TRAVERSING' | 'SIMULATING_INPUT' | 'HARVESTING' | 'ERROR' | 'AWAITING_INPUT' | 'HUMAN_INPUT';
 
+/** When to use: the ghost-cursor overlay and the input trace — the last observed pointer position. */
 export interface CursorPosition {
   x: number;
   y: number;
   timestamp: number;
 }
 
+/** When to use: the HUD feed and the action ledger — one observed browser action. */
 export interface TelemetryEvent {
   type: 'mouse_move' | 'click' | 'keystroke' | 'scroll' | 'navigation' | 'harvest';
   x?: number;
@@ -20,6 +23,7 @@ export interface TelemetryEvent {
   details?: string;
 }
 
+/** When to use: the CONSTRUCT panel and `harvest` — the page as markdown plus its coverage stats. */
 export interface HarvestedConstruct {
   url: string;
   title: string;
@@ -38,6 +42,7 @@ export interface HarvestedConstruct {
   content: string;
 }
 
+/** When to use: the tab strip and `list_tabs`. */
 export interface TabSummary {
   id: string;
   title: string;
@@ -46,6 +51,7 @@ export interface TabSummary {
   isActive: boolean;
 }
 
+/** When to use: the state broadcast that paints the deck — url, agent status, tabs, zoom and viewport. */
 export interface ChassisState {
   currentUrl: string;
   pageTitle: string;

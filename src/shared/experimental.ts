@@ -4,10 +4,12 @@ export interface ExperimentalSettings {
   collab: boolean;
 }
 
+/** When to use: a first run, or a settings file that could not be read. */
 export const DEFAULT_EXPERIMENTAL_SETTINGS: ExperimentalSettings = {
   collab: false,
 };
 
+/** When to use: reading the experimental flag — only an explicit true enables collab. */
 export function normalizeExperimentalSettings(input: unknown): ExperimentalSettings {
   const source = (input ?? {}) as Partial<ExperimentalSettings>;
   return {

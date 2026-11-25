@@ -11,16 +11,19 @@
 
 export type ZoomMode = 'compensate' | 'native';
 
+/** When to use: the persisted zoom policy file. */
 export interface ZoomSettings {
   schemaVersion: 1;
   mode: ZoomMode;
 }
 
+/** When to use: a first run, or a settings file that could not be read. */
 export const DEFAULT_ZOOM_SETTINGS: ZoomSettings = {
   schemaVersion: 1,
   mode: 'compensate',
 };
 
+/** When to use: the zoom readout, the status consumers and `browser_zoom`. */
 export interface ZoomState {
   /** Active policy. */
   mode: ZoomMode;
@@ -41,6 +44,7 @@ export interface ZoomState {
   };
 }
 
+/** When to use: reading the persisted zoom settings — keep only a known mode. */
 export function normalizeZoomSettings(input: unknown): ZoomSettings {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     return { ...DEFAULT_ZOOM_SETTINGS };
@@ -55,6 +59,7 @@ export function normalizeZoomSettings(input: unknown): ZoomSettings {
 /** Chrome-like zoom stops, used by the toolbar and the agent-facing tool. */
 export const ZOOM_STEPS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5] as const;
 
+/** When to use: Ctrl+= / Ctrl+- and the toolbar zoom buttons. */
 export function nextZoomStep(current: number, direction: 'in' | 'out'): number {
   // A fitted factor is usually 1/1.5 = 0.6667, one hair below the 0.67 stop.
   // Require a visible 2% change so the first click does not feel like a no-op.
@@ -64,6 +69,7 @@ export function nextZoomStep(current: number, direction: 'in' | 'out'): number {
   return [...ZOOM_STEPS].reverse().find((step) => step < current / 1.02) ?? ZOOM_STEPS[0];
 }
 
+/** When to use: an explicit factor arriving over IPC or from the agent tool. */
 export function clampZoomFactor(value: number): number {
   if (!Number.isFinite(value)) return 1;
   return Math.min(5, Math.max(0.25, Math.round(value * 1000) / 1000));

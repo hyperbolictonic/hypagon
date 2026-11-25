@@ -913,49 +913,49 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `renderer/settings-wrap-wrappers.ts` | `refreshWrapperAuthOptions` | Repaint the credential picker after the credential list changed. |
 | `renderer/settings-wrap-wrappers.ts` | `closeWrapWrapperModal` | Close the editor when the settings modal itself closes. |
 | `renderer/settings-wrap-wrappers.ts` | `WrapWrapperDeps` *(type)* | Editor dependencies: the credential names and a reload after an inline create. |
-| `shared/collaboration.ts` | `CollaborationTargetKind` *(type)* | - |
-| `shared/collaboration.ts` | `CollaborationTarget` *(type)* | - |
-| `shared/collaboration.ts` | `CollaborationMessageKind` *(type)* | - |
-| `shared/collaboration.ts` | `CollaborationMessage` *(type)* | - |
-| `shared/collaboration.ts` | `CollaborationThreadStatus` *(type)* | - |
-| `shared/collaboration.ts` | `CollaborationThread` *(type)* | - |
-| `shared/collaboration.ts` | `CollaborationFilter` *(type)* | - |
-| `shared/collaboration.ts` | `CollaborationResult` *(type)* | - |
+| `shared/collaboration.ts` | `CollaborationTargetKind` *(type)* | When to use: recording what a note is attached to — an element, text, frame, console line, request, region, style or the page. |
+| `shared/collaboration.ts` | `CollaborationTarget` *(type)* | When to use: the anchor stored on a thread — the url, tab/frame, mark id or selector that survives a reload. |
+| `shared/collaboration.ts` | `CollaborationMessageKind` *(type)* | When to use: rendering a thread message — a comment, question, choice, answer or status line. |
+| `shared/collaboration.ts` | `CollaborationMessage` *(type)* | When to use: one human or agent message inside a collaboration thread. |
+| `shared/collaboration.ts` | `CollaborationThreadStatus` *(type)* | When to use: filtering or resolving threads — open, answered, resolved or stale. |
+| `shared/collaboration.ts` | `CollaborationThread` *(type)* | When to use: the `collaborate` read/list actions — one target, its messages and its resolution. |
+| `shared/collaboration.ts` | `CollaborationFilter` *(type)* | When to use: `listCollaborationThreads` — narrow by url, status, tab or count. |
+| `shared/collaboration.ts` | `CollaborationResult` *(type)* | When to use: the collaboration tool reply — one thread, many, or the error. |
 | `shared/connect-info.ts` | `ConnectInfo` *(type)* | When to use: any code that types the `app:connect-info` response. |
-| `shared/experimental.ts` | `normalizeExperimentalSettings` | - |
-| `shared/experimental.ts` | `DEFAULT_EXPERIMENTAL_SETTINGS` | - |
+| `shared/experimental.ts` | `normalizeExperimentalSettings` | When to use: reading the experimental flag — only an explicit true enables collab. |
+| `shared/experimental.ts` | `DEFAULT_EXPERIMENTAL_SETTINGS` | When to use: a first run, or a settings file that could not be read. |
 | `shared/experimental.ts` | `ExperimentalSettings` *(type)* | Experimental features. Everything here is opt-in and may change or be removed. |
 | `shared/media.ts` | `FfmpegMode` *(type)* | Shared media settings and updater state (main, preload, renderer). |
-| `shared/media.ts` | `MediaSettings` *(type)* | - |
-| `shared/media.ts` | `MediaUpdaterState` *(type)* | - |
-| `shared/media.ts` | `MediaSettingsSnapshot` *(type)* | - |
+| `shared/media.ts` | `MediaSettings` *(type)* | When to use: the Media settings panel and the downloader — updates, cookies, output and ffmpeg policy. |
+| `shared/media.ts` | `MediaUpdaterState` *(type)* | When to use: the Media panel updater row — installed/latest version, check and update state. |
+| `shared/media.ts` | `MediaSettingsSnapshot` *(type)* | When to use: `loadMediaSettings` — the settings and the updater state together. |
 | `shared/menu.ts` | `PopupMenuItem` *(type)* | One row of a themed popup menu (rendered by src/renderer/menu-popup.ts). |
-| `shared/menu.ts` | `PopupMenuSelection` *(type)* | - |
+| `shared/menu.ts` | `PopupMenuSelection` *(type)* | When to use: what the themed popup reports back when a row (or its secondary action) is chosen. |
 | `shared/menu.ts` | `PopupAnchor` *(type)* | Where a popup should anchor, in shell content-area coordinates. |
 | `shared/menu.ts` | `SidebarSurfaceState` *(type)* | Authoritative deck-surface state; native bounds and DOM classes derive from it. |
-| `shared/remote.ts` | `RemoteCloudflaredStatus` *(type)* | - |
-| `shared/remote.ts` | `RemoteTunnelStatus` *(type)* | - |
-| `shared/remote.ts` | `RemoteStatus` *(type)* | - |
-| `shared/remote.ts` | `RemoteInfo` *(type)* | - |
+| `shared/remote.ts` | `RemoteCloudflaredStatus` *(type)* | When to use: the Remote settings panel — whether cloudflared exists, and how it updates. |
+| `shared/remote.ts` | `RemoteTunnelStatus` *(type)* | When to use: the Remote panel and `remote_status` — the tunnel state, hostname and error. |
+| `shared/remote.ts` | `RemoteStatus` *(type)* | When to use: `remote_status` and Settings — the gateway plus both cloudflared and tunnel halves. |
+| `shared/remote.ts` | `RemoteInfo` *(type)* | When to use: the connect-info read — everything a client needs to point at this app. |
 | `shared/research-events.ts` | `ResearchTier` *(type)* | Research run events. |
-| `shared/research-events.ts` | `ResearchEscalation` *(type)* | - |
-| `shared/research-events.ts` | `ResearchAnchorDetail` *(type)* | - |
-| `shared/research-events.ts` | `ResearchEvent` *(type)* | - |
+| `shared/research-events.ts` | `ResearchEscalation` *(type)* | When to use: a research event that moved to the render tier, and the outcome carrying its reason. |
+| `shared/research-events.ts` | `ResearchAnchorDetail` *(type)* | When to use: a source's captured anchor — text, path and fingerprint for revalidation. |
+| `shared/research-events.ts` | `ResearchEvent` *(type)* | When to use: `onResearchEvent` — the run timeline the panel renders and the agent observes. |
 | `shared/tool-instructions.ts` | `normalizeInstructionMap` | When to use: `instructions` — a name → text map from persisted settings or the bridge. |
 | `shared/tool-instructions.ts` | `normalizeActionInstructions` | When to use: `actionInstructions` — a tool → action → text map. |
 | `shared/tool-instructions.ts` | `InstructionLimits` *(type)* | When to use: the callers that need an allow-list and/or a length cap. |
 | `shared/tool-instructions.ts` | `ActionInstructionLimits` *(type)* | When to use: `actionInstructions` — each tool keeps its own action allow-list. |
 | `shared/tool-settings.ts` | `ToolSettings` *(type)* | Persisted overrides for the advertised browser MCP tool surface. |
-| `shared/tool-settings.ts` | `ToolManagerAction` *(type)* | - |
-| `shared/tool-settings.ts` | `ToolManagerEntry` *(type)* | - |
-| `shared/tool-settings.ts` | `ToolManagerState` *(type)* | - |
-| `shared/tool-settings.ts` | `ToolManagerResult` *(type)* | - |
-| `shared/types.ts` | `AgentStatus` *(type)* | - |
-| `shared/types.ts` | `CursorPosition` *(type)* | - |
-| `shared/types.ts` | `TelemetryEvent` *(type)* | - |
-| `shared/types.ts` | `HarvestedConstruct` *(type)* | - |
-| `shared/types.ts` | `TabSummary` *(type)* | - |
-| `shared/types.ts` | `ChassisState` *(type)* | - |
+| `shared/tool-settings.ts` | `ToolManagerAction` *(type)* | When to use: the Tools panel — one action of a grouped tool and its instruction override. |
+| `shared/tool-settings.ts` | `ToolManagerEntry` *(type)* | When to use: the Tools panel list — one advertised tool with its tier, state and overrides. |
+| `shared/tool-settings.ts` | `ToolManagerState` *(type)* | When to use: `get_tool_manager` — the catalogue plus the saved settings. |
+| `shared/tool-settings.ts` | `ToolManagerResult` *(type)* | When to use: the tool-manager IPC replies. |
+| `shared/types.ts` | `AgentStatus` *(type)* | When to use: the HUD status badge and the tray menu status line. |
+| `shared/types.ts` | `CursorPosition` *(type)* | When to use: the ghost-cursor overlay and the input trace — the last observed pointer position. |
+| `shared/types.ts` | `TelemetryEvent` *(type)* | When to use: the HUD feed and the action ledger — one observed browser action. |
+| `shared/types.ts` | `HarvestedConstruct` *(type)* | When to use: the CONSTRUCT panel and `harvest` — the page as markdown plus its coverage stats. |
+| `shared/types.ts` | `TabSummary` *(type)* | When to use: the tab strip and `list_tabs`. |
+| `shared/types.ts` | `ChassisState` *(type)* | When to use: the state broadcast that paints the deck — url, agent status, tabs, zoom and viewport. |
 | `shared/viewport.ts` | `specFromProfile` | When to use: applying a preset — the spec a `DeviceProfile` emulates. |
 | `shared/viewport.ts` | `normalizeViewportSpec` | When to use: a `browser_viewport` set — clamp the requested size and DPR into a usable spec. |
 | `shared/viewport.ts` | `normalizeDeviceProfile` | When to use: saving a device — validate a human's profile, or null when it is unusable. |
@@ -976,14 +976,14 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/viewport.ts` | `ViewportRect` *(type)* | When to use: a rectangle in DIP — the browsing area, or the emulated frame inside it. |
 | `shared/viewport.ts` | `ViewportState` *(type)* | When to use: the HUD and `browser_viewport` status read — spec, frame, scale and profiles. |
 | `shared/web-state.ts` | `WebPageState` *(type)* | Page-level signals collected for the WEB STATE tab on the Command Deck. |
-| `shared/zoom.ts` | `normalizeZoomSettings` | - |
-| `shared/zoom.ts` | `nextZoomStep` | - |
-| `shared/zoom.ts` | `clampZoomFactor` | - |
-| `shared/zoom.ts` | `DEFAULT_ZOOM_SETTINGS` | - |
+| `shared/zoom.ts` | `normalizeZoomSettings` | When to use: reading the persisted zoom settings — keep only a known mode. |
+| `shared/zoom.ts` | `nextZoomStep` | When to use: Ctrl+= / Ctrl+- and the toolbar zoom buttons. |
+| `shared/zoom.ts` | `clampZoomFactor` | When to use: an explicit factor arriving over IPC or from the agent tool. |
+| `shared/zoom.ts` | `DEFAULT_ZOOM_SETTINGS` | When to use: a first run, or a settings file that could not be read. |
 | `shared/zoom.ts` | `ZOOM_STEPS` | Chrome-like zoom stops, used by the toolbar and the agent-facing tool. |
 | `shared/zoom.ts` | `ZoomMode` *(type)* | Page zoom policy and the shape reported to the HUD, IPC callers and MCP. |
-| `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
-| `shared/zoom.ts` | `ZoomState` *(type)* | - |
+| `shared/zoom.ts` | `ZoomSettings` *(type)* | When to use: the persisted zoom policy file. |
+| `shared/zoom.ts` | `ZoomState` *(type)* | When to use: the zoom readout, the status consumers and `browser_zoom`. |
 
 ## Modules (297)
 

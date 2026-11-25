@@ -1,3 +1,4 @@
+/** When to use: the Remote settings panel — whether cloudflared exists, and how it updates. */
 export interface RemoteCloudflaredStatus {
   available: boolean;
   managed: boolean;
@@ -10,6 +11,7 @@ export interface RemoteCloudflaredStatus {
   error?: string;
 }
 
+/** When to use: the Remote panel and `remote_status` — the tunnel state, hostname and error. */
 export interface RemoteTunnelStatus {
   enabled: boolean;
   running: boolean;
@@ -22,6 +24,7 @@ export interface RemoteTunnelStatus {
   error?: string;
 }
 
+/** When to use: `remote_status` and Settings — the gateway plus both cloudflared and tunnel halves. */
 export interface RemoteStatus {
   enabled: boolean;
   running: boolean;
@@ -35,6 +38,7 @@ export interface RemoteStatus {
   error?: string;
 }
 
+/** When to use: the connect-info read — everything a client needs to point at this app. */
 export interface RemoteInfo {
   status: RemoteStatus;
   token: string;

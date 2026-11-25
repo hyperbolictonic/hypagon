@@ -2,6 +2,7 @@
 
 export type FfmpegMode = 'auto' | 'path' | 'managed';
 
+/** When to use: the Media settings panel and the downloader — updates, cookies, output and ffmpeg policy. */
 export interface MediaSettings {
   /** Check for a newer yt-dlp on launch and on the interval below. */
   autoUpdate: boolean;
@@ -21,6 +22,7 @@ export interface MediaSettings {
   ffmpegPath: string;
 }
 
+/** When to use: the Media panel updater row — installed/latest version, check and update state. */
 export interface MediaUpdaterState {
   autoUpdate: boolean;
   intervalMinutes: number;
@@ -34,6 +36,7 @@ export interface MediaUpdaterState {
   updateAvailable: boolean;
 }
 
+/** When to use: `loadMediaSettings` — the settings and the updater state together. */
 export interface MediaSettingsSnapshot {
   settings: MediaSettings;
   updater: MediaUpdaterState;
