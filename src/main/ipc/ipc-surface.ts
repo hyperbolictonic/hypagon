@@ -172,29 +172,29 @@ export class IpcSurface {
 
   private registerCortex(): void {
     ipcMain.handle('cortex:recall', async (_, query: string, options?: any) => {
-      return await cortex.recall(query, options);
+      return await cortex.history.recall(query, options);
     });
     ipcMain.handle('cortex:suggest-urls', async (_, query: string, options?: any) => {
-      return await cortex.suggestUrls(String(query || ''), options || {});
+      return await cortex.history.suggestUrls(String(query || ''), options || {});
     });
     ipcMain.handle('cortex:get-history', async (_, options?: any) => {
-      return await cortex.getHistory(options);
+      return await cortex.history.getHistory(options);
     });
     ipcMain.handle('cortex:clear-history', async (_, olderThan?: string) => {
-      await cortex.clearHistory(olderThan);
+      await cortex.history.clearHistory(olderThan);
       return { success: true };
     });
     ipcMain.handle('cortex:add-bookmark', async (_, bookmark: any) => {
-      return await cortex.addBookmark(bookmark);
+      return await cortex.bookmarks.add(bookmark);
     });
     ipcMain.handle('cortex:list-bookmarks', async (_, options?: any) => {
-      return await cortex.listBookmarks(options);
+      return await cortex.bookmarks.list(options);
     });
     ipcMain.handle('cortex:delete-bookmark', async (_, urlOrId: string) => {
-      return await cortex.deleteBookmark(urlOrId);
+      return await cortex.bookmarks.remove(urlOrId);
     });
     ipcMain.handle('cortex:is-bookmarked', async (_, url: string) => {
-      return await cortex.isBookmarked(url);
+      return await cortex.bookmarks.has(url);
     });
   }
 

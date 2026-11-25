@@ -213,7 +213,7 @@ export class DownloadManager {
   private async ingestDownloadedDocument(record: DownloadRecord) {
     try {
       const doc = await this.readDocumentContent(record.id);
-      await cortex.indexPage(
+      await cortex.history.indexPage(
         record.url,
         `[Download] ${record.filename}`,
         `# Downloaded Document: ${record.filename}\n\n${doc.content}`

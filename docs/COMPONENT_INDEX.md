@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 297 files, 959 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 302 files, 968 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (795)
+## Types (797)
 
 | File | Export | When to use |
 |---|---|---|
@@ -96,16 +96,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/cortex/chunker.ts` | `chunkMarkdown` | - |
 | `main/cortex/chunker.ts` | `extractDomain` | - |
 | `main/cortex/chunker.ts` | `PageChunk` *(type)* | Kuang Grade Mark Eleven - Cortex Markdown Chunker |
-| `main/cortex/cortex-db.ts` | `cortex` | - |
-| `main/cortex/cortex-db.ts` | `CortexDB` | - |
-| `main/cortex/cortex-db.ts` | `PageHistoryRow` *(type)* | - |
-| `main/cortex/cortex-db.ts` | `BookmarkRow` *(type)* | - |
-| `main/cortex/cortex-db.ts` | `RecallResult` *(type)* | - |
-| `main/cortex/cortex-db.ts` | `HistoryItem` *(type)* | - |
-| `main/cortex/cortex-db.ts` | `UrlSuggestion` *(type)* | - |
-| `main/cortex/cortex-db.ts` | `BookmarkItem` *(type)* | - |
-| `main/cortex/cortex-db.ts` | `ScriptRow` *(type)* | - |
-| `main/cortex/cortex-db.ts` | `ScriptItem` *(type)* | - |
 | `main/cortex/embedder.ts` | `registerEmbeddingProvider` | Register (or replace) a provider so it can be selected by id. |
 | `main/cortex/embedder.ts` | `listEmbeddingProviders` | Ids of every registered provider. |
 | `main/cortex/embedder.ts` | `setEmbeddingProvider` | Select the active provider by id. Throws when the id is unknown. |
@@ -115,6 +105,18 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/cortex/embedder.ts` | `DEFAULT_PROVIDER_ID` | - |
 | `main/cortex/embedder.ts` | `EMBEDDING_DIM` | Legacy dimension constant for the default provider (kept for compatibility). |
 | `main/cortex/embedder.ts` | `EmbeddingProvider` *(type)* | Kuang Grade Mark Eleven - Cortex Embedding Provider |
+| `main/cortex/types.ts` | `tokenizeQuery` | Split a search query into lowercase, punctuation-stripped terms. |
+| `main/cortex/types.ts` | `toStringArray` | LanceDB returns list columns as Apache Arrow `Vector`s, not JS arrays, so |
+| `main/cortex/types.ts` | `bookmarkSearchText` | The text a bookmark query is matched against (title, notes, URL, tags). |
+| `main/cortex/types.ts` | `cosineSimilarity` | Cosine similarity of two L2-normalized vectors (equal-length dot product). |
+| `main/cortex/types.ts` | `PageHistoryRow` *(type)* | When to use: a chunk of a visited page as stored in `page_history`. |
+| `main/cortex/types.ts` | `BookmarkRow` *(type)* | When to use: a saved bookmark as stored in `bookmarks`. |
+| `main/cortex/types.ts` | `RecallResult` *(type)* | When to use: one memory hit from `history.recall`. |
+| `main/cortex/types.ts` | `HistoryItem` *(type)* | When to use: one row of the chronological history list. |
+| `main/cortex/types.ts` | `UrlSuggestion` *(type)* | When to use: one URL-bar suggestion, merged from history, bookmarks and recall. |
+| `main/cortex/types.ts` | `BookmarkItem` *(type)* | When to use: a bookmark as the HUD reads it. |
+| `main/cortex/types.ts` | `ScriptRow` *(type)* | When to use: a saved script as stored in `scripts`. |
+| `main/cortex/types.ts` | `ScriptItem` *(type)* | When to use: a saved script as the HUD and the tool surface read it. |
 | `main/crawl/crawler.ts` | `normalizeUrl` | Strips the fragment so `/a` and `/a#x` are one page. |
 | `main/crawl/crawler.ts` | `matchesAnyPattern` | True when the URL matches any pattern (glob by default, `/regex/` when wrapped in slashes). |
 | `main/crawl/crawler.ts` | `linksFromMarkdown` | Extracts absolute links from Markdown (`[text](href)`), resolved against the page URL. |
@@ -824,7 +826,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (156)
+## Modules (163)
 
 | File | Export | When to use |
 |---|---|---|
@@ -853,6 +855,13 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/collaboration/assets/overlay-body.ts` | `OVERLAY_BODY_C` | When to use: composing the overlay — the part after the exit-prefix line. |
 | `main/collaboration/assets/picker-body.ts` | `PICKER_BODY` | When to use: composing the picker script after its drawer/inset head. |
 | `main/collaboration/service.ts` | `CollaborationService` | - |
+| `main/cortex/bookmark-store.ts` | `BookmarkStore` | When to use: constructing `CortexDB` — the store shares the connection. |
+| `main/cortex/connection.ts` | `seedHistoryRow` | The history table's seed row: the manual page an agent can always recall. |
+| `main/cortex/connection.ts` | `CortexConnection` | When to use: constructing `CortexDB` — one connection per storage directory. |
+| `main/cortex/cortex-db.ts` | `cortex` | - |
+| `main/cortex/cortex-db.ts` | `CortexDB` | - |
+| `main/cortex/history-store.ts` | `HistoryStore` | When to use: constructing `CortexDB` — history reads bookmarks for suggestions. |
+| `main/cortex/script-store.ts` | `ScriptStore` | When to use: constructing `CortexDB` — the store shares the connection. |
 | `main/data-paths.ts` | `dataRoot` | - |
 | `main/data-paths.ts` | `dataPath` | - |
 | `main/data-paths.ts` | `writeJsonAtomic` | When to use: persisting a JSON settings/state file — mkdir, write to a temp |

@@ -77,7 +77,7 @@ export function createHarvestNavStack(host: ChassisHost): HarvestNavStack {
     reportIdle: () => host.telemetry.reportIdle(),
     emitHarvest: (details) => host.telemetry.emitSimpleEvent('harvest', details),
     log: host.log,
-    indexPage: (url, title, content) => cortex.indexPage(url, title, content),
+    indexPage: (url, title, content) => cortex.history.indexPage(url, title, content),
   });
 
   const prerender = new PrerenderEngine(

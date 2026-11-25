@@ -106,7 +106,7 @@ export class AppServices {
           const cortex = chassis.cortex;
           let chunks = 0;
           for (const document of documents) {
-            chunks += await cortex.indexPage(context.url, document.title, document.markdown);
+            chunks += await cortex.history.indexPage(context.url, document.title, document.markdown);
           }
           return chunks;
         },

@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-297 modules, 959 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+302 modules, 968 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -38,9 +38,14 @@
 | `main/collaboration/service.ts` | 1: CollaborationService |
 | `main/collaboration/store.ts` | 2: CollaborationStore, CreateThreadInput |
 | `main/collaboration/surface.ts` | 3: CollaborationSurface, CollaborationNote, CollaborationSurfaceDeps |
+| `main/cortex/bookmark-store.ts` | 1: BookmarkStore |
 | `main/cortex/chunker.ts` | 3: chunkMarkdown, extractDomain, PageChunk |
-| `main/cortex/cortex-db.ts` | 10: cortex, CortexDB, PageHistoryRow, BookmarkRow, RecallResult, HistoryItem, UrlSuggestion, BookmarkItem, … (10) |
+| `main/cortex/connection.ts` | 2: seedHistoryRow, CortexConnection |
+| `main/cortex/cortex-db.ts` | 2: cortex, CortexDB |
 | `main/cortex/embedder.ts` | 9: registerEmbeddingProvider, listEmbeddingProviders, setEmbeddingProvider, getEmbeddingProvider, embedText, generateEmbedding, DEFAULT_PROVIDER_ID, EMBEDDING_DIM, … (9) |
+| `main/cortex/history-store.ts` | 1: HistoryStore |
+| `main/cortex/script-store.ts` | 1: ScriptStore |
+| `main/cortex/types.ts` | 12: tokenizeQuery, toStringArray, bookmarkSearchText, cosineSimilarity, PageHistoryRow, BookmarkRow, RecallResult, HistoryItem, … (12) |
 | `main/crawl/crawler.ts` | 9: normalizeUrl, matchesAnyPattern, linksFromMarkdown, Crawler, HumanAssistInfo, CrawlOptions, CrawlPage, CrawlOutcome, … (9) |
 | `main/data-paths.ts` | 3: dataRoot, dataPath, writeJsonAtomic |
 | `main/decide/config.ts` | 4: resolveDecisionConfig, readStoredDecisionConfig, saveDecisionConfig, decisionStatus |
@@ -121,12 +126,7 @@
 | `main/media/auth.ts` | 1: needsLogin |
 | `main/media/binaries.ts` | 8: bundledYtDlpPath, writableYtDlpPath, readYtDlpVersion, ensureYtDlp, isMediaBinary, MediaBinarySource, MediaBinary, MediaBinaryError |
 | `main/media/cookie-format.ts` | 1: toNetscape |
-| `main/media/cookies.ts` | 2: writeCookieFile, CookieFile |
-| `main/media/exec.ts` | 2: runYtDlpProcess, CommandResult |
-| `main/media/ffmpeg.ts` | 9: platformKey, managedFfmpegDir, ffmpegFileName, managedFfmpegPath, parseFfmpegVersion, detectFfmpeg, installManagedFfmpeg, FfmpegSource, … (9) |
-| `main/media/jobs.ts` | 12: buildFormatSelector, buildDownloadArgs, parseProgressLine, MediaJobs, MediaKind, MediaQuality, MediaJobState, MediaJobFile, … (12) |
-| `main/media/platform.ts` | 8: mediaPlatformKey, ytDlpFileName, ytdlpRuntimeOptions, compareYtDlpVersions, ytDlpReleaseAsset, parseChecksum, YtDlpRuntimeKind, YtDlpRuntime |
 
-… and 172 more module(s) — grep the full index.
+… and 177 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

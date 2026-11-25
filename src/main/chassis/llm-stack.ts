@@ -93,7 +93,7 @@ export function createLlmStack(host: ChassisHost): LlmStack {
     citation: () => host.researchView.citations,
     detachedView: () => host.researchView.detached,
     harvester: () => host.harvester,
-    indexPage: (url, title, content) => cortex.indexPage(url, title, content),
+    indexPage: (url, title, content) => cortex.history.indexPage(url, title, content),
     broadcast: (channel, payload) => host.bus.broadcast(channel, payload),
     log: host.log,
   });

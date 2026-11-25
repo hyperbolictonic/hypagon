@@ -246,7 +246,7 @@ export class PrerenderEngine {
         waitUntilIdleMs: 100,
       });
       if (snapshot.content && snapshot.content.length > 50) {
-        await this.cortex.indexPage(
+        await this.cortex.history.indexPage(
           item.url,
           item.title || snapshot.title,
           snapshot.content

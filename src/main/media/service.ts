@@ -447,7 +447,7 @@ export class MediaService {
           automatic: artifacts.automatic,
           text: artifacts.text,
         });
-        const chunks = await cortex.indexPage(url, `${info.media.title ?? url} (transcript)`, document);
+        const chunks = await cortex.history.indexPage(url, `${info.media.title ?? url} (transcript)`, document);
         this.indexedTranscripts.add(key);
         indexed = { chunks };
       } catch (error) {

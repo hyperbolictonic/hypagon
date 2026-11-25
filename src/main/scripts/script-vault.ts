@@ -38,7 +38,7 @@ export class ScriptVault {
     const filePath = path.join(this.scriptsDir, `${cleanName}.json`);
 
     // Index into LanceDB Cortex vector table
-    const indexed = await cortex.saveScript({
+    const indexed = await cortex.scripts.save({
       name: script.name.trim(),
       code: script.code,
       description: script.description,
@@ -68,7 +68,7 @@ export class ScriptVault {
     query?: string,
     options?: { domain?: string; tag?: string; limit?: number }
   ): Promise<ScriptItem[]> {
-    return await cortex.recallScripts(query, options);
+    return await cortex.scripts.recall(query, options);
   }
 
   /** The on-disk JSON path for a script name, sanitized to a filename. */
@@ -81,14 +81,14 @@ export class ScriptVault {
    * Retrieves a script by exact name from memory/DB or file system.
    */
   public async getScript(name: string): Promise<ScriptItem | null> {
-    const fromDb = await cortex.getScriptByName(name);
+    const fromDb = await cortex.scripts.getByName(name);
     if (fromDb) return fromDb;
 
     const filePath = this.scriptFilePath(name);
     if (fs.existsSync(filePath)) {
       try {
         const data: SavedScriptMeta = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-        return await cortex.saveScript(data);
+        return await cortex.scripts.save(data);
       } catch {}
     }
 
@@ -160,13 +160,13 @@ export class ScriptVault {
       } catch {}
     }
 
-    return await cortex.deleteScript(name);
+    return await cortex.scripts.remove(name);
   }
 
   /**
    * Lists all scripts from the vault.
    */
   public async listScripts(domain?: string, tag?: string): Promise<ScriptItem[]> {
-    return await cortex.recallScripts(undefined, { domain, tag, limit: 100 });
+    return await cortex.scripts.recall(undefined, { domain, tag, limit: 100 });
   }
 }

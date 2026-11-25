@@ -17,12 +17,12 @@ const limitOf = (value: unknown): number | undefined => (value ? parseInt(String
 const ROUTES: Record<string, CortexHandler> = {
   'POST /cortex/recall': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    const results = await chassis.cortex.recall(body.query, { limit: body.limit, domain: body.domain });
+    const results = await chassis.cortex.history.recall(body.query, { limit: body.limit, domain: body.domain });
     sendJson({ success: true, results });
   },
 
   'GET /cortex/history': async ({ chassis, url, sendJson }) => {
-    const history = await chassis.cortex.getHistory({
+    const history = await chassis.cortex.history.getHistory({
       limit: limitOf(url.searchParams.get('limit')),
       domain: url.searchParams.get('domain') || undefined,
     });
@@ -30,7 +30,7 @@ const ROUTES: Record<string, CortexHandler> = {
   },
 
   'GET /cortex/suggest': async ({ chassis, url, sendJson }) => {
-    const suggestions = await chassis.cortex.suggestUrls(url.searchParams.get('q') || '', {
+    const suggestions = await chassis.cortex.history.suggestUrls(url.searchParams.get('q') || '', {
       limit: limitOf(url.searchParams.get('limit')),
       semantic: url.searchParams.get('semantic') !== 'false',
     });
@@ -39,7 +39,7 @@ const ROUTES: Record<string, CortexHandler> = {
 
   'POST /cortex/history/clear': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
-    await chassis.cortex.clearHistory(body.olderThan);
+    await chassis.cortex.history.clearHistory(body.olderThan);
     sendJson({ success: true, message: 'History cleared' });
   },
 };
