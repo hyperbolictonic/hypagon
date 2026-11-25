@@ -7,6 +7,7 @@
 
 import { spawn } from 'node:child_process';
 
+/** When to use: reading a finished yt-dlp call — code/signal, output, and the timeout/overflow flags. */
 export interface CommandResult {
   readonly code: number | null;
   readonly signal: NodeJS.Signals | null;
@@ -16,6 +17,7 @@ export interface CommandResult {
   readonly overflowed: boolean;
 }
 
+/** When to use: a short yt-dlp call (metadata, transcript, preview) that returns a payload rather than streaming progress. */
 export async function runYtDlpProcess(
   binary: string,
   args: readonly string[],

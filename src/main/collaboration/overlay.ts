@@ -13,6 +13,7 @@ import { NOTE_DRAWER_BODY_B } from './assets/note-drawer-b.js';
 import { PICKER_BODY } from './assets/picker-body.js';
 import { OVERLAY_BODY_A, OVERLAY_BODY_C } from './assets/overlay-body.js';
 
+/** When to use: parsing or emitting a note from the in-page collaboration drawer. */
 export const COLLABORATION_NOTE_PREFIX = '__KUANG_COLLAB_NOTE__:';
 /** Human class-list edits on a selected element (the LLM reads these). */
 export const COLLABORATION_CLASS_PREFIX = '__KUANG_COLLAB_CLASS__:';
@@ -55,6 +56,7 @@ function pickerHead(rightInset: number): string {
 `;
 }
 
+/** When to use: entering collaboration mode — inject the element picker and its annotation drawer into the page. */
 export function collaborationPickerScript(options: CollaborationPickerOptions = {}): string {
   const rightInset = typeof options.rightInset === 'number' && Number.isFinite(options.rightInset)
     ? Math.max(0, options.rightInset)

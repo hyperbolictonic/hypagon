@@ -26,6 +26,7 @@ export type {
   UrlSuggestion,
 } from './types.js';
 
+/** When to use: the bookmarks, scripts and history stores — one connection over the Cortex data directory. */
 export class CortexDB {
   private readonly connection: CortexConnection;
 
@@ -50,4 +51,5 @@ export class CortexDB {
 }
 
 // Global singleton instance for the main chassis process
+/** When to use: the app-wide Cortex handle the memory tools and services share. */
 export const cortex = new CortexDB();

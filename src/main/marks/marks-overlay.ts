@@ -3,6 +3,7 @@ import { DEEP_DOM_HELPERS } from '../primitives/dom-targeting.js';
 import type { ComponentSurface } from '../shadow-walk/component-signature.js';
 import { marksInjectorScript } from './inject-script.js';
 
+/** When to use: one Set-of-Marks badge — geometry, text, role/state, actions, landmark and optional component/frame. */
 export interface MarkItem {
   id: number;
   tag: string;
@@ -28,6 +29,7 @@ export interface MarkItem {
   frameUrl?: string;
 }
 
+/** When to use: stamping and resolving marks on a view — the active set plus sticky structural anchors. */
 export class MarksOverlay {
   private activeMarks: Map<number, MarkItem> = new Map();
   /** Session-sticky registry for structural anchors: fingerprint -> markId */

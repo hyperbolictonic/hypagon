@@ -22,6 +22,7 @@ export interface EmbeddingProvider {
   embed(text: string): Promise<number[]>;
 }
 
+/** When to use: naming the built-in `hash-128` embedding provider in settings and stored metadata. */
 export const DEFAULT_PROVIDER_ID = 'hash-128';
 
 /** Legacy dimension constant for the default provider (kept for compatibility). */

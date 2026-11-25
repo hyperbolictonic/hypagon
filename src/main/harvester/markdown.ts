@@ -3,6 +3,7 @@ import { Readability } from '@mozilla/readability';
 import TurndownService from 'turndown';
 import type { HarvestedConstruct } from '../../shared/types.js';
 
+/** When to use: the harvest reply — how many shadow roots the composed-DOM serialiser inlined. */
 export interface HarvestStats {
   /** Open shadow roots inlined by the composed-DOM serialiser (0 = none). */
   shadowRoots?: number;
@@ -181,6 +182,7 @@ function partialViewNote(extractedChars: number, pageChars: number): string {
   );
 }
 
+/** When to use: `observe`/harvest — convert a DOM into one composed, budget-capped construct. */
 export class ConstructHarvester {
   private turndown: TurndownService;
   private baseUrl = '';

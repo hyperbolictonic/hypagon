@@ -58,6 +58,7 @@ function ensureWritable(candidate: string): string | null {
 
 let cachedRoot: string | null = null;
 
+/** When to use: resolving where runtime data lives — `HB_DATA_DIR`/`KUANG_DATA_DIR` or the Electron user data directory. */
 export function dataRoot(): string {
   if (cachedRoot) return cachedRoot;
 
@@ -95,6 +96,7 @@ export function dataRoot(): string {
   throw new Error('No writable runtime data directory is available.');
 }
 
+/** When to use: building a file path under the data root (settings, caches, logs). */
 export function dataPath(...segments: string[]): string {
   return path.join(dataRoot(), ...segments);
 }

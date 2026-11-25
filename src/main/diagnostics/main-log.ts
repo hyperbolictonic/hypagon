@@ -20,6 +20,7 @@ function resolveFile(): string {
   return logFile;
 }
 
+/** When to use: showing or exporting the diagnostics log path; empty string when it cannot be resolved. */
 export function mainLogFile(): string {
   try {
     return resolveFile();
@@ -28,6 +29,7 @@ export function mainLogFile(): string {
   }
 }
 
+/** When to use: a crash, process exit, unresponsive window or recovery that must leave a trace in a packaged build. */
 export function logMainEvent(kind: string, details: Record<string, unknown> = {}): void {
   const line = `${JSON.stringify({ ts: new Date().toISOString(), kind, ...details })}\n`;
   try {

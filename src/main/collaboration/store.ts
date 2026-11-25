@@ -95,6 +95,7 @@ function cleanThread(input: any): CollaborationThread | null {
   };
 }
 
+/** When to use: creating a collaboration thread — the target, the text and the optional kind/tags/choices/author. */
 export interface CreateThreadInput {
   target: unknown;
   intent?: string;
@@ -105,6 +106,7 @@ export interface CreateThreadInput {
   choices?: string[];
 }
 
+/** When to use: the collaboration thread file — create, list, reply and resolve threads. */
 export class CollaborationStore {
   readonly file: string;
   private threads: CollaborationThread[] = [];

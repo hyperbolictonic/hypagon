@@ -40,8 +40,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/boot/window-boot.ts` | `DownloadNotice` *(type)* | A finished download, as the boot hook reports it. |
 | `main/boot/window-boot.ts` | `WindowBootDeps` *(type)* | Dependencies the boot sequence needs from the chassis surfaces. |
 | `main/browser/frame-eval.ts` | `evaluateInFrames` | Evaluate `expression` in the main frame and up to `maxFrames` child frames. |
-| `main/browser/frame-eval.ts` | `FrameEvalOptions` *(type)* | - |
-| `main/browser/frame-eval.ts` | `FrameEvalResult` *(type)* | - |
+| `main/browser/frame-eval.ts` | `FrameEvalOptions` *(type)* | When to use: `evaluateInFrames` — the frame cap, the per-command timeout, blank-frame inclusion and an optional per-frame expression. |
+| `main/browser/frame-eval.ts` | `FrameEvalResult` *(type)* | When to use: one frame's evaluation reply — id, URL, depth/OOPIF and the value or error. |
 | `main/browser/frame-tree.ts` | `discoverFrames` | When to use: an operation that must reach inside iframes — enumerate the frame tree and open the sessions it needs. |
 | `main/browser/frame-tree.ts` | `FrameHandle` *(type)* | When to use: one child frame discovered by `discoverFrames` — id, depth, URL and the OOPIF session that can see it. |
 | `main/browser/frame-tree.ts` | `FrameContext` *(type)* | When to use: frame-aware evaluation and marks — the frame list plus the CDP session routing and release helpers. |
@@ -51,8 +51,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/browser/frames-inventory.ts` | `FrameShot` *(type)* | One cropped frame screenshot, already encoded for the bridge response. |
 | `main/browser/frames-inventory.ts` | `FramesInventoryOptions` *(type)* | When to use: the inventory options, before settings and bounds are applied. |
 | `main/browser/frames.ts` | `listFrames` | List the main frame and its children with top-level content-box rects. |
-| `main/browser/frames.ts` | `FrameRect` *(type)* | - |
-| `main/browser/frames.ts` | `FrameInfo` *(type)* | - |
+| `main/browser/frames.ts` | `FrameRect` *(type)* | When to use: a frame's box — top-level viewport coordinates as x/y/width/height. |
+| `main/browser/frames.ts` | `FrameInfo` *(type)* | When to use: `list_frames` — one frame's identity, geometry, visibility, cross-origin/OOPIF state and loader id. |
 | `main/browser/page-script-surface.ts` | `PageScriptSurface` | The script-evaluation and control-description surface over the active tab. |
 | `main/browser/page-script-surface.ts` | `PageScriptSurfaceDeps` *(type)* | Dependencies the page-script surface needs from the active tab. |
 | `main/capture/screenshot-jpeg.ts` | `captureScreenshotJpeg` | When to use: `decide(include_screenshot)` — a bounded baseline JPEG of the viewport. |
@@ -81,20 +81,20 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/chassis/surfaces.ts` | `createTabEvents` | When to use: the chassis constructor — the tab manager lifecycle reactions. |
 | `main/chassis/surfaces.ts` | `ChromeSurfaces` *(type)* | The five surfaces the rest of the composition reads, built first. |
 | `main/collaboration/overlay.ts` | `collaborationNoteDrawerScript` | Anchored note composer. The drawer is mounted next to the picked element, |
-| `main/collaboration/overlay.ts` | `collaborationPickerScript` | - |
+| `main/collaboration/overlay.ts` | `collaborationPickerScript` | When to use: entering collaboration mode — inject the element picker and its annotation drawer into the page. |
 | `main/collaboration/overlay.ts` | `collaborationOverlayScript` | Pure in-page projection for collaboration threads. The overlay is read-only in |
-| `main/collaboration/overlay.ts` | `COLLABORATION_NOTE_PREFIX` | - |
+| `main/collaboration/overlay.ts` | `COLLABORATION_NOTE_PREFIX` | When to use: parsing or emitting a note from the in-page collaboration drawer. |
 | `main/collaboration/overlay.ts` | `COLLABORATION_CLASS_PREFIX` | Human class-list edits on a selected element (the LLM reads these). |
 | `main/collaboration/overlay.ts` | `COLLABORATION_RESOLVE_PREFIX` | Resolve a thread from its in-page annotation card while in collab mode. |
 | `main/collaboration/overlay.ts` | `COLLABORATION_EXIT_PREFIX` | Escape from collab mode while the page itself owns keyboard focus. |
 | `main/collaboration/overlay.ts` | `CollaborationPickerOptions` *(type)* | Human element picker. The click is reported through the existing console channel. |
-| `main/collaboration/store.ts` | `CollaborationStore` | - |
-| `main/collaboration/store.ts` | `CreateThreadInput` *(type)* | - |
+| `main/collaboration/store.ts` | `CollaborationStore` | When to use: the collaboration thread file — create, list, reply and resolve threads. |
+| `main/collaboration/store.ts` | `CreateThreadInput` *(type)* | When to use: creating a collaboration thread — the target, the text and the optional kind/tags/choices/author. |
 | `main/collaboration/surface.ts` | `CollaborationSurface` | The element picker and the page overlay signal channel. |
 | `main/collaboration/surface.ts` | `CollaborationNote` *(type)* | A note the page overlay posted for the collaboration store. |
 | `main/collaboration/surface.ts` | `CollaborationSurfaceDeps` *(type)* | Dependencies the collaboration surface needs from the deck and the tab. |
-| `main/cortex/chunker.ts` | `chunkMarkdown` | - |
-| `main/cortex/chunker.ts` | `extractDomain` | - |
+| `main/cortex/chunker.ts` | `chunkMarkdown` | When to use: indexing a page into Cortex — split Markdown into overlapping chunks. |
+| `main/cortex/chunker.ts` | `extractDomain` | When to use: labelling a memory source — the hostname without `www.`, or 'unknown'. |
 | `main/cortex/chunker.ts` | `PageChunk` *(type)* | Kuang Grade Mark Eleven - Cortex Markdown Chunker |
 | `main/cortex/embedder.ts` | `registerEmbeddingProvider` | Register (or replace) a provider so it can be selected by id. |
 | `main/cortex/embedder.ts` | `listEmbeddingProviders` | Ids of every registered provider. |
@@ -102,7 +102,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/cortex/embedder.ts` | `getEmbeddingProvider` | The provider used for all new embeddings. |
 | `main/cortex/embedder.ts` | `embedText` | Embed `text` with the active provider. |
 | `main/cortex/embedder.ts` | `generateEmbedding` | - |
-| `main/cortex/embedder.ts` | `DEFAULT_PROVIDER_ID` | - |
+| `main/cortex/embedder.ts` | `DEFAULT_PROVIDER_ID` | When to use: naming the built-in `hash-128` embedding provider in settings and stored metadata. |
 | `main/cortex/embedder.ts` | `EMBEDDING_DIM` | Legacy dimension constant for the default provider (kept for compatibility). |
 | `main/cortex/embedder.ts` | `EmbeddingProvider` *(type)* | Kuang Grade Mark Eleven - Cortex Embedding Provider |
 | `main/cortex/types.ts` | `tokenizeQuery` | Split a search query into lowercase, punctuation-stripped terms. |
@@ -171,8 +171,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/deck/panel.ts` | `DeckPanelDeps` *(type)* | When to use: constructing the controller — the window, loader and mode readers. |
 | `main/diagnostics/console-log.ts` | `ConsoleLogBuffer` | The bounded, newest-last console buffer. |
 | `main/diagnostics/console-log.ts` | `ConsoleLogEntry` *(type)* | One captured page console line. |
-| `main/downloads/download-manager.ts` | `DownloadManager` | - |
-| `main/downloads/download-manager.ts` | `DownloadRecord` *(type)* | - |
+| `main/downloads/download-manager.ts` | `DownloadManager` | When to use: the download service — track Electron download items and index completed files. |
+| `main/downloads/download-manager.ts` | `DownloadRecord` *(type)* | When to use: one download row — file, path, bytes, state and timing. |
 | `main/downloads/download-surface.ts` | `DownloadSurface` | The download list and downloaded-document reader. |
 | `main/downloads/download-surface.ts` | `DownloadSurfaceDeps` *(type)* | Dependencies the download surface needs for directive logging. |
 | `main/drive/driver.ts` | `driveTask` | Run the loop until a stop condition. Never throws: every failure is a typed status. |
@@ -188,8 +188,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/harvester/dom-serializer.ts` | `captureComposedDom` | Serialise the active page's composed DOM (light + open shadow roots). |
 | `main/harvester/dom-serializer.ts` | `COMPOSE_DOM_SCRIPT` | JS evaluated in the page. Must stay self-contained: no imports, no template |
 | `main/harvester/dom-serializer.ts` | `ComposedDom` *(type)* | Composed-DOM serialisation for the Markdown harvester. |
-| `main/harvester/markdown.ts` | `ConstructHarvester` | - |
-| `main/harvester/markdown.ts` | `HarvestStats` *(type)* | - |
+| `main/harvester/markdown.ts` | `ConstructHarvester` | When to use: `observe`/harvest — convert a DOM into one composed, budget-capped construct. |
+| `main/harvester/markdown.ts` | `HarvestStats` *(type)* | When to use: the harvest reply — how many shadow roots the composed-DOM serialiser inlined. |
 | `main/hil/hil-banner.ts` | `hilBannerScript` | When to use: `inject` — the banner markup, wired to the local resolve route. |
 | `main/hil/hil-banner.ts` | `hilBannerRemovalScript` | When to use: `remove` — drop the banner and its keyframes. |
 | `main/hil/hil-banner.ts` | `HilPageBanner` | When to use: `HilManager` — own the page banner for the active hand-off. |
@@ -302,8 +302,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/llm/surface-types.ts` | `PageProbe` *(type)* | The page-level probe shape (live DOM alternates + one negotiation HEAD). |
 | `main/marks/inject-script.ts` | `marksInjectorScript` | When to use: `MarksOverlay.injectMarks` — renders the page-side Set-of-Marks scan. |
 | `main/marks/inject-script.ts` | `MarksInjectorOptions` *(type)* | When to use: building one mark scan — the sticky anchors and the two scope flags. |
-| `main/marks/marks-overlay.ts` | `MarksOverlay` | - |
-| `main/marks/marks-overlay.ts` | `MarkItem` *(type)* | - |
+| `main/marks/marks-overlay.ts` | `MarksOverlay` | When to use: stamping and resolving marks on a view — the active set plus sticky structural anchors. |
+| `main/marks/marks-overlay.ts` | `MarkItem` *(type)* | When to use: one Set-of-Marks badge — geometry, text, role/state, actions, landmark and optional component/frame. |
 | `main/marks/marks-surface.ts` | `MarksSurface` | The agent-facing marks discovery surface over MarksOverlay. |
 | `main/marks/marks-surface.ts` | `MarksSurfaceDeps` *(type)* | Dependencies the marks surface needs from the active tab and policy. |
 | `main/media/binaries.ts` | `bundledYtDlpPath` | When to use: the packaged/dev lookup of the shipped yt-dlp, before any download. |
@@ -316,8 +316,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/media/binaries.ts` | `MediaBinaryError` *(type)* | When to use: `ensureYtDlp` refusing — the code the downloader reports and the message a human reads. |
 | `main/media/cookies.ts` | `writeCookieFile` | Write the cookies for `url` (the browser would send this host) to a temp file. |
 | `main/media/cookies.ts` | `CookieFile` *(type)* | - |
-| `main/media/exec.ts` | `runYtDlpProcess` | - |
-| `main/media/exec.ts` | `CommandResult` *(type)* | - |
+| `main/media/exec.ts` | `runYtDlpProcess` | When to use: a short yt-dlp call (metadata, transcript, preview) that returns a payload rather than streaming progress. |
+| `main/media/exec.ts` | `CommandResult` *(type)* | When to use: reading a finished yt-dlp call — code/signal, output, and the timeout/overflow flags. |
 | `main/media/ffmpeg.ts` | `platformKey` | When to use: naming the managed download folder for the current or a given platform. |
 | `main/media/ffmpeg.ts` | `managedFfmpegDir` | When to use: the managed ffmpeg folder under a data root. |
 | `main/media/ffmpeg.ts` | `ffmpegFileName` | When to use: the managed binary name (`ffmpeg.exe` on Windows). |
@@ -356,13 +356,13 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/media/media-types.ts` | `MediaPreviewResult` *(type)* | When to use: the `media_preview` answer — metadata, an excerpt and images. |
 | `main/media/media-types.ts` | `MediaDownloadResult` *(type)* | When to use: the `media_download` answer — the queued job, or why it was refused. |
 | `main/media/platform.ts` | `mediaPlatformKey` | `win32-x64`, `darwin-arm64`, `linux-x64` — matches `bin/media/<key>`. |
-| `main/media/platform.ts` | `ytDlpFileName` | - |
+| `main/media/platform.ts` | `ytDlpFileName` | When to use: naming the managed yt-dlp binary (`yt-dlp.exe` on Windows). |
 | `main/media/platform.ts` | `ytdlpRuntimeOptions` | Point yt-dlp at Electron's own binary as a Node runtime. |
 | `main/media/platform.ts` | `compareYtDlpVersions` | Compare `2026.10.26`-style versions. Returns >0 when `a` is newer. |
 | `main/media/platform.ts` | `ytDlpReleaseAsset` | The GitHub release asset name for a target platform. |
 | `main/media/platform.ts` | `parseChecksum` | Find one asset hash in a `SHA2-256SUMS` file. |
 | `main/media/platform.ts` | `YtDlpRuntimeKind` *(type)* | Pure helpers for the media tooling: platform naming and the yt-dlp runtime. |
-| `main/media/platform.ts` | `YtDlpRuntime` *(type)* | - |
+| `main/media/platform.ts` | `YtDlpRuntime` *(type)* | When to use: spawning yt-dlp — the extra runtime args, env and Node version it should report. |
 | `main/media/process-failure.ts` | `processFailure` | When to use: mapping a `CommandResult` to the media error result, or null on success. |
 | `main/media/process-failure.ts` | `ProcessFailureCopy` *(type)* | The per-call wording for a failed one-shot run. |
 | `main/media/service.ts` | `MediaService` | - |
@@ -992,8 +992,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/boot/start-loops.ts` | `startLoops` | When to use: the chassis constructor — start the uptime tick and the HUD watchdog. |
 | `main/brand-icon.ts` | `brandIconPath` | When to use: a surface that needs the asset path itself (window icon). |
 | `main/brand-icon.ts` | `brandIcon` | When to use: a tray/HIL icon — the brand mark at the requested square size, |
-| `main/browser/frame-marks.ts` | `clearFrameMarks` | - |
-| `main/browser/frame-marks.ts` | `registerFrameMarks` | - |
+| `main/browser/frame-marks.ts` | `clearFrameMarks` | When to use: navigation or a new mark pass — drop the frame-id registry for a view. |
+| `main/browser/frame-marks.ts` | `registerFrameMarks` | When to use: after stamping child frames — remember which frame hosts each mark id (100+). |
 | `main/browser/frame-marks.ts` | `resolveFrameMark` | Resolve a frame mark to a live page-space target. Returns null when the frame navigated, the |
 | `main/browser/stealth.ts` | `stealthHeaders` | When to use: any request that must carry the host's client hints. |
 | `main/browser/stealth.ts` | `applyHostProfile` | When to use: a `WebContents` that must present as the host browser. |
@@ -1020,12 +1020,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/cortex/bookmark-store.ts` | `BookmarkStore` | When to use: constructing `CortexDB` — the store shares the connection. |
 | `main/cortex/connection.ts` | `seedHistoryRow` | The history table's seed row: the manual page an agent can always recall. |
 | `main/cortex/connection.ts` | `CortexConnection` | When to use: constructing `CortexDB` — one connection per storage directory. |
-| `main/cortex/cortex-db.ts` | `cortex` | - |
-| `main/cortex/cortex-db.ts` | `CortexDB` | - |
+| `main/cortex/cortex-db.ts` | `cortex` | When to use: the app-wide Cortex handle the memory tools and services share. |
+| `main/cortex/cortex-db.ts` | `CortexDB` | When to use: the bookmarks, scripts and history stores — one connection over the Cortex data directory. |
 | `main/cortex/history-store.ts` | `HistoryStore` | When to use: constructing `CortexDB` — history reads bookmarks for suggestions. |
 | `main/cortex/script-store.ts` | `ScriptStore` | When to use: constructing `CortexDB` — the store shares the connection. |
-| `main/data-paths.ts` | `dataRoot` | - |
-| `main/data-paths.ts` | `dataPath` | - |
+| `main/data-paths.ts` | `dataRoot` | When to use: resolving where runtime data lives — `HB_DATA_DIR`/`KUANG_DATA_DIR` or the Electron user data directory. |
+| `main/data-paths.ts` | `dataPath` | When to use: building a file path under the data root (settings, caches, logs). |
 | `main/data-paths.ts` | `writeJsonAtomic` | When to use: persisting a JSON settings/state file — mkdir, write to a temp |
 | `main/decide/config.ts` | `resolveDecisionConfig` | Resolve configuration (env overrides file). Returns null when nothing is configured. |
 | `main/decide/config.ts` | `readStoredDecisionConfig` | Raw configuration as stored on disk (file values only — env is read at resolve time). |
@@ -1038,8 +1038,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/decide/transport.ts` | `runTypesafe` | When to use: the typesafe protocol. |
 | `main/deck/collab-providers.ts` | `CollabProviders` | When to use: `CollabController` — the deck's collab wiring points. |
 | `main/deck/page-script.ts` | `runInPage` | When to use: any collab in-page call — returns undefined when the tab is gone. |
-| `main/diagnostics/main-log.ts` | `mainLogFile` | - |
-| `main/diagnostics/main-log.ts` | `logMainEvent` | - |
+| `main/diagnostics/main-log.ts` | `mainLogFile` | When to use: showing or exporting the diagnostics log path; empty string when it cannot be resolved. |
+| `main/diagnostics/main-log.ts` | `logMainEvent` | When to use: a crash, process exit, unresponsive window or recovery that must leave a trace in a packaged build. |
 | `main/hil/hil-store.ts` | `HilRequestStore` | When to use: `HilManager` — one store per process. |
 | `main/http/bookmarks-routes.ts` | `handleBookmarkRoutes` | When to use: the bridge request handler — dispatch `/bookmarks`. Returns |
 | `main/http/bridge-errors.ts` | `sendBridgeError` | When to use: the bridge's catch block — translate a thrown error into the |

@@ -7,6 +7,7 @@
 
 export type YtDlpRuntimeKind = 'electron-node' | 'none';
 
+/** When to use: spawning yt-dlp — the extra runtime args, env and Node version it should report. */
 export interface YtDlpRuntime {
   readonly kind: YtDlpRuntimeKind;
   /** Extra yt-dlp arguments for the runtime (empty when none is available). */
@@ -22,6 +23,7 @@ export function mediaPlatformKey(platform: string = process.platform, arch: stri
   return `${platform}-${arch}`;
 }
 
+/** When to use: naming the managed yt-dlp binary (`yt-dlp.exe` on Windows). */
 export function ytDlpFileName(platform: string = process.platform): string {
   return platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
 }

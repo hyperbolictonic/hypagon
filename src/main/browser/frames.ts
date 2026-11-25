@@ -21,6 +21,7 @@ import type { WebContents } from 'electron';
 import { discoverFrames, type FrameContext, type FrameHandle } from './frame-tree.js';
 import { layoutViewport } from './layout-viewport.js';
 
+/** When to use: a frame's box — top-level viewport coordinates as x/y/width/height. */
 export interface FrameRect {
   x: number;
   y: number;
@@ -28,6 +29,7 @@ export interface FrameRect {
   height: number;
 }
 
+/** When to use: `list_frames` — one frame's identity, geometry, visibility, cross-origin/OOPIF state and loader id. */
 export interface FrameInfo {
   frameId: string;
   parentFrameId?: string;
