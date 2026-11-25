@@ -466,22 +466,22 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/recipes/replay.ts` | `RecipeRunner` *(type)* | - |
 | `main/recipes/replay.ts` | `ReplayStepResult` *(type)* | - |
 | `main/recipes/replay.ts` | `ReplayResult` *(type)* | - |
-| `main/recording/recording-service.ts` | `onRecordingStatus` | - |
-| `main/recording/recording-service.ts` | `setRecordingWindow` | - |
-| `main/recording/recording-service.ts` | `loadRecordingConfig` | - |
-| `main/recording/recording-service.ts` | `getRecordingConfig` | - |
-| `main/recording/recording-service.ts` | `saveRecordingConfig` | - |
-| `main/recording/recording-service.ts` | `getRecordingStatus` | - |
-| `main/recording/recording-service.ts` | `pickRecordingDir` | - |
+| `main/recording/recording-service.ts` | `onRecordingStatus` | When to use: boot — the HUD subscribes to status changes (one listener). |
+| `main/recording/recording-service.ts` | `setRecordingWindow` | When to use: boot — hand the shell window to the recorder so main can ask it to capture. |
+| `main/recording/recording-service.ts` | `loadRecordingConfig` | When to use: boot — read `recording.json`, falling back to the defaults when it is missing or corrupt. |
+| `main/recording/recording-service.ts` | `getRecordingConfig` | When to use: the settings panel read, and the payload sent to the renderer on start. |
+| `main/recording/recording-service.ts` | `saveRecordingConfig` | When to use: the Settings form submit — clamp the numbers, resolve the folder and persist. |
+| `main/recording/recording-service.ts` | `getRecordingStatus` | When to use: any status read (`/recording/status` and the settings row). |
+| `main/recording/recording-service.ts` | `pickRecordingDir` | When to use: the Browse button — the native folder picker. |
 | `main/recording/recording-service.ts` | `startRecording` | Start recording the Cyberdeck window. Resolves when the renderer has the stream running. |
 | `main/recording/recording-service.ts` | `readyRecording` | Called by the renderer once the stream and encoder are actually running. |
 | `main/recording/recording-service.ts` | `stopRecording` | Ask the renderer to finalise; the file is written when it calls `saveRecording`. |
 | `main/recording/recording-service.ts` | `saveRecording` | Called from the renderer with the finished WebM bytes. |
-| `main/recording/recording-service.ts` | `failRecording` | - |
+| `main/recording/recording-service.ts` | `failRecording` | When to use: the renderer reports a capture or encode failure — mark the run failed and reject the pending start. |
 | `main/recording/recording-service.ts` | `listRecordings` | Finished recordings, newest first. Paths are absolute and ready for a file-upload field. |
-| `main/recording/recording-service.ts` | `RecordingConfig` *(type)* | - |
-| `main/recording/recording-service.ts` | `RecordingResult` *(type)* | - |
-| `main/recording/recording-service.ts` | `RecordingStatus` *(type)* | - |
+| `main/recording/recording-service.ts` | `RecordingConfig` *(type)* | When to use: the Settings → Recording form and `saveRecordingConfig` — the switches, output folder and encode budget. |
+| `main/recording/recording-service.ts` | `RecordingResult` *(type)* | When to use: `stopRecording`/`saveRecording` — the finished file and its timelapse arithmetic. |
+| `main/recording/recording-service.ts` | `RecordingStatus` *(type)* | When to use: the REC button, the orb light and the settings row — busy/idle plus the last result or error. |
 | `main/remote/access.ts` | `RemoteAccess` | When to use: `RemoteService` — one access state per service. |
 | `main/remote/access.ts` | `RemoteAccessDeps` *(type)* | When to use: the service constructor — the three controllers and a status reader. |
 | `main/remote/auth.ts` | `RemoteAuth` | When to use: `RemoteService` — one auth state per service. |
@@ -823,17 +823,17 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/transport.ts` | `WrapTransportError` | A transport-policy failure with a stable code callers can match on. |
 | `main/wrap/transport.ts` | `TransportContext` *(type)* | The transport fields both executor cores resolve from `WrapLimits`. |
 | `main/wrap/transport.ts` | `FetchedResponse` *(type)* | One fetched page after URL policy, redirects and the byte cap. |
-| `main/wrap/types.ts` | `WrapMethod` *(type)* | - |
-| `main/wrap/types.ts` | `WrapFormat` *(type)* | - |
+| `main/wrap/types.ts` | `WrapMethod` *(type)* | When to use: declaring which request methods a wrapper accepts. |
+| `main/wrap/types.ts` | `WrapFormat` *(type)* | When to use: a `wrap_run` call choosing readable markdown, JSON records, or both. |
 | `main/wrap/types.ts` | `WrapInputSchema` *(type)* | The subset of JSON Schema used by wrapper inputs. |
-| `main/wrap/types.ts` | `WrapRequest` *(type)* | - |
-| `main/wrap/types.ts` | `WrapWrapper` *(type)* | - |
-| `main/wrap/types.ts` | `WrapManifestEntry` *(type)* | - |
-| `main/wrap/types.ts` | `WrapPreview` *(type)* | - |
-| `main/wrap/types.ts` | `WrapErrorInfo` *(type)* | - |
-| `main/wrap/types.ts` | `WrapResponseInfo` *(type)* | - |
-| `main/wrap/types.ts` | `WrapIndexed` *(type)* | - |
-| `main/wrap/types.ts` | `WrapRunResult` *(type)* | - |
+| `main/wrap/types.ts` | `WrapRequest` *(type)* | When to use: a wrapper's fixed request — the half an agent may not assemble. |
+| `main/wrap/types.ts` | `WrapWrapper` *(type)* | When to use: the stored document `wrap_get` returns and `wrap_create`/`wrap_update` accept. |
+| `main/wrap/types.ts` | `WrapManifestEntry` *(type)* | When to use: `wrap_list` rows and the Settings wrappers table. |
+| `main/wrap/types.ts` | `WrapPreview` *(type)* | When to use: a dry run and every failure reply — the request that would have been sent, credential-free. |
+| `main/wrap/types.ts` | `WrapErrorInfo` *(type)* | When to use: the structured half of a failed run (an agent branches on `code`). |
+| `main/wrap/types.ts` | `WrapResponseInfo` *(type)* | When to use: the size and content-type summary attached to a run, plus the raw JSON when asked. |
+| `main/wrap/types.ts` | `WrapIndexed` *(type)* | When to use: a recipe that opted into Cortex indexing — how many documents and chunks landed. |
+| `main/wrap/types.ts` | `WrapRunResult` *(type)* | When to use: every wrapper tool reply and the executor's return value. |
 | `main/wrap/validate-wrapper.ts` | `validateWrapper` | - |
 | `main/wrap/validate-wrapper.ts` | `isPlainObject` | - |
 | `main/wrap/validate-wrapper.ts` | `WrapperValidation` *(type)* | - |

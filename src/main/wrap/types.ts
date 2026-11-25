@@ -9,8 +9,10 @@
 
 import type { Recipe, RenderedDocument, RenderMeta } from '../../../packages/recipe/src/index.ts';
 
+/** When to use: declaring which request methods a wrapper accepts. */
 export type WrapMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD';
 
+/** When to use: a `wrap_run` call choosing readable markdown, JSON records, or both. */
 export type WrapFormat = 'markdown' | 'json' | 'both';
 
 /** The subset of JSON Schema used by wrapper inputs. */
@@ -34,6 +36,7 @@ export interface WrapInputSchema {
   default?: unknown;
 }
 
+/** When to use: a wrapper's fixed request — the half an agent may not assemble. */
 export interface WrapRequest {
   /** Primary/default method. */
   method: WrapMethod;
@@ -52,6 +55,7 @@ export interface WrapRequest {
   timeoutMs?: number;
 }
 
+/** When to use: the stored document `wrap_get` returns and `wrap_create`/`wrap_update` accept. */
 export interface WrapWrapper {
   schemaVersion: 1;
   id: string;
@@ -68,6 +72,7 @@ export interface WrapWrapper {
   notes?: string;
 }
 
+/** When to use: `wrap_list` rows and the Settings wrappers table. */
 export interface WrapManifestEntry {
   id: string;
   name: string;
@@ -84,6 +89,7 @@ export interface WrapManifestEntry {
   lastVerified?: string;
 }
 
+/** When to use: a dry run and every failure reply — the request that would have been sent, credential-free. */
 export interface WrapPreview {
   method: WrapMethod;
   url: string;
@@ -91,6 +97,7 @@ export interface WrapPreview {
   body?: string;
 }
 
+/** When to use: the structured half of a failed run (an agent branches on `code`). */
 export interface WrapErrorInfo {
   code: string;
   message: string;
@@ -99,6 +106,7 @@ export interface WrapErrorInfo {
   retryable?: boolean;
 }
 
+/** When to use: the size and content-type summary attached to a run, plus the raw JSON when asked. */
 export interface WrapResponseInfo {
   contentType?: string;
   bytes: number;
@@ -109,6 +117,7 @@ export interface WrapResponseInfo {
   truncated?: boolean;
 }
 
+/** When to use: a recipe that opted into Cortex indexing — how many documents and chunks landed. */
 export interface WrapIndexed {
   /** How many rendered documents were handed to Cortex. */
   documents: number;
@@ -118,6 +127,7 @@ export interface WrapIndexed {
   error?: string;
 }
 
+/** When to use: every wrapper tool reply and the executor's return value. */
 export interface WrapRunResult {
   ok: boolean;
   dryRun?: boolean;

@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { app, dialog, type BrowserWindow } from 'electron';
 
+/** When to use: the Settings → Recording form and `saveRecordingConfig` — the switches, output folder and encode budget. */
 export interface RecordingConfig {
   /** Whether the recorder is available at all (the REC button and the tools). */
   enabled: boolean;
@@ -34,6 +35,7 @@ export interface RecordingConfig {
   bitrate: number;
 }
 
+/** When to use: `stopRecording`/`saveRecording` — the finished file and its timelapse arithmetic. */
 export interface RecordingResult {
   path: string;
   filename: string;
@@ -46,6 +48,7 @@ export interface RecordingResult {
   speedup: number;
 }
 
+/** When to use: the REC button, the orb light and the settings row — busy/idle plus the last result or error. */
 export interface RecordingStatus {
   recording: boolean;
   enabled: boolean;
@@ -84,6 +87,7 @@ let pendingStart: {
 } | null = null;
 let startBarrier: Promise<void> | null = null;
 
+/** When to use: boot — the HUD subscribes to status changes (one listener). */
 export function onRecordingStatus(cb: (s: RecordingStatus) => void): void {
   statusListener = cb;
 }
@@ -97,10 +101,12 @@ function setStatus(next: Partial<RecordingStatus>): void {
   }
 }
 
+/** When to use: boot — hand the shell window to the recorder so main can ask it to capture. */
 export function setRecordingWindow(win: BrowserWindow): void {
   mainWindow = win;
 }
 
+/** When to use: boot — read `recording.json`, falling back to the defaults when it is missing or corrupt. */
 export function loadRecordingConfig(): RecordingConfig {
   try {
     const stored = JSON.parse(fs.readFileSync(configPath(), 'utf8'));
@@ -113,10 +119,12 @@ export function loadRecordingConfig(): RecordingConfig {
   return config;
 }
 
+/** When to use: the settings panel read, and the payload sent to the renderer on start. */
 export function getRecordingConfig(): RecordingConfig {
   return { ...config };
 }
 
+/** When to use: the Settings form submit — clamp the numbers, resolve the folder and persist. */
 export function saveRecordingConfig(input: Partial<RecordingConfig>): RecordingConfig {
   const next: RecordingConfig = {
     ...config,
@@ -151,10 +159,12 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Math.round(value)));
 }
 
+/** When to use: any status read (`/recording/status` and the settings row). */
 export function getRecordingStatus(): RecordingStatus {
   return { ...status };
 }
 
+/** When to use: the Browse button — the native folder picker. */
 export async function pickRecordingDir(): Promise<string | null> {
   const result = await dialog.showOpenDialog({
     title: 'Choose where timelapses are saved',
@@ -291,6 +301,7 @@ export function saveRecording(buffer: ArrayBuffer, frames: number): RecordingRes
   return result;
 }
 
+/** When to use: the renderer reports a capture or encode failure — mark the run failed and reject the pending start. */
 export function failRecording(message: string): void {
   setStatus({ recording: false, error: message });
   const start = pendingStart;
