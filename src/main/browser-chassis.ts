@@ -60,6 +60,7 @@ import { isTakeoverShortcut } from './takeover-key.js';
 import { HudWatchdog } from './boot/hud-watchdog.js';
 import { WindowBootSurface } from './boot/window-boot.js';
 import { ShellBus } from './shell/event-bus.js';
+import { createLlmStack } from './chassis/llm-stack.js';
 import { IpcSurface } from './ipc/ipc-surface.js';
 import { readPageInfo } from './tabs/page-info.js';
 import { TabSurface } from './tabs/tab-surface.js';
@@ -97,7 +98,6 @@ export class BrowserChassis {
     pageUrl: () => this.getPageInfo().url,
   });
   /** Throttle for gate-triggered human hand-offs (one per URL per few minutes). */
-  private lastGateHil: { url: string; at: number } | null = null;
   /** Tab manager and viewport controller, built with the window. */
   readonly tabSetup!: TabSetupSurface;
   readonly input!: InputSurface;
@@ -141,8 +141,6 @@ export class BrowserChassis {
   /** Why the last hand-off was skipped (surfaced in the WAF error). */
 
 
-  private sidebarView: WebContentsView | null = null;
-  private sidebarMode: 'docked' | 'floating' | 'collapsed' = 'floating';
   /** Human takeover is explicit: page input alone never pauses the agent. */
   readonly human = new HumanControlSurface({
     markHuman: () => {
@@ -181,17 +179,6 @@ export class BrowserChassis {
     const raw = String(process.env.HB_CONSENT_POLICY ?? process.env.KUANG_CONSENT_POLICY ?? '').toLowerCase();
     return raw === 'accept' || raw === 'reject' ? (raw as ConsentPolicy) : 'essential';
   })();
-  private lastOpenSidebarMode: 'docked' | 'floating' = 'floating';
-  /** Running sidebar bounds animation, so a new target or a snap can cancel it. */
-  private sidebarBoundsAnimation: { cancelled: boolean } | null = null;
-  /** Collab mode: the orb is replaced by the collaborations toolbar pill. */
-  private collabMode = false;
-  /** Current note in the back/forward cycle through open collaboration threads. */
-  private collabFocusIndex = -1;
-  /** Which vertical edge the collapsed orb docks to (survives restarts via the sidebar renderer). */
-  private orbEdge: 'left' | 'right' = 'right';
-  /** False while a full-window settings/dialog surface is open. */
-  private sidebarOverlayVisible = true;
   /** Monotonic page revision: bumped on navigation and every mutating action. */
   private revision = 0;
   /** The shell-window boot deps, kept out of the constructor. */
@@ -348,10 +335,13 @@ export class BrowserChassis {
     const interaction = this.createInteractionSurfaces();
     this.hil = interaction.hil;
     this.primitives = interaction.primitives;
-    const readSearch = this.createLlmSurfaces();
-    this.llm = readSearch.llm;
-    this.search = readSearch.search;
-    this.crawl = this.createCrawlSurface();
+    const stack = this.createLlmStack();
+    this.llmSurface = stack.llmSurface;
+    this.researchLlmSurface = stack.researchLlmSurface;
+    this.searchHub = stack.searchHub;
+    this.llm = stack.llm;
+    this.search = stack.search;
+    this.crawl = stack.crawl;
     this.shadow = this.createShadowWalkSurface();
     this.startLoops();
   }
@@ -364,6 +354,30 @@ export class BrowserChassis {
     onDecision((event) => {
       this.decision.record(event);
       this.bus.toSurfaces('chassis:decision', event);
+    });
+  }
+
+  /** The LLM/search/crawl stack, kept out of the constructor. */
+  private createLlmStack(): ReturnType<typeof createLlmStack> {
+    return createLlmStack({
+      activeSession: () => this.getActiveWebContents().session,
+      activeWebContents: () => {
+        try {
+          return this.getActiveWebContents();
+        } catch {
+          return null;
+        }
+      },
+      navigateForText: (url) => this.researchView.navigateForText(url),
+      userAgent: this.hostProfile.userAgent,
+      renderMarkdown: (url) => this.readUrlRender(url),
+      research: this.research,
+      researchView: this.researchView,
+      activity: this.surfaceActivity,
+      log: this.controllerLog,
+      harvester: () => this.harvester,
+      indexPage: (url, title, content) => cortex.indexPage(url, title, content),
+      broadcast: (channel, payload) => this.bus.broadcast(channel, payload),
     });
   }
 
@@ -590,77 +604,6 @@ export class BrowserChassis {
     return { hil, primitives };
   }
 
-  /** LLM read/search surfaces and their shared activity hook. */
-  private createLlmSurfaces(): { llm: ReadSurface; search: SearchSurface } {
-    // LLM-friendly site discovery (TODO_RESEARCH_CRAWL.md §5, Feature 6).
-    // `net.fetch` runs on Chromium's network stack (session cookies/UA/TLS); per-page
-    // alternates go through a real document navigation instead of a synthetic fetch.
-    const llmSurface = new LlmSurface({
-      getSession: () => this.getActiveWebContents().session,
-      getActiveWebContents: () => {
-        try {
-          return this.getActiveWebContents();
-        } catch {
-          return null;
-        }
-      },
-      ...this.llmSurfaceBase(),
-      renderPage: (url) => this.readUrlRender(url),
-    });
-    this.llmSurface = llmSurface;
-
-    const researchLlmSurface = new LlmSurface({
-      getSession: () => this.research.session(),
-      ...this.llmSurfaceBase(),
-    });
-    this.researchLlmSurface = researchLlmSurface;
-
-    // Multi-engine web search (TODO_RESEARCH_CRAWL.md §5, Feature 5).
-    const searchHub = new SearchHub({
-      load: (url, script, opts) => this.researchView.load(url, script, opts),
-      log: (level, msg) => this.telemetry.addLog(level, msg),
-    });
-    this.searchHub = searchHub;
-
-    const llm = new ReadSurface({
-      probe: (url) => llmSurface.probe(url),
-      fetch: (opts) => llmSurface.fetch(opts),
-      readUrl: (opts) => llmSurface.readUrl(opts),
-      renderMarkdown: (url) => this.readUrlRender(url),
-      activity: this.surfaceActivity,
-      log: this.controllerLog,
-    });
-
-    const search = new SearchSurface({
-      hub: searchHub,
-      settings: () => this.research.settings(),
-      applyEnginePolicy: (effective) => this.research.applyEnginePolicy(effective),
-      isCooling: (host) => this.research.isCooling(host),
-      markCooldown: (host, reason) => this.research.markCooldown(host, reason),
-      engineHost: (engine) => engineHost(engine, this.research.settings().urlTemplate),
-      error: researchError,
-      activity: this.surfaceActivity,
-      log: this.controllerLog,
-    });
-
-    return { llm, search };
-  }
-
-  /** Crawl, topic research and the activity feed over the research session. */
-  private createCrawlSurface(): CrawlSurface {
-    return new CrawlSurface({
-      researchLlm: () => this.researchLlmSurface,
-      search: (query, opts) => this.searchHub.search(query, opts),
-      settings: () => this.research.settings(),
-      session: this.research,
-      citation: () => this.researchView.citations,
-      detachedView: () => this.researchView.detached,
-      harvester: () => this.harvester,
-      indexPage: (url, title, content) => cortex.indexPage(url, title, content),
-      broadcast: (channel, payload) => this.bus.broadcast(channel, payload),
-      log: (level, message) => this.telemetry.addLog(level, message),
-    });
-  }
   /** Bounds of the browser viewport as actually laid out in the HUD (zoom-aware). */
   private async computeViewportBounds(): Promise<{ x: number; y: number; width: number; height: number }> {
     const win = this.mainWindow;
@@ -756,15 +699,6 @@ export class BrowserChassis {
         // Tab closed during the sweep.
       }
     }
-  }
-
-/** The deps both LlmSurface instances share: navigation, fingerprint UA and the log. */
-  private llmSurfaceBase() {
-    return {
-      navigateForText: (url: string) => this.researchView.navigateForText(url),
-      userAgent: this.hostProfile.userAgent,
-      log: (level: 'info' | 'warn' | 'action', msg: string) => this.telemetry.addLog(level, msg),
-    };
   }
 
   // ---- Deck chrome --------------------------------------------------------------------
