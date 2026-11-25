@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 332 files, 1042 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 338 files, 1047 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (852)
+## Types (851)
 
 | File | Export | When to use |
 |---|---|---|
@@ -397,9 +397,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/network/network-interceptor.ts` | `NetworkFilter` *(type)* | - |
 | `main/network/network-surface.ts` | `NetworkSurface` | The captured traffic, payloads and stream reads. |
 | `main/network/network-surface.ts` | `NetworkSurfaceDeps` *(type)* | Dependencies the network surface needs for directive logging. |
-| `main/prerender/prerender-engine.ts` | `PrerenderEngine` | - |
-| `main/prerender/prerender-engine.ts` | `PrerenderItem` *(type)* | - |
-| `main/prerender/prerender-engine.ts` | `PrerenderOptions` *(type)* | - |
+| `main/prerender/types.ts` | `PrerenderItem` *(type)* | When to use: one warm background view in the prerender pool. |
+| `main/prerender/types.ts` | `PrerenderOptions` *(type)* | When to use: the `prerender_links` tool call. |
 | `main/primitives/control-facts.ts` | `controlFactsExpression` | Build the self-contained expression. Callers only ever pass plain JSON-able options. |
 | `main/primitives/control-facts.ts` | `parseControlFacts` | Parse the expression result into typed facts, tolerating an adapter that returned a string. |
 | `main/primitives/control-facts.ts` | `ControlAction` *(type)* | - |
@@ -881,7 +880,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (182)
+## Modules (188)
 
 | File | Export | When to use |
 |---|---|---|
@@ -986,6 +985,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/metrics.ts` | `snapshot` | - |
 | `main/metrics.ts` | `summary` | Grouped summary for `bridge_health` — three numbers instead of a wall of keys. |
 | `main/metrics.ts` | `resetMetrics` | - |
+| `main/prerender/candidate-links.ts` | `extractCandidateLinks` | When to use: `prerender` without an explicit URL list — top outgoing links. |
+| `main/prerender/harvest.ts` | `harvestPrerenderedItem` | When to use: after a view is pooled — index it so the read is already warm. |
+| `main/prerender/pool.ts` | `PrerenderPool` | When to use: `PrerenderEngine` — one pool per process. |
+| `main/prerender/prerender-engine.ts` | `PrerenderEngine` | When to use: the chassis — own the warm views and the background harvest. |
+| `main/prerender/url.ts` | `normalizePrerenderUrl` | When to use: comparing a requested URL to a pooled one (query order-insensitive). |
+| `main/prerender/view-factory.ts` | `spawnPrerenderView` | When to use: `PrerenderEngine.prerender` — one warm view for `targetUrl`, |
 | `main/remote/cloudflared.ts` | `findCloudflared` | Find cloudflared without installing or downloading it. |
 | `main/remote/ipc.ts` | `registerRemoteIpc` | When to use: main-process startup — register every `remote:*` channel. The |
 | `main/security/capability-token.ts` | `tokenPathIn` | The token file path inside a capability directory. |

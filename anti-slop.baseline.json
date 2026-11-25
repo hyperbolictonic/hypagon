@@ -43,7 +43,6 @@
       "main/navigation-error.ts": 1,
       "main/network/impersonate.ts": 4,
       "main/network/network-interceptor.ts": 5,
-      "main/prerender/prerender-engine.ts": 3,
       "main/primitives/control-facts.ts": 3,
       "main/primitives/dom-targeting.ts": 2,
       "main/primitives/primitives.ts": 11,
@@ -153,9 +152,6 @@
       },
       "main/network/network-interceptor.ts": {
         "function": 1
-      },
-      "main/prerender/prerender-engine.ts": {
-        "class": 1
       },
       "main/primitives/control-facts.ts": {
         "function": 1
