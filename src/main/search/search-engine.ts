@@ -152,6 +152,14 @@ export function engineHost(engine: string, urlTemplate: string): string {
   return spec ? new URL(spec.build('test')).hostname : '';
 }
 
+/** The plan for one query: the ordered engine ids, the resolved custom template and the cap. */
+interface SearchPlan {
+  query: string;
+  max: number;
+  ids: string[];
+  customTemplate: string;
+}
+
 export class SearchHub {
   /** Engines that recently returned a bot-check are tried last for a while. */
   private blockedUntil = new Map<string, number>();
@@ -162,6 +170,44 @@ export class SearchHub {
     query: string,
     opts: { engine?: string; engines?: string[]; urlTemplate?: string; max?: number } = {},
   ): Promise<SearchOutcome> {
+    const plan = this.plan(query, opts);
+    const attempts: SearchAttempt[] = [];
+
+    for (const id of plan.ids) {
+      const outcome = await this.attempt(id, plan);
+      attempts.push(outcome.attempt);
+      if (!outcome.results) continue;
+
+      this.deps.log?.('action', `search_web "${plan.query}" → ${outcome.results.length} results via ${outcome.label}`);
+      return {
+        query: plan.query,
+        engine: id,
+        results: outcome.results,
+        attempts,
+        blocked: false,
+        notes: `via ${outcome.label}`,
+      };
+    }
+
+    const anyBlocked = attempts.some((a) => a.blocked);
+    return {
+      query: plan.query,
+      engine: attempts.length ? attempts[attempts.length - 1].engine : null,
+      results: [],
+      attempts,
+      blocked: anyBlocked,
+      notes: anyBlocked
+        ? 'A provider returned a bot-check/consent page — try another engine, or request_human_intervention.'
+        : 'No results parsed from any engine.',
+    };
+  }
+
+  /**
+   * Resolve the chain: an explicit engine wins, a list keeps its order, the default chain is
+   * reordered so an engine that recently challenged sinks to the back (an explicit single engine
+   * is never reordered — the caller asked for it).
+   */
+  private plan(query: string, opts: { engine?: string; engines?: string[]; urlTemplate?: string; max?: number }): SearchPlan {
     const q = (query || '').trim();
     if (!q) throw coded('BAD_REQUEST', 'search_web needs a non-empty query.');
 
@@ -172,8 +218,6 @@ export class SearchHub {
     else if (opts.engine) ids = [String(opts.engine).toLowerCase()];
     else ids = [...DEFAULT_ENGINE_CHAIN];
 
-    // Stable reorder: an engine that recently challenged sinks to the back of the queue, so a
-    // guaranteed 9-second interstitial is not paid on every run. An explicit single engine wins.
     if (!opts.engine) {
       const now = Date.now();
       const cooling = (id: string) => (this.blockedUntil.get(id) ?? 0) > now;
@@ -182,67 +226,69 @@ export class SearchHub {
 
     const customTemplate = opts.urlTemplate || process.env.KUANG_SEARCH_URL || '';
     if (ids.includes('custom') && !customTemplate.includes('{query}')) {
-      throw coded('BAD_REQUEST', 'engine "custom" needs a url_template containing {query} (e.g. "https://searx.local/search?q={query}").');
+      throw coded(
+        'BAD_REQUEST',
+        'engine "custom" needs a url_template containing {query} (e.g. "https://searx.local/search?q={query}").',
+      );
     }
 
-    const attempts: SearchAttempt[] = [];
+    return { query: q, max, ids, customTemplate };
+  }
 
-    for (const id of ids) {
-      const spec: EngineSpec | undefined =
-        id === 'custom'
-          ? { id: 'custom', label: 'custom template', build: (qq: string) => customTemplate.replace('{query}', encodeURIComponent(qq)) }
-          : ENGINES[id];
+  /** The engine's URL builder, or undefined for an unknown id. */
+  private specFor(id: string, customTemplate: string): EngineSpec | undefined {
+    return id === 'custom'
+      ? { id: 'custom', label: 'custom template', build: (qq: string) => customTemplate.replace('{query}', encodeURIComponent(qq)) }
+      : ENGINES[id];
+  }
 
-      if (!spec) {
-        attempts.push({ engine: id, ok: false, count: 0, blocked: false, error: 'unknown engine' });
-        continue;
-      }
+  /**
+   * One engine in the chain: load its SERP, record the attempt, and return the capped results only
+   * when the page was not a bot-check. A challenge page can contain links; they are never returned,
+   * and the caller falls through to the next engine.
+   */
+  private async attempt(
+    id: string,
+    plan: SearchPlan,
+  ): Promise<{ attempt: SearchAttempt; results?: SearchResult[]; label: string }> {
+    const spec = this.specFor(id, plan.customTemplate);
+    if (!spec) {
+      return { attempt: { engine: id, ok: false, count: 0, blocked: false, error: 'unknown engine' }, label: id };
+    }
 
-      try {
-        const url = spec.build(q);
-        const { result } = await this.deps.load(url, EXTRACT_SCRIPT, {
-          timeoutMs: 15000,
-          settleMs: 400,
-          readyScript: READY_SCRIPT,
-          readyMs: 4000,
-        });
-        const rows: any[] = Array.isArray(result?.rows) ? result.rows : [];
-        const blocked = !!result?.blocked;
-        if (blocked) this.blockedUntil.set(id, Date.now() + 10 * 60_000);
-        attempts.push({ engine: id, ok: rows.length > 0 && !blocked, count: rows.length, blocked });
+    try {
+      const url = spec.build(plan.query);
+      const { result } = await this.deps.load(url, EXTRACT_SCRIPT, {
+        timeoutMs: 15000,
+        settleMs: 400,
+        readyScript: READY_SCRIPT,
+        readyMs: 4000,
+      });
+      const rows: any[] = Array.isArray(result?.rows) ? result.rows : [];
+      const blocked = !!result?.blocked;
+      if (blocked) this.blockedUntil.set(id, Date.now() + 10 * 60_000);
 
-        // A challenge page can contain links; never return them, and always fall through to the
-        // next engine rather than accepting a provider's interstitial as search results.
-        if (rows.length > 0 && !blocked) {
-          const results: SearchResult[] = rows.slice(0, max).map((r, i) => ({
-            rank: i + 1,
-            title: String(r.title || ''),
-            url: String(r.url || ''),
-            snippet: String(r.snippet || ''),
-          }));
-          this.deps.log?.('action', `search_web "${q}" → ${results.length} results via ${spec.label}`);
-          return { query: q, engine: id, results, attempts, blocked: false, notes: `via ${spec.label}` };
-        }
-
+      const attempt: SearchAttempt = { engine: id, ok: rows.length > 0 && !blocked, count: rows.length, blocked };
+      if (rows.length === 0 || blocked) {
         this.deps.log?.(
           'warn',
           `search_web: engine "${id}" ${blocked ? 'returned a bot-check/consent page' : 'yielded no results'}; trying next.`,
         );
-      } catch (err: any) {
-        attempts.push({ engine: id, ok: false, count: 0, blocked: false, error: err?.message || String(err) });
+        return { attempt, label: spec.label };
       }
-    }
 
-    const anyBlocked = attempts.some((a) => a.blocked);
-    return {
-      query: q,
-      engine: attempts.length ? attempts[attempts.length - 1].engine : null,
-      results: [],
-      attempts,
-      blocked: anyBlocked,
-      notes: anyBlocked
-        ? 'A provider returned a bot-check/consent page — try another engine, or request_human_intervention.'
-        : 'No results parsed from any engine.',
-    };
+      const results: SearchResult[] = rows.slice(0, plan.max).map((r, i) => ({
+        rank: i + 1,
+        title: String(r.title || ''),
+        url: String(r.url || ''),
+        snippet: String(r.snippet || ''),
+      }));
+      return { attempt, results, label: spec.label };
+    } catch (err: any) {
+      return {
+        attempt: { engine: id, ok: false, count: 0, blocked: false, error: err?.message || String(err) },
+        label: spec.label,
+      };
+    }
   }
 }
