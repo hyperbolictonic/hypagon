@@ -99,6 +99,28 @@ export class TabManager {
     return [...this.tabs.values()];
   }
 
+  /**
+   * A WebContentsView has no default context menu, so every tab and popup gets the
+   * browser's copy/paste/link/inspect menu wired once.
+   */
+  private attachTabContextMenu(wc: WebContents, window: BrowserWindow): void {
+    if ((wc as any).__kuangContextMenu) return;
+    (wc as any).__kuangContextMenu = true;
+    attachContextMenu(wc, {
+      window,
+      onOpenLinkInNewTab: (url) => {
+        try {
+          const tab = this.createTab(url);
+          this.switchTab(tab.id);
+        } catch (err) {
+          // Worst case the link still opens via "open in system browser".
+          this.options.onLog?.('warn', `Could not open link in a new tab: ${(err as Error)?.message || err}`);
+        }
+      },
+      onLog: (level, message) => this.options.onLog?.(level, message),
+    });
+  }
+
   public createTab(initialUrl: string = 'about:blank', existingView?: WebContentsView): TabInstance {
     this.counter++;
     const id = `tab_${this.counter}`;
@@ -153,22 +175,7 @@ export class TabManager {
     // Right-click: copy/paste/select-all, link and image actions, reload, inspect element.
     // A WebContentsView has no default context menu, so without this the browser is unusable
     // by hand even though every action exists in the API.
-    if (!(wc as any).__kuangContextMenu) {
-      (wc as any).__kuangContextMenu = true;
-      attachContextMenu(wc, {
-        window: this.options.mainWindow,
-        onOpenLinkInNewTab: (url) => {
-          try {
-            const tab = this.createTab(url);
-            this.switchTab(tab.id);
-          } catch (err) {
-            // Worst case the link still opens via "open in system browser".
-            this.options.onLog?.('warn', `Could not open link in a new tab: ${(err as Error)?.message || err}`);
-          }
-        },
-        onLog: (level, message) => this.options.onLog?.(level, message),
-      });
-    }
+    this.attachTabContextMenu(wc, this.options.mainWindow);
 
     // Also covers reused views (e.g. a prerendered view promoted to a tab), where the
     // webPreferences above are not re-applied.
@@ -365,21 +372,7 @@ export class TabManager {
     this.options.applyZoom?.(wc);
     wc.on('did-navigate', () => this.options.applyZoom?.(wc));
 
-    if (!(wc as any).__kuangContextMenu) {
-      (wc as any).__kuangContextMenu = true;
-      attachContextMenu(wc, {
-        window: popup,
-        onOpenLinkInNewTab: (url) => {
-          try {
-            const tab = this.createTab(url);
-            this.switchTab(tab.id);
-          } catch (err) {
-            this.options.onLog?.('warn', `Could not open link in a new tab: ${(err as Error)?.message || err}`);
-          }
-        },
-        onLog: (level, message) => this.options.onLog?.(level, message),
-      });
-    }
+    this.attachTabContextMenu(wc, popup);
 
     // The popup may itself call window.open() (nested provider hops).
     this.wireWindowOpen(wc);

@@ -447,6 +447,31 @@ export class HumanizedInputSimulator {
     } catch {}
   }
 
+  /** One mouse-button transition: CDP first, a sendInputEvent fallback otherwise. */
+  private async dispatchMouseTransition(
+    webContents: WebContents,
+    type: 'mousePressed' | 'mouseReleased',
+    point: Point,
+    button: 'left' | 'right' | 'middle',
+    clickCount: number,
+  ): Promise<void> {
+    const pressed = type === 'mousePressed';
+    await this.dispatch(
+      webContents,
+      'Input.dispatchMouseEvent',
+      { type, x: point.x, y: point.y, button, buttons: pressed ? 1 : 0, clickCount, pointerType: 'mouse' },
+      () => {
+        webContents.sendInputEvent({
+          type: pressed ? 'mouseDown' : 'mouseUp',
+          x: point.x,
+          y: point.y,
+          button,
+          clickCount,
+        });
+      },
+    );
+  }
+
   /**
    * Simulates a humanized click:
    * 1. Traverses to coordinates via Bézier path
@@ -479,39 +504,13 @@ export class HumanizedInputSimulator {
     const viewTarget = this.toViewPoint(webContents, target);
 
     // Mouse Down
-    await this.dispatch(
-      webContents,
-      'Input.dispatchMouseEvent',
-      { type: 'mousePressed', x: viewTarget.x, y: viewTarget.y, button, buttons: 1, clickCount, pointerType: 'mouse' },
-      () => {
-        webContents.sendInputEvent({
-          type: 'mouseDown',
-          x: viewTarget.x,
-          y: viewTarget.y,
-          button,
-          clickCount,
-        });
-      }
-    );
+    await this.dispatchMouseTransition(webContents, 'mousePressed', viewTarget, button, clickCount);
 
     // Contact duration (finger depressing mouse switch), scaled by the profile.
     await sleep(Math.max(0, this.profile.clickDwellMs * (0.8 + Math.random() * 0.5)));
 
     // Mouse Up
-    await this.dispatch(
-      webContents,
-      'Input.dispatchMouseEvent',
-      { type: 'mouseReleased', x: viewTarget.x, y: viewTarget.y, button, buttons: 0, clickCount, pointerType: 'mouse' },
-      () => {
-        webContents.sendInputEvent({
-          type: 'mouseUp',
-          x: viewTarget.x,
-          y: viewTarget.y,
-          button,
-          clickCount,
-        });
-      }
-    );
+    await this.dispatchMouseTransition(webContents, 'mouseReleased', viewTarget, button, clickCount);
 
     this.reporter?.onClick?.(target);
 
