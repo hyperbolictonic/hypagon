@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 222 files, 790 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 223 files, 792 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -685,7 +685,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (121)
+## Modules (123)
 
 | File | Export | When to use |
 |---|---|---|
@@ -801,6 +801,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `renderer/settings-remote.ts` | `initRemotePanel` | Wire the panel once, after the settings modal markup exists. |
 | `renderer/settings-research.ts` | `loadResearchSettings` | Read the research settings and paint the form. |
 | `renderer/settings-research.ts` | `initResearchSettings` | Wire the research form once, after the settings modal markup exists. |
+| `renderer/settings-shadow-walk.ts` | `loadShadowWalkSettings` | Read the Shadow Walk settings and paint the form. |
+| `renderer/settings-shadow-walk.ts` | `initShadowWalkSettings` | Wire the Shadow Walk form and probe once. |
 | `renderer/settings-wrap-secrets.ts` | `loadWrapSettings` | Read the credential list and repaint the secret panel and the editor picker. |
 | `renderer/settings-wrap-secrets.ts` | `initWrapSecrets` | Wire the credential panel and the wrapper editor once. |
 | `renderer/settings-wrap-secrets.ts` | `activeWrapTab` | The wrap subtab the user last selected (credentials or wrappers). |
