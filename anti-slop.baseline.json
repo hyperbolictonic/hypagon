@@ -186,9 +186,6 @@
       "main/tray/tray-manager.ts": {
         "class": 1
       },
-      "main/utils/json-navigator.ts": {
-        "function": 1
-      },
       "main/viewport/controller.ts": {
         "class": 1
       },

@@ -19,20 +19,133 @@ export interface JsonQueryResult {
   data: any;
 }
 
+/** The context every view renders against: the resolved path and the two caps. */
+interface JsonViewContext {
+  path: string;
+  limit: number;
+  maxStrLen: number;
+}
+
+/** When to use: `query` with view=schema — the shape of the value, not its content. */
+function schemaView(current: any, ctx: JsonViewContext): JsonQueryResult {
+  return {
+    path: ctx.path || '$',
+    view: 'schema',
+    data: JsonNavigator.generateSchema(current),
+  };
+}
+
+/** When to use: `query` with view=keys — the key list, with array shapes described. */
+function keysView(current: any, ctx: JsonViewContext): JsonQueryResult {
+  if (current && typeof current === 'object' && !Array.isArray(current)) {
+    return {
+      path: ctx.path || '$',
+      view: 'keys',
+      matchCount: Object.keys(current).length,
+      data: Object.keys(current),
+    };
+  }
+  if (Array.isArray(current)) {
+    return {
+      path: ctx.path || '$',
+      view: 'keys',
+      matchCount: current.length,
+      data: {
+        arrayLength: current.length,
+        sampleIndices: current.slice(0, 5).map((_, i) => i),
+        itemKeys:
+          current[0] && typeof current[0] === 'object' && !Array.isArray(current[0])
+            ? Object.keys(current[0])
+            : typeof current[0],
+      },
+    };
+  }
+  return { path: ctx.path || '$', view: 'keys', data: typeof current };
+}
+
+/** When to use: `query` with view=summary — sizes and samples instead of the payload. */
+function summaryView(current: any, ctx: JsonViewContext): JsonQueryResult {
+  if (Array.isArray(current)) {
+    const sample = current.slice(0, Math.min(3, current.length)).map((item) => JsonNavigator.truncateStrings(item, ctx.maxStrLen));
+    return {
+      path: ctx.path || '$',
+      view: 'summary',
+      matchCount: current.length,
+      data: {
+        totalItems: current.length,
+        sample,
+        commonKeys: current[0] && typeof current[0] === 'object' ? Object.keys(current[0]) : undefined,
+      },
+    };
+  }
+  if (current && typeof current === 'object') {
+    const summary: Record<string, any> = {};
+    for (const [key, value] of Object.entries(current)) {
+      if (Array.isArray(value)) {
+        summary[key] = `Array(${value.length})`;
+      } else if (value && typeof value === 'object') {
+        summary[key] = `Object(${Object.keys(value).length} keys)`;
+      } else {
+        summary[key] = typeof value === 'string' && value.length > 50 ? `${value.slice(0, 50)}...` : value;
+      }
+    }
+    return {
+      path: ctx.path || '$',
+      view: 'summary',
+      matchCount: Object.keys(current).length,
+      data: summary,
+    };
+  }
+  if (typeof current === 'string') {
+    return {
+      path: ctx.path || '$',
+      view: 'summary',
+      data: {
+        type: 'string',
+        length: current.length,
+        preview:
+          current.length > ctx.maxStrLen
+            ? `${current.slice(0, ctx.maxStrLen)}... [${current.length - ctx.maxStrLen} more characters]`
+            : current,
+      },
+    };
+  }
+  return { path: ctx.path || '$', view: 'summary', data: current };
+}
+
+/** When to use: `query` with view=value (the default) — the value, capped and truncated. */
+function valueView(current: any, ctx: JsonViewContext): JsonQueryResult {
+  if (Array.isArray(current)) {
+    return {
+      path: ctx.path || '$',
+      view: 'value',
+      matchCount: current.length,
+      data: current.slice(0, ctx.limit).map((item) => JsonNavigator.truncateStrings(item, ctx.maxStrLen)),
+    };
+  }
+  return {
+    path: ctx.path || '$',
+    view: 'value',
+    data: JsonNavigator.truncateStrings(current, ctx.maxStrLen),
+  };
+}
+
 export class JsonNavigator {
   /**
    * Evaluates a query against a JSON structure.
    */
   public static query(root: any, options: JsonQueryOptions = {}): JsonQueryResult {
     const view = options.view || 'value';
-    const limit = options.limit !== undefined ? Math.max(1, options.limit) : 25;
-    const maxStrLen = options.maxStringLength || 250;
-    const targetPath = (options.path || '').trim();
+    const ctx: JsonViewContext = {
+      path: (options.path || '').trim(),
+      limit: options.limit !== undefined ? Math.max(1, options.limit) : 25,
+      maxStrLen: options.maxStringLength || 250,
+    };
 
     // 1. Resolve path (if provided)
     let current = root;
-    if (targetPath && targetPath !== '$' && targetPath !== '.') {
-      current = this.resolvePath(root, targetPath);
+    if (ctx.path && ctx.path !== '$' && ctx.path !== '.') {
+      current = this.resolvePath(root, ctx.path);
     }
 
     // 1b. Apply filter predicate parameter if provided
@@ -43,106 +156,14 @@ export class JsonNavigator {
     // 2. Apply requested view
     switch (view) {
       case 'schema':
-        return {
-          path: targetPath || '$',
-          view: 'schema',
-          data: this.generateSchema(current),
-        };
-
+        return schemaView(current, ctx);
       case 'keys':
-        if (current && typeof current === 'object' && !Array.isArray(current)) {
-          return {
-            path: targetPath || '$',
-            view: 'keys',
-            matchCount: Object.keys(current).length,
-            data: Object.keys(current),
-          };
-        } else if (Array.isArray(current)) {
-          return {
-            path: targetPath || '$',
-            view: 'keys',
-            matchCount: current.length,
-            data: {
-              arrayLength: current.length,
-              sampleIndices: current.slice(0, 5).map((_, i) => i),
-              itemKeys: current[0] && typeof current[0] === 'object' && !Array.isArray(current[0]) ? Object.keys(current[0]) : typeof current[0],
-            },
-          };
-        }
-        return {
-          path: targetPath || '$',
-          view: 'keys',
-          data: typeof current,
-        };
-
+        return keysView(current, ctx);
       case 'summary':
-        if (Array.isArray(current)) {
-          const sample = current.slice(0, Math.min(3, current.length)).map(item => this.truncateStrings(item, maxStrLen));
-          return {
-            path: targetPath || '$',
-            view: 'summary',
-            matchCount: current.length,
-            data: {
-              totalItems: current.length,
-              sample,
-              commonKeys: current[0] && typeof current[0] === 'object' ? Object.keys(current[0]) : undefined,
-            },
-          };
-        } else if (current && typeof current === 'object') {
-          const summary: Record<string, any> = {};
-          for (const [k, v] of Object.entries(current)) {
-            if (Array.isArray(v)) {
-              summary[k] = `Array(${v.length})`;
-            } else if (v && typeof v === 'object') {
-              summary[k] = `Object(${Object.keys(v).length} keys)`;
-            } else {
-              summary[k] = typeof v === 'string' && v.length > 50 ? `${v.slice(0, 50)}...` : v;
-            }
-          }
-          return {
-            path: targetPath || '$',
-            view: 'summary',
-            matchCount: Object.keys(current).length,
-            data: summary,
-          };
-        }
-        if (typeof current === 'string') {
-          return {
-            path: targetPath || '$',
-            view: 'summary',
-            data: {
-              type: 'string',
-              length: current.length,
-              preview: current.length > maxStrLen ? `${current.slice(0, maxStrLen)}... [${current.length - maxStrLen} more characters]` : current,
-            },
-          };
-        }
-        return {
-          path: targetPath || '$',
-          view: 'summary',
-          data: current,
-        };
-
+        return summaryView(current, ctx);
       case 'value':
-      default: {
-        let truncated = current;
-        if (Array.isArray(current)) {
-          const sliced = current.slice(0, limit);
-          truncated = sliced.map(item => this.truncateStrings(item, maxStrLen));
-          return {
-            path: targetPath || '$',
-            view: 'value',
-            matchCount: current.length,
-            data: truncated,
-          };
-        }
-        truncated = this.truncateStrings(current, maxStrLen);
-        return {
-          path: targetPath || '$',
-          view: 'value',
-          data: truncated,
-        };
-      }
+      default:
+        return valueView(current, ctx);
     }
   }
 
