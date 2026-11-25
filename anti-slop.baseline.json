@@ -149,9 +149,6 @@
   },
   "modularity": {
     "files": {
-      "main/crawl/crawler.ts": {
-        "function": 1
-      },
       "main/hil/hil-manager.ts": {
         "class": 1
       },

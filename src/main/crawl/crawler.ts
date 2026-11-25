@@ -288,31 +288,100 @@ export class Crawler {
   ): Promise<{ page: CrawlPage; links: string[]; indexed: boolean; notes: string[] }> {
     const notes: string[] = [];
     const pageStarted = Date.now();
-    let title = '';
-    let content = '';
-    let via: 'llm' | 'static' | 'render' = 'render';
-    let links: string[] = [];
-    let error: string | undefined;
-    let humanAssisted = false;
-    let humanMs = 0;
-    let anchors: CitationAnchor[] | undefined;
 
     try {
       await this.deps.beforePage?.(url);
     } catch (err: any) {
-      error = err?.message || String(err);
-      notes.push(`skipped ${url}: ${error}`);
-      return {
-        page: { url, title: url, depth, via: 'render', bytes: 0, links: 0, indexed: false, error, ms: Date.now() - pageStarted },
-        links: [],
-        indexed: false,
-        notes,
-      };
+      return this.skippedPage(url, depth, err?.message || String(err), notes, pageStarted);
     }
 
+    const cheap = await this.cheapContent(url, opts, notes);
+    let title = cheap.title;
+    let content = cheap.content;
+    const via = cheap.via;
+    let anchors = cheap.anchors;
+    let links: string[] = [];
+    let humanAssisted = false;
+    let humanMs = 0;
+    let error: string | undefined;
+    let escalation: CrawlPage['escalation'] | undefined;
+
+    if (cheap.usedCheap) {
+      links = linksFromMarkdown(content, url);
+    } else {
+      const rendered = await this.renderContent(url, opts, notes, cheap.staticFailure);
+      title = rendered.title;
+      content = rendered.content;
+      links = rendered.links;
+      humanAssisted = rendered.humanAssisted;
+      humanMs = rendered.humanMs;
+      anchors = rendered.anchors;
+      error = rendered.error;
+      escalation = rendered.escalation;
+    }
+
+    const indexed = await this.indexContent(url, title, content, error, notes);
+
+    return {
+      page: {
+        url,
+        title: title || url,
+        depth,
+        via,
+        bytes: Buffer.byteLength(content, 'utf8'),
+        links: links.length,
+        indexed,
+        error,
+        escalation,
+        humanAssisted,
+        humanMs,
+        anchors,
+        ms: Date.now() - pageStarted,
+        excerpt: opts.includeContent ? content.slice(0, opts.includeContent) : undefined,
+      },
+      links,
+      indexed,
+      notes,
+    };
+  }
+
+  /** A page the cooldown or the caller refused: a result row, not a throw. */
+  private skippedPage(
+    url: string,
+    depth: number,
+    error: string,
+    notes: string[],
+    pageStarted: number,
+  ): { page: CrawlPage; links: string[]; indexed: boolean; notes: string[] } {
+    notes.push(`skipped ${url}: ${error}`);
+    return {
+      page: { url, title: url, depth, via: 'render', bytes: 0, links: 0, indexed: false, error, ms: Date.now() - pageStarted },
+      links: [],
+      indexed: false,
+      notes,
+    };
+  }
+
+  /** The cheap tiers in order: site Markdown first, then the static impersonating fetch. */
+  private async cheapContent(
+    url: string,
+    opts: CrawlOptions,
+    notes: string[],
+  ): Promise<{
+    content: string;
+    title: string;
+    via: 'llm' | 'static' | 'render';
+    anchors?: CitationAnchor[];
+    usedCheap: boolean;
+    staticFailure: string | null;
+  }> {
+    let content = '';
+    let title = '';
+    let via: 'llm' | 'static' | 'render' = 'render';
+    let anchors: CitationAnchor[] | undefined;
     let usedCheap = false;
     let staticFailure: string | null = null;
-    let escalation: CrawlPage['escalation'] | undefined;
+
     if (opts.preferLlm !== false && this.deps.tryLlm) {
       try {
         const r = await this.deps.tryLlm(url);
@@ -354,63 +423,70 @@ export class Crawler {
       }
     }
 
-    if (!usedCheap) {
-      try {
-        const r = await this.deps.renderPage(url, {
-          selector: opts.selector,
-          onHuman: opts.onHuman,
-          anchorsFor: opts.anchorsFor,
-        });
-        title = r.title;
-        content = r.markdown;
-        links = r.links || [];
-        humanAssisted = !!r.humanAssisted;
-        humanMs = r.humanMs ?? 0;
-        anchors = r.anchors;
-      } catch (err: any) {
-        error = err?.message || String(err);
-        notes.push(`render failed for ${url}: ${error}`);
-      }
-
-      // Only claim an escalation when the render actually produced the page.
-      if (!error && staticFailure) {
-        escalation = { from: 'static', to: 'render', reason: staticFailure };
-        notes.push(`escalated ${url} to render: ${staticFailure}`);
-      }
-    } else {
-      links = linksFromMarkdown(content, url);
-    }
-
-    let indexed = false;
-    if (!error && content && content.trim().length > 50 && this.deps.indexPage) {
-      try {
-        await this.deps.indexPage(url, title || url, content);
-        indexed = true;
-      } catch (err: any) {
-        notes.push(`cortex index failed for ${url}: ${err?.message || err}`);
-      }
-    }
-
-    return {
-      page: {
-        url,
-        title: title || url,
-        depth,
-        via,
-        bytes: Buffer.byteLength(content, 'utf8'),
-        links: links.length,
-        indexed,
-        error,
-        escalation,
-        humanAssisted,
-        humanMs,
-        anchors,
-        ms: Date.now() - pageStarted,
-        excerpt: opts.includeContent ? content.slice(0, opts.includeContent) : undefined,
-      },
-      links,
-      indexed,
-      notes,
-    };
+    return { content, title, via, anchors, usedCheap, staticFailure };
   }
+
+  /** The render tier, plus the escalation note when the static tier failed first. */
+  private async renderContent(
+    url: string,
+    opts: CrawlOptions,
+    notes: string[],
+    staticFailure: string | null,
+  ): Promise<{
+    title: string;
+    content: string;
+    links: string[];
+    humanAssisted: boolean;
+    humanMs: number;
+    anchors?: CitationAnchor[];
+    error?: string;
+    escalation?: CrawlPage['escalation'];
+  }> {
+    let title = '';
+    let content = '';
+    let links: string[] = [];
+    let humanAssisted = false;
+    let humanMs = 0;
+    let anchors: CitationAnchor[] | undefined;
+    let error: string | undefined;
+    let escalation: CrawlPage['escalation'] | undefined;
+
+    try {
+      const r = await this.deps.renderPage(url, {
+        selector: opts.selector,
+        onHuman: opts.onHuman,
+        anchorsFor: opts.anchorsFor,
+      });
+      title = r.title;
+      content = r.markdown;
+      links = r.links || [];
+      humanAssisted = !!r.humanAssisted;
+      humanMs = r.humanMs ?? 0;
+      anchors = r.anchors;
+    } catch (err: any) {
+      error = err?.message || String(err);
+      notes.push(`render failed for ${url}: ${error}`);
+    }
+
+    // Only claim an escalation when the render actually produced the page.
+    if (!error && staticFailure) {
+      escalation = { from: 'static', to: 'render', reason: staticFailure };
+      notes.push(`escalated ${url} to render: ${staticFailure}`);
+    }
+
+    return { title, content, links, humanAssisted, humanMs, anchors, error, escalation };
+  }
+
+  /** Index the page into Cortex, when it has enough text; a failure is a note, not a throw. */
+  private async indexContent(url: string, title: string, content: string, error: string | undefined, notes: string[]): Promise<boolean> {
+    if (error || !content || content.trim().length <= 50 || !this.deps.indexPage) return false;
+    try {
+      await this.deps.indexPage(url, title || url, content);
+      return true;
+    } catch (err: any) {
+      notes.push(`cortex index failed for ${url}: ${err?.message || err}`);
+      return false;
+    }
+  }
+
 }
