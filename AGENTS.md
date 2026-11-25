@@ -39,6 +39,10 @@ push and pull request. Do not weaken the patterns to make a file pass; replace t
 - For new transport, session, tunnel, auth or child-process code, apply the NASA/JPL review skill in `.agents/skills/NASACodeReview`. Treat Blocker findings as merge blockers; legacy findings are warnings unless the change makes them worse.
 - If a review or implementation finds a real problem unrelated to the current task, file it in the GitHub issue queue instead of fixing it on a tangent. Search for an existing issue first; link the issue from the final summary. Related findings — ones the change introduces, worsens, or needs to complete safely — stay in the current task. Only fix an unrelated finding immediately when it is a security or lifecycle problem that the current change would worsen or that blocks safe verification.
 - Run `npx tsc --noEmit` and `npm run test:mcp:contract` before you commit.
+- Commit with the git hooks enabled. The anti-slop `pre-commit` hook runs the modularity and docs
+  gates on the staged files (and reports imports/duplicates); `pre-push` runs the duplicates and
+  import gates plus the project typecheck. Do not use `--no-verify`: both hooks pass on this repo,
+  and a hook failure is a real finding to fix or file, not something to bypass.
 - Do not commit build output, runtime data or installer binaries. See `.gitignore`.
 
 ## Anti-slop skills
