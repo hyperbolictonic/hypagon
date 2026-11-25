@@ -36,10 +36,12 @@ interface ArmedEntry {
 
 const armed = new WeakMap<WebContents, ArmedEntry>();
 
+/** When to use: deciding whether the Shadow Walk force-open overlay is armed for a view. */
 export function isForceOpenArmed(wc: WebContents | null | undefined): boolean {
   return !!wc && armed.has(wc);
 }
 
+/** When to use: the result of syncing the force-open overlay — armed, changed and the error. */
 export interface ForceOpenSyncResult {
   armed: boolean;
   changed: boolean;
@@ -86,6 +88,7 @@ export async function syncForceOpen(wc: WebContents, shouldArm: boolean): Promis
   }
 }
 
+/** When to use: the detection probe's reply — whether the overlay is armed and what was found. */
 export interface ForceOpenDetection {
   armed: boolean;
   applied: boolean;

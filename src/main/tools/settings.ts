@@ -3,12 +3,14 @@ import path from 'node:path';
 import type { ToolSettings } from '../../shared/tool-settings.js';
 import { writeJsonAtomic } from '../data-paths.ts';
 
+/** When to use: the tool-settings save result — ok plus the validation errors. */
 export interface ToolSettingsValidation {
   ok: boolean;
   settings?: ToolSettings;
   errors: string[];
 }
 
+/** When to use: the Tools settings panel's initial values and the fallback when no file exists. */
 export const DEFAULT_TOOL_SETTINGS: ToolSettings = {
   schemaVersion: 1,
   order: [],
@@ -62,6 +64,7 @@ function normalizeActionInstructions(value: unknown): Record<string, Record<stri
   return out;
 }
 
+/** When to use: loading or saving the tool settings — validate order, disabled names and instruction maps. */
 export function normalizeToolSettings(input: unknown): ToolSettingsValidation {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     return { ok: false, errors: ['tool settings must be an object'] };

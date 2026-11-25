@@ -16,8 +16,10 @@
  */
 import { app } from 'electron';
 
+/** When to use: the update badge and the IPC state — disabled, idle, checking, available, downloading, ready or error. */
 export type UpdateStatus = 'disabled' | 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error';
 
+/** When to use: the update UI — the status plus the available version, progress and error. */
 export interface UpdateState {
   status: UpdateStatus;
   /** Version offered by the feed (available / ready). */
@@ -49,6 +51,7 @@ export function updaterDisabledReason(): string | null {
   return null;
 }
 
+/** When to use: an IPC read of the current update state without triggering a check. */
 export function updaterState(): UpdateState {
   return state;
 }

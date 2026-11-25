@@ -26,6 +26,7 @@ import { ProfileCatalog } from './catalog.js';
 import { DeviceEmulation } from './emulation.js';
 import type { DeviceProfileStore } from './profiles.js';
 
+/** When to use: constructing the viewport controller — the profile store, the view and the window hooks. */
 export interface ViewportControllerDeps {
   store: DeviceProfileStore;
   /** Full browsing area, in DIP. */
@@ -41,6 +42,7 @@ export interface ViewportControllerDeps {
   log?: (level: 'info' | 'warn' | 'action', message: string) => void;
 }
 
+/** When to use: `viewport` — the action plus the device/width/height values it applies. */
 export interface ViewportSetInput {
   action?: 'status' | 'set' | 'rotate' | 'reset';
   preset?: string;
@@ -51,6 +53,7 @@ export interface ViewportSetInput {
   touch?: boolean;
 }
 
+/** When to use: `viewport` — report, set, rotate and reset the device profile for the active tab. */
 export class ViewportController {
   private deps: ViewportControllerDeps;
   private specs = new Map<string, ViewportSpec>();

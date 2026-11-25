@@ -9,6 +9,7 @@
 
 import type { WrapInputSchema } from './types.ts';
 
+/** When to use: the result of validating wrapper args — ok, the normalized value, errors and the first bad field. */
 export interface ArgsValidation {
   ok: boolean;
   value: Record<string, unknown>;
@@ -16,6 +17,7 @@ export interface ArgsValidation {
   field?: string;
 }
 
+/** When to use: `wrap_run`/`wrap_test` before building a request — apply defaults and validate against the wrapper's inputSchema. */
 export function validateArgs(schema: WrapInputSchema | undefined, input: unknown): ArgsValidation {
   const errors: string[] = [];
 
@@ -180,6 +182,7 @@ function clone<T>(value: T): T {
   }
 }
 
+/** When to use: guarding wrapper/args shapes before reading fields (rejects arrays and null). */
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

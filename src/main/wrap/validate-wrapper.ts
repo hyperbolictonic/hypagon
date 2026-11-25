@@ -40,12 +40,14 @@ const FORBIDDEN_HEADERS = new Set([
   'x-access-token',
 ]);
 
+/** When to use: `wrap_create`/`wrap_update` — the normalized wrapper plus the validation errors. */
 export interface WrapperValidation {
   ok: boolean;
   wrapper?: WrapWrapper;
   errors: string[];
 }
 
+/** When to use: saving a wrapper — check identity, request, input schema and response recipe. */
 export function validateWrapper(input: unknown): WrapperValidation {
   const errors: string[] = [];
 
@@ -373,6 +375,7 @@ function validateUrlShape(url: string, errors: string[]): void {
   }
 }
 
+/** When to use: rejecting a non-object wrapper value before normalization. */
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

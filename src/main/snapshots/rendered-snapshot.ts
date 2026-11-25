@@ -4,6 +4,7 @@ import { WebContents } from 'electron';
 import TurndownService from 'turndown';
 import { dataPath } from '../data-paths.js';
 
+/** When to use: `snapshot` — the output format and the optional save path. */
 export interface RenderedSnapshotOptions {
   format?: 'ax_tree' | 'markdown' | 'html' | 'unrendered_html';
   waitUntilIdleMs?: number;
@@ -12,6 +13,7 @@ export interface RenderedSnapshotOptions {
   forceRerender?: boolean;
 }
 
+/** When to use: the `snapshot` reply — the format, the content and where it was written. */
 export interface RenderedSnapshotResult {
   format: 'ax_tree' | 'markdown' | 'html' | 'unrendered_html';
   url: string;
@@ -75,6 +77,7 @@ function saveSnapshot(
   return filePath;
 }
 
+/** When to use: `snapshot` — settle the page, read the chosen format and optionally write it. */
 export class RenderedSnapshotEngine {
   /**
    * Captures a rendered or unrendered point-in-time snapshot of the given WebContents.

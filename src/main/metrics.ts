@@ -10,10 +10,12 @@
 const counters = new Map<string, number>();
 const startedAt = Date.now();
 
+/** When to use: recording a counter for `snapshot`/`summary` — one increment per CDP call, action or navigation. */
 export function bump(name: string, by = 1): void {
   counters.set(name, (counters.get(name) || 0) + by);
 }
 
+/** When to use: diagnostics that need every counter — a copy without exposing the live map. */
 export function snapshot(): Record<string, number> {
   const out: Record<string, number> = {};
   for (const [key, value] of counters) out[key] = value;
@@ -33,6 +35,7 @@ export function summary(): { cdp: number; actions: number; navigations: number }
   return { cdp, actions, navigations };
 }
 
+/** When to use: the diagnostics reset — zero the counters and report how long the window was. */
 export function resetMetrics(): { sinceMs: number } {
   const sinceMs = Date.now() - startedAt;
   counters.clear();

@@ -2,8 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { writeJsonAtomic } from '../data-paths.ts';
 
+/** When to use: the JEV settings and the read gate — 'prefer' steers reads, 'enforce' refuses unscoped dumps. */
 export type JevMode = 'prefer' | 'enforce';
 
+/** When to use: the JEV settings panel — the power switch and the mode. */
 export interface JevSettings {
   /** Hard on/off. Off gates the JEV tools off and never touches observe. */
   power: boolean;
@@ -11,6 +13,7 @@ export interface JevSettings {
   mode: JevMode;
 }
 
+/** When to use: the settings panel's initial values and the fallback when the file is unreadable. */
 export const DEFAULT_JEV_SETTINGS: JevSettings = { power: false, mode: 'prefer' };
 
 const isMode = (value: unknown): value is JevMode => value === 'prefer' || value === 'enforce';

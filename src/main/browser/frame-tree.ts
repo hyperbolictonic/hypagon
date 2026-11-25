@@ -17,6 +17,7 @@
 import type { WebContents } from 'electron';
 import { bump } from '../metrics.js';
 
+/** When to use: one child frame discovered by `discoverFrames` — id, depth, URL and the OOPIF session that can see it. */
 export interface FrameHandle {
   frameId: string;
   parentFrameId?: string;
@@ -33,6 +34,7 @@ export interface FrameHandle {
   sessionId?: string;
 }
 
+/** When to use: frame-aware evaluation and marks — the frame list plus the CDP session routing and release helpers. */
 export interface FrameContext {
   frames: FrameHandle[];
   /** Send a CDP command in the session that can see `frameId`. */
@@ -228,6 +230,7 @@ function placeOopifCandidates(discovery: Discovery): void {
   }
 }
 
+/** When to use: an operation that must reach inside iframes — enumerate the frame tree and open the sessions it needs. */
 export async function discoverFrames(
   wc: WebContents,
   options: { maxFrames?: number } = {}

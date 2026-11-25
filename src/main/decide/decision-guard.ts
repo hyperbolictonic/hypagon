@@ -16,6 +16,7 @@
 import { runDecision, emitDecisionEvent, type DecisionResult } from './decision-client.js';
 import { summarizeQuestions } from './decision-questions.js';
 
+/** When to use: `decideGuarded` and the decide route — the confidence floor, the allowed operations and the offered components. */
 export interface DecisionGuard {
   /** Minimum confidence for a choice to be accepted (0–1). Omit to accept any confidence. */
   threshold?: number;
@@ -25,12 +26,14 @@ export interface DecisionGuard {
   components?: Array<{ id: string | number; actions?: string[]; name?: string }>;
 }
 
+/** When to use: reading why a decision candidate was eliminated — question, option and reason. */
 export interface GuardRejection {
   question: string;
   option: string;
   reason: string;
 }
 
+/** When to use: the decide route and `drive` — the accepted answer plus attempts, eliminations, fallbacks and gates. */
 export interface GuardedDecision {
   ok: boolean;
   accepted: boolean;

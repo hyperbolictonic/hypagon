@@ -11,6 +11,7 @@ import path from 'node:path';
 import type { MediaSettings } from '../../shared/media.ts';
 import { writeJsonAtomic } from '../data-paths.ts';
 
+/** When to use: the Media settings panel's initial values and the fallback when the file is missing. */
 export const DEFAULT_MEDIA_SETTINGS: MediaSettings = {
   autoUpdate: true,
   updateIntervalMinutes: 60,
@@ -23,6 +24,7 @@ export const DEFAULT_MEDIA_SETTINGS: MediaSettings = {
 const MIN_INTERVAL_MINUTES = 15;
 const MAX_INTERVAL_MINUTES = 24 * 60;
 
+/** When to use: loading or saving the media settings — clamp the update interval and validate the ffmpeg mode. */
 export function normalizeMediaSettings(input: unknown): MediaSettings {
   const raw = input !== null && typeof input === 'object' ? (input as Record<string, unknown>) : {};
   const autoUpdate = typeof raw.autoUpdate === 'boolean' ? raw.autoUpdate : DEFAULT_MEDIA_SETTINGS.autoUpdate;
@@ -42,6 +44,7 @@ export function normalizeMediaSettings(input: unknown): MediaSettings {
   return { autoUpdate, updateIntervalMinutes: interval, useSessionCookies, outputDir, ffmpegMode, ffmpegPath };
 }
 
+/** When to use: reading and writing the media settings JSON through the shared store. */
 export class MediaSettingsStore {
   private readonly file: string;
 

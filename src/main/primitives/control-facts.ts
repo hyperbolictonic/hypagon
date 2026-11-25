@@ -10,8 +10,10 @@
  * Runs as a single injected expression: no per-element round trips, no framework dependency.
  */
 import { COMPONENT_SIGNATURE_HELPERS, type ComponentSurface } from '../shadow-walk/component-signature.js';
+/** When to use: naming what a resolved control can do — click, type, hover, select, press or scroll. */
 export type ControlAction = 'click' | 'type' | 'hover' | 'select' | 'press' | 'scroll';
 
+/** When to use: one inspected control — mark id, role, label, box, affordances and the addressing data. */
 export interface ControlFacts {
   /** Mark id when the element was already stamped by Set-of-Marks. */
   id?: number;
@@ -34,6 +36,7 @@ export interface ControlFacts {
   component?: ComponentSurface;
 }
 
+/** When to use: limiting `controlFactsExpression` to one selector or scanning every interactive candidate. */
 export interface ControlFactsOptions {
   /** CSS selector; omitted = every interactive candidate on the page. */
   selector?: string;

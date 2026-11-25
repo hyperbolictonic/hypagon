@@ -17,6 +17,7 @@ import type { WebContents } from 'electron';
 import { bump } from '../metrics.js';
 import { axProperty, axRole, contentRect } from './cdp.js';
 
+/** When to use: `tab_walk` — the host selector, direction, cap and restore behaviour. */
 export interface TabWalkOptions {
   /** Light-DOM host to start from. */
   selector?: string;
@@ -29,6 +30,7 @@ export interface TabWalkOptions {
   restore?: boolean;
 }
 
+/** When to use: one focus stop in a tab-walk transcript — index, element and whether it is a trap. */
 export interface TabWalkStep {
   index: number;
   role: string;
@@ -38,6 +40,7 @@ export interface TabWalkStep {
   gapMs: number;
 }
 
+/** When to use: the `tab_walk` reply — whether it started, the steps, where it landed and whether focus was restored. */
 export interface TabWalkResult {
   started: boolean;
   steps: TabWalkStep[];

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { CloudflaredUpdateMode } from '../../../packages/cloudflared/src/index.ts';
 
+/** When to use: the remote-access settings document — its schema version plus the stored tunnel and port options. */
 export interface RemoteSettings {
   schemaVersion: 1;
   cloudflaredUpdateMode: CloudflaredUpdateMode;
@@ -16,6 +17,7 @@ const DEFAULT_SETTINGS: RemoteSettings = {
   tunnelHostname: '',
 };
 
+/** When to use: starting the remote server — read the stored settings or fall back to defaults. */
 export function loadRemoteSettings(file: string): RemoteSettings {
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as Partial<RemoteSettings>;
@@ -30,6 +32,7 @@ export function loadRemoteSettings(file: string): RemoteSettings {
   }
 }
 
+/** When to use: the Settings panel writing remote-access changes through IPC. */
 export function saveRemoteSettings(file: string, settings: RemoteSettings): void {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const temp = `${file}.${process.pid}.${Date.now()}.tmp`;

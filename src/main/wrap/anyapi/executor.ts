@@ -36,6 +36,7 @@ import type { WrapPreview, WrapRunResult, WrapWrapper } from '../types.ts';
 import type { SecretStore } from '../secrets.ts';
 import type { WrapStore } from '../store.ts';
 
+/** When to use: deciding whether a wrapper may run on the package core or must stay on the legacy executor. */
 export type CoreGate = { readonly ok: true } | { readonly ok: false; readonly reason: string };
 
 /** Features the core cannot reproduce yet, and therefore stay on the legacy executor. */
@@ -111,6 +112,7 @@ function optionalPathArguments(operation: Operation, wrapper: WrapWrapper): stri
   return names.filter((name) => !required.has(name));
 }
 
+/** When to use: constructing `AnyApiWrapExecutor` — the legacy fallback, the secret source and the transport limits. */
 export interface AnyApiExecutorOptions extends ExecutorOptions {
   /** The core that every wrapper outside the gate is handed to. */
   legacy: WrapExecutor;
@@ -118,6 +120,7 @@ export interface AnyApiExecutorOptions extends ExecutorOptions {
   secretSource?: Pick<SecretStore, 'list' | 'resolve'>;
 }
 
+/** When to use: `wrap_run`/`wrap_test` — run gated wrappers on the package core and hand the rest to the legacy executor. */
 export interface AnyApiWrapExecutor extends WrapCore {}
 
 export class AnyApiWrapExecutor {

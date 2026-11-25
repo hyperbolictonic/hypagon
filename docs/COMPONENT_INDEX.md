@@ -42,9 +42,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/browser/frame-eval.ts` | `evaluateInFrames` | Evaluate `expression` in the main frame and up to `maxFrames` child frames. |
 | `main/browser/frame-eval.ts` | `FrameEvalOptions` *(type)* | - |
 | `main/browser/frame-eval.ts` | `FrameEvalResult` *(type)* | - |
-| `main/browser/frame-tree.ts` | `discoverFrames` | - |
-| `main/browser/frame-tree.ts` | `FrameHandle` *(type)* | - |
-| `main/browser/frame-tree.ts` | `FrameContext` *(type)* | - |
+| `main/browser/frame-tree.ts` | `discoverFrames` | When to use: an operation that must reach inside iframes — enumerate the frame tree and open the sessions it needs. |
+| `main/browser/frame-tree.ts` | `FrameHandle` *(type)* | When to use: one child frame discovered by `discoverFrames` — id, depth, URL and the OOPIF session that can see it. |
+| `main/browser/frame-tree.ts` | `FrameContext` *(type)* | When to use: frame-aware evaluation and marks — the frame list plus the CDP session routing and release helpers. |
 | `main/browser/frames-inventory.ts` | `inventoryFrames` | When to use: the chassis frames route — walk the frame tree, attach control facts and per-frame screenshots. |
 | `main/browser/frames-inventory.ts` | `FrameInventoryResult` *(type)* | When to use: the frames result — one row per frame, with controls and screenshots attached. |
 | `main/browser/frames-inventory.ts` | `FramesInventoryDeps` *(type)* | When to use: the inventory reads through these two collaborators. |
@@ -128,9 +128,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/crawl/crawler.ts` | `CrawlerDeps` *(type)* | When to use: building the chassis — the tier readers and handlers a crawl composes. |
 | `main/decide/decision-guard.ts` | `validateAnswers` | Validate one answer set. Returns the offending (question, option) pairs so the caller can |
 | `main/decide/decision-guard.ts` | `decideGuarded` | Ask, validate, eliminate, repeat. `maxAttempts` includes the first call (default 3). |
-| `main/decide/decision-guard.ts` | `DecisionGuard` *(type)* | - |
-| `main/decide/decision-guard.ts` | `GuardRejection` *(type)* | - |
-| `main/decide/decision-guard.ts` | `GuardedDecision` *(type)* | - |
+| `main/decide/decision-guard.ts` | `DecisionGuard` *(type)* | When to use: `decideGuarded` and the decide route — the confidence floor, the allowed operations and the offered components. |
+| `main/decide/decision-guard.ts` | `GuardRejection` *(type)* | When to use: reading why a decision candidate was eliminated — question, option and reason. |
+| `main/decide/decision-guard.ts` | `GuardedDecision` *(type)* | When to use: the decide route and `drive` — the accepted answer plus attempts, eliminations, fallbacks and gates. |
 | `main/decide/decision-questions.ts` | `summarizeQuestions` | When to use: one call's questions, flattened for the event log. |
 | `main/decide/decision-questions.ts` | `DecisionQuestionSummary` *(type)* | When to use: recording what a decision call was asked. |
 | `main/decide/decision-surface.ts` | `DecisionSurface` | The decision log and the guard-driven human hand-off. |
@@ -422,9 +422,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/primitives/contracts.ts` | `ActOptions` *(type)* | When to use: act() — the address, the action and the awaited conditions. |
 | `main/primitives/control-facts.ts` | `controlFactsExpression` | Build the self-contained expression. Callers only ever pass plain JSON-able options. |
 | `main/primitives/control-facts.ts` | `parseControlFacts` | Parse the expression result into typed facts, tolerating an adapter that returned a string. |
-| `main/primitives/control-facts.ts` | `ControlAction` *(type)* | - |
-| `main/primitives/control-facts.ts` | `ControlFacts` *(type)* | - |
-| `main/primitives/control-facts.ts` | `ControlFactsOptions` *(type)* | - |
+| `main/primitives/control-facts.ts` | `ControlAction` *(type)* | When to use: naming what a resolved control can do — click, type, hover, select, press or scroll. |
+| `main/primitives/control-facts.ts` | `ControlFacts` *(type)* | When to use: one inspected control — mark id, role, label, box, affordances and the addressing data. |
+| `main/primitives/control-facts.ts` | `ControlFactsOptions` *(type)* | When to use: limiting `controlFactsExpression` to one selector or scanning every interactive candidate. |
 | `main/primitives/dom-targeting.ts` | `elementExpr` | A page-side expression yielding the addressed element (shadow-aware for selectors). |
 | `main/primitives/dom-targeting.ts` | `targetBoxScript` | Resolve a locator to the box of the **control** to act on, scrolling it into view. |
 | `main/primitives/dom-targeting.ts` | `fieldFactsScript` | Typed facts about the control a locator addresses — the same shape as the previous |
@@ -497,9 +497,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/remote/oauth-client.ts` | `OAuthClientCredentials` *(type)* | When to use: the stored MCP OAuth client pair and the timestamp it was minted. |
 | `main/remote/service.ts` | `RemoteService` | When to use: the app — one service per process. |
 | `main/remote/service.ts` | `RemoteServiceOptions` *(type)* | When to use: the app bootstrap — the paths, port and bridge the gateway fronts. |
-| `main/remote/settings.ts` | `loadRemoteSettings` | - |
-| `main/remote/settings.ts` | `saveRemoteSettings` | - |
-| `main/remote/settings.ts` | `RemoteSettings` *(type)* | - |
+| `main/remote/settings.ts` | `loadRemoteSettings` | When to use: starting the remote server — read the stored settings or fall back to defaults. |
+| `main/remote/settings.ts` | `saveRemoteSettings` | When to use: the Settings panel writing remote-access changes through IPC. |
+| `main/remote/settings.ts` | `RemoteSettings` *(type)* | When to use: the remote-access settings document — its schema version plus the stored tunnel and port options. |
 | `main/remote/tunnel.ts` | `RemoteTunnel` | When to use: `RemoteService` — one tunnel per service. |
 | `main/remote/tunnel.ts` | `RemoteTunnelDeps` *(type)* | When to use: the service constructor — the paths and the gateway it fronts. |
 | `main/research/anchor-store.ts` | `AnchorStore` | - |
@@ -575,10 +575,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/session/session-surface.ts` | `SessionSurfaceDeps` *(type)* | Dependencies the session surface needs from the active tab and telemetry. |
 | `main/session/session-vault.ts` | `SessionVault` | - |
 | `main/session/session-vault.ts` | `SessionSnapshot` *(type)* | - |
-| `main/settings/jev.ts` | `DEFAULT_JEV_SETTINGS` | - |
+| `main/settings/jev.ts` | `DEFAULT_JEV_SETTINGS` | When to use: the settings panel's initial values and the fallback when the file is unreadable. |
 | `main/settings/jev.ts` | `JevSettingsStore` | JEV is an optional feature (not an experimental one): it is offered only when |
-| `main/settings/jev.ts` | `JevMode` *(type)* | - |
-| `main/settings/jev.ts` | `JevSettings` *(type)* | - |
+| `main/settings/jev.ts` | `JevMode` *(type)* | When to use: the JEV settings and the read gate — 'prefer' steers reads, 'enforce' refuses unscoped dumps. |
+| `main/settings/jev.ts` | `JevSettings` *(type)* | When to use: the JEV settings panel — the power switch and the mode. |
 | `main/settings/json-settings.ts` | `loadJsonSettings` | Read and normalize a settings file; a missing or corrupt file yields defaults. |
 | `main/settings/json-settings.ts` | `saveJsonSettings` | Normalize and atomically write; a write failure is reported in the result. |
 | `main/settings/json-settings.ts` | `settingsSource` | The object-shape guard every settings normalizer shares; null means "not an object". |
@@ -592,11 +592,11 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/component-signature.ts` | `normalizeSurface` | - |
 | `main/shadow-walk/component-signature.ts` | `COMPONENT_SIGNATURE_HELPERS` | Page-side helpers, inlined into the marks/observe and text-target scripts. |
 | `main/shadow-walk/component-signature.ts` | `ComponentSurface` *(type)* | Component signatures. |
-| `main/shadow-walk/force-open.ts` | `isForceOpenArmed` | - |
+| `main/shadow-walk/force-open.ts` | `isForceOpenArmed` | When to use: deciding whether the Shadow Walk force-open overlay is armed for a view. |
 | `main/shadow-walk/force-open.ts` | `syncForceOpen` | Arm or disarm the document-start patch for one tab. |
 | `main/shadow-walk/force-open.ts` | `detectForceOpen` | Ask the current document what a fingerprinting script would see. |
-| `main/shadow-walk/force-open.ts` | `ForceOpenSyncResult` *(type)* | - |
-| `main/shadow-walk/force-open.ts` | `ForceOpenDetection` *(type)* | - |
+| `main/shadow-walk/force-open.ts` | `ForceOpenSyncResult` *(type)* | When to use: the result of syncing the force-open overlay — armed, changed and the error. |
+| `main/shadow-walk/force-open.ts` | `ForceOpenDetection` *(type)* | When to use: the detection probe's reply — whether the overlay is armed and what was found. |
 | `main/shadow-walk/part-highlight-css.ts` | `buildPartHighlightCss` | - |
 | `main/shadow-walk/part-highlight-css.ts` | `PartHost` *(type)* | Pure part-highlight rule builder. |
 | `main/shadow-walk/sealed-cdp.ts` | `sessionOf` | When to use: resolving a frame's OOPIF session; undefined means the parent session. |
@@ -627,9 +627,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/shadow-surface.ts` | `ShadowWalkSurface` | The Settings → Shadow Walk policy, frame reads and the trusted Tab walk. |
 | `main/shadow-walk/shadow-surface.ts` | `ShadowWalkSurfaceDeps` *(type)* | Dependencies the Shadow Walk surface needs from the tabs and page capture. |
 | `main/shadow-walk/tab-walk.ts` | `runTabWalk` | Walk sequential focus from a host. |
-| `main/shadow-walk/tab-walk.ts` | `TabWalkOptions` *(type)* | - |
-| `main/shadow-walk/tab-walk.ts` | `TabWalkStep` *(type)* | - |
-| `main/shadow-walk/tab-walk.ts` | `TabWalkResult` *(type)* | - |
+| `main/shadow-walk/tab-walk.ts` | `TabWalkOptions` *(type)* | When to use: `tab_walk` — the host selector, direction, cap and restore behaviour. |
+| `main/shadow-walk/tab-walk.ts` | `TabWalkStep` *(type)* | When to use: one focus stop in a tab-walk transcript — index, element and whether it is a trap. |
+| `main/shadow-walk/tab-walk.ts` | `TabWalkResult` *(type)* | When to use: the `tab_walk` reply — whether it started, the steps, where it landed and whether focus was restored. |
 | `main/shell/event-bus.ts` | `ShellBus` | The render fan-out for the shell window and the deck panel. |
 | `main/shell/event-bus.ts` | `ShellBusDeps` *(type)* | Dependencies the bus needs to reach the two render surfaces. |
 | `main/shield/consent-controller.ts` | `ConsentController` | When to use: the chassis — own the consent sweep: answered-origins memory, timed attempts and the explicit dismiss. |
@@ -637,9 +637,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shield/shield-breaker.ts` | `ShieldBreaker` | - |
 | `main/shield/shield-breaker.ts` | `ShieldDismissResult` *(type)* | - |
 | `main/shield/shield-breaker.ts` | `ConsentPolicy` *(type)* | How to answer a consent wall. This is a *preference*, not a licence to click anything that says |
-| `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotEngine` | - |
-| `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotOptions` *(type)* | - |
-| `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotResult` *(type)* | - |
+| `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotEngine` | When to use: `snapshot` — settle the page, read the chosen format and optionally write it. |
+| `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotOptions` *(type)* | When to use: `snapshot` — the output format and the optional save path. |
+| `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotResult` *(type)* | When to use: the `snapshot` reply — the format, the content and where it was written. |
 | `main/tabs/page-info.ts` | `readPageInfo` | When to use: reading the active page — prefers the live document over cached state. |
 | `main/tabs/page-info.ts` | `PageInfo` *(type)* | The page identity the primitives, JEV and HUD read. |
 | `main/tabs/popup-windows.ts` | `PopupWindows` | When to use: `TabManager` — one popup router per window. |
@@ -690,10 +690,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/telemetry/telemetry-surface.ts` | `TelemetrySurface` | The log ring, state broadcast and telemetry fan-out shared by every chassis surface. |
 | `main/telemetry/telemetry-surface.ts` | `LogEntry` *(type)* | One HUD log line; newest entries sit at the head of the ring. |
 | `main/telemetry/telemetry-surface.ts` | `TelemetrySurfaceDeps` *(type)* | Dependencies the telemetry surface needs from the chassis and its renderers. |
-| `main/tools/settings.ts` | `normalizeToolSettings` | - |
-| `main/tools/settings.ts` | `DEFAULT_TOOL_SETTINGS` | - |
+| `main/tools/settings.ts` | `normalizeToolSettings` | When to use: loading or saving the tool settings — validate order, disabled names and instruction maps. |
+| `main/tools/settings.ts` | `DEFAULT_TOOL_SETTINGS` | When to use: the Tools settings panel's initial values and the fallback when no file exists. |
 | `main/tools/settings.ts` | `ToolSettingsStore` | File-backed store. One instance is shared by the IPC handlers and the local bridge. |
-| `main/tools/settings.ts` | `ToolSettingsValidation` *(type)* | - |
+| `main/tools/settings.ts` | `ToolSettingsValidation` *(type)* | When to use: the tool-settings save result — ok plus the validation errors. |
 | `main/tray/close-to-tray.ts` | `CloseToTray` | When to use: `TrayManager.closeToTray` — one per tray. |
 | `main/tray/close-to-tray.ts` | `CloseToTrayDeps` *(type)* | When to use: `new TrayManager` — the window to watch plus the manager's callbacks. |
 | `main/tray/tray-manager.ts` | `TrayManager` | - |
@@ -704,23 +704,23 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/tray/window-visibility.ts` | `WindowVisibility` | When to use: `TrayManager.window` — one per tray. |
 | `main/tray/window-visibility.ts` | `WindowVisibilityDeps` *(type)* | When to use: `new TrayManager` — the window, the menu refresh and the app's own hooks. |
 | `main/updates/updater.ts` | `updaterDisabledReason` | Why updates are unavailable in this build, or null when they are enabled. |
-| `main/updates/updater.ts` | `updaterState` | - |
+| `main/updates/updater.ts` | `updaterState` | When to use: an IPC read of the current update state without triggering a check. |
 | `main/updates/updater.ts` | `initUpdater` | Wire the updater and schedule checks. Safe to call once at startup. |
 | `main/updates/updater.ts` | `checkForUpdates` | Ask the feed now. Returns the resulting state (never throws). |
 | `main/updates/updater.ts` | `installUpdate` | Quit and apply a downloaded update. No-op unless something is ready. |
-| `main/updates/updater.ts` | `UpdateStatus` *(type)* | - |
-| `main/updates/updater.ts` | `UpdateState` *(type)* | - |
-| `main/viewport/controller.ts` | `ViewportController` | - |
-| `main/viewport/controller.ts` | `ViewportControllerDeps` *(type)* | - |
-| `main/viewport/controller.ts` | `ViewportSetInput` *(type)* | - |
+| `main/updates/updater.ts` | `UpdateStatus` *(type)* | When to use: the update badge and the IPC state — disabled, idle, checking, available, downloading, ready or error. |
+| `main/updates/updater.ts` | `UpdateState` *(type)* | When to use: the update UI — the status plus the available version, progress and error. |
+| `main/viewport/controller.ts` | `ViewportController` | When to use: `viewport` — report, set, rotate and reset the device profile for the active tab. |
+| `main/viewport/controller.ts` | `ViewportControllerDeps` *(type)* | When to use: constructing the viewport controller — the profile store, the view and the window hooks. |
+| `main/viewport/controller.ts` | `ViewportSetInput` *(type)* | When to use: `viewport` — the action plus the device/width/height values it applies. |
 | `main/viewport/emulation.ts` | `DeviceEmulation` | When to use: `ViewportController` — one driver per controller. |
 | `main/viewport/emulation.ts` | `DeviceEmulationDeps` *(type)* | When to use: `ViewportController` — the emulation driver plus the app's hooks. |
 | `main/window/window-surface.ts` | `WindowSurface` | The shell window's visibility, focus and tray behaviour. |
 | `main/window/window-surface.ts` | `WindowSurfaceDeps` *(type)* | Dependencies the window surface needs from the chassis lifecycle. |
 | `main/wrap/anyapi/executor.ts` | `coreGate` | Features the core cannot reproduce yet, and therefore stay on the legacy executor. |
 | `main/wrap/anyapi/executor.ts` | `AnyApiWrapExecutor` | - |
-| `main/wrap/anyapi/executor.ts` | `CoreGate` *(type)* | - |
-| `main/wrap/anyapi/executor.ts` | `AnyApiExecutorOptions` *(type)* | - |
+| `main/wrap/anyapi/executor.ts` | `CoreGate` *(type)* | When to use: deciding whether a wrapper may run on the package core or must stay on the legacy executor. |
+| `main/wrap/anyapi/executor.ts` | `AnyApiExecutorOptions` *(type)* | When to use: constructing `AnyApiWrapExecutor` — the legacy fallback, the secret source and the transport limits. |
 | `main/wrap/anyapi/maps.ts` | `projectWrapMaps` | `wrappersDir` is the `<userData>/wrap/wrappers` directory. |
 | `main/wrap/anyapi/maps.ts` | `WrapMapProjection` *(type)* | - |
 | `main/wrap/anyapi/result.ts` | `splitBlockedHost` | The core has one refusal code for three situations the wrapper surface |
@@ -738,20 +738,20 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/anyapi/secrets.ts` | `WrapSecretAdapter` *(type)* | When to use: handing the core its binding table, provider and the refusals to surface. |
 | `main/wrap/audit.ts` | `WrapAuditLog` | - |
 | `main/wrap/audit.ts` | `WrapAuditEntry` *(type)* | - |
-| `main/wrap/core.ts` | `WrapRunOptions` *(type)* | - |
-| `main/wrap/core.ts` | `WrapTestInput` *(type)* | - |
-| `main/wrap/core.ts` | `WrapCore` *(type)* | - |
+| `main/wrap/core.ts` | `WrapRunOptions` *(type)* | When to use: `wrap_run` — the output format, raw payload inclusion and the page cap. |
+| `main/wrap/core.ts` | `WrapTestInput` *(type)* | When to use: `wrap_test` — run a stored or inline wrapper with sample args and an optional dry run. |
+| `main/wrap/core.ts` | `WrapCore` *(type)* | When to use: the wrapper surface the factory returns — status, run, preview and test. |
 | `main/wrap/execute-pipeline.ts` | `executeWrapper` | Run one wrapper call end to end. |
 | `main/wrap/execute-pipeline.ts` | `ExecuteOptions` *(type)* | Per-call switches: dry run, raw payload and the page override. |
 | `main/wrap/execute-pipeline.ts` | `ExecuteContext` *(type)* | Shared state every run step needs, assembled by the executor. |
 | `main/wrap/executor.ts` | `WrapExecutor` | - |
 | `main/wrap/executor.ts` | `ExecutorOptions` *(type)* | - |
-| `main/wrap/factory.ts` | `wrapCoreMode` | - |
-| `main/wrap/factory.ts` | `createWrapExecutor` | - |
-| `main/wrap/factory.ts` | `WrapCoreMode` *(type)* | - |
-| `main/wrap/input-schema.ts` | `validateArgs` | - |
-| `main/wrap/input-schema.ts` | `isPlainObject` | - |
-| `main/wrap/input-schema.ts` | `ArgsValidation` *(type)* | - |
+| `main/wrap/factory.ts` | `wrapCoreMode` | When to use: startup and the factory reading the environment to choose the wrapper core. |
+| `main/wrap/factory.ts` | `createWrapExecutor` | When to use: building the wrapper surface — the package core by default, the legacy executor on request or as fallback. |
+| `main/wrap/factory.ts` | `WrapCoreMode` *(type)* | When to use: the `HB_WRAP_CORE`/`KUANG_WRAP_CORE` switch between the package core and the legacy executor. |
+| `main/wrap/input-schema.ts` | `validateArgs` | When to use: `wrap_run`/`wrap_test` before building a request — apply defaults and validate against the wrapper's inputSchema. |
+| `main/wrap/input-schema.ts` | `isPlainObject` | When to use: guarding wrapper/args shapes before reading fields (rejects arrays and null). |
+| `main/wrap/input-schema.ts` | `ArgsValidation` *(type)* | When to use: the result of validating wrapper args — ok, the normalized value, errors and the first bad field. |
 | `main/wrap/interpolate.ts` | `buildRequest` | When to use: `wrap_run` and its preview — turn a wrapper plus arguments into the final request. |
 | `main/wrap/interpolate.ts` | `redactHeaders` | When to use: logging a request — mask auth/cookie headers and any wrapper-declared sensitive names. |
 | `main/wrap/interpolate.ts` | `interpolateValue` | When to use: filling `{{placeholders}}` in a body, query or header value while keeping whole-value JSON types. |
@@ -834,9 +834,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/wrap/types.ts` | `WrapResponseInfo` *(type)* | When to use: the size and content-type summary attached to a run, plus the raw JSON when asked. |
 | `main/wrap/types.ts` | `WrapIndexed` *(type)* | When to use: a recipe that opted into Cortex indexing — how many documents and chunks landed. |
 | `main/wrap/types.ts` | `WrapRunResult` *(type)* | When to use: every wrapper tool reply and the executor's return value. |
-| `main/wrap/validate-wrapper.ts` | `validateWrapper` | - |
-| `main/wrap/validate-wrapper.ts` | `isPlainObject` | - |
-| `main/wrap/validate-wrapper.ts` | `WrapperValidation` *(type)* | - |
+| `main/wrap/validate-wrapper.ts` | `validateWrapper` | When to use: saving a wrapper — check identity, request, input schema and response recipe. |
+| `main/wrap/validate-wrapper.ts` | `isPlainObject` | When to use: rejecting a non-object wrapper value before normalization. |
+| `main/wrap/validate-wrapper.ts` | `WrapperValidation` *(type)* | When to use: `wrap_create`/`wrap_update` — the normalized wrapper plus the validation errors. |
 | `main/zoom/controller.ts` | `ZoomController` | When to use: the chassis — own the zoom policy, override and rendered proportions. |
 | `main/zoom/controller.ts` | `ZoomControllerDeps` *(type)* | When to use: building the chassis — everything zoom reads through. |
 | `mcp/process-guard.ts` | `installProcessGuards` | When to use: at the top of a stdio MCP server entrypoint, before connecting |
@@ -1084,15 +1084,15 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/media/job-format.ts` | `parseProgressLine` | Parse one `--newline` progress line. Returns null for lines that are not progress. |
 | `main/media/job-format.ts` | `blankProgress` | A progress row with no measurements yet, for the given stage. |
 | `main/media/job-store.ts` | `JobHistoryStore` | When to use: constructing `MediaJobs` — one history file per root directory. |
-| `main/media/settings.ts` | `normalizeMediaSettings` | - |
-| `main/media/settings.ts` | `DEFAULT_MEDIA_SETTINGS` | - |
-| `main/media/settings.ts` | `MediaSettingsStore` | - |
+| `main/media/settings.ts` | `normalizeMediaSettings` | When to use: loading or saving the media settings — clamp the update interval and validate the ffmpeg mode. |
+| `main/media/settings.ts` | `DEFAULT_MEDIA_SETTINGS` | When to use: the Media settings panel's initial values and the fallback when the file is missing. |
+| `main/media/settings.ts` | `MediaSettingsStore` | When to use: reading and writing the media settings JSON through the shared store. |
 | `main/media/updater-http.ts` | `requestReleaseJson` | When to use: the GitHub release lookup — JSON with the GitHub media type. |
 | `main/media/updater-http.ts` | `requestReleaseText` | When to use: downloading the checksum list — plain text, redirects followed. |
-| `main/metrics.ts` | `bump` | - |
-| `main/metrics.ts` | `snapshot` | - |
+| `main/metrics.ts` | `bump` | When to use: recording a counter for `snapshot`/`summary` — one increment per CDP call, action or navigation. |
+| `main/metrics.ts` | `snapshot` | When to use: diagnostics that need every counter — a copy without exposing the live map. |
 | `main/metrics.ts` | `summary` | Grouped summary for `bridge_health` — three numbers instead of a wall of keys. |
-| `main/metrics.ts` | `resetMetrics` | - |
+| `main/metrics.ts` | `resetMetrics` | When to use: the diagnostics reset — zero the counters and report how long the window was. |
 | `main/network/network-interceptor.ts` | `NetworkInterceptor` | When to use: the chassis network surface — one interceptor per app. |
 | `main/network/stream-registry.ts` | `StreamRegistry` | When to use: `NetworkInterceptor.streams` — one registry per interceptor. |
 | `main/network/traffic-buffer.ts` | `TrafficBuffer` | When to use: `NetworkInterceptor.traffic` — one buffer per interceptor. |
@@ -1180,9 +1180,9 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/normalize-params.ts` | `normalizeIncomingParams` | When to use: the tools/call interceptor — one call's parameters, normalized. |
 | `mcp/tool-args.ts` | `normaliseUrl` | When to use: a navigation tool payload — normalise the URL aliases and add a |
 | `mcp/tool-args.ts` | `requireUrl` | When to use: a navigation tool that cannot work without a URL — normalise the |
-| `mcp/tool-groups.ts` | `groupAction` | - |
-| `mcp/tool-groups.ts` | `META_TOOL_NAMES` | - |
-| `mcp/tool-groups.ts` | `CONSOLIDATED_GROUPED_TOOLS` | - |
+| `mcp/tool-groups.ts` | `groupAction` | When to use: dispatching a meta-tool call — look up its action entry by name. |
+| `mcp/tool-groups.ts` | `META_TOOL_NAMES` | When to use: `tools/list` — the names of the meta-tools that front the grouped catalog. |
+| `mcp/tool-groups.ts` | `CONSOLIDATED_GROUPED_TOOLS` | When to use: hiding the individual tools a meta-tool fronts, so only one surface is advertised. |
 | `mcp/tool-groups.ts` | `CONSOLIDATED_HIDDEN_TOOLS` | `collect_all` is folded into `extract`; old callers can still use it by name. |
 | `mcp/tool-schema.ts` | `withGuaranteedToolSchema` | When to use: mapping a tool entry for tools/list or a transport send — |
 | `mcp/tools-catalog-actuate.ts` | `ACTUATE_TOOLS` | When to use: the catalog segment fronting input actuation primitives: clicks, typing, keys, forms, waits and shadow walks. |
