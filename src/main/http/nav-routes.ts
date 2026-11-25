@@ -55,29 +55,29 @@ const ROUTES: Record<string, NavHandler> = {
       sendJson({ success: false, error: 'Must provide either "selector" or coordinates (x, y)' }, 400);
       return;
     }
-    sendOk({ result: await chassis.clickElement(selector, coords) });
+    sendOk({ result: await chassis.input.clickElement(selector, coords) });
   },
 
   'POST /type': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
     const selector = body.selector || body.element || body.target;
     const text = body.text ?? body.value ?? body.content ?? body.input ?? '';
-    sendOk({ result: await chassis.typeText(String(text), selector) });
+    sendOk({ result: await chassis.input.typeText(String(text), selector) });
   },
 
   'POST /form/fill': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
-    sendOk({ result: await chassis.fillForm(body.fields || {}, body.submitSelector) });
+    sendOk({ result: await chassis.input.fillForm(body.fields || {}, body.submitSelector) });
   },
 
   'POST /press-key': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
-    sendOk({ result: await chassis.pressKey(body.key) });
+    sendOk({ result: await chassis.input.pressKey(body.key) });
   },
 
   'POST /scroll': async ({ chassis, readBody, sendOk }) => {
     const body = await readBody();
-    sendOk({ result: await chassis.scrollPage(body.direction || 'down', body.amount || 400) });
+    sendOk({ result: await chassis.input.scrollPage(body.direction || 'down', body.amount || 400) });
   },
 
   'POST /history': async ({ chassis, readBody, sendOk }) => {

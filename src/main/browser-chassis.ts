@@ -7,8 +7,8 @@ import type { AgentStatus, ChassisState, HarvestedConstruct, TelemetryEvent, Tab
 import { DeviceProfileStore } from './viewport/profiles.js';
 import { ViewportController } from './viewport/controller.js';
 import { ZoomController } from './zoom/controller.js';
-import { HumanizedInputSimulator } from './telemetry/input-simulator.js';
 import { loadInputProfile, saveInputProfile, type InputProfile } from './telemetry/input-profile.js';
+import { InputSurface } from './input/input-surface.js';
 import { TelemetrySurface } from './telemetry/telemetry-surface.js';
 import { HumanActivityMonitor, humanListenerScript, type HumanActivity } from './input/human-activity.js';
 import { NavigationSurface } from './navigation/navigation-surface.js';
@@ -29,7 +29,6 @@ import { DeckController } from './deck/controller.js';
 import { HarvestSurface } from './harvest/harvest-surface.js';
 import { readStoredDecisionConfig, saveDecisionConfig, decisionStatus, runDecision, onDecision, type DecisionEvent } from './decide/decision-client.js';
 import { DEEP_DOM_HELPERS } from './primitives/dom-targeting.js';
-import { InputActionsController } from './input-actions.js';
 import { detectHostBrowserProfile, type HostBrowserProfile } from './telemetry/host-fingerprint.js';
 import { TabManager, type TabInstance } from './tabs/tab-manager.js';
 import { cortex, CortexDB } from './cortex/cortex-db.js';
@@ -73,11 +72,6 @@ import { DetachedViewController } from './research/detached-view.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import { HilManager, type HilRequest, type HilResolution, type NotificationOptions } from './hil/hil-manager.js';
-import {
-  generateChaosTrajectory,
-  type ChaosKinematicsOptions,
-  type PathStep,
-} from './telemetry/chaos-kinematics.js';
 import { JsonNavigator, type JsonQueryOptions, type JsonQueryResult } from './utils/json-navigator.js';
 import { RenderedSnapshotEngine } from './snapshots/rendered-snapshot.js';
 import { PrerenderEngine, type PrerenderOptions } from './prerender/prerender-engine.js';
@@ -110,7 +104,7 @@ export class BrowserChassis {
   /** Throttle for gate-triggered human hand-offs (one per URL per few minutes). */
   private lastGateHil: { url: string; at: number } | null = null;
   private tabManager: TabManager | null = null;
-  private simulator!: HumanizedInputSimulator;
+  readonly input!: InputSurface;
   private harvester!: ConstructHarvester;
   /** JEV page compaction: surface index + in-memory depth store. */
   private shieldBreaker!: ShieldBreaker;
@@ -211,7 +205,7 @@ export class BrowserChassis {
 
   constructor() {
     this.subscribeToDecisions();
-    this.createInputSurfaces();
+    this.input = this.createInputSurfaces();
     const harvestNav = this.createHarvestNavigationSurfaces();
     this.marks = harvestNav.marks;
     this.harvest = harvestNav.harvest;
@@ -237,9 +231,10 @@ export class BrowserChassis {
   }
 
   /** Input simulation, downloads, sessions, the network tap and the script vault. */
-  private createInputSurfaces(): void {
+  private createInputSurfaces(): InputSurface {
     this.harvester = new ConstructHarvester();
-    this.simulator = new HumanizedInputSimulator({
+    const input = new InputSurface({
+      activeWebContents: () => this.getActiveWebContents(),
       onMouseMove: (point, velocity) => {
         this.state.cursor = point;
         this.telemetry.emitPointEvent('mouse_move', point, `Velocity: ${velocity.toFixed(2)} px/ms`);
@@ -261,21 +256,29 @@ export class BrowserChassis {
       onScroll: (deltaY) => {
         this.telemetry.emitSimpleEvent('scroll', `Mousewheel impulse: ${deltaY}px`);
       },
+      markSynthetic: (at) => this.humanMonitor.markSynthetic(at),
+      humanActive: () => this.isHumanActive(),
+      status: {
+        acting: () => {
+          this.state.agentStatus = 'SIMULATING_INPUT';
+        },
+        idle: () => this.telemetry.reportIdle(),
+        error: () => {
+          this.state.agentStatus = 'ERROR';
+          this.telemetry.broadcastState();
+        },
+      },
+      log: (level, message) => this.telemetry.addLog(level, message),
+      bumpRevision: () => this.bumpRevision(),
     });
 
-    // Human pacing knobs (Settings → INPUT); loaded once at boot, updated live over IPC.
-    this.simulator.setProfile(loadInputProfile());
-    // Takeover arbitration: every synthetic dispatch is stamped so the monitor can tell our input
-    // from the person's, and the gate refuses input while the human has the wheel.
-    this.simulator.setSyntheticMarker((at) => this.humanMonitor.markSynthetic(at));
-    this.simulator.setHumanGate(() => this.isHumanActive());
-
-    this.shieldBreaker = new ShieldBreaker(this.simulator);
+    this.shieldBreaker = new ShieldBreaker(input.simulator);
     this.downloadManager = new DownloadManager();
     this.sessionVault = new SessionVault();
     this.networkInterceptor = new NetworkInterceptor();
     this.marksOverlay = new MarksOverlay();
     this.scriptVault = new ScriptVault();
+    return input;
   }
 
   /** Marks, harvest and navigation, in dependency order (prerender before nav). */
@@ -405,14 +408,14 @@ export class BrowserChassis {
       resolveSealedToken: (token) => resolveSealedTarget(this.getActiveWebContents(), token),
       clickMark: (id) => this.clickMark(id),
       typeMark: (id, text, opts) => this.typeMark(id, text, opts),
-      clickElement: (selector, coords) => this.clickElement(selector, coords),
-      typeText: (text, selector, opts) => this.typeText(text, selector, opts),
+      clickElement: (selector, coords) => this.input.clickElement(selector, coords),
+      typeText: (text, selector, opts) => this.input.typeText(text, selector, opts),
       findSealed: (opts) => this.marks.findSealed(opts),
       componentSurfaceEnabled: () => this.componentSurfaceEnabled(),
-      insertText: (text) => this.simulator.insertText(this.getActiveWebContents(), text),
-      pasteText: (text) => this.simulator.pasteText(this.getActiveWebContents(), text),
-      moveMouseTo: (target) => this.moveMouse(target),
-      pressKey: (key) => this.pressKey(key),
+      insertText: (text) => this.input.insertText(text),
+      pasteText: (text) => this.input.simulator.pasteText(this.getActiveWebContents(), text),
+      moveMouseTo: (target) => this.input.moveMouse(target),
+      pressKey: (key) => this.input.pressKey(key),
       snapshotRenderedPage: (opts) => this.marks.snapshotRenderedPage(opts),
       getNetworkTraffic: (filter) => this.getNetworkTraffic(filter),
       getPageInfo: () => this.getPageInfo(),
@@ -707,7 +710,7 @@ export class BrowserChassis {
       getTab: (tabId) => this.tabManager?.getTab(tabId) ?? null,
       getActiveTabId: () => this.tabManager?.getActiveTabId() ?? '',
       applyZoom: (wc) => this.applyZoom(wc),
-      setInputScale: (wc, scale) => this.simulator.setViewportScale(wc, scale),
+      setInputScale: (wc, scale) => this.input.simulator.setViewportScale(wc, scale),
       relayout: () => this.tabManager?.updateActiveTabBounds(),
       broadcast: () => this.telemetry.broadcastState(),
       log: (level, message) => this.telemetry.addLog(level, message),
@@ -1183,7 +1186,7 @@ export class BrowserChassis {
     ipcMain.handle('input:get-profile', () => loadInputProfile());
     ipcMain.handle('input:save-profile', (_: any, patch: Partial<InputProfile>) => {
       const result = saveInputProfile(patch || {});
-      if (result.ok) this.simulator.setProfile(result.profile);
+      if (result.ok) this.input.simulator.setProfile(result.profile);
       return result;
     });
 
@@ -1533,46 +1536,6 @@ export class BrowserChassis {
   });
 
 
-  // ---- Input actions ------------------------------------------------------------------
-  // Click target resolution, the per-field form dispatch and the scroll fallback live
-  // in InputActionsController; the chassis supplies the state surface.
-
-  private readonly inputActions = new InputActionsController({
-    activeWebContents: () => this.getActiveWebContents(),
-    simulator: () => this.simulator,
-    status: {
-      acting: () => {
-        this.state.agentStatus = 'SIMULATING_INPUT';
-      },
-      idle: () => this.telemetry.reportIdle(),
-      error: () => {
-        this.state.agentStatus = 'ERROR';
-        this.telemetry.broadcastState();
-      },
-    },
-    log: (level, message) => this.telemetry.addLog(level, message),
-    bumpRevision: () => this.bumpRevision(),
-  });
-
-  public async clickElement(selector?: string, coordinates?: { x: number; y: number }): Promise<string> {
-    return this.inputActions.clickElement(selector, coordinates);
-  }
-
-  public async typeText(text: string, selector?: string, opts: { clearFirst?: boolean } = {}): Promise<string> {
-    return this.inputActions.typeText(text, selector, opts);
-  }
-
-  public async fillForm(
-    fields: Record<string, string | boolean | number>,
-    submitSelector?: string
-  ): Promise<{ success: boolean; fieldsFilled: number; submitted: boolean; details: string[] }> {
-    return this.inputActions.fillForm(fields, submitSelector);
-  }
-
-  public async scrollPage(direction: 'up' | 'down', amount: number = 400): Promise<string> {
-    return this.inputActions.scrollPage(direction, amount);
-  }
-
   // ---- Screenshot persistence ---------------------------------------------------------
   // The screenshots directory, retention, compositor retry and the encode/save/
   // telemetry tail live in ScreenshotStore.
@@ -1583,13 +1546,6 @@ export class BrowserChassis {
   });
 
 
-  public async pressKey(key: string): Promise<string> {
-    const wc = this.getActiveWebContents();
-    this.telemetry.addLog('action', `MCP Directive: press_key("${key}")`);
-    await this.simulator.pressKey(wc, key);
-    this.bumpRevision();
-    return `Pressed key: ${key}`;
-  }
 
   public async evaluateJavaScript(script: string): Promise<any> {
     const wc = this.getActiveWebContents();
@@ -1685,7 +1641,7 @@ export class BrowserChassis {
     );
     const restore = options.restore ?? settings.shadow.tabWalkRestoreFocus;
     this.telemetry.addLog('action', `MCP Directive: focus_walk(${options.selector || `${options.x},${options.y}`}, ${options.direction || 'forward'})`);
-    const result = await runTabWalk(wc, { ...options, maxSteps, restore }, (key) => this.simulator.pressKey(wc, key));
+    const result = await runTabWalk(wc, { ...options, maxSteps, restore }, (key) => this.input.simulator.pressKey(wc, key));
     this.bumpRevision();
     return result;
   }
@@ -2193,7 +2149,7 @@ export class BrowserChassis {
   private async focusMark(wc: WebContents, markId: number, settleMs = 0) {
     const target = await this.resolveMarkTarget(wc, markId);
     this.telemetry.reportActing();
-    await this.simulator.clickAt(wc, target.currentCenter);
+    await this.input.simulator.clickAt(wc, target.currentCenter);
     if (settleMs) await new Promise((r) => setTimeout(r, settleMs));
     return target;
   }
@@ -2237,7 +2193,7 @@ export class BrowserChassis {
       this.telemetry.addLog('warn', `type_mark(#${markId}): target did not take focus after click; retrying once.`);
       const retry = await this.resolveMarkTarget(wc, markId).catch(() => null);
       if (retry) {
-        await this.simulator.clickAt(wc, retry.currentCenter);
+        await this.input.simulator.clickAt(wc, retry.currentCenter);
         await new Promise((r) => setTimeout(r, 100));
       }
     }
@@ -2245,10 +2201,10 @@ export class BrowserChassis {
     if (opts.clearFirst) {
       // Replace rather than append: the target may already hold a value (e.g. a pre-filled
       // origin/airport field), and appending silently corrupts it.
-      await this.simulator.clearFocusedField(wc);
+      await this.input.simulator.clearFocusedField(wc);
     }
 
-    await this.simulator.typeText(wc, text);
+    await this.input.simulator.typeText(wc, text);
 
     this.telemetry.reportIdle();
     this.bumpRevision();
@@ -2389,20 +2345,8 @@ export class BrowserChassis {
     return this.hilManager.sendNotification({ title, message, urgency, sound });
   }
 
-  // Bio-Kinematic Chaos Trajectory Methods
-  public testChaosTrajectory(target: { x: number; y: number }, options?: ChaosKinematicsOptions): PathStep[] {
-    const start = this.simulator.getCursorPosition();
-    return generateChaosTrajectory(start, target, options);
-  }
 
-  public async moveMouse(target: { x: number; y: number }, options?: ChaosKinematicsOptions): Promise<void> {
-    const wc = this.getActiveWebContents();
-    await this.simulator.moveMouseTo(wc, target, options);
-  }
 
-  public getSimulator(): HumanizedInputSimulator {
-    return this.simulator;
-  }
 
   // ---- Primitives layer (observe / act / wait / extract / collect / find) ----
 

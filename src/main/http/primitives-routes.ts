@@ -27,7 +27,7 @@ const ROUTES: Record<string, PrimitiveHandler> = {
   'POST /chaos/trajectory': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
     const target = body.target || { x: 500, y: 500 };
-    const steps = chassis.testChaosTrajectory(target, body.options);
+    const steps = chassis.input.testChaosTrajectory(target, body.options);
     const totalDurationMs = steps.reduce((sum, s) => sum + s.delayMs, 0);
     const peakVelocity = Math.max(...steps.map((s) => s.velocity));
     const correctiveSteps = steps.filter((s) => s.isCorrective).length;
@@ -47,7 +47,7 @@ const ROUTES: Record<string, PrimitiveHandler> = {
   'POST /mouse/move': async ({ chassis, readBody, sendJson }) => {
     const body = await readBody();
     const target = body.target || { x: 500, y: 500 };
-    await chassis.moveMouse(target, body.options);
+    await chassis.input.moveMouse(target, body.options);
     sendJson({ success: true, target });
   },
 

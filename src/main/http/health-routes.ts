@@ -44,7 +44,7 @@ const bridgeStatus = (ctx: HealthRouteContext) => {
     decision: decisionStatus(),
     lastActionAt: lastActionAt(),
     window: { visible: chassis.isWindowVisible(), focused: chassis.isWindowFocused() },
-    input: { transport: chassis.getSimulator().lastInputTransport },
+    input: { transport: chassis.input.simulator.lastInputTransport },
     human: { paused: chassis.isHumanActive(), ...chassis.getHumanStatus() },
     metrics: summary(),
     shadowWalk: { ...shadowWalkStatus(), forceOpenArmed: chassis.forceOpenArmed() },

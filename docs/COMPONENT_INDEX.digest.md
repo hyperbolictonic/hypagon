@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-232 modules, 812 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+233 modules, 814 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -65,6 +65,7 @@
 | `main/http/wrap-routes.ts` | 3: handleWrapRoutes, WrapBridge, WrapRouteContext |
 | `main/input-actions.ts` | 3: InputActionsController, InputActionsStatus, InputActionsDeps |
 | `main/input/human-activity.ts` | 6: shouldCountAsHuman, humanListenerScript, SYNTHETIC_GRACE_MS, HUMAN_CONSOLE_PREFIX, HumanActivityMonitor, HumanActivity |
+| `main/input/input-surface.ts` | 2: InputSurface, InputSurfaceDeps |
 | `main/jev/controller.ts` | 3: JevController, JevControllerDeps, JevPolicy |
 | `main/jev/engine.ts` | 5: JevEngine, JevSection, JevSession, JevStatus, JevSearchHit |
 | `main/jev/policy.ts` | 6: decideFunnel, DEFAULT_FUNNEL_MIN_TOKENS, FunnelBreaker, FunnelReason, FunnelInput, FunnelDecision |
@@ -125,8 +126,7 @@
 | `main/settings/jev.ts` | 4: DEFAULT_JEV_SETTINGS, JevSettingsStore, JevMode, JevSettings |
 | `main/settings/json-settings.ts` | 4: loadJsonSettings, saveJsonSettings, settingsSource, SettingsResult |
 | `main/shadow-walk/ax-controls.ts` | 6: findSealedControls, SealedRateLimitError, SealedRect, SealedControl, SealedFindOptions, SealedFindResult |
-| `main/shadow-walk/component-signature.ts` | 4: componentSignatureOf, normalizeSurface, COMPONENT_SIGNATURE_HELPERS, ComponentSurface |
 
-… and 107 more module(s) — grep the full index.
+… and 108 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.
