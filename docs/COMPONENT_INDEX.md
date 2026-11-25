@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 418 files, 1213 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 426 files, 1242 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -24,7 +24,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (937)
+## Types (943)
 
 | File | Export | When to use |
 |---|---|---|
@@ -854,6 +854,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/tool-surface.ts` | `ToolPreferences` *(type)* | The persisted tool surface, as the bridge reports it. |
 | `mcp/tool-surface.ts` | `ToolSurfacePlan` *(type)* | When to use: `registerCatalogTools` — everything the registry needs per call. |
 | `mcp/tools-catalog-types.ts` | `ToolCatalogItem` *(type)* | When to use: any surface that registers or inspects a catalog entry — the one item shape for the whole catalog. |
+| `mcp/wrap-bridge.ts` | `currentWrapToken` | The wrap token: the explicit one, else the file the app rotates. |
+| `mcp/wrap-bridge.ts` | `callBridge` | When to use: any tool — one request to the bridge, with the standard failures. |
+| `mcp/wrap-bridge.ts` | `bridgeError` | The failure text for a non-ok bridge response; every wrap tool reports it the same way. |
+| `mcp/wrap-bridge.ts` | `BridgeResponse` *(type)* | What a bridge call produced, including the parsed body. |
+| `mcp/wrap-generated-tools.ts` | `GeneratedTools` | When to use: `createWrapMcpServer` — one registry per server. |
+| `mcp/wrap-generated-tools.ts` | `GeneratedSync` *(type)* | What one reconciliation changed, so a caller can decide whether to notify. |
 | `preload/index.ts` | `ElectronAPI` *(type)* | When to use: the preload bridge surface — every renderer call goes through `window.electronAPI`. |
 | `renderer/cortex-panel.ts` | `initCortexPanel` | Wire the modal once, after the document has parsed. |
 | `renderer/cortex-panel.ts` | `updateActivePage` | Track the active page for the bookmark star and the save form. |
@@ -966,7 +972,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | - |
 | `shared/zoom.ts` | `ZoomState` *(type)* | - |
 
-## Modules (268)
+## Modules (291)
 
 | File | Export | When to use |
 |---|---|---|
@@ -1174,10 +1180,33 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `mcp/tools-catalog.ts` | `TIER_LABELS` | Discoverability tiers (docs/TOOL_CATALOG_REVIEW.md §3, Phase 4). |
 | `mcp/tools-catalog.ts` | `TOOL_TIERS` | - |
 | `mcp/tools-catalog.ts` | `DEFAULT_TOOL_ORDER` | Curated default order for `tools/list` and the Settings -> Tools list. |
+| `mcp/wrap-config.ts` | `BRIDGE_URL` | The Cyberdeck bridge base URL (no trailing slash). |
+| `mcp/wrap-config.ts` | `BRIDGE_TIMEOUT_MS` | Ceiling on one bridge round-trip; generous for a paged wrapper run. |
+| `mcp/wrap-config.ts` | `TOKEN_FILE` | A file the app rotates; the MCP process only reads it. |
+| `mcp/wrap-config.ts` | `STATIC_TOKEN` | An explicit token (tests, CI) instead of a file. |
+| `mcp/wrap-config.ts` | `GENERATED_TOOL_CAP` | How many generated `wrap_<id>` tools may be registered at once. This is a model-context |
+| `mcp/wrap-config.ts` | `META_TOOL_NAMES` | Names the static meta-tools own; a generated name must never collide with one. |
+| `mcp/wrap-config.ts` | `MAX_TEXT_CHARS` | A response longer than this is truncated with a hint to narrow it. |
+| `mcp/wrap-format.ts` | `asJson` | Parse a JSON string, or pass the value through unchanged. |
+| `mcp/wrap-format.ts` | `resultText` | When to use: `wrap_run` and a generated tool — the markdown/json record rendering. |
+| `mcp/wrap-format.ts` | `previewText` | When to use: a dry run — quote the request that would have been sent. |
+| `mcp/wrap-format.ts` | `formatBytes` | Bytes as B/kB/MB, for the run footer. |
+| `mcp/wrap-format.ts` | `formatManifest` | When to use: `wrap_list` and `wrap_reload` — one line per saved wrapper. |
+| `mcp/wrap-format.ts` | `generatedWarning` | Explain why a saved wrapper with `exposeAsTool: true` is not a registered tool. Empty when |
+| `mcp/wrap-format.ts` | `formatSecrets` | When to use: `wrap_secret_list` — names and hosts, never values. |
+| `mcp/wrap-format.ts` | `wrapperRejection` | The wrapper write tools report a validation failure the same way. |
+| `mcp/wrap-log.ts` | `logWrap` | When to use: every route in this server — boot, each call, and each bridge failure. |
+| `mcp/wrap-messages.ts` | `errorText` | The standard failure line: `**CODE:** message`. |
 | `mcp/wrap-server.ts` | `createWrapMcpServer` | - |
+| `mcp/wrap-tool-result.ts` | `clampText` | A response longer than the cap is truncated with a hint to narrow it. |
+| `mcp/wrap-tool-result.ts` | `toolSuccess` | The MCP success shape. |
+| `mcp/wrap-tool-result.ts` | `toolError` | The MCP failure shape. |
+| `mcp/wrap-tool-result.ts` | `bridgeFailure` | A thrown bridge failure, logged and returned in the standard error shape. |
+| `mcp/wrap-tool-result.ts` | `bridgeTool` | When to use: every wrap tool body — call the bridge, let `fail` name the failure text (or |
 | `mcp/wrap-tool-schema.ts` | `wrapInputToZodShape` | Convert a wrapper input schema into a Zod raw shape (one entry per property). |
 | `mcp/wrap-tool-schema.ts` | `generatedToolName` | Deterministic MCP-safe name for a wrapper: `wrap_` + id with every character outside |
 | `mcp/wrap-tool-schema.ts` | `isToolName` | True when `name` is a legal MCP tool name (exported for tests). |
+| `mcp/wrap-tools.ts` | `registerWrapTools` | When to use: `createWrapMcpServer` — register every meta-tool on a fresh server. |
 | `renderer/deck/decisions.ts` | `setDecisionTabVisible` | When to use: the status broadcast, a settings save, and the first probe. |
 | `renderer/deck/decisions.ts` | `refreshDecisionTab` | When to use: after a settings change, and on the slow poll. |
 | `renderer/deck/decisions.ts` | `initDecisions` | When to use: the HUD boot — subscribe, wire the tab and start the ring-buffer sync. |

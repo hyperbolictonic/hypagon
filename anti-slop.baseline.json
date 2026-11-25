@@ -166,10 +166,6 @@
       },
       "mcp/remote-server.ts": {
         "function": 1
-      },
-      "mcp/wrap-server.ts": {
-        "file": 1,
-        "function": 1
       }
     }
   }
