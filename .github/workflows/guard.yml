@@ -22,3 +22,27 @@ jobs:
         run: node scripts/test-mcp-contract.mjs
       - name: Settings DOM contract
         run: node scripts/test-settings-dom.mjs
+
+  sdk:
+    # The @hyperbolictonic packages are plain TypeScript + node:test, but the browser harvester
+    # needs jsdom/readability/turndown, so this job installs before running them.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Browser package types
+        run: npm run typecheck:browser
+      - name: Electron package types
+        run: npm run typecheck:electron
+      - name: Stealth package types
+        run: npm run typecheck:stealth
+      - name: SDK tests
+        run: npm run test:sdk

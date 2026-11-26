@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test test/state-controller.test.ts test/targeting.test.ts test/controllers.test.ts test/act.test.ts test/harvester.test.ts test/marks.test.ts test/frames.test.ts test/network.test.ts"
+    "test": "node --test test/state-controller.test.ts test/targeting.test.ts test/controllers.test.ts test/act.test.ts test/harvester.test.ts test/marks.test.ts test/frames.test.ts test/network.test.ts test/host.test.ts"
   },
   "engines": {
     "node": ">=22.18"

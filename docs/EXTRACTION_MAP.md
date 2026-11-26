@@ -347,3 +347,8 @@ the Shadow Walk settings, and registers the `sealed.*`/`cdp.*` counters through
 
 Next: M3 — `hypagon-research` (search hub, crawler, researcher, LLM surface, anchors) against the
 `PageReader`/`Fetcher` port.
+
+Both packages now ship one-call hosts: `createBrowserTools({ target })` in the browser package
+(marks, frames, harvest, network; an optional input port) and
+`createHumanizedBrowserTools({ target })` in stealth (the same plus the humanised driver and
+sealed discovery). A new host no longer implements the whole `PrimitivesHost` surface by hand.

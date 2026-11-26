@@ -47,6 +47,29 @@ await tools.act({ markId: 3, action: 'click' });
 const rows = await tools.extract({ kind: 'list' });
 ```
 
+## One-call host
+
+If you do not already have a `PrimitivesHost`, `createBrowserTools` wires the
+package modules to one target:
+
+```ts
+import { createBrowserTools } from '@hyperbolictonic/hypagon-browser';
+
+const { primitives, host } = createBrowserTools({
+  target,                 // your BrowserTarget
+  input,                  // optional: a humanised driver for click/type/press
+  network: false,         // omit to capture traffic, false to skip
+});
+
+const page = await primitives.observe({ as: 'som' });
+await primitives.find({ contains: 'Sign in' });
+```
+
+Without `input`, `observe`, `find`, `read`, `wait`, `state` and `extract` work;
+click/type/press report `NOT_SUPPORTED`. `@hyperbolictonic/hypagon-stealth`
+exports `createHumanizedBrowserTools`, which supplies the driver and sealed
+discovery.
+
 ## What is in the package
 
 Extracted from the app, with the app still importing through re-export shims:

@@ -14,11 +14,10 @@
  * one capture plus one crop per visible frame.
  */
 import type { WebContents } from 'electron';
-import { clearFrameMarks, registerFrameMarks } from './frame-marks.js';
 import { listFrames } from './frames.js';
-import { evaluateInFrames } from './frame-eval.js';
 import { ElectronTarget } from '../../../packages/electron/src/target.ts';
-import { controlFactsExpression, parseControlFacts, type ControlFacts } from '../primitives/control-facts.js';
+import { attachFrameControls as attachControls } from '../../../packages/browser/src/frames/inventory.ts';
+import type { ControlFacts } from '../primitives/control-facts.js';
 import { loadShadowWalkSettings } from '../shadow-walk/settings.js';
 import type { FrameInfo } from './frames.js';
 
@@ -109,66 +108,18 @@ async function attachFrameControls(
   out: Array<FrameInfo & { controls?: ControlFacts[]; controlsTotal?: number }>,
   options: FramesInventoryOptions,
   limits: FramesLimits,
-  viewport: { width: number; height: number },
+  _viewport: { width: number; height: number },
 ): Promise<void> {
-  const limit = Math.max(1, Math.min(limits.maxControls, 200));
-  const target = new ElectronTarget(wc);
-  clearFrameMarks(target);
-  // One expression, one frame-tree walk. Each child frame gets its own mark-id block
-  // (100 + child_index * 100); the main frame is not stamped by this scan.
-  const evaluated = await evaluateInFrames(target, 'null', {
+  const controlled = await attachControls(new ElectronTarget(wc), out, {
     maxFrames: limits.maxFrames,
-    expressionForFrame: (_frame, index) =>
-      index === 0
-        ? 'null'
-        : controlFactsExpression({
-            selector: options.selector,
-            limit,
-            includeOffscreen: true,
-            skipHitTest: options.skipHitTest === true,
-            deep: limits.settings.shadow.deepOpenRoots,
-            markIdBase: 100 + (index - 1) * 100,
-            component: limits.settings.shadow.componentSurface,
-          }),
+    selector: options.selector,
+    limit: limits.maxControls,
+    includeOffscreen: options.includeOffscreen,
+    skipHitTest: options.skipHitTest,
+    deep: limits.settings.shadow.deepOpenRoots,
+    component: limits.settings.shadow.componentSurface,
   });
-
-  const byId = new Map(out.map((frame) => [frame.frameId, frame]));
-  for (const result of evaluated) {
-    const frame = byId.get(result.frameId);
-    if (!frame || frame.depth === 0 || !result.ok) continue;
-    const parsed = parseControlFacts(result.value);
-    const controls: ControlFacts[] = [];
-    for (const control of parsed.controls) {
-      const rect = {
-        x: control.rect.x + frame.rect.x,
-        y: control.rect.y + frame.rect.y,
-        width: control.rect.width,
-        height: control.rect.height,
-      };
-      const onScreen =
-        rect.width > 0 &&
-        rect.height > 0 &&
-        rect.x < viewport.width &&
-        rect.y < viewport.height &&
-        rect.x + rect.width > 0 &&
-        rect.y + rect.height > 0;
-      if (!options.includeOffscreen && !onScreen) continue;
-      controls.push({
-        ...control,
-        rect,
-        visible: control.visible && !!frame.visibleRect,
-        occluded: control.occluded || !onScreen,
-      });
-    }
-    frame.controls = controls;
-    frame.controlsTotal = parsed.controls.length;
-    registerFrameMarks(
-      target,
-      controls
-        .filter((control) => typeof control.id === 'number' && control.id >= 100)
-        .map((control) => ({ id: Number(control.id), frameId: frame.frameId })),
-    );
-  }
+  out.splice(0, out.length, ...controlled);
 }
 
 /** When to use: the chassis frames route — walk the frame tree, attach control facts and per-frame screenshots. */

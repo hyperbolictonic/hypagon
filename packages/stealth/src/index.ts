@@ -21,3 +21,4 @@ export * from './shadow/sealed-scan.ts';
 export * from './shadow/sealed-measure.ts';
 export { findSealedControls, DEFAULT_SEALED_SETTINGS } from './shadow/ax-controls.ts';
 export type { SealedSettings } from './shadow/ax-controls.ts';
+export * from './host.ts';

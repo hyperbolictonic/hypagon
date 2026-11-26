@@ -38,6 +38,23 @@ The app adapter in `src/main/telemetry/input-simulator.ts` keeps its
 `WebContents`-shaped API and supplies the Electron ports, so app call sites did not
 change.
 
+## One-call product host
+
+`createHumanizedBrowserTools({ target })` builds the complete host: browser marks,
+frames, harvest and network, plus this package's pointer/keyboard driver and sealed
+discovery.
+
+```ts
+import { createHumanizedBrowserTools } from '@hyperbolictonic/hypagon-stealth';
+
+const { primitives, host, input } = createHumanizedBrowserTools({ target });
+const page = await primitives.observe({ as: 'markdown' });
+await primitives.act({ markId: 3, action: 'click' });
+```
+
+`input` is exposed so a host can set the human-takeover gate and synthetic marker.
+The sealed policy and pacing profile are optional options.
+
 ## Status
 
 `0.1.0`, private. M2 is complete here: movement, key tables, ghost cursor,
