@@ -15,6 +15,8 @@ import { resolveFrameMark } from '../browser/frame-marks.js';
 import { resolveSealedToken } from '../shadow-walk/sealed-targets.js';
 import { loadShadowWalkSettings } from '../shadow-walk/settings.js';
 import { dataPath } from '../data-paths.js';
+import { APP_VERSION } from '../../shared/version.js';
+import { BRAND } from '../../shared/brand.js';
 import type { ChassisHost } from './host.js';
 
 /** The built interaction surfaces. */
@@ -95,6 +97,7 @@ export function createInteractionStack(host: ChassisHost): InteractionStack {
     getPageInfo: () => pageInfo(host),
     revision: () => currentRevision(host),
     windowFocused: () => host.window.isFocused(),
+    appIdentity: () => ({ name: BRAND.deck, version: APP_VERSION }),
     recordTransition: (record) => actionLedger.record(record),
   });
 

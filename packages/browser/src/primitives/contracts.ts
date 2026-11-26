@@ -222,6 +222,19 @@ export interface SealedFindResult {
   notes: string[];
 }
 
+/** When to use: the product identity a HAR export records as its creator. */
+export interface AppIdentity {
+  name: string;
+  version: string;
+}
+
+/** When to use: a sensitive gate the host detected before a decision call. */
+export interface SensitiveGateDetection {
+  kind: 'age_verification' | 'captcha';
+  evidence: string[];
+  reason: string;
+}
+
 /** When to use: the chassis — what the primitives may ask of the active tab. */
 export interface PrimitivesHost {
   /** Compatibility hook for Electron hosts; the SDK does not use it. */
@@ -274,6 +287,10 @@ export interface PrimitivesHost {
   getPageInfo(): { url: string; title: string; isLoading: boolean; activeTabId?: string };
   revision(): number;
   windowFocused?(): boolean;
+  /** Optional: the identity a HAR export records as its creator. */
+  appIdentity?(): AppIdentity;
+  /** Optional: the host's sensitive-gate policy, used by act's gate warning. */
+  detectSensitiveGate?(text: string, opts: { url?: string }): SensitiveGateDetection | null;
   /**
    * Optional: persist an executed action's outcome so a runner-side decision model
    * has a local dataset to learn from.
