@@ -38,7 +38,7 @@
     "typecheck:recipe": "tsc -p packages/recipe/tsconfig.json",
     "typecheck:browser": "tsc -p packages/browser/tsconfig.json",
     "typecheck:electron": "tsc -p packages/electron/tsconfig.json",
-    "test:sdk": "node --test packages/browser/test/state-controller.test.ts packages/browser/test/targeting.test.ts packages/browser/test/controllers.test.ts packages/browser/test/act.test.ts packages/browser/test/harvester.test.ts packages/browser/test/marks.test.ts packages/browser/test/frames.test.ts packages/browser/test/network.test.ts packages/electron/test/target.test.ts",
+    "test:sdk": "node --test packages/browser/test/state-controller.test.ts packages/browser/test/targeting.test.ts packages/browser/test/controllers.test.ts packages/browser/test/act.test.ts packages/browser/test/harvester.test.ts packages/browser/test/marks.test.ts packages/browser/test/frames.test.ts packages/browser/test/network.test.ts packages/stealth/test/movement.test.ts packages/electron/test/target.test.ts",
     "typecheck:mcp-http": "tsc -p packages/mcp-http/tsconfig.json",
     "test:mcp-http": "node --test packages/mcp-http/test/host.test.ts",
     "typecheck:cloudflared": "tsc -p packages/cloudflared/tsconfig.json",
@@ -105,7 +105,8 @@
     "anti-slop:check": "node scripts/anti-slop/check-modularity.mjs && node scripts/anti-slop/check-imports.mjs && node scripts/anti-slop/check-docs.mjs && node scripts/anti-slop/check-duplicates.mjs && node scripts/anti-slop/check-encoding.mjs && node scripts/anti-slop/check-class-literals.mjs",
     "anti-slop:index": "node scripts/anti-slop/generate-component-index.mjs",
     "anti-slop:dupes": "node scripts/anti-slop/check-duplicates.mjs",
-    "anti-slop:review": "node scripts/anti-slop/review-scope.mjs"
+    "anti-slop:review": "node scripts/anti-slop/review-scope.mjs",
+    "typecheck:stealth": "tsc -p packages/stealth/tsconfig.json"
   },
   "keywords": [
     "mcp",

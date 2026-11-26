@@ -1,0 +1,32 @@
+{
+  "name": "@hyperbolictonic/hypagon-stealth",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Humanised movement and input for the Hypagon browser SDK: chaos kinematics, profile pacing, human-activity detection and sealed targets.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test test/movement.test.ts"
+  },
+  "dependencies": {
+    "@hyperbolictonic/hypagon-browser": "0.1.0"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "keywords": [
+    "browser",
+    "automation",
+    "stealth",
+    "humanlike",
+    "cdp"
+  ]
+}

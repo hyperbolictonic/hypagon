@@ -333,6 +333,11 @@ driver is the first slice of `hypagon-stealth`, because its chaos kinematics and
 that package. The host surfaces that combine these pieces (`marks-surface`,
 `frames-inventory`) stay app-side until their stealth and settings dependencies are ported.
 
-The app already uses `ElectronTarget` where the SDK expects a target (harvest and marks), and
-the host literal in `src/main/chassis/interaction-stack.ts` supplies `appIdentity` and
+The app already uses `ElectronTarget` where the SDK expects a target (harvest, marks, frames and
+network), and the host literal in `src/main/chassis/interaction-stack.ts` supplies `appIdentity` and
 `detectSensitiveGate`, so no policy moved into the package.
+
+M2 has started: `packages/stealth` owns the chaos-kinematics/bezier movement engine (the pointer
+path the humanised driver replays), exported through app shims and checked by
+`npm run typecheck:stealth`. The pointer/keyboard driver, profile loading, human-activity
+detection and sealed targets are the next slice.

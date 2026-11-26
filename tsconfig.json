@@ -17,7 +17,8 @@
     "noFallthroughCasesInSwitch": true,
     "paths": {
       "@hyperbolictonic/hypagon-browser": ["./packages/browser/src/index.ts"],
-      "@hyperbolictonic/hypagon-electron": ["./packages/electron/src/index.ts"]
+      "@hyperbolictonic/hypagon-electron": ["./packages/electron/src/index.ts"],
+      "@hyperbolictonic/hypagon-stealth": ["./packages/stealth/src/index.ts"]
     }
   },
   "include": ["src"]
