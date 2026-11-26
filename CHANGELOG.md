@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > therefore reports `1.4.2` in `/health`. This is a deliberate, temporary deviation from strict semver; each
 > increment still gets its own Added/Fixed/Changed section here.
 
-## [Unreleased]
+## [2.4.0] - 2026-11-26
 
 ### Added
 
@@ -34,6 +34,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   toolbar `FIT`/`WIN` zoom-policy toggle is also removed; page zoom keeps the fitted policy and
   the deck's `FIT` is now only the device reset. The Viewport row also has an explicit
   **Off — full browser area** option and the reset button reads `OFF` while a device is active.
+- The MCP catalog's repeated field shapes (mark ids, targets, conditions, notifications, paging,
+  collect/engine/url fields) now come from one module, so the advertised schemas stay in step, and
+  every exported value carries usage documentation.
+
+### Fixed
+
+- **Detached research reads no longer leak a navigation listener.** A load that hit the 12 s
+  deadline left its `did-navigate` listener attached to the shared off-screen view, so repeated
+  timeouts accumulated listeners. It now detaches on timeout as well as on load.
+- **Saved scripts get collision-free ids.** Two names that sanitised alike ("sale alert" and
+  "sale-alert") shared an id, so a delete or update could reach the wrong row; the id now carries
+  a hash of the exact name. Deleting an unknown script reports that nothing was removed.
+- **Script domain filtering uses host boundaries.** `list_scripts` no longer matches
+  `notexample.com` or `example.com.evil` when asked for `example.com`, while still covering
+  subdomains and `www.`.
+- **The wrapper audit log is bounded.** It rotates at 1 MB and reads only the newest slice instead
+  of growing without limit and parsing the whole history on every inspection.
+- **cloudflared lookup honours `PATHEXT` and the POSIX execute bit**, and `media_preview` passes
+  its arguments to the formatter.
 
 ## [2.3.3] - 2026-11-18
 
