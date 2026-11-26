@@ -6,7 +6,7 @@
  * to change; the vault now talks to `cortex.scripts`.
  */
 import { embedText } from './embedder.js';
-import { scriptId } from './script-identity.js';
+import { domainMatches, scriptId } from './script-identity.js';
 import type { CortexConnection } from './connection.js';
 import { toStringArray, type ScriptItem, type ScriptRow } from './types.js';
 
@@ -99,14 +99,7 @@ export class ScriptStore {
     }));
 
     if (options.domain && options.domain !== '*') {
-      const targetDomain = options.domain.toLowerCase();
-      items = items.filter(
-        (s) =>
-          !s.domain ||
-          s.domain === '*' ||
-          s.domain.toLowerCase().includes(targetDomain) ||
-          targetDomain.includes(s.domain.toLowerCase()),
-      );
+      items = items.filter((s) => domainMatches(s.domain || '', options.domain as string));
     }
 
     if (options.tag) {

@@ -19,3 +19,26 @@ export function scriptId(name: string): string {
   const slug = name.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
   return `script_${slug}_${nameHash(name)}`;
 }
+
+/** Lowercase the host, drop a scheme/path/port and a leading `www.`; `*` and empty stay as-is. */
+function normalizeDomain(value: string): string {
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw || raw === '*') return raw;
+  return raw
+    .replace(/^[a-z][a-z0-9+.-]*:\/\//, '')
+    .replace(/[/?#].*$/, '')
+    .replace(/:\d+$/, '')
+    .replace(/^www\./, '');
+}
+
+/**
+ * When to use: `list_scripts`/recall — whether a stored domain covers the requested one.
+ * Matches on host boundaries in both directions, so `example.com` covers `docs.example.com`
+ * but never `notexample.com` or `example.com.evil`. `*` and a missing domain match everything.
+ */
+export function domainMatches(stored: string, requested: string): boolean {
+  const host = normalizeDomain(stored);
+  const target = normalizeDomain(requested);
+  if (!host || !target || host === '*' || target === '*') return true;
+  return host === target || host.endsWith(`.${target}`) || target.endsWith(`.${host}`);
+}
