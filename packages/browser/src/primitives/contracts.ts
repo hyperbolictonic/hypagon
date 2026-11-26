@@ -6,17 +6,7 @@
  * page operations; the Electron app and any other host implement the same interface.
  */
 import type { WaitCondition } from './options.ts';
-
-/** When to use: a custom-element host's exported surface, when a mark carries one. */
-export interface ComponentSurface {
-  tag: string;
-  defined: boolean;
-  part: string[];
-  exportparts: string[];
-  cssVars: string[];
-  /** `tag:hash` — the stable recipe anchor. */
-  signature: string;
-}
+import type { ComponentSurface } from '../shadow-walk/component-signature.ts';
 
 /** When to use: one mark row a host returns from injectMarks/getMarks. */
 export interface HostMark {
