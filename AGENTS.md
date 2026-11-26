@@ -43,6 +43,11 @@ push and pull request. Do not weaken the patterns to make a file pass; replace t
   gates on the staged files (and reports imports/duplicates); `pre-push` runs the duplicates and
   import gates plus the project typecheck. Do not use `--no-verify`: both hooks pass on this repo,
   and a hook failure is a real finding to fix or file, not something to bypass.
+- Do not act on an unverified blocker. If a claim names a GitHub issue, reproduce it with
+  `gh issue view <n>`; if it names a failing hook, dependency or test, run it. A cited blocker that
+  cannot be reproduced is a hallucination, not a constraint: say so, drop it, and never let it
+  justify bypassing a gate. The retracted "kit bug #28" was exactly that — issue #28 does not exist
+  in this repository's tracker, no code references it, and both hooks pass.
 - Do not commit build output, runtime data or installer binaries. See `.gitignore`.
 
 ## Anti-slop skills
