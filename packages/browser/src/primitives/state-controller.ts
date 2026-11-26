@@ -4,8 +4,8 @@
  * Why a module: `pageState` records a bounded history and `diff` compares against
  * it. That is one small state machine, and it has nothing to do with observe/act.
  */
-import { SIGNATURE_SCRIPT } from './page-scripts.js';
-import type { PageState, PrimitivesHost } from './contracts.js';
+import { SIGNATURE_SCRIPT } from './page-scripts.ts';
+import type { PageState, PrimitivesHost } from './contracts.ts';
 
 /** When to use: `Primitives` — the state()/diff() pair. */
 export class StateController {

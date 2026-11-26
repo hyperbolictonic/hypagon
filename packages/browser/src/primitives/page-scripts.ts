@@ -7,7 +7,7 @@
  * were the largest functions left in `primitives.ts`; here they can be read (and
  * changed) without scrolling past the controller.
  */
-import type { CollectOptions, ExtractOptions, WaitCondition } from './options.js';
+import type { CollectOptions, ExtractOptions, WaitCondition } from './options.ts';
 
 /** When to use: pageState and diff — one cheap signature round trip, no DOM mutation. */
 export const SIGNATURE_SCRIPT = `(() => {

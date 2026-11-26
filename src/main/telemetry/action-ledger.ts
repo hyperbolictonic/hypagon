@@ -15,91 +15,23 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { dataPath } from '../data-paths.js';
+import type {
+  AddressMode,
+  FieldFacts,
+  TransitionRecord,
+  TransitionTarget,
+  TypingChannel,
+  TypingOutcome,
+} from '../../../packages/browser/src/primitives/contracts.ts';
 
-/** Typed facts about the form control an action addressed. */
-export interface FieldFacts {
-  tag: string;
-  type?: string;
-  role?: string;
-  /** Accessible-ish name: aria-label, placeholder, name, or id (truncated). */
-  name?: string;
-  valueLength: number;
-  isEmpty: boolean;
-  /** The field already held a value before this action — i.e. typing would have appended without `clear_first`. */
-  prefilled: boolean;
-  editable: boolean;
-  required?: boolean;
-  disabled?: boolean;
-}
-
-/** When to use: a ledger record's target — mark id/selector plus the form-control facts when it was a field. */
-export interface TransitionTarget {
-  id?: number;
-  tag?: string;
-  text?: string;
-  selector?: string;
-  /** Present when the target was a form control (input/textarea/select/contenteditable). */
-  field?: FieldFacts;
-}
-
-/** When to use: recording how an action addressed its target — mark id, selector, coordinates or none. */
-export type AddressMode = 'mark_id' | 'selector' | 'coords' | 'none';
-
-/** When to use: one ledger line — what was done, whether the page changed, and the evidence collected. */
-export interface TransitionRecord {
-  ts: number;
-  action: string;
-  addressMode: AddressMode;
-  address: string;
-  target?: TransitionTarget;
-  url: string;
-  revisionBefore: number;
-  revisionAfter: number;
-  marksBefore: number;
-  marksAfter: number;
-  urlChanged: boolean;
-  marksChanged: boolean;
-  ok: boolean;
-  /** Post-conditions (await_conditions) result, when the action carried any. */
-  awaitOk?: boolean;
-  /** Rule-based triage hint emitted on a failed await (viewport 0x0, unfocused window, wrong active element). */
-  hints?: string;
-  durationMs: number;
-  /** Never the text itself — only how much of it there was. */
-  typed?: { chars: number; secret: boolean; landed?: boolean | null };
-  clearFirst?: boolean;
-  /** For a `type` action: what the field did, so a decision model can learn "this control rejects input". */
-  typing?: TypingOutcome;
-}
-
-/**
- * Evidence collected around a typing action (all in-page; the value itself never leaves the page).
- *
- * `landed: false` is the *silent no-op* case the field notes identify as the worst failure mode — the
- * tool used to report success while the value never changed.
- */
-export interface TypingOutcome {
-  /** Chars in the control's value before/after. */
-  beforeLength: number;
-  afterLength: number | null;
-  changed: boolean | null;
-  /** Trusted key events that reached the page (0 = our input never arrived). */
-  keydowns: number;
-  beforeinputs: number;
-  inputs: number;
-  landed: boolean | null;
-  /** Which channel produced the winning (or final) attempt. */
-  channel?: TypingChannel;
-  /** Every channel tried, in order (keys, insertText, paste). */
-  attempted?: TypingChannel[];
-  /** True when the control was re-rendered mid-type, so no verdict is possible. */
-  detached?: boolean;
-  /** Typing reached a closed-shadow target; events arrive but its value is unreadable. */
-  unobservable?: boolean;
-}
-
-/** When to use: naming the input channel that produced (or was attempted for) a typed value. */
-export type TypingChannel = 'keys' | 'insertText' | 'paste';
+export type {
+  AddressMode,
+  FieldFacts,
+  TransitionRecord,
+  TransitionTarget,
+  TypingChannel,
+  TypingOutcome,
+};
 
 /** When to use: constructing the ledger — its directory, rotation size and log sink. */
 export interface ActionLedgerOptions {

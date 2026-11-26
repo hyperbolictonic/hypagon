@@ -5,7 +5,7 @@
  * Portable: this file imports neither Electron nor the app. The host supplies the
  * page operations; the Electron app and any other host implement the same interface.
  */
-import type { WaitCondition } from './options.js';
+import type { WaitCondition } from './options.ts';
 
 /** When to use: a custom-element host's exported surface, when a mark carries one. */
 export interface ComponentSurface {
@@ -232,13 +232,6 @@ export interface SealedFindResult {
   notes: string[];
 }
 
-/** When to use: a sensitive gate the host detected before a decision call. */
-export interface SensitiveGateHint {
-  kind: 'age_verification' | 'captcha';
-  evidence: string[];
-  reason: string;
-}
-
 /** When to use: the chassis — what the primitives may ask of the active tab. */
 export interface PrimitivesHost {
   /** Compatibility hook for Electron hosts; the SDK does not use it. */
@@ -291,8 +284,6 @@ export interface PrimitivesHost {
   getPageInfo(): { url: string; title: string; isLoading: boolean; activeTabId?: string };
   revision(): number;
   windowFocused?(): boolean;
-  /** Optional sensitive-gate detection; the app supplies its decide policy. */
-  detectSensitiveGate?(state: unknown, opts: { url?: string }): SensitiveGateHint | null;
   /**
    * Optional: persist an executed action's outcome so a runner-side decision model
    * has a local dataset to learn from.

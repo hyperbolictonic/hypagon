@@ -6,7 +6,7 @@ import { ElectronTarget } from '../src/target.ts';
 
 type Call = [string, ...unknown[]];
 
-function fakeWebContents(): {
+function fakeWebContents(commandResult: unknown = { ok: true }): {
   wc: WebContents;
   calls: Call[];
   listeners: Map<string, Array<(...args: any[]) => void>>;
@@ -30,7 +30,7 @@ function fakeWebContents(): {
     debugger: {
       sendCommand: async (...args: unknown[]) => {
         calls.push(['cdp', ...args]);
-        return { ok: true };
+        return commandResult;
       },
       on: (event: string, handler: (...args: any[]) => void) => {
         listeners.set(event, [...(listeners.get(event) ?? []), handler]);
@@ -87,6 +87,21 @@ test('screenshot returns the png and its size', async () => {
   assert.equal(shot.width, 12);
   assert.equal(shot.height, 34);
   assert.equal(Buffer.from(shot.png).toString(), 'png-bytes');
+});
+
+test('a full-page screenshot goes through CDP and reads the PNG size', async () => {
+  const png = Buffer.alloc(24);
+  png.writeUInt32BE(640, 16);
+  png.writeUInt32BE(480, 20);
+  const { wc, calls } = fakeWebContents({ data: png.toString('base64') });
+  const shot = await new ElectronTarget(wc).screenshot({ fullPage: true });
+  assert.equal(shot.width, 640);
+  assert.equal(shot.height, 480);
+  assert.deepEqual(calls[0], [
+    'cdp',
+    'Page.captureScreenshot',
+    { format: 'png', captureBeyondViewport: true },
+  ]);
 });
 
 test('sendCommand is the CDP passthrough', async () => {

@@ -18,6 +18,13 @@ export interface ElectronTargetOptions {
   id?: string;
 }
 
+/** Read the pixel size from a PNG header (signature 8 bytes, length 4, "IHDR", width, height). */
+function pngSize(png: Uint8Array): { width: number; height: number } {
+  if (png.length < 24) return { width: 0, height: 0 };
+  const view = new DataView(png.buffer, png.byteOffset, png.byteLength);
+  return { width: view.getUint32(16), height: view.getUint32(20) };
+}
+
 /** When to use: driving a `WebContents` through the SDK. */
 export class ElectronTarget implements BrowserTarget {
   readonly kind = 'electron' as const;
@@ -37,8 +44,16 @@ export class ElectronTarget implements BrowserTarget {
     return this.webContents.executeJavaScript(script, options.userGesture === true) as Promise<T>;
   }
 
-  /** Viewport capture. Full-page capture arrives with the CDP adapter. */
-  async screenshot(): Promise<BrowserScreenshot> {
+  /** Viewport capture by default; a full-page capture goes through CDP. */
+  async screenshot(options: { fullPage?: boolean } = {}): Promise<BrowserScreenshot> {
+    if (options.fullPage === true) {
+      const { data } = await this.sendCommand<{ data: string }>('Page.captureScreenshot', {
+        format: 'png',
+        captureBeyondViewport: true,
+      });
+      const png = Buffer.from(data, 'base64');
+      return { png, ...pngSize(png) };
+    }
     const image = await this.webContents.capturePage();
     const size = image.getSize();
     return { png: image.toPNG(), width: size.width, height: size.height };
