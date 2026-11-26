@@ -8,6 +8,7 @@
  */
 import type { NativeImage, WebContents } from 'electron';
 import { listFrames, type FrameInfo } from '../browser/frames.js';
+import { ElectronTarget } from '../../../packages/electron/src/target.ts';
 import { inventoryFrames, type FrameInventoryResult } from '../browser/frames-inventory.js';
 import type { TabInstance } from '../tabs/tab-manager.js';
 import { detectForceOpen, isForceOpenArmed, syncForceOpen, type ForceOpenDetection } from './force-open.js';
@@ -74,7 +75,7 @@ export class ShadowWalkSurface {
   /** Frame tree + top-level geometry (no content scan). */
   async listFrames(options: { maxFrames?: number } = {}): Promise<FrameInfo[]> {
     assertShadowSurface('frames');
-    return listFrames(this.deps.activeWebContents(), options);
+    return listFrames(new ElectronTarget(this.deps.activeWebContents()), options);
   }
 
   /** Trusted Tab/Shift+Tab walk into a (possibly closed) shadow subtree. */

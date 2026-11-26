@@ -17,6 +17,7 @@ import type { WebContents } from 'electron';
 import { clearFrameMarks, registerFrameMarks } from './frame-marks.js';
 import { listFrames } from './frames.js';
 import { evaluateInFrames } from './frame-eval.js';
+import { ElectronTarget } from '../../../packages/electron/src/target.ts';
 import { controlFactsExpression, parseControlFacts, type ControlFacts } from '../primitives/control-facts.js';
 import { loadShadowWalkSettings } from '../shadow-walk/settings.js';
 import type { FrameInfo } from './frames.js';
@@ -111,10 +112,11 @@ async function attachFrameControls(
   viewport: { width: number; height: number },
 ): Promise<void> {
   const limit = Math.max(1, Math.min(limits.maxControls, 200));
-  clearFrameMarks(wc);
+  const target = new ElectronTarget(wc);
+  clearFrameMarks(target);
   // One expression, one frame-tree walk. Each child frame gets its own mark-id block
   // (100 + child_index * 100); the main frame is not stamped by this scan.
-  const evaluated = await evaluateInFrames(wc, 'null', {
+  const evaluated = await evaluateInFrames(target, 'null', {
     maxFrames: limits.maxFrames,
     expressionForFrame: (_frame, index) =>
       index === 0
@@ -161,7 +163,7 @@ async function attachFrameControls(
     frame.controls = controls;
     frame.controlsTotal = parsed.controls.length;
     registerFrameMarks(
-      wc,
+      target,
       controls
         .filter((control) => typeof control.id === 'number' && control.id >= 100)
         .map((control) => ({ id: Number(control.id), frameId: frame.frameId })),
@@ -178,7 +180,7 @@ export async function inventoryFrames(
   const limits = resolveLimits(options);
   deps.log('action', `MCP Directive: frames(controls=${limits.includeControls}, screenshots=${limits.wantScreenshots})`);
 
-  const frames = await listFrames(wc, { maxFrames: limits.maxFrames });
+  const frames = await listFrames(new ElectronTarget(wc), { maxFrames: limits.maxFrames });
   const main = frames.find((frame) => frame.depth === 0);
   const viewport = {
     width: main?.rect.width || 0,

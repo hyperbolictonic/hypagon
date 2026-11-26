@@ -25,3 +25,8 @@ export * from './marks/marks-overlay.ts';
 export * from './shadow-walk/component-signature.ts';
 export * from './harvester/markdown.ts';
 export * from './harvester/dom-serializer.ts';
+export * from './frames/layout-viewport.ts';
+export * from './frames/frame-tree.ts';
+export * from './frames/frames.ts';
+export * from './frames/frame-eval.ts';
+export * from './frames/frame-marks.ts';

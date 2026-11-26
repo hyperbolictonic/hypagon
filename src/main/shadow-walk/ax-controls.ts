@@ -21,6 +21,7 @@
  */
 import type { WebContents } from 'electron';
 import { listFrames } from '../browser/frames.js';
+import { ElectronTarget } from '../../../packages/electron/src/target.ts';
 import { SealedScanGate } from './sealed-gate.js';
 import { measureSealedControls } from './sealed-measure.js';
 import { SealedScanner } from './sealed-scan.js';
@@ -74,7 +75,7 @@ export async function findSealedControls(
     throw err;
   }
 
-  const frames = await listFrames(wc, { maxFrames: MAX_FRAMES });
+  const frames = await listFrames(new ElectronTarget(wc), { maxFrames: MAX_FRAMES });
   if (!frames.length) return emptyResult(['No frame tree available for the active tab.']);
   const main = frames.find((f) => f.depth === 0);
   if (!main) return emptyResult(['The frame list has no main frame.']);

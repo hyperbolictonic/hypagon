@@ -1,6 +1,7 @@
 import type { WebContents } from 'electron';
 import type { HumanizedInputSimulator } from '../telemetry/input-simulator.js';
 import { evaluateInFrames } from '../browser/frame-eval.js';
+import { ElectronTarget } from '../../../packages/electron/src/target.ts';
 
 /** When to use: the shield-breaker reply — dismissed/blocked, the chosen control and the intent. */
 export interface ShieldDismissResult {
@@ -175,7 +176,7 @@ export class ShieldBreaker {
       //    Sourcepoint (Guardian) and some Quantcast setups render the whole banner inside a
       //    cross-origin iframe, which the main-frame scan can never see.
       if (main && main.frameCount > 0) {
-        const frames = await evaluateInFrames(wc, scan, { maxFrames: 6, timeoutMs: 2000 }).catch(() => []);
+        const frames = await evaluateInFrames(new ElectronTarget(wc), scan, { maxFrames: 6, timeoutMs: 2000 }).catch(() => []);
         const child = frames.find((f) => f.ok && (f.value as any)?.found);
         if (child) {
           const match = child.value as any;
@@ -274,7 +275,7 @@ export class ShieldBreaker {
   /** Fallback: click the marked control wherever it lives (the marker makes the frame self-select). */
   private async clickMarkedInFrame(wc: WebContents): Promise<boolean> {
     const frames = await evaluateInFrames(
-      wc,
+      new ElectronTarget(wc),
       `(() => { const el = document.querySelector('[${MARK_ATTR}]'); if (!el) return false; el.click(); return true; })()`,
       { maxFrames: 6, timeoutMs: 2000 }
     ).catch(() => []);

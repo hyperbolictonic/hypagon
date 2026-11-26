@@ -135,7 +135,7 @@ export class MarksSurface {
    */
   private async resolveMarkTarget(wc: WebContents, markId: number) {
     const target = markId >= 100
-      ? await resolveFrameMark(wc, markId)
+      ? await resolveFrameMark(new ElectronTarget(wc), markId)
       : await this.deps.marksOverlay.getMarkTarget(new ElectronTarget(wc), markId);
     if (!target) {
       throw new Error(`Mark #${markId} not found. Call find(include_frames:true) or take_annotated_screenshot() to refresh marks.`);

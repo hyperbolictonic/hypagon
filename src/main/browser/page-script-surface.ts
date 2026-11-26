@@ -8,6 +8,7 @@
  */
 import type { WebContents } from 'electron';
 import { evaluateInFrames, type FrameEvalOptions, type FrameEvalResult } from './frame-eval.js';
+import { ElectronTarget } from '../../../packages/electron/src/target.ts';
 import { controlFactsExpression, parseControlFacts, type ControlFacts, type ControlFactsOptions } from '../primitives/control-facts.js';
 import { assertShadowSurface } from '../shadow-walk/guard.js';
 
@@ -35,7 +36,7 @@ export class PageScriptSurface {
   async evaluateInFrames(script: string, options?: FrameEvalOptions): Promise<FrameEvalResult[]> {
     const wc = this.deps.activeWebContents();
     this.deps.log('action', `MCP Directive: evaluate_in_frames(${options?.maxFrames ?? 8} max)`);
-    return evaluateInFrames(wc, script, options);
+    return evaluateInFrames(new ElectronTarget(wc), script, options);
   }
 
   /**

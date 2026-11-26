@@ -14,6 +14,7 @@ import type { WebContents } from 'electron';
 import { bump } from '../metrics.js';
 import { listFrames } from '../browser/frames.js';
 import { discoverFrames } from '../browser/frame-tree.js';
+import { ElectronTarget } from '../../../packages/electron/src/target.ts';
 import { contentRect } from './cdp.js';
 
 interface SealedTarget {
@@ -60,11 +61,11 @@ export async function resolveSealedToken(
   const entry = targets.get(wc)?.get(String(token || ''));
   if (!entry || entry.expiresAt < Date.now()) return null;
 
-  const frames = await listFrames(wc, { maxFrames: 16 });
+  const frames = await listFrames(new ElectronTarget(wc), { maxFrames: 16 });
   const frame = frames.find((f) => f.frameId === entry.frameId);
   if (!frame) return null;
 
-  const ctx = await discoverFrames(wc, { maxFrames: 16 });
+  const ctx = await discoverFrames(new ElectronTarget(wc), { maxFrames: 16 });
   try {
     const session = ctx.sessionFor(entry.frameId);
     await ctx.send(session, 'DOM.scrollIntoViewIfNeeded', { backendNodeId: entry.backendNodeId });

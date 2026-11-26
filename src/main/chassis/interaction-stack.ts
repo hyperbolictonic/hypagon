@@ -12,6 +12,8 @@ import { HilSurface } from '../hil/hil-surface.js';
 import { ActionLedger } from '../telemetry/action-ledger.js';
 import { Primitives } from '../primitives/primitives.js';
 import { resolveFrameMark } from '../browser/frame-marks.js';
+import { setFrameCommandObserver } from '../browser/frame-tree.js';
+import { bump } from '../metrics.js';
 import { ElectronTarget } from '../../../packages/electron/src/target.ts';import { resolveSealedToken } from '../shadow-walk/sealed-targets.js';
 import { loadShadowWalkSettings } from '../shadow-walk/settings.js';
 import { dataPath } from '../data-paths.js';
@@ -29,6 +31,9 @@ export interface InteractionStack {
 
 /** When to use: the chassis constructor — build HIL, the ledger and primitives once. */
 export function createInteractionStack(host: ChassisHost): InteractionStack {
+  // Frame discovery sends CDP commands through the SDK sender; keep the shared cdp counter honest.
+  setFrameCommandObserver(() => bump('cdp.frame'));
+
   const hil = new HilSurface({
     activeWebContents: () => {
       try {
@@ -78,7 +83,7 @@ export function createInteractionStack(host: ChassisHost): InteractionStack {
     getMarks: () => host.marks.getActive(),
     getMarkTarget: (id) =>
       Number(id) >= 100
-        ? resolveFrameMark(activeWebContents(host), Number(id))
+        ? resolveFrameMark(new ElectronTarget(activeWebContents(host)), Number(id))
         : host.marksOverlay.getMarkTarget(new ElectronTarget(activeWebContents(host)), id),
     getFrames: (opts) => host.shadow.getFrames(opts),
     evaluateInFrames: (script, opts) => host.page.evaluateInFrames(script, opts),
