@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 436 files, 1146 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 436 files, 1144 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (855)
+## Types (853)
 
 | File | Export | When to use |
 |---|---|---|
@@ -574,8 +574,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/tabs/window-open-policy.ts` | `PopupSize` *(type)* | When to use: a sign-in popup — the window size parsed from its features string. |
 | `main/telemetry/action-ledger.ts` | `ActionLedger` | When to use: the primitives layer recording each action, and `/ledger` reading it back. |
 | `main/telemetry/action-ledger.ts` | `ActionLedgerOptions` *(type)* | When to use: constructing the ledger — its directory, rotation size and log sink. |
-| `main/telemetry/host-fingerprint.ts` | `detectHostBrowserProfile` | Clean, zero-subprocess host browser profile detector. |
-| `main/telemetry/host-fingerprint.ts` | `HostBrowserProfile` *(type)* | When to use: telemetry and the static tier — the host browser's UA and client-hint profile. |
 | `main/telemetry/input-simulator.ts` | `HumanizedInputSimulator` | When to use: act/drive and the shield breaker — dispatch humanised pointer and keyboard input. |
 | `main/telemetry/input-simulator.ts` | `SimulatorPointer` *(type)* | The pointer methods that still take the app's `WebContents`. |
 | `main/telemetry/input-simulator.ts` | `SimulatorKeyboard` *(type)* | The keyboard methods that still take the app's `WebContents`. |

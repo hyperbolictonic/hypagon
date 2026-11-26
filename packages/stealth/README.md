@@ -41,9 +41,9 @@ change.
 ## Status
 
 `0.1.0`, private. Extracted: the movement engine, key tables, ghost cursor,
-human-activity detection, profile pacing and the portable pointer/keyboard driver.
-Still app-side: the host fingerprint/profile probe, the consent shield and sealed
-(closed shadow root) scanning.
+human-activity detection, profile pacing, the portable pointer/keyboard driver and
+the host browser fingerprint/profile probe. Still app-side: the consent shield and
+sealed (closed shadow root) scanning.
 
 ## Scripts
 
