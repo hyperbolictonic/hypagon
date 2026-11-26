@@ -1,0 +1,32 @@
+{
+  "name": "@hyperbolictonic/hypagon-research",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Portable research layer for Hypagon: search hub, crawler, researcher and citation anchors over injected fetch/render ports.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test test/search.test.ts test/crawler.test.ts"
+  },
+  "dependencies": {
+    "hypagon-scrap": "^0.1.1"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "keywords": [
+    "research",
+    "search",
+    "crawler",
+    "citations",
+    "agent"
+  ]
+}

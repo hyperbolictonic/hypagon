@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 437 files, 1123 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 437 files, 1088 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (834)
+## Types (800)
 
 | File | Export | When to use |
 |---|---|---|
@@ -101,15 +101,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/cortex/types.ts` | `BookmarkItem` *(type)* | When to use: a bookmark as the HUD reads it. |
 | `main/cortex/types.ts` | `ScriptRow` *(type)* | When to use: a saved script as stored in `scripts`. |
 | `main/cortex/types.ts` | `ScriptItem` *(type)* | When to use: a saved script as the HUD and the tool surface read it. |
-| `main/crawl/crawler.ts` | `normalizeUrl` | Strips the fragment so `/a` and `/a#x` are one page. |
-| `main/crawl/crawler.ts` | `matchesAnyPattern` | True when the URL matches any pattern (glob by default, `/regex/` when wrapped in slashes). |
-| `main/crawl/crawler.ts` | `linksFromMarkdown` | Extracts absolute links from Markdown (`[text](href)`), resolved against the page URL. |
-| `main/crawl/crawler.ts` | `Crawler` | When to use: `deep_crawl` and a research run — one BFS crawl over the research session. |
-| `main/crawl/crawler.ts` | `HumanAssistInfo` *(type)* | When to use: the crawler's `onHuman` callback — a page needs a person (needed) and later does not (done). |
-| `main/crawl/crawler.ts` | `CrawlOptions` *(type)* | When to use: `deep_crawl` and a research run — the seed, the depth/page budgets, the scope and the per-page flags. |
-| `main/crawl/crawler.ts` | `CrawlPage` *(type)* | When to use: one row of a crawl result and the research feed's source events. |
-| `main/crawl/crawler.ts` | `CrawlOutcome` *(type)* | When to use: the `deep_crawl` reply — pages, depth reached, indexing count and truncation. |
-| `main/crawl/crawler.ts` | `CrawlerDeps` *(type)* | When to use: building the chassis — the tier readers and handlers a crawl composes. |
 | `main/decide/decision-guard.ts` | `validateAnswers` | Validate one answer set. Returns the offending (question, option) pairs so the caller can |
 | `main/decide/decision-guard.ts` | `decideGuarded` | Ask, validate, eliminate, repeat. `maxAttempts` includes the first call (default 3). |
 | `main/decide/decision-guard.ts` | `DecisionGuard` *(type)* | When to use: `decideGuarded` and the decide route — the confidence floor, the allowed operations and the offered components. |
@@ -414,12 +405,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/remote/tunnel.ts` | `RemoteTunnelDeps` *(type)* | When to use: the service constructor — the paths and the gateway it fronts. |
 | `main/research/anchor-store.ts` | `AnchorStore` | When to use: `revalidate_citations` and research — persist anchors and record their re-checks. |
 | `main/research/anchor-store.ts` | `StoredAnchor` *(type)* | When to use: one durable citation anchor and its last revalidation outcome. |
-| `main/research/anchors.ts` | `relocateCitation` | Revalidate a stored anchor against fresh HTML. |
-| `main/research/anchors.ts` | `relocateCitations` | When to use: `revalidate_citations` — re-check a page's stored anchors in small batches. |
-| `main/research/anchors.ts` | `anchorHighlights` | When to use: `research_topic` and the crawl feed — pick the query-relevant blocks and fingerprint them. |
-| `main/research/anchors.ts` | `CitationAnchor` *(type)* | When to use: storing one extracted highlight with the DOM fingerprint that lets a later run relocate it. |
-| `main/research/anchors.ts` | `CitationCandidate` *(type)* | When to use: a near-miss row in a `CitationRelocation` — structural score versus text similarity. |
-| `main/research/anchors.ts` | `CitationRelocation` *(type)* | When to use: the revalidation result for one anchor — found, score/path/text, ranked candidates and the fetch tier. |
 | `main/research/citation-anchors.ts` | `CitationAnchors` | When to use: `CitationController` — the anchors and the fetch it revalidates with. |
 | `main/research/citation-anchors.ts` | `RevalidationSummary` *(type)* | The outcome of revalidating stored anchors across URLs. |
 | `main/research/citation-controller.ts` | `CitationController` | When to use: the chassis — own the anchors, the hand-off and the fetch policy. |
@@ -448,12 +433,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/research-session-surface.ts` | `ResearchSessionSurfaceDeps` *(type)* | Dependencies the research session surface needs to boot its isolated session. |
 | `main/research/research-view-surface.ts` | `ResearchViewSurface` | The detached research view and the citation/hand-off pipeline over it. |
 | `main/research/research-view-surface.ts` | `ResearchViewSurfaceDeps` *(type)* | Dependencies the research view needs from the window and the HIL manager. |
-| `main/research/researcher.ts` | `extractHighlights` | Extractive highlights: paragraphs of the source that mention the most query terms, best first. |
-| `main/research/researcher.ts` | `Researcher` | When to use: `research_topic` — search, then fetch and distill each source, then index it. |
-| `main/research/researcher.ts` | `ResearchOptions` *(type)* | When to use: `research_topic` — the query plus the source budget, engine chain and acquisition toggles. |
-| `main/research/researcher.ts` | `ResearchSource` *(type)* | When to use: one gathered source in the research feed — rank, tier, timing, highlights and anchors. |
-| `main/research/researcher.ts` | `ResearchOutcome` *(type)* | When to use: the `research_topic` reply — sources, Cortex counts, tier totals and search attempts. |
-| `main/research/researcher.ts` | `ResearcherDeps` *(type)* | When to use: wiring the researcher — the search hub, the crawler, logging and live run events. |
 | `main/research/session-controller.ts` | `ResearchSessionController` | When to use: the chassis — own the stealth research session, its settings and WAF cooldowns. |
 | `main/research/session-controller.ts` | `ResearchSessionDeps` *(type)* | When to use: building the chassis — the collaborators the research session reads through. |
 | `main/research/settings.ts` | `normalizeResearchSettings` | When to use: saving or loading the research settings — coerce and validate every field against its range. |
@@ -465,19 +444,10 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/research/settings.ts` | `ResearchSettingsResult` *(type)* | When to use: the save result — the normalized settings plus the human-readable validation errors. |
 | `main/research/stealth-session.ts` | `StealthSession` | When to use: `ResearchSessionController.stealth` — one per controller. |
 | `main/research/stealth-session.ts` | `StealthSessionDeps` *(type)* | When to use: `new ResearchSessionController` — the profile the session must present. |
-| `main/research/surface-activity.ts` | `SurfaceActivityDeps` *(type)* | The activity feed + directive log every research surface takes. |
 | `main/scripts/script-vault.ts` | `ScriptVault` | When to use: `save_script`/`list_scripts`/`run_script` — store scripts and index them in Cortex. |
 | `main/scripts/script-vault.ts` | `SavedScriptMeta` *(type)* | When to use: the script vault — one saved script's name, code, domain and tags. |
 | `main/scripts/scripts-surface.ts` | `ScriptsSurface` | The saved-script vault behind the script routes. |
 | `main/scripts/scripts-surface.ts` | `ScriptsSurfaceDeps` *(type)* | Dependencies the script surface needs from the active tab and telemetry. |
-| `main/search/search-engine.ts` | `engineHost` | The host an engine loads in; the custom engine resolves the settings template. |
-| `main/search/search-engine.ts` | `KNOWN_ENGINES` | When to use: validating `engine`/`engines` and naming the custom template engine. |
-| `main/search/search-engine.ts` | `DEFAULT_ENGINE_CHAIN` | Default fallback chain: JS-free, consent-resistant providers first; Google last (it challenges often). |
-| `main/search/search-engine.ts` | `SearchHub` | When to use: `search_web` — run a query in a detached view and fall back across engines. |
-| `main/search/search-engine.ts` | `SearchResult` *(type)* | `search_web` — a configurable, multi-engine search hub (TODO_RESEARCH_CRAWL.md §5, Feature 5). |
-| `main/search/search-engine.ts` | `SearchAttempt` *(type)* | When to use: one engine try in the reply — result count, blocked flag and error. |
-| `main/search/search-engine.ts` | `SearchOutcome` *(type)* | When to use: the `search_web` reply — chosen engine, ranked results and every attempt. |
-| `main/search/search-engine.ts` | `SearchHubDeps` *(type)* | When to use: constructing the hub — the detached loader and the log sink. |
 | `main/search/search-surface.ts` | `SearchSurface` | The agent-facing web-search adapter over SearchHub. |
 | `main/search/search-surface.ts` | `SearchPolicyTarget` *(type)* | The subset of search options the engine policy rewrites. |
 | `main/search/search-surface.ts` | `SearchSurfaceDeps` *(type)* | Dependencies the search surface needs from the research policy and hub. |
@@ -808,10 +778,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/remote.ts` | `RemoteTunnelStatus` *(type)* | When to use: the Remote panel and `remote_status` — the tunnel state, hostname and error. |
 | `shared/remote.ts` | `RemoteStatus` *(type)* | When to use: `remote_status` and Settings — the gateway plus both cloudflared and tunnel halves. |
 | `shared/remote.ts` | `RemoteInfo` *(type)* | When to use: the connect-info read — everything a client needs to point at this app. |
-| `shared/research-events.ts` | `ResearchTier` *(type)* | Research run events. |
-| `shared/research-events.ts` | `ResearchEscalation` *(type)* | When to use: a research event that moved to the render tier, and the outcome carrying its reason. |
-| `shared/research-events.ts` | `ResearchAnchorDetail` *(type)* | When to use: a source's captured anchor — text, path and fingerprint for revalidation. |
-| `shared/research-events.ts` | `ResearchEvent` *(type)* | When to use: `onResearchEvent` — the run timeline the panel renders and the agent observes. |
 | `shared/tool-instructions.ts` | `normalizeInstructionMap` | When to use: `instructions` — a name → text map from persisted settings or the bridge. |
 | `shared/tool-instructions.ts` | `normalizeActionInstructions` | When to use: `actionInstructions` — a tool → action → text map. |
 | `shared/tool-instructions.ts` | `InstructionLimits` *(type)* | When to use: the callers that need an allow-list and/or a length cap. |
@@ -856,7 +822,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | When to use: the persisted zoom policy file. |
 | `shared/zoom.ts` | `ZoomState` *(type)* | When to use: the zoom readout, the status consumers and `browser_zoom`. |
 
-## Modules (283)
+## Modules (282)
 
 | File | Export | When to use |
 |---|---|---|
@@ -971,7 +937,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/prerender/view-factory.ts` | `spawnPrerenderView` | When to use: `PrerenderEngine.prerender` — one warm view for `targetUrl`, |
 | `main/remote/cloudflared.ts` | `findCloudflared` | Find cloudflared without installing or downloading it. |
 | `main/remote/ipc.ts` | `registerRemoteIpc` | When to use: main-process startup — register every `remote:*` channel. The |
-| `main/research/errors.ts` | `researchError` | When to use: a research failure an agent should see by code rather than by message. |
 | `main/research/handoff-probe.ts` | `ACTIONABLE_PROBE` | When to use: `HumanHandoff.probeActionable` — the actionable-page probe. |
 | `main/security/capability-token.ts` | `tokenPathIn` | The token file path inside a capability directory. |
 | `main/security/capability-token.ts` | `createCapabilityToken` | Create (or rotate) the token in `dir`. The caller owns the directory. |

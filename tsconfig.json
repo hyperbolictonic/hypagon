@@ -3,7 +3,11 @@
     "target": "ESNext",
     "useDefineForClassFields": true,
     "module": "ESNext",
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ESNext",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
@@ -16,10 +20,21 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@hyperbolictonic/hypagon-browser": ["./packages/browser/src/index.ts"],
-      "@hyperbolictonic/hypagon-electron": ["./packages/electron/src/index.ts"],
-      "@hyperbolictonic/hypagon-stealth": ["./packages/stealth/src/index.ts"]
+      "@hyperbolictonic/hypagon-browser": [
+        "./packages/browser/src/index.ts"
+      ],
+      "@hyperbolictonic/hypagon-electron": [
+        "./packages/electron/src/index.ts"
+      ],
+      "@hyperbolictonic/hypagon-stealth": [
+        "./packages/stealth/src/index.ts"
+      ],
+      "@hyperbolictonic/hypagon-research": [
+        "./packages/research/src/index.ts"
+      ]
     }
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }

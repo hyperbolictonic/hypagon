@@ -1,14 +1,6 @@
 /**
- * The research error contract: every research surface throws an Error carrying a stable `code`
- * the bridge and the agent can branch on.
+ * The research error contract.
  *
- * Why a module: the citation controller, the crawl orchestrator, the LLM stack and the cooldown
- * policy all need it, and keeping it in any one of them made the others import that module.
+ * The implementation lives in the research package; this file keeps the existing app import path.
  */
-
-/** When to use: a research failure an agent should see by code rather than by message. */
-export function researchError(code: string, message: string): Error & { code: string } {
-  const error = new Error(message) as Error & { code: string };
-  error.code = code;
-  return error;
-}
+export * from '../../../packages/research/src/errors.ts';

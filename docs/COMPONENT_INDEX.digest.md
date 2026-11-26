@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-437 modules, 1123 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+437 modules, 1088 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -44,7 +44,6 @@
 | `main/cortex/script-identity.ts` | 2: scriptId, domainMatches |
 | `main/cortex/script-store.ts` | 1: ScriptStore |
 | `main/cortex/types.ts` | 12: tokenizeQuery, toStringArray, bookmarkSearchText, cosineSimilarity, PageHistoryRow, BookmarkRow, RecallResult, HistoryItem, … (12) |
-| `main/crawl/crawler.ts` | 9: normalizeUrl, matchesAnyPattern, linksFromMarkdown, Crawler, HumanAssistInfo, CrawlOptions, CrawlPage, CrawlOutcome, … (9) |
 | `main/data-paths.ts` | 3: dataRoot, dataPath, writeJsonAtomic |
 | `main/decide/config.ts` | 4: resolveDecisionConfig, readStoredDecisionConfig, saveDecisionConfig, decisionStatus |
 | `main/decide/decision-client.ts` | 1: runDecision |
@@ -126,7 +125,8 @@
 | `main/jev/policy-gate.ts` | 2: JevPolicyGate, JevPolicy |
 | `main/jev/policy.ts` | 6: decideFunnel, DEFAULT_FUNNEL_MIN_TOKENS, FunnelBreaker, FunnelReason, FunnelInput, FunnelDecision |
 | `main/llm/alternates.ts` | 1: readAlternates |
+| `main/llm/llm-surface.ts` | 1: LlmSurface |
 
-… and 262 more module(s) — grep the full index.
+… and 255 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

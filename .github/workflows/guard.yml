@@ -44,5 +44,7 @@ jobs:
         run: npm run typecheck:electron
       - name: Stealth package types
         run: npm run typecheck:stealth
+      - name: Research package types
+        run: npm run typecheck:research
       - name: SDK tests
         run: npm run test:sdk
