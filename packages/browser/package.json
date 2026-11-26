@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test test/state-controller.test.ts test/targeting.test.ts test/controllers.test.ts test/act.test.ts"
+    "test": "node --test test/state-controller.test.ts test/targeting.test.ts test/controllers.test.ts test/act.test.ts test/harvester.test.ts"
   },
   "engines": {
     "node": ">=22.18"
@@ -25,5 +25,14 @@
     "cdp",
     "electron",
     "mcp"
-  ]
+  ],
+  "dependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "jsdom": "^30.1.2",
+    "turndown": "^7.2.4"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^30.0.0",
+    "@types/turndown": "^5.0.6"
+  }
 }

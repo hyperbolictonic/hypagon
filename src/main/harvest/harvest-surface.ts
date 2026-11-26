@@ -11,6 +11,7 @@ import type { ZoomState } from '../../shared/zoom.js';
 import type { ConstructHarvester } from '../harvester/markdown.js';
 import type { ScreenshotStore, ScreenshotPayload } from './screenshots.js';
 import { captureComposedDom } from '../harvester/dom-serializer.js';
+import { ElectronTarget } from '../../../packages/electron/src/target.ts';
 import type { MarksOverlay, MarkItem } from '../marks/marks-overlay.js';
 import type { MarksSurface } from '../marks/marks-surface.js';
 import type { TabInstance } from '../tabs/tab-manager.js';
@@ -199,7 +200,7 @@ export class HarvestSurface {
       await this.deps.marksOverlay.removeMarks(wc); // Strips visual badges, keeps data-mark-id
     }
 
-    const composed = await captureComposedDom(wc);
+    const composed = await captureComposedDom(new ElectronTarget(wc));
     const rawHtml = composed.html;
     const url = wc.getURL();
     const title = wc.getTitle();
@@ -224,7 +225,7 @@ export class HarvestSurface {
       if (!url || url === 'about:blank' || url.startsWith('mark-eleven:') || url.startsWith('file:')) return;
 
       const wc = tab.view.webContents;
-      const composed = await captureComposedDom(wc);
+      const composed = await captureComposedDom(new ElectronTarget(wc));
       const rawHtml = composed.html;
       const construct = this.deps.harvester.harvest(rawHtml, url, title, { shadowRoots: composed.shadowRoots });
       const indexedCount = await this.deps.indexPage(url, construct.title, construct.content);
