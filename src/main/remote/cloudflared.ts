@@ -12,7 +12,9 @@ const COMMON_PATHS = [
 
 function usable(file: string): boolean {
   try {
-    return fs.statSync(file).isFile();
+    if (!fs.statSync(file).isFile()) return false;
+    if (process.platform !== 'win32') fs.accessSync(file, fs.constants.X_OK);
+    return true;
   } catch {
     return false;
   }
@@ -37,11 +39,18 @@ export function findCloudflared(explicit?: string, managedPath?: string): string
 
 function searchPath(command: string): string | undefined {
   const raw = process.env.PATH || '';
-  const names =
+  const lower = command.toLowerCase();
+  const exts =
     process.platform === 'win32'
-      ? command.toLowerCase().endsWith('.exe')
-        ? [command]
-        : [command, `${command}.exe`, `${command}.cmd`, `${command}.bat`]
+      ? (process.env.PATHEXT || '.COM;.EXE;.BAT;.CMD')
+          .split(';')
+          .map((extension) => extension.trim().toLowerCase())
+          .filter(Boolean)
+          .map((extension) => (extension.startsWith('.') ? extension : `.${extension}`))
+      : [];
+  const names =
+    exts.length > 0 && !exts.some((extension) => lower.endsWith(extension))
+      ? [command, ...exts.map((extension) => `${command}${extension}`)]
       : [command];
   for (const directory of raw.split(path.delimiter)) {
     if (!directory) continue;

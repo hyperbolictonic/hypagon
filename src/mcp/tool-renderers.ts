@@ -27,8 +27,8 @@ const textOf = (tool: any, data: any, args: any): string =>
 const imagesOf = (data: any): any[] => (Array.isArray(data?.images) ? data.images : []);
 
 /** media_preview: text summary plus one image per visible frame. */
-export const renderMediaPreview: ToolRenderer = (tool, data) => {
-  const content: any[] = [{ type: 'text', text: textOf(tool, data, {}) }];
+export const renderMediaPreview: ToolRenderer = (tool, data, args) => {
+  const content: any[] = [{ type: 'text', text: textOf(tool, data, args) }];
   const images = imagesOf(data);
   for (const image of images) {
     if (typeof image?.base64 !== 'string' || image.base64 === '') continue;

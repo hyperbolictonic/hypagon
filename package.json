@@ -40,6 +40,7 @@
     "test:mcp-http": "node --test packages/mcp-http/test/host.test.ts",
     "typecheck:cloudflared": "tsc -p packages/cloudflared/tsconfig.json",
     "test:cloudflared": "node --test packages/cloudflared/test/manager.test.ts",
+    "test:cloudflared:lookup": "node --test scripts/test-cloudflared-path.mjs",
     "typecheck:cloudflared-tunnel": "tsc -p packages/cloudflared-tunnel/tsconfig.json",
     "test:cloudflared-tunnel": "node --test packages/cloudflared-tunnel/test/tunnel.test.ts",
     "typecheck:mcp-oauth": "tsc -p packages/mcp-oauth/tsconfig.json",

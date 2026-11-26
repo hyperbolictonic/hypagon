@@ -3,7 +3,7 @@
  *
  * Why a module: a frame scan returns the main frame plus every child frame, and
  * both the observe path and the find path need the same filter — skip the main
- * frame, and keep only controls the are registered for live resolution (the
+ * frame, and keep only controls that are registered for live resolution (the
  * main frame owns 1..99, child controls start at 100). Two copies of that walk
  * were the last duplication left in `primitives.ts`.
  */
