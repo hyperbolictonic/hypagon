@@ -29,7 +29,7 @@ export function scanExtensions(config) {
   return null;
 }
 
-const KNOWN_SECTIONS = new Set(['duplicates', 'modularity', 'docs', 'imports', 'classLiterals', 'encoding', 'scan', '$schema', '_comment']);
+const KNOWN_SECTIONS = new Set(['duplicates', 'modularity', 'docs', 'imports', 'classLiterals', 'encoding', 'review', 'scan', '$schema', '_comment']);
 
 /** Keys each section accepts. Anything else is a typo or an attempt to tune
  * the gate away; either way it must not be ignored silently. */
@@ -39,6 +39,7 @@ const KNOWN_SECTION_KEYS = {
   docs: new Set(['src', 'ignorePaths', 'ignoreExports']),
   imports: new Set(['src', 'deny']),
   classLiterals: new Set(['src', 'minOccurrences', 'allow']),
+  review: new Set(['enabled', 'maxFiles', 'maxLines', 'riskPaths', 'autonomy']),
   encoding: new Set(['ignorePaths']),
   scan: new Set(['extensions']),
 };
@@ -105,6 +106,14 @@ function validateConfig(parsed) {
   arr('encoding', 'ignorePaths');
   num('classLiterals', 'minOccurrences');
   arr('classLiterals', 'allow');
+  bool('review', 'enabled');
+  num('review', 'maxFiles');
+  num('review', 'maxLines');
+  arr('review', 'riskPaths');
+  const autonomy = parsed.review?.autonomy;
+  if (autonomy !== undefined && !['ask', 'auto'].includes(autonomy)) {
+    warns.push('review.autonomy must be "ask" or "auto"');
+  }
   arr('scan', 'extensions');
   if (parsed.imports?.deny !== undefined && !Array.isArray(parsed.imports.deny)) {
     warns.push('imports.deny must be an array of { from, forbid } rules');

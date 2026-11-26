@@ -110,7 +110,31 @@ redistribution test and include the band map in the report: a split whose
 membership came from the old file's comments or line order is slop
 redistribution, even when every gate is green.
 
-## 8. Report
+## 8. Propose an independent review
+
+`node scripts/anti-slop/review-scope.mjs` decides whether review is warranted —
+size (≥5 files / ≥200 lines), renames, or a risk path — and prints
+`[review] needed` with reasons, or `[review] skip`. It is deterministic and
+free. Then:
+
+- **`review.enabled: false`** — the repo already has a review system of its own.
+  Do not run `/review`, do not propose it, and skip the cadence question in
+  `/deslop` autopilot. Say so once in the report and carry on; the gates are
+  unaffected.
+- **`review.autonomy: "ask"` (default)** — propose `/review` once, with the
+  reasons, and wait. Do not run it unprompted; review costs tokens.
+- **`review.autonomy: "auto"`** — follow the cadence agreed for the batch (see
+  `/deslop` autopilot) and run `/review` without asking again.
+
+**Consent is per batch, not per event.** In a long session or an autopilot
+de-slop, never stop at every band to ask; agree a cadence once, then follow it.
+If the user declines review entirely, note it in the report and continue.
+
+The reviewer looks for genuine flaws, not for something to say: a clean
+`accept` with no findings is a valid result. Report it as-is — do not re-run the
+review hoping for a different verdict, and do not ask it to "look harder".
+
+## 9. Report
 
 End the task with a short summary: checks run, results, files touched, and any
 pre-existing issues you noticed but did not fix (report, don't drive-by-fix).

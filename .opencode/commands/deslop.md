@@ -99,3 +99,21 @@ each, and update the acceptance table. With a queue, walk it in order — one fi
 at a time, stopping at the first rejection and reporting it rather than
 continuing to "make progress". If a step cannot meet the table, stop and report
 the blocker rather than adjusting the plan to fit the gates.
+
+## Autopilot (apply) — ask once, then run
+
+A batch de-slop must not stop for approval at every band. Before the first
+change, ask **once** for a review cadence and record it:
+
+- **`off`** — gates only, no reviewer.
+- **`risk`** (default for autopilot) — review when `review-scope` flags a risk
+  path, plus one review of the whole batch at the end.
+- **`end`** — one review of the whole batch when the queue finishes.
+- **`each`** — review after every band commit (expensive; cap the number of
+  runs you will spend before you start and say so).
+
+Then follow it without further prompts: log each verdict, stop the queue on
+`Reject`, and report all verdicts together at the end. `review.autonomy: "auto"`
+in `anti-slop.config.json` is the repo default; the per-run choice overrides it.
+If `review.enabled` is `false` (or the user says they have their own review
+system), skip the question entirely and run with gates only.

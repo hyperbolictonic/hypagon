@@ -190,15 +190,26 @@ export function applyIgnorePaths(files, globs, { label = 'ignorePaths', src } = 
   return kept;
 }
 
-/** Convert a glob (`**`, `*`, `?`) into a RegExp tested against '/'-separated rel paths. */
+/**
+ * Convert a glob (`**`, `*`, `?`) into a RegExp tested against '/'-separated
+ * rel paths. `**\/` matches zero or more directories, like minimatch: the
+ * documented `src/**\/payments/**` must catch `src/payments/charge.ts` and not
+ * only `src/billing/payments/charge.ts`, or a risk-path rule silently misses
+ * the shortest (and most common) layout.
+ */
 export function globToRegex(glob) {
   let pattern = '';
   for (let i = 0; i < glob.length; i++) {
     const c = glob[i];
     if (c === '*') {
       if (glob[i + 1] === '*') {
-        pattern += '[\\s\\S]*';
-        i++;
+        if (glob[i + 2] === '/') {
+          pattern += '(?:[\\s\\S]*/)?';
+          i += 2;
+        } else {
+          pattern += '[\\s\\S]*';
+          i++;
+        }
       } else {
         pattern += '[^/]*';
       }

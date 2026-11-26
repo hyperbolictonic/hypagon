@@ -1,4 +1,5 @@
 {
+  "$schema": "./anti-slop.schema.json",
   "duplicates": {
     "src": "src",
     "minTokens": 50,
@@ -19,6 +20,20 @@
   "classLiterals": {
     "src": "src",
     "minOccurrences": 4
+  },
+  "review": {
+    "enabled": true,
+    "maxFiles": 5,
+    "maxLines": 200,
+    "riskPaths": [
+      "src/main/remote/**",
+      "src/main/security/**",
+      "src/main/wrap/**",
+      "src/main/ipc/**",
+      "src/mcp/**",
+      ".github/workflows/**"
+    ],
+    "autonomy": "ask"
   },
   "encoding": {
     "ignorePaths": []

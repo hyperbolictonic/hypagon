@@ -1,23 +1,22 @@
 ---
-description: Launch the read-only deslop-reviewer subagent on the current diff (banding, fake seams, moved debt, weakened tests)
+description: De-slop review of the current diff — launches the read-only code-reviewer with a refactor focus (banding, ledger, moved debt)
 ---
 
-Use the `deslop-reviewer` subagent to review the current changes. It is
-read-only and runs in its own session, so this costs tokens — use it after a
-de-slop, a split, or a substantial refactor, not for every commit.
+Use the `code-reviewer` subagent to review the current changes **as a
+refactor**. It is read-only and runs in its own session, so this costs tokens.
 
 Base: $ARGUMENTS. If empty, use the merge-base with origin/main, then
-origin/master, then HEAD~1.
+origin/master, then the parent commit. Review the working tree too
+(`git diff <base>`), not only pushed commits.
 
-Before launching, collect what the reviewer needs and pass it in the prompt:
+Pass in the prompt, and say explicitly that the change is a de-slop/split:
 
 1. The base ref and `git diff --stat <base>...HEAD`.
-2. The task's band map, verbatim, if one was produced. If there is none and the
-   change claims a split, say that explicitly — the reviewer treats it as a
-   finding.
-3. The current gate output (`npm run gates` or the repo's equivalent).
-4. Whether the baseline or any `// anti-slop:` exception changed in this diff.
+2. The band map and behaviour ledger, verbatim. If there is none and the change
+   claims a split, say so — that is a finding.
+3. Gate output, and whether the baseline or an `// anti-slop:` exception changed.
+4. Any claim the implementing agent made about "no behaviour change".
 
-Then report the reviewer's verdict and findings to the user unchanged. Do not
-act on the findings without approval — and if the verdict is "Reject", do not
-start a second attempt before the band map is corrected.
+Ask the reviewer to weigh the de-slop checks first (banding vs line order, fake
+seams, moved debt, weakened tests, dual implementation) and the general
+correctness/security checks second. Report its verdict unchanged.

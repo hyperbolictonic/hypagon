@@ -96,6 +96,11 @@ test('globToRegex: ** crosses directories, * stays within one', () => {
   assert.ok(globToRegex('collections/**').test('collections/nested/Clients.ts'));
   assert.ok(!globToRegex('collections/**').test('src/collections/Clients.ts'));
   assert.ok(globToRegex('app/(payload)/**').test('app/(payload)/admin/page.tsx'));
+  // `**/` is zero or more directories, so the documented risk-path form works
+  // at the top level too (a silent miss here would disable a security rule).
+  assert.ok(globToRegex('src/**/payments/**').test('src/payments/charge.ts'));
+  assert.ok(globToRegex('src/**/payments/**').test('src/lib/payments/charge.ts'));
+  assert.ok(!globToRegex('src/**/payments/**').test('src/payment/charge.ts'));
   assert.ok(globToRegex('lib/*.ts').test('lib/date.ts'));
   assert.ok(!globToRegex('lib/*.ts').test('lib/deep/date.ts'));
   assert.ok(globToRegex('use?.ts').test('useA.ts'));

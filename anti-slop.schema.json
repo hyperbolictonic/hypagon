@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "anti-slop gate configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "_comment": { "type": "string" },
+    "duplicates": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "src": { "type": "string", "default": "src", "description": "directory scanned for copy/paste clones" },
+        "minTokens": { "type": "integer", "default": 50, "minimum": 10, "description": "clone window size in normalized tokens; lower = more sensitive" },
+        "threshold": { "type": "number", "default": 3, "minimum": 0, "description": "max allowed duplicated-lines percent across the scanned tree; 0 disables failing (report only). A RATIO: adding a large clean file lowers it without removing a clone, so set maxDuplicatedLines too, or keep a baseline" },
+        "maxDuplicatedLines": { "type": "integer", "minimum": 0, "description": "absolute ceiling on total duplicated lines (unset by default); immune to ratio dilution by large clean files" },
+        "ignore": { "type": "array", "items": { "type": "string" }, "description": "globs relative to the scan root for framework-idiomatic declarative files (e.g. collections/**); their repetition is shape, not logic" },
+        "includeTests": { "type": "boolean", "default": false, "description": "include *.test.*/*.spec.* files in the clone scan; catches copy-pasted test scaffolding, but table-driven tests and intentional fixture similarity add noise" }
+      }
+    },
+    "modularity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "src": { "type": "string", "default": "src" },
+        "maxFileLines": { "type": "integer", "default": 500, "description": "files over this many lines are flagged; a file over budget is decomposed by responsibility, never exempted per file" },
+        "maxFunctionLines": { "type": "integer", "default": 80, "description": "functions/methods over this many lines are flagged" },
+        "maxClassMethods": { "type": "integer", "default": 10, "description": "classes with more public methods are flagged" },
+        "maxExportsPerFile": { "type": "integer", "default": 20, "description": "declared exports per file (re-exports belong to barrels and are not counted); a junk drawer is a junk drawer even under the line budget" },
+        "softFactor": { "type": "number", "minimum": 0.1, "maximum": 1, "default": 0.8, "description": "fraction of the hard cap at which a finding starts printing a soft-band note (exit 0). Pressure without a cliff" },
+        "maxExceptions": { "type": "integer", "minimum": 0, "default": 3, "description": "per-repo cap on `// anti-slop: <limit> <value> — <reason>` declarations; more than this is a pattern, not an exception" },
+        "ignorePaths": { "type": "array", "items": { "type": "string" }, "description": "globs (scan-root- or repo-relative) for files exempt from size budgets" }
+      }
+    },
+    "docs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "src": { "type": "string", "default": "src" },
+        "ignorePaths": { "type": "array", "items": { "type": "string" }, "description": "globs for files exempt from the docs gate and excluded from the component index" },
+        "ignoreExports": { "type": "array", "items": { "type": "string" }, "description": "export names that are framework configuration, not shared surface (Next.js segment config is auto-defaulted when next.config.* exists)" }
+      }
+    },
+    "encoding": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Encoding guard tuning. Build output (dist, dist-electron, build, .output, .svelte-kit, .nuxt, release, _site, ...) is always skipped; use ignorePaths for repo-specific generated directories.",
+      "properties": {
+        "ignorePaths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "globs (scan-root- or repo-relative) exempt from the encoding gate; printed on every run like every other exemption"
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Trigger for optional independent review (review-scope.mjs). Advice only - the review itself is the human's decision.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Global switch for the optional reviewer. false = the same as uninstalling it for this repo: review-scope prints [review] disabled and no cadence is offered. Set at install time (or --no-reviewer) for teams with their own review system."
+        },
+        "maxFiles": { "type": "integer", "default": 5, "description": "changed files at or above which review is proposed" },
+        "maxLines": { "type": "integer", "default": 200, "description": "added+deleted lines at or above which review is proposed" },
+        "riskPaths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "globs that warrant review regardless of size, e.g. src/**/access/**, src/**/payments/**, **/migrations/**, .github/workflows/**"
+        },
+        "autonomy": {
+          "type": "string",
+          "enum": ["ask", "auto"],
+          "default": "ask",
+          "description": "ask: propose /review and wait for the human. auto: run it at the cadence agreed for the batch (autopilot) without asking again"
+        }
+      }
+    },
+    "scan": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Framework presets write this section: it retargets every gate at the preset's language.",
+      "properties": {
+        "extensions": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^\\.[A-Za-z0-9]+$" },
+          "description": "File extensions every gate scans, e.g. [\".cpp\", \".h\"] for JUCE. Clone detection is near-universal; the modularity brace-matcher works for C-family; the docs/import gates parse JS/TS only and print a warning when they are inert."
+        }
+      }
+    },
+    "classLiterals": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Design-system drift: counts normalised className literals (whitespace-split, sorted, interpolations stripped) and flags ones repeated across components - the skeleton the 50-token clone window cannot see.",
+      "properties": {
+        "src": { "type": "string", "default": "src" },
+        "minOccurrences": { "type": "integer", "default": 4, "minimum": 2, "description": "repetitions before a literal is flagged; raising it to pass is the lazy fix" },
+        "allow": { "type": "array", "items": { "type": "string" }, "description": "globs for modules that legitimately own a literal (e.g. components/ui/**); printed like every other exemption" }
+      }
+    },
+    "imports": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "src": { "type": "string", "default": "src" },
+        "deny": {
+          "type": "array",
+          "description": "dependency-direction rules: a file matching `from` importing a file matching `forbid` is a violation. Never baselined.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "from": { "type": "string" },
+              "forbid": { "type": "string" }
+            },
+            "required": ["from", "forbid"]
+          }
+        }
+      }
+    }
+  }
+}
