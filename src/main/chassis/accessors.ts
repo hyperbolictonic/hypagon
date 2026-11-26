@@ -14,6 +14,7 @@ import { captureScreenshotJpeg as captureJpeg } from '../capture/screenshot-jpeg
 import type { PrerenderOptions } from '../prerender/prerender-engine.js';
 import { dataPath } from '../data-paths.js';
 import type { ChassisHost } from './host.js';
+import { ElectronTarget } from '../../../packages/electron/src/target.ts';
 import { reassertViewport } from '../window/reassert-viewport.js';
 
 /** Re-assert the shell and tab views after a window/display transition. */
@@ -30,7 +31,7 @@ export function setViewportVisibility(host: ChassisHost, visible: boolean): void
 /** The active tab's web contents, with the network tap attached. */
 export function activeWebContents(host: ChassisHost): WebContents {
   const wc = host.tabSetup.requireManager().registry.active().view.webContents;
-  host.network.manager.attach(wc);
+  host.network.manager.attach(new ElectronTarget(wc));
   return wc;
 }
 

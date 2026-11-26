@@ -11,6 +11,7 @@ import { activeWebContents, bumpRevision, pageInfo } from './accessors.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ChassisHost } from './host.js';
+import { ElectronTarget } from '../../../packages/electron/src/target.ts';
 import { PageScriptSurface } from '../browser/page-script-surface.js';
 import { ResearchViewSurface } from '../research/research-view-surface.js';
 import { ShadowWalkSurface } from '../shadow-walk/shadow-surface.js';
@@ -273,7 +274,7 @@ export function createTabEvents(host: ChassisHost): ReturnType<typeof createTabE
     updateTray: (pending) =>
       host.trayManager?.updateStatus(host.state.agentStatus, host.state.tabs?.length ?? 0, pending),
     hilPending: () => !!host.hil.manager.getActiveRequest(),
-    attachNetwork: (wc) => host.network.manager.attach(wc),
+    attachNetwork: (wc) => host.network.manager.attach(new ElectronTarget(wc)),
     registerViewportTab: (tab) => host.tabSetup.viewport?.registerTab(tab),
     syncForceOpen: (wc) => host.shadow.syncForceOpen(wc),
     indexTab: (tab) => host.harvest.indexTabQuietly(tab),

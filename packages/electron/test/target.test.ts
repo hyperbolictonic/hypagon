@@ -13,8 +13,19 @@ function fakeWebContents(commandResult: unknown = { ok: true }): {
 } {
   const calls: Call[] = [];
   const listeners = new Map<string, Array<(...args: any[]) => void>>();
+  let attached = false;
   const wc = {
     id: 42,
+    isDestroyed: () => false,
+    on: (event: string, handler: (...args: any[]) => void) => {
+      listeners.set(event, [...(listeners.get(event) ?? []), handler]);
+    },
+    removeListener: (event: string, handler: (...args: any[]) => void) => {
+      listeners.set(
+        event,
+        (listeners.get(event) ?? []).filter((entry) => entry !== handler),
+      );
+    },
     loadURL: async (url: string) => {
       calls.push(['loadURL', url]);
     },
@@ -31,6 +42,11 @@ function fakeWebContents(commandResult: unknown = { ok: true }): {
       sendCommand: async (...args: unknown[]) => {
         calls.push(['cdp', ...args]);
         return commandResult;
+      },
+      isAttached: () => attached,
+      attach: (version: string) => {
+        attached = true;
+        calls.push(['attach', version]);
       },
       on: (event: string, handler: (...args: any[]) => void) => {
         listeners.set(event, [...(listeners.get(event) ?? []), handler]);
@@ -162,4 +178,25 @@ test('onCdpEvent subscribes, delivers and unsubscribes', () => {
 
 test('close is a no-op owned by the host', async () => {
   await new ElectronTarget(fakeWebContents().wc).close();
+});
+
+test('ensureAttached attaches the debugger once, and onDetach reports detach and destruction', () => {
+  const { wc, calls, listeners } = fakeWebContents();
+  const target = new ElectronTarget(wc);
+  target.ensureAttached();
+  target.ensureAttached();
+  assert.deepEqual(calls.filter((call) => call[0] === 'attach'), [['attach', '1.3']]);
+
+  let detached = 0;
+  const off = target.onDetach(() => {
+    detached += 1;
+  });
+  for (const handler of listeners.get('detach') ?? []) handler();
+  assert.equal(detached, 1);
+  for (const handler of listeners.get('destroyed') ?? []) handler();
+  assert.equal(detached, 2);
+
+  off();
+  assert.equal((listeners.get('detach') ?? []).length, 0);
+  assert.equal((listeners.get('destroyed') ?? []).length, 0);
 });

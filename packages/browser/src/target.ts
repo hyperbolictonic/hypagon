@@ -82,6 +82,10 @@ export interface BrowserTarget {
   sendCommand<T = unknown>(method: string, params?: Record<string, unknown>, sessionId?: string): Promise<T>;
   /** Subscribe to CDP events; returns the unsubscribe function. */
   onCdpEvent(listener: CdpEventListener): () => void;
+  /** Adapters that need an explicit debugger or connection may attach here (idempotent). */
+  ensureAttached?(): void;
+  /** Notify when the host detaches the debugger or destroys the view; returns the unsubscribe. */
+  onDetach?(listener: () => void): () => void;
   cookies(): Promise<BrowserCookie[]>;
   url(): string;
   /** The host owns the view; this releases any adapter-held resources. */

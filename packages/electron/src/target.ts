@@ -109,6 +109,24 @@ export class ElectronTarget implements BrowserTarget {
     return () => this.webContents.debugger.removeListener('message', handler);
   }
 
+  /** Attach the debugger if the host has not already (idempotent). */
+  ensureAttached(): void {
+    if (!this.webContents.isDestroyed() && !this.webContents.debugger.isAttached()) {
+      this.webContents.debugger.attach('1.3');
+    }
+  }
+
+  onDetach(listener: () => void): () => void {
+    const onDetach = (): void => listener();
+    const onDestroyed = (): void => listener();
+    this.webContents.debugger.on('detach', onDetach);
+    this.webContents.on('destroyed', onDestroyed);
+    return () => {
+      this.webContents.debugger.removeListener('detach', onDetach);
+      this.webContents.removeListener('destroyed', onDestroyed);
+    };
+  }
+
   async cookies(): Promise<BrowserCookie[]> {
     const list = await this.webContents.session.cookies.get({});
     return list.map((cookie) => ({

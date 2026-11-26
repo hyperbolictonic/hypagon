@@ -1,6 +1,10 @@
 # Live Network & API Stream Interceptor
 
-The **Network Interceptor** (`src/main/network/network-interceptor.ts`) attaches directly to Electron's internal Chrome DevTools Protocol (`CDP`) debugger session (`Network.enable`) to observe all incoming HTTP, XHR, and Fetch payloads at the wire level.
+The **Network Interceptor** now lives in `packages/browser` (the
+`@hyperbolictonic/hypagon-browser` package). This folder keeps re-export shims, and
+`network-surface.ts` remains the app's logging read side. The interceptor attaches a
+`BrowserTarget` to CDP (`Network.enable`) through the adapter, so it observes the same
+HTTP, XHR and Fetch traffic without importing Electron.
 
 ## Why This Matters for Autonomous Agents
 
