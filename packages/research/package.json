@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test test/search.test.ts test/crawler.test.ts"
+    "test": "node --test test/search.test.ts test/crawler.test.ts test/anchor-store.test.ts"
   },
   "dependencies": {
     "hypagon-scrap": "^0.1.1"

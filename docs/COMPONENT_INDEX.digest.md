@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-437 modules, 1088 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+437 modules, 1085 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -127,6 +127,6 @@
 | `main/llm/alternates.ts` | 1: readAlternates |
 | `main/llm/llm-surface.ts` | 1: LlmSurface |
 
-… and 255 more module(s) — grep the full index.
+… and 254 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

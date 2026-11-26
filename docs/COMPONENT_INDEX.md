@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 437 files, 1088 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 437 files, 1085 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (800)
+## Types (796)
 
 | File | Export | When to use |
 |---|---|---|
@@ -403,10 +403,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/remote/settings.ts` | `RemoteSettings` *(type)* | When to use: the remote-access settings document — its schema version plus the stored tunnel and port options. |
 | `main/remote/tunnel.ts` | `RemoteTunnel` | When to use: `RemoteService` — one tunnel per service. |
 | `main/remote/tunnel.ts` | `RemoteTunnelDeps` *(type)* | When to use: the service constructor — the paths and the gateway it fronts. |
-| `main/research/anchor-store.ts` | `AnchorStore` | When to use: `revalidate_citations` and research — persist anchors and record their re-checks. |
-| `main/research/anchor-store.ts` | `StoredAnchor` *(type)* | When to use: one durable citation anchor and its last revalidation outcome. |
-| `main/research/citation-anchors.ts` | `CitationAnchors` | When to use: `CitationController` — the anchors and the fetch it revalidates with. |
-| `main/research/citation-anchors.ts` | `RevalidationSummary` *(type)* | The outcome of revalidating stored anchors across URLs. |
 | `main/research/citation-controller.ts` | `CitationController` | When to use: the chassis — own the anchors, the hand-off and the fetch policy. |
 | `main/research/citation-controller.ts` | `CitationControllerDeps` *(type)* | When to use: building the chassis — everything the citation pipeline reads through. |
 | `main/research/citation-fetch.ts` | `CitationFetcher` | When to use: `CitationController` — one fetcher per controller. |
@@ -822,7 +818,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | When to use: the persisted zoom policy file. |
 | `shared/zoom.ts` | `ZoomState` *(type)* | When to use: the zoom readout, the status consumers and `browser_zoom`. |
 
-## Modules (282)
+## Modules (283)
 
 | File | Export | When to use |
 |---|---|---|
@@ -937,6 +933,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/prerender/view-factory.ts` | `spawnPrerenderView` | When to use: `PrerenderEngine.prerender` — one warm view for `targetUrl`, |
 | `main/remote/cloudflared.ts` | `findCloudflared` | Find cloudflared without installing or downloading it. |
 | `main/remote/ipc.ts` | `registerRemoteIpc` | When to use: main-process startup — register every `remote:*` channel. The |
+| `main/research/citation-anchors.ts` | `CitationAnchors` | When to use: `CitationController` — the app's durable anchor store. |
 | `main/research/handoff-probe.ts` | `ACTIONABLE_PROBE` | When to use: `HumanHandoff.probeActionable` — the actionable-page probe. |
 | `main/security/capability-token.ts` | `tokenPathIn` | The token file path inside a capability directory. |
 | `main/security/capability-token.ts` | `createCapabilityToken` | Create (or rotate) the token in `dir`. The caller owns the directory. |

@@ -40,6 +40,13 @@ and `matchesAnyPattern` are exported for callers that build their own queue.
 crawl → hand-off) while emitting `ResearchEvent`s. The host decides how each tier
 is performed.
 
+## Citations
+
+`AnchorStore` persists citation fingerprints (the host passes the file), and
+`CitationAnchors` revalidates them against a narrow `fetch(url)` port while tracking
+warm origins. `relocateCitation` / `anchorHighlights` do the matching through
+`hypagon-scrap`.
+
 ## Status
 
 `0.1.0`, private. Extracted from the Hypagon Gateway app; the app keeps its

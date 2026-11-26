@@ -354,7 +354,8 @@ Both packages now ship one-call hosts: `createBrowserTools({ target })` in the b
 sealed discovery). A new host no longer implements the whole `PrimitivesHost` surface by hand.
 
 M3 has started: `packages/research` owns the search hub, the crawler, the researcher escalation
-model, citation anchors and the shared research-event types, all over injected ports (`load`,
-`renderPage`, `fetchStatic`, `tryLlm`, `indexPage`). The app keeps the Electron surfaces, settings,
-detached view, hand-off and citation controllers. `npm run typecheck:research` and the research
-tests are part of `test:sdk` and CI.
+model, citation anchors, the durable anchor store, the citation revalidation policy and the shared
+research-event types, all over injected ports (`load`, `renderPage`, `fetchStatic`, `tryLlm`,
+`indexPage`, `fetch`). The app keeps the Electron surfaces, settings, detached view, hand-off and
+citation controllers. `npm run typecheck:research` and the research tests are part of `test:sdk`
+and CI.
