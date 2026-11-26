@@ -65,6 +65,7 @@
     "test:jev:funnel": "node scripts/test-jev-funnel.mjs",
     "test:focus": "node scripts/test-input-focus-independence.mjs",
     "test:cortex:bookmarks": "node scripts/test-bookmarks-search.mjs",
+    "test:cortex:scripts": "node --test scripts/test-script-identity.mjs",
     "test:llm": "node scripts/test-llm-surface.mjs",
     "test:search": "node scripts/test-search-web.mjs",
     "test:crawl": "node scripts/test-deep-crawl.mjs",

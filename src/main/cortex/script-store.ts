@@ -6,6 +6,7 @@
  * to change; the vault now talks to `cortex.scripts`.
  */
 import { embedText } from './embedder.js';
+import { scriptId } from './script-identity.js';
 import type { CortexConnection } from './connection.js';
 import { toStringArray, type ScriptItem, type ScriptRow } from './types.js';
 
@@ -30,7 +31,7 @@ export class ScriptStore {
     const domain = script.domain?.trim() || '*';
     const tags = script.tags || [];
     const now = new Date().toISOString();
-    const id = `script_${cleanName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase()}`;
+    const id = scriptId(cleanName);
 
     // Remove existing script with same name if present
     try {
@@ -142,15 +143,18 @@ export class ScriptStore {
     }
   }
 
-  /** Deletes a script by name or ID. */
+  /** Deletes a script by name or ID; false when nothing matched. */
   async remove(nameOrId: string): Promise<boolean> {
     await this.connection.initialize();
     const table = this.connection.scriptsTable;
     if (!table) return false;
 
+    const escaped = nameOrId.replace(/'/g, "''");
+    const predicate = `id = '${escaped}' OR name = '${escaped}'`;
     try {
-      const escaped = nameOrId.replace(/'/g, "''");
-      await table.delete(`id = '${escaped}' OR name = '${escaped}'`);
+      const matches = await table.query().where(predicate).limit(1).toArray();
+      if (matches.length === 0) return false;
+      await table.delete(predicate);
       return true;
     } catch {
       return false;
