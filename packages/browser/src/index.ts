@@ -20,6 +20,8 @@ export * from './primitives/act-controller.ts';
 export * from './primitives/act-verdicts.ts';
 export { Primitives } from './primitives/primitives.ts';
 export * from './marks/format-mark.ts';
+export * from './marks/inject-script.ts';
+export * from './marks/marks-overlay.ts';
 export * from './shadow-walk/component-signature.ts';
 export * from './harvester/markdown.ts';
 export * from './harvester/dom-serializer.ts';

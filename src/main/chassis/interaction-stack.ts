@@ -12,7 +12,7 @@ import { HilSurface } from '../hil/hil-surface.js';
 import { ActionLedger } from '../telemetry/action-ledger.js';
 import { Primitives } from '../primitives/primitives.js';
 import { resolveFrameMark } from '../browser/frame-marks.js';
-import { resolveSealedToken } from '../shadow-walk/sealed-targets.js';
+import { ElectronTarget } from '../../../packages/electron/src/target.ts';import { resolveSealedToken } from '../shadow-walk/sealed-targets.js';
 import { loadShadowWalkSettings } from '../shadow-walk/settings.js';
 import { dataPath } from '../data-paths.js';
 import { detectSensitiveGate } from '../decide/sensitive-gate.js';
@@ -74,12 +74,12 @@ export function createInteractionStack(host: ChassisHost): InteractionStack {
     guardPageRead: (input) => host.jev.guardPageRead(input),
     precheckPageRead: (input) => host.jev.precheckPageRead(input),
     injectMarks: (opts) => host.marks.scan(activeWebContents(host), opts || {}),
-    removeMarks: () => host.marksOverlay.removeMarks(activeWebContents(host)),
+    removeMarks: () => host.marksOverlay.removeMarks(new ElectronTarget(activeWebContents(host))),
     getMarks: () => host.marks.getActive(),
     getMarkTarget: (id) =>
       Number(id) >= 100
         ? resolveFrameMark(activeWebContents(host), Number(id))
-        : host.marksOverlay.getMarkTarget(activeWebContents(host), id),
+        : host.marksOverlay.getMarkTarget(new ElectronTarget(activeWebContents(host)), id),
     getFrames: (opts) => host.shadow.getFrames(opts),
     evaluateInFrames: (script, opts) => host.page.evaluateInFrames(script, opts),
     resolveSealedToken: (token) => resolveSealedToken(activeWebContents(host), token),

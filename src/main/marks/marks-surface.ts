@@ -7,6 +7,7 @@
  */
 import type { WebContents } from 'electron';
 import type { MarksOverlay, MarkItem } from './marks-overlay.js';
+import { ElectronTarget } from '../../../packages/electron/src/target.ts';
 import { resolveFrameMark } from '../browser/frame-marks.js';
 import { DEEP_DOM_HELPERS } from '../primitives/dom-targeting.js';
 import type { HumanizedInputSimulator } from '../telemetry/input-simulator.js';
@@ -45,7 +46,7 @@ export class MarksSurface {
     opts: { includeOffscreen?: boolean; deepOpenRoots?: boolean } = {},
   ): Promise<MarkItem[]> {
     const settings = loadShadowWalkSettings();
-    return this.deps.marksOverlay.injectMarks(wc, {
+    return this.deps.marksOverlay.injectMarks(new ElectronTarget(wc), {
       ...opts,
       deepOpenRoots: opts.deepOpenRoots ?? settings.shadow.deepOpenRoots,
     });
@@ -135,7 +136,7 @@ export class MarksSurface {
   private async resolveMarkTarget(wc: WebContents, markId: number) {
     const target = markId >= 100
       ? await resolveFrameMark(wc, markId)
-      : await this.deps.marksOverlay.getMarkTarget(wc, markId);
+      : await this.deps.marksOverlay.getMarkTarget(new ElectronTarget(wc), markId);
     if (!target) {
       throw new Error(`Mark #${markId} not found. Call find(include_frames:true) or take_annotated_screenshot() to refresh marks.`);
     }

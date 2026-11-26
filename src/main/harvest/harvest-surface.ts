@@ -129,7 +129,7 @@ export class HarvestSurface {
     // Text-only: badges are only needed to populate the mark registry; no pixels are captured.
     if (textOnly) {
       const textMarks = await this.deps.marks.scan(wc, { includeOffscreen });
-      await this.deps.marksOverlay.removeMarks(wc);
+      await this.deps.marksOverlay.removeMarks(new ElectronTarget(wc));
       const viewport = this.deps.viewportBounds();
       const zoom = this.deps.zoomState();
       return {
@@ -159,7 +159,7 @@ export class HarvestSurface {
     const image = await this.capturePageWithRetry(wc, bounds);
 
     // 3. Immediately clean up marks from DOM
-    await this.deps.marksOverlay.removeMarks(wc);
+    await this.deps.marksOverlay.removeMarks(new ElectronTarget(wc));
     const zoom = this.deps.zoomState();
     const nativeSize = image.getSize();
 
@@ -197,7 +197,7 @@ export class HarvestSurface {
     // Ensure interactive elements have data-mark-id stamps for grounded markdown
     if (opts.includeMarks !== false) {
       await this.deps.marks.scan(wc, { includeOffscreen: Boolean(opts.includeOffscreen) });
-      await this.deps.marksOverlay.removeMarks(wc); // Strips visual badges, keeps data-mark-id
+      await this.deps.marksOverlay.removeMarks(new ElectronTarget(wc)); // Strips visual badges, keeps data-mark-id
     }
 
     const composed = await captureComposedDom(new ElectronTarget(wc));
