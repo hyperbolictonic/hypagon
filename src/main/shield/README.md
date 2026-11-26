@@ -3,6 +3,10 @@
 Answers cookie/GDPR walls the way a person would: choose the *least invasive* real control, click it
 once with the visible cursor, and stop. (Full policy reference: [docs/CONTROL_LAYER.md](../../../docs/CONTROL_LAYER.md).)
 
+The breaker implementation now lives in `packages/stealth` (`ShieldBreaker` against a
+`BrowserTarget`, with an injected click port and optional frame evaluator); this folder keeps the
+`WebContents` adapter and the consent controller that owns policy and telemetry.
+
 ---
 
 ## Policy

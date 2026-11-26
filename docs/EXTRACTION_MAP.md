@@ -340,6 +340,7 @@ network), and the host literal in `src/main/chassis/interaction-stack.ts` suppli
 M2 has started: `packages/stealth` owns the chaos-kinematics/bezier movement engine, the key
 tables, the ghost cursor, human-activity detection, profile pacing and the portable
 `HumanizedInput` pointer/keyboard driver (CDP through `BrowserTarget`, with optional native,
-clipboard and metrics ports), and the host browser fingerprint/profile probe. The app adapter
-keeps the `WebContents` API, so its call sites did not change. Still to move: the consent shield
-and sealed (closed shadow root) scanning.
+clipboard and metrics ports), the host browser fingerprint/profile probe and the consent-wall
+breaker (target-based, with an injected click port and optional frame evaluator). The app adapter
+keeps the `WebContents` API, so its call sites did not change. Still to move: sealed (closed shadow
+root) scanning.

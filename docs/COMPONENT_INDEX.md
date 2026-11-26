@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 436 files, 1144 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 436 files, 1142 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (853)
+## Types (850)
 
 | File | Export | When to use |
 |---|---|---|
@@ -540,9 +540,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shell/event-bus.ts` | `ShellBusDeps` *(type)* | Dependencies the bus needs to reach the two render surfaces. |
 | `main/shield/consent-controller.ts` | `ConsentController` | When to use: the chassis — own the consent sweep: answered-origins memory, timed attempts and the explicit dismiss. |
 | `main/shield/consent-controller.ts` | `ConsentControllerDeps` *(type)* | When to use: building the chassis — the wall breaker, the policy and the log/telemetry come from it. |
-| `main/shield/shield-breaker.ts` | `ShieldBreaker` | When to use: a consent wall during navigation — answer it the way a person would. |
-| `main/shield/shield-breaker.ts` | `ShieldDismissResult` *(type)* | When to use: the shield-breaker reply — dismissed/blocked, the chosen control and the intent. |
-| `main/shield/shield-breaker.ts` | `ConsentPolicy` *(type)* | How to answer a consent wall. This is a *preference*, not a licence to click anything that says |
 | `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotEngine` | When to use: `snapshot` — settle the page, read the chosen format and optionally write it. |
 | `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotOptions` *(type)* | When to use: `snapshot` — the output format and the optional save path. |
 | `main/snapshots/rendered-snapshot.ts` | `RenderedSnapshotResult` *(type)* | When to use: the `snapshot` reply — the format, the content and where it was written. |
@@ -875,7 +872,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | When to use: the persisted zoom policy file. |
 | `shared/zoom.ts` | `ZoomState` *(type)* | When to use: the zoom readout, the status consumers and `browser_zoom`. |
 
-## Modules (285)
+## Modules (286)
 
 | File | Export | When to use |
 |---|---|---|
@@ -1008,6 +1005,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/sealed-targets.ts` | `clearSealedTokens` | When to use: a fresh sealed scan or a navigation — invalidate the tab's sealed tokens. |
 | `main/shadow-walk/sealed-targets.ts` | `issueSealedToken` | When to use: a sealed result — mint an opaque token that can scroll and measure the node later. |
 | `main/shadow-walk/sealed-targets.ts` | `resolveSealedToken` | Resolve a sealed token to a live top-level viewport centre, scrolling the real node into view. |
+| `main/shield/shield-breaker.ts` | `ShieldBreaker` | When to use: a consent wall during navigation — answer it the way a person would. |
 | `main/tabs/tab-manager.ts` | `TabManager` | When to use: the window and the tab tools — create, switch, close and lay out the tab views. |
 | `main/tabs/tab-registry.ts` | `TabRegistry` | When to use: `TabManager` — one registry per window. |
 | `main/tabs/welcome-page.ts` | `welcomePagePath` | When to use: a tab with no URL, or the last tab being reset to the manual. |

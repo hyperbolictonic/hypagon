@@ -183,6 +183,16 @@ export class HumanizedInputSimulator {
     this.driver.setViewportScale(targetFor(webContents), scale);
   }
 
+  /** The stable adapter for a view, shared by input and the consent breaker. */
+  public targetFor(webContents: WebContents): ElectronTarget {
+    return targetFor(webContents);
+  }
+
+  /** A humanised click on an already-resolved target. */
+  public clickAt(target: BrowserTarget, point: Point): Promise<void> {
+    return this.driver.pointer.clickAt(target, point);
+  }
+
   /** Where the ghost cursor last landed, in CSS pixels. */
   public getCursorPosition() {
     return this.driver.getCursorPosition();

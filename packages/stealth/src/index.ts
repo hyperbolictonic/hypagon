@@ -10,3 +10,4 @@ export * from './input/pointer.ts';
 export * from './input/keyboard.ts';
 export * from './input/driver.ts';
 export * from './host/fingerprint.ts';
+export * from './shield/breaker.ts';
