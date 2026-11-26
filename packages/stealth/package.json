@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test test/movement.test.ts"
+    "test": "node --test test/movement.test.ts test/input.test.ts"
   },
   "dependencies": {
     "@hyperbolictonic/hypagon-browser": "0.1.0"

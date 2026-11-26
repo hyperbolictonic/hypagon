@@ -34,7 +34,15 @@ test('the full chaos profile still lands on the target', () => {
   assert.ok(path.length > 20);
   assert.ok(Math.abs(path[path.length - 1]!.x - TARGET.x) < 0.5);
   assert.ok(Math.abs(path[path.length - 1]!.y - TARGET.y) < 0.5);
-  assert.ok(path.some((step) => step.isCorrective === true));
+});
+
+test('the overshoot profile produces saccadic corrections across attempts', () => {
+  // Overshoot is a probabilistic human trait (~75% on a long glide), so sample it instead of
+  // asserting one run. The failure probability is negligible across 40 attempts.
+  const sawCorrection = Array.from({ length: 40 }, () =>
+    generateChaosTrajectory(START, TARGET, { steps: 60 }),
+  ).some((path) => path.some((step) => step.isCorrective === true));
+  assert.equal(sawCorrection, true);
 });
 
 test('a zero-distance glide is handled without a divide-by-zero', () => {
