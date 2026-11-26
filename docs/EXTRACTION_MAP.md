@@ -310,5 +310,24 @@ Milestones:
 `cloudflared`, `recipe` and `wrap` are not part of this SDK; they stay private until a separate
 product needs them.
 
-M1 currently ships `packages/browser` (the port) and `packages/electron` (`ElectronTarget`) with
+M1 currently ships `packages/browser` (the port, primitives, targeting, marks, harvesting and
+component signatures) and `packages/electron` (`ElectronTarget`), with
 `npm run typecheck:browser`, `npm run typecheck:electron` and `npm run test:sdk`.
+
+What is already in `packages/browser` (app imports go through re-export shims):
+
+- the `BrowserTarget` port and its portable types;
+- `options`, `page-scripts`, the host `contracts`, `primitives` and every controller
+  (`observe`, `act`, `wait`, `find`, `read`, `state`, `net`);
+- shadow-aware targeting (`dom-targeting`, `text-target`, `control-facts`), frame control
+  filters and projections;
+- the Set-of-Marks injector and overlay, the badge formatter and component signatures;
+- the construct harvester (composed-DOM serialisation plus Readability/Turndown Markdown).
+
+Remaining for M1: frame discovery/evaluation, sealed (closed shadow root) scanning, network
+capture and the humanised input driver. The input driver is the first slice of
+`hypagon-stealth`, because its chaos kinematics and profile belong to that package.
+
+The app already uses `ElectronTarget` where the SDK expects a target (harvest and marks), and
+the host literal in `src/main/chassis/interaction-stack.ts` supplies `appIdentity` and
+`detectSensitiveGate`, so no policy moved into the package.

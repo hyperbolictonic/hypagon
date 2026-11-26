@@ -1,10 +1,10 @@
 # Orthogonal Primitives (Observe · Act · Wait · Expect)
 
-The **Primitives** layer (`src/main/primitives/primitives.ts`) is the reliability and
-token-economy backbone of Mark Eleven. Instead of dozens of flat procedural verbs that
-push agents toward blind sleeps, guessy selectors and repeated full-page reads, it exposes
-**a few orthogonal verbs** — one observation model, one action model, one wait model — with
-the older tools becoming projections.
+The **Primitives** implementation now lives in `packages/browser` (the
+`@hyperbolictonic/hypagon-browser` package). This folder keeps re-export shims so every existing
+app import resolves unchanged; the controllers, the host contract and the page scripts are in the
+package. `BrowserChassis` still supplies the host through the inline adapter in
+`src/main/chassis/interaction-stack.ts`.
 
 Everything here runs on the **TIER-1 humanlike path**: real input events over CDP, no page
 DOM mutation beyond Mark Eleven's own `data-mark-id` stamp.
