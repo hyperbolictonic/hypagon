@@ -38,7 +38,7 @@
     "typecheck:recipe": "tsc -p packages/recipe/tsconfig.json",
     "typecheck:browser": "tsc -p packages/browser/tsconfig.json",
     "typecheck:electron": "tsc -p packages/electron/tsconfig.json",
-    "test:sdk": "node --test packages/browser/test/state-controller.test.ts packages/browser/test/targeting.test.ts packages/browser/test/controllers.test.ts packages/browser/test/act.test.ts packages/browser/test/harvester.test.ts packages/browser/test/marks.test.ts packages/browser/test/frames.test.ts packages/browser/test/network.test.ts packages/stealth/test/movement.test.ts packages/stealth/test/input.test.ts packages/electron/test/target.test.ts",
+    "test:sdk": "node --test packages/browser/test/state-controller.test.ts packages/browser/test/targeting.test.ts packages/browser/test/controllers.test.ts packages/browser/test/act.test.ts packages/browser/test/harvester.test.ts packages/browser/test/marks.test.ts packages/browser/test/frames.test.ts packages/browser/test/network.test.ts packages/stealth/test/movement.test.ts packages/stealth/test/input.test.ts packages/stealth/test/human-activity.test.ts packages/stealth/test/profile.test.ts packages/electron/test/target.test.ts",
     "typecheck:mcp-http": "tsc -p packages/mcp-http/tsconfig.json",
     "test:mcp-http": "node --test packages/mcp-http/test/host.test.ts",
     "typecheck:cloudflared": "tsc -p packages/cloudflared/tsconfig.json",
