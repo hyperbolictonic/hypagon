@@ -345,8 +345,20 @@ fingerprint/profile probe, the consent-wall breaker and sealed (closed shadow ro
 the Shadow Walk settings, and registers the `sealed.*`/`cdp.*` counters through
 `setSealedMetrics`.
 
-Next: M3 — `hypagon-research` (search hub, crawler, researcher, LLM surface, anchors) against the
-`PageReader`/`Fetcher` port.
+### Live verification (2026-11-26)
+
+An isolated dev instance (separate profile, bridge on 4113; the installed app on 4111 was never
+touched) ran the live suites against the extracted code:
+
+- browser/stealth: primitives 37, act 26, harvest 4, focus 4, sealed 21, frame marks 13, Shadow
+  Walk 11, component signature 12, human activity 9, consent 2.
+- research: settings 4, events 2, anchor store 2, relocation 8, static tier 8, search 6, crawl 7,
+  research topic 7, LLM surface 22.
+
+The live run found one real regression: frame marks were registered against a per-call
+`ElectronTarget`, so `act(mark_id=100+)` could not resolve them. Fixed in `7ca558f` by using one
+shared target per view; the frame-mark suite then passed including OOPIF clicks and typing.
+`npx vite build` passes cleanly.
 
 Both packages now ship one-call hosts: `createBrowserTools({ target })` in the browser package
 (marks, frames, harvest, network; an optional input port) and
@@ -359,3 +371,7 @@ research-event types, all over injected ports (`load`, `renderPage`, `fetchStati
 `indexPage`, `fetch`). The app keeps the Electron surfaces, settings, detached view, hand-off and
 citation controllers. `npm run typecheck:research` and the research tests are part of `test:sdk`
 and CI.
+
+Remaining milestones: the Electron research surfaces (detached view, hand-off, LLM surface,
+settings), M4 (`hypagon-agent`: decide/drive/JEV) and M5 (`hypagon-memory` + `hypagon-mcp`).
+Publishing is deferred until all of it is verified.
