@@ -322,11 +322,15 @@ What is already in `packages/browser` (app imports go through re-export shims):
 - shadow-aware targeting (`dom-targeting`, `text-target`, `control-facts`), frame control
   filters and projections;
 - the Set-of-Marks injector and overlay, the badge formatter and component signatures;
-- the construct harvester (composed-DOM serialisation plus Readability/Turndown Markdown).
+- the construct harvester (composed-DOM serialisation plus Readability/Turndown Markdown);
+- frame discovery (including OOPIF targets), frame geometry, per-frame evaluation and the
+  frame-mark registry.
 
-Remaining for M1: frame discovery/evaluation, sealed (closed shadow root) scanning, network
-capture and the humanised input driver. The input driver is the first slice of
-`hypagon-stealth`, because its chaos kinematics and profile belong to that package.
+Remaining for M1: network capture, sealed (closed shadow root) scanning and the humanised input
+driver. The input driver is the first slice of `hypagon-stealth`, because its chaos kinematics and
+profile belong to that package. The host surfaces that combine these pieces
+(`marks-surface`, `frames-inventory`) stay app-side until their stealth and settings dependencies
+are ported.
 
 The app already uses `ElectronTarget` where the SDK expects a target (harvest and marks), and
 the host literal in `src/main/chassis/interaction-stack.ts` supplies `appIdentity` and

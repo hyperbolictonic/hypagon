@@ -58,9 +58,10 @@ Extracted from the app, with the app still importing through re-export shims:
 - **harvesting** — composed-DOM serialisation and Readability/Turndown Markdown.
 - **shadow-walk** — component signatures.
 
-Still app-side and planned next: frame discovery/evaluation, sealed (closed shadow
-root) scanning, network capture, and the humanised input driver (which becomes
-`@hyperbolictonic/hypagon-stealth`).
+Still app-side and planned next: network capture, sealed (closed shadow
+root) scanning, and the humanised input driver (which becomes
+`@hyperbolictonic/hypagon-stealth`). Frame discovery, geometry and evaluation are
+already here.
 
 ## Status
 
