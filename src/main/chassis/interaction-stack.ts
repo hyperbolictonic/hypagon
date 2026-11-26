@@ -15,6 +15,7 @@ import { resolveFrameMark } from '../browser/frame-marks.js';
 import { resolveSealedToken } from '../shadow-walk/sealed-targets.js';
 import { loadShadowWalkSettings } from '../shadow-walk/settings.js';
 import { dataPath } from '../data-paths.js';
+import { detectSensitiveGate } from '../decide/sensitive-gate.js';
 import { APP_VERSION } from '../../shared/version.js';
 import { BRAND } from '../../shared/brand.js';
 import type { ChassisHost } from './host.js';
@@ -98,6 +99,7 @@ export function createInteractionStack(host: ChassisHost): InteractionStack {
     revision: () => currentRevision(host),
     windowFocused: () => host.window.isFocused(),
     appIdentity: () => ({ name: BRAND.deck, version: APP_VERSION }),
+    detectSensitiveGate: (text, opts) => detectSensitiveGate(text, opts),
     recordTransition: (record) => actionLedger.record(record),
   });
 
