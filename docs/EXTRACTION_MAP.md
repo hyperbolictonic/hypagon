@@ -116,8 +116,9 @@ Rules:
 - `@hg/mcp` depends on `@hg/core` and a `ToolRuntime` interface; it never imports Chassis.
 - The Electron app depends on packages; packages never depend on the app.
 
-Namespace decision: the current packages are `@kuang/*`. Rebranding to `@hypagon/*` is a separate,
-mechanical change; do it when the first package is published, not during extraction.
+Namespace decision (resolved 2026-11-26): publish as `@hyperbolictonic/*` (the npm user scope). No
+npm org is required, and the scope matches the GitHub owner, so npm and GitHub Packages can use the
+same names. See §10.
 
 ---
 
@@ -274,3 +275,40 @@ with real Chrome”. Only do 5 if the product is the agent itself.
 - Which package gets published first: `recipe`, `mcp-http`, or `wrap`?
 - Do we keep `@kuang/*` or rename to `@hypagon/*` at publication?
 - Should `drive` become a strategy plugin for `@hg/agent`, or stay a standalone primitive?
+
+---
+
+## 10. SDK family (implementation update, 2026-11-26)
+
+The first published family is `@hyperbolictonic/hypagon-*`. Packages are grouped by dependency
+profile, not by folder, so a consumer installs only what their host can run.
+
+| Package | Contents | Depends on |
+| --- | --- | --- |
+| `hypagon-browser` | `BrowserTarget`, primitives, marks, shadow DOM, frames, network/HAR, screenshots | nothing app-specific |
+| `hypagon-stealth` | humanised pointer/keyboard, chaos kinematics, host profile, human-activity detection, consent shield, sealed targets | browser |
+| `hypagon-research` | search hub, crawler, researcher, LLM surface, anchors/citations, static tier | `PageReader`/`Fetcher` (+ optional memory) |
+| `hypagon-agent` | decide, drive, JEV | browser |
+| `hypagon-memory` | Cortex/LanceDB, anchor store | native dependencies |
+| `hypagon-electron` | `ElectronTarget`, detached-view reader, HIL adapter | peer `electron` |
+| `hypagon-mcp` | MCP tools over a `ToolRuntime` | browser/research (optional) |
+
+Ports every feature depends on: `BrowserTarget`, `PageReader`/`Fetcher`, `MemoryStore`,
+`HumanApproval`. The Electron app supplies the adapters; another Electron host supplies its own;
+a headless host supplies a Chrome/CDP target.
+
+Milestones:
+
+1. **M1 — browser + electron.** `BrowserTarget`, `ElectronTarget`, primitives, marks, frames,
+   input, screenshots, network. Acceptance: the app runs on the package and the primitive/act/
+   harvest/frames/network smoke suites pass through the adapter.
+2. **M2 — stealth.** Humanised input, chaos kinematics, host profile, human activity, shield.
+3. **M3 — research.** Search/crawl/research/LLM/anchors against the `Fetcher` port.
+4. **M4 — agent.** Decide, drive, JEV on top of browser.
+5. **M5 — memory + MCP.** Optional Cortex and the MCP wrapper.
+
+`cloudflared`, `recipe` and `wrap` are not part of this SDK; they stay private until a separate
+product needs them.
+
+M1 currently ships `packages/browser` (the port) and `packages/electron` (`ElectronTarget`) with
+`npm run typecheck:browser`, `npm run typecheck:electron` and `npm run test:sdk`.

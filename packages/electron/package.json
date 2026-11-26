@@ -1,0 +1,36 @@
+{
+  "name": "@hyperbolictonic/hypagon-electron",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "The Electron adapter for the Hypagon browser SDK.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test test/target.test.ts"
+  },
+  "peerDependencies": {
+    "electron": ">=30"
+  },
+  "peerDependenciesMeta": {
+    "electron": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "keywords": [
+    "browser",
+    "automation",
+    "electron",
+    "cdp"
+  ]
+}
