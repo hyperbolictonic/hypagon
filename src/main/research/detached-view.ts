@@ -79,11 +79,15 @@ export class DetachedViewController {
         let settled = false;
         let status = 0;
         let timer: ReturnType<typeof setTimeout> | undefined;
+        // Detach idempotently: a timed-out load must not leave the listener (or this closure)
+        // attached to the shared view.
+        let detachNav: () => void = () => undefined;
 
         const finish = async () => {
           if (settled) return;
           settled = true;
           if (timer) clearTimeout(timer);
+          detachNav();
           let result: T | null = null;
           let after: any = null;
           let contentType: string | null = null;
@@ -103,6 +107,9 @@ export class DetachedViewController {
         const onNav = (_e: unknown, _u: string, code?: number) => {
           status = code || status;
         };
+        detachNav = () => {
+          if (!wc.isDestroyed()) wc.removeListener('did-navigate', onNav as any);
+        };
         wc.on('did-navigate', onNav as any);
 
         void (async () => {
@@ -114,7 +121,7 @@ export class DetachedViewController {
           } catch {
             /* load error: read whatever committed */
           }
-          wc.removeListener('did-navigate', onNav as any);
+          detachNav();
 
           // Bounded readiness poll: the committed document must be complete and non-empty, and
           // `readyScript` (if any) must be truthy.
