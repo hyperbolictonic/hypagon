@@ -1,24 +1,22 @@
 /**
- * The pointer: an organic Bézier glide, the in-page ghost cursor, and a humanized
- * click.
+ * The pointer: an organic glide, the in-page ghost cursor, and a humanized click.
  *
- * Why a module: the glide budget, the sample pacing and the press/release dwell are
- * one choreography, and the click is the glide plus three pauses. Keeping it away
- * from the keyboard means each can be read on its own.
+ * The glide budget, the sample pacing and the press/release dwell are one
+ * choreography, and the click is the glide plus three pauses. Keeping it away from
+ * the keyboard means each can be read on its own.
  */
-import type { WebContents } from 'electron';
-import { bump } from '../../metrics.js';
-import { generateOrganicTrajectory, type ChaosKinematicsOptions, type PathStep, type Point } from '../bezier.js';
-import type { CdpInput } from './cdp-input.js';
-import type { InputState } from './context.js';
-import { VISUAL_CURSOR_SCRIPT } from './cursor-overlay.js';
+import type { BrowserTarget } from '@hyperbolictonic/hypagon-browser';
+import { generateOrganicTrajectory, type ChaosKinematicsOptions, type PathStep, type Point } from '../movement/bezier.ts';
+import type { CdpInput } from './cdp-input.ts';
+import type { InputState } from './context.ts';
+import { VISUAL_CURSOR_SCRIPT } from './cursor-overlay.ts';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Dispatch at most this many mouse moves for one glide. */
 const MAX_DISPATCH_POINTS = 12;
 
-/** When to use: `HumanizedInputSimulator` — everything that moves the pointer. */
+/** When to use: `HumanizedInput` — everything that moves the pointer. */
 export class HumanPointer {
   private readonly state: InputState;
   private readonly cdp: CdpInput;
@@ -28,20 +26,19 @@ export class HumanPointer {
     this.cdp = cdp;
   }
 
-  /** Moves the mouse smoothly along an organic Bézier trajectory to target coordinates. */
-  async moveMouseTo(webContents: WebContents, target: Point, options?: ChaosKinematicsOptions): Promise<void> {
-    this.cdp.ensureTarget(webContents);
-    const trajectory = generateOrganicTrajectory(this.state.cursor, target, options);
+  /** Moves the mouse smoothly along an organic trajectory to target coordinates. */
+  async moveMouseTo(target: BrowserTarget, point: Point, options?: ChaosKinematicsOptions): Promise<void> {
+    this.cdp.ensureTarget(target);
+    const trajectory = generateOrganicTrajectory(this.state.cursor, point, options);
 
-    // Initialize visual ghost cursor overlay inside the web page if needed
-    await this.ensureVisualCursor(webContents);
+    await this.ensureVisualCursor(target);
 
     const points = this.samplePath(trajectory);
-    const budgetMs = this.budgetMs(Math.hypot(target.x - this.state.cursor.x, target.y - this.state.cursor.y));
-    await this.glide(webContents, points, budgetMs);
-    await this.land(webContents, target, points.length);
+    const budgetMs = this.budgetMs(Math.hypot(point.x - this.state.cursor.x, point.y - this.state.cursor.y));
+    await this.glide(target, points, budgetMs);
+    await this.land(target, point, points.length);
 
-    // Report the glide ONCE, not once per step. The in-page phosphor trail is already drawn
+    // Report the glide ONCE, not once per step. The in-page trail is already drawn
     // per step, so emitting a telemetry event per step only flooded the HUD — one click
     // produced 38-140 `mouse_move` rows.
     const lastStep = trajectory.length > 0 ? trajectory[trajectory.length - 1] : null;
@@ -75,7 +72,7 @@ export class HumanPointer {
   }
 
   /** Walk the samples, drawing the trail every third one and pacing to the budget. */
-  private async glide(webContents: WebContents, points: PathStep[], budgetMs: number): Promise<void> {
+  private async glide(target: BrowserTarget, points: PathStep[], budgetMs: number): Promise<void> {
     // Pace the samples to fill the budget exactly, instead of summing the (much longer) raw
     // per-step cadence. Never below 4ms: back-to-back CDP moves coalesce into one jump.
     const rawPacing = points.reduce((sum, step) => sum + Math.max(6, step.delayMs), 0);
@@ -83,32 +80,32 @@ export class HumanPointer {
 
     let sampleIndex = 0;
     for (const step of points) {
-      const viewStep = this.cdp.toViewPoint(webContents, step);
-      const factor = this.cdp.viewportFactor(webContents);
+      const viewStep = this.cdp.toViewPoint(target, step);
+      const factor = this.cdp.viewportFactor(target);
       await this.cdp.dispatch(
-        webContents,
+        target,
         'Input.dispatchMouseEvent',
         { type: 'mouseMoved', x: viewStep.x, y: viewStep.y, button: 'none', buttons: 0, pointerType: 'mouse' },
         () => {
-          webContents.sendInputEvent({
-            type: 'mouseMove',
-            x: viewStep.x,
-            y: viewStep.y,
-            movementX: (step.x - this.state.cursor.x) * factor,
-            movementY: (step.y - this.state.cursor.y) * factor,
-          });
+          this.state.native?.mouseMove?.(
+            target,
+            viewStep.x,
+            viewStep.y,
+            (step.x - this.state.cursor.x) * factor,
+            (step.y - this.state.cursor.y) * factor,
+          );
         },
       );
 
-      // Draw the trail every third sample (and the last one). One executeJavaScript per sample
-      // queues work on the renderer's main thread, and the awaited CDP moves then wait behind it
-      // — on a heavy page that cost more than the glide itself.
+      // Draw the trail every third sample (and the last one). One evaluate per sample
+      // queues work on the renderer's main thread, and the awaited CDP moves then wait
+      // behind it — on a heavy page that cost more than the glide itself.
       const drawTrail = sampleIndex % 3 === 0 || sampleIndex === points.length - 1;
       if (drawTrail) {
-        webContents
-          .executeJavaScript(
+        target
+          .evaluate(
             `window.__kuangMoveCursor && window.__kuangMoveCursor(${step.x}, ${step.y}, ${step.isCorrective ? 'true' : 'false'})`,
-            true,
+            { userGesture: true },
           )
           .catch(() => undefined);
       }
@@ -121,33 +118,33 @@ export class HumanPointer {
   }
 
   /** Land exactly on target — the sampled path can end a pixel or two off. */
-  private async land(webContents: WebContents, target: Point, sampled: number): Promise<void> {
-    if (sampled > 0 && this.state.cursor.x === target.x && this.state.cursor.y === target.y) return;
-    const viewTarget = this.cdp.toViewPoint(webContents, target);
+  private async land(target: BrowserTarget, point: Point, sampled: number): Promise<void> {
+    if (sampled > 0 && this.state.cursor.x === point.x && this.state.cursor.y === point.y) return;
+    const viewTarget = this.cdp.toViewPoint(target, point);
     await this.cdp.dispatch(
-      webContents,
+      target,
       'Input.dispatchMouseEvent',
       { type: 'mouseMoved', x: viewTarget.x, y: viewTarget.y, button: 'none', buttons: 0, pointerType: 'mouse' },
       () => {
-        webContents.sendInputEvent({ type: 'mouseMove', x: viewTarget.x, y: viewTarget.y });
+        this.state.native?.mouseMove?.(target, viewTarget.x, viewTarget.y, 0, 0);
       },
     );
-    this.state.cursor = { x: target.x, y: target.y };
+    this.state.cursor = { x: point.x, y: point.y };
   }
 
   /** Install the in-page ghost cursor once per document. */
-  async ensureVisualCursor(webContents: WebContents): Promise<void> {
-    if (!webContents || webContents.isDestroyed()) return;
+  async ensureVisualCursor(target: BrowserTarget): Promise<void> {
+    if (!target) return;
     try {
-      await webContents.executeJavaScript(VISUAL_CURSOR_SCRIPT, true);
+      await target.evaluate(VISUAL_CURSOR_SCRIPT, { userGesture: true });
     } catch {
       // The overlay is cosmetic; a cross-origin or closing document may refuse it.
     }
   }
 
-  /** One mouse-button transition: CDP first, a sendInputEvent fallback otherwise. */
+  /** One mouse-button transition: CDP first, a native fallback otherwise. */
   private async dispatchMouseTransition(
-    webContents: WebContents,
+    target: BrowserTarget,
     type: 'mousePressed' | 'mouseReleased',
     point: Point,
     button: 'left' | 'right' | 'middle',
@@ -155,56 +152,50 @@ export class HumanPointer {
   ): Promise<void> {
     const pressed = type === 'mousePressed';
     await this.cdp.dispatch(
-      webContents,
+      target,
       'Input.dispatchMouseEvent',
       { type, x: point.x, y: point.y, button, buttons: pressed ? 1 : 0, clickCount, pointerType: 'mouse' },
       () => {
-        webContents.sendInputEvent({
-          type: pressed ? 'mouseDown' : 'mouseUp',
-          x: point.x,
-          y: point.y,
-          button,
-          clickCount,
-        });
+        this.state.native?.mouseButton?.(target, point.x, point.y, button, clickCount, pressed ? 'down' : 'up');
       },
     );
   }
 
   /**
-   * Simulates a humanized click: traverse via Bézier path, hesitate, press, hold and
-   * release.
+   * Simulates a humanized click: traverse via an organic path, hesitate, press, hold
+   * and release.
    */
   async clickAt(
-    webContents: WebContents,
-    target: Point,
+    target: BrowserTarget,
+    point: Point,
     options?: { button?: 'left' | 'right' | 'middle'; clickCount?: number },
   ): Promise<void> {
-    bump('action.click');
+    this.state.metrics?.click?.();
     const button = options?.button ?? 'left';
     const clickCount = options?.clickCount ?? 1;
 
-    await this.moveMouseTo(webContents, target);
+    await this.moveMouseTo(target, point);
 
-    // Trigger visual in-page ripple
-    webContents
-      .executeJavaScript(`window.__kuangClickCursor && window.__kuangClickCursor(${target.x}, ${target.y})`, true)
+    // Trigger the visual in-page ripple.
+    target
+      .evaluate(`window.__kuangClickCursor && window.__kuangClickCursor(${point.x}, ${point.y})`, { userGesture: true })
       .catch(() => undefined);
 
     // Pre-click hesitation (mimicking visual confirmation), scaled by the profile.
     await sleep(Math.max(0, this.state.profile.clickDwellMs * (0.6 + Math.random() * 0.6)));
 
-    const viewTarget = this.cdp.toViewPoint(webContents, target);
+    const viewTarget = this.cdp.toViewPoint(target, point);
 
-    await this.dispatchMouseTransition(webContents, 'mousePressed', viewTarget, button, clickCount);
+    await this.dispatchMouseTransition(target, 'mousePressed', viewTarget, button, clickCount);
 
     // Contact duration (finger depressing mouse switch), scaled by the profile.
     await sleep(Math.max(0, this.state.profile.clickDwellMs * (0.8 + Math.random() * 0.5)));
 
-    await this.dispatchMouseTransition(webContents, 'mouseReleased', viewTarget, button, clickCount);
+    await this.dispatchMouseTransition(target, 'mouseReleased', viewTarget, button, clickCount);
 
-    this.state.reporter?.onClick?.(target);
+    this.state.reporter?.onClick?.(point);
 
-    // Post-click recovery pause
+    // Post-click recovery pause.
     await sleep(40 + Math.random() * 60);
   }
 }

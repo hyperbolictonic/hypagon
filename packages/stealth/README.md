@@ -24,10 +24,26 @@ corrective flag. It models the parts of a hand that make a path look human:
 
 `generateOrganicTrajectory` is the stable alias used by the driver.
 
+## Driver
+
+`HumanizedInput` takes a `BrowserTarget` for every action. Optional host ports
+supply what only a host knows:
+
+- `NativeInputPort` — `sendInputEvent`-style fallbacks (`mouseMove`, `mouseButton`,
+  `wheel`, `key`, `focus`, `paste`) used when CDP is unavailable;
+- `ClipboardPort` — the trusted paste;
+- `InputMetrics` — the host's counters (`cdp.input`, `action.click/type/scroll`).
+
+The app adapter in `src/main/telemetry/input-simulator.ts` keeps its
+`WebContents`-shaped API and supplies the Electron ports, so app call sites did not
+change.
+
 ## Status
 
-`0.1.0`, private. The movement engine is extracted; the pointer and keyboard
-driver, profile loading, human-activity detection and sealed scanning follow.
+`0.1.0`, private. Extracted: the movement engine, key tables, ghost cursor,
+human-activity detection, profile pacing and the portable pointer/keyboard driver.
+Still app-side: the host fingerprint/profile probe, the consent shield and sealed
+(closed shadow root) scanning.
 
 ## Scripts
 

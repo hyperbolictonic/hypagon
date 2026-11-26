@@ -116,6 +116,11 @@ export class ElectronTarget implements BrowserTarget {
     }
   }
 
+  /** Whether the debugger is currently attached to this view. */
+  isAttached(): boolean {
+    return !this.webContents.isDestroyed() && this.webContents.debugger.isAttached();
+  }
+
   onDetach(listener: () => void): () => void {
     const onDetach = (): void => listener();
     const onDestroyed = (): void => listener();

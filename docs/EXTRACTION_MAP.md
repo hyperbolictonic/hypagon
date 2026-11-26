@@ -337,7 +337,9 @@ The app already uses `ElectronTarget` where the SDK expects a target (harvest, m
 network), and the host literal in `src/main/chassis/interaction-stack.ts` supplies `appIdentity` and
 `detectSensitiveGate`, so no policy moved into the package.
 
-M2 has started: `packages/stealth` owns the chaos-kinematics/bezier movement engine (the pointer
-path the humanised driver replays), exported through app shims and checked by
-`npm run typecheck:stealth`. The pointer/keyboard driver, profile loading, human-activity
-detection and sealed targets are the next slice.
+M2 has started: `packages/stealth` owns the chaos-kinematics/bezier movement engine, the key
+tables, the ghost cursor, human-activity detection, profile pacing and the portable
+`HumanizedInput` pointer/keyboard driver (CDP through `BrowserTarget`, with optional native,
+clipboard and metrics ports). The app adapter keeps the `WebContents` API, so its call sites did
+not change. Still to move: the host fingerprint/profile probe, the consent shield and sealed
+(closed shadow root) scanning.

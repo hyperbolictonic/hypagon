@@ -4,3 +4,8 @@ export * from './input/keys.ts';
 export * from './input/cursor-overlay.ts';
 export * from './input/human-activity.ts';
 export * from './input/profile.ts';
+export * from './input/context.ts';
+export * from './input/cdp-input.ts';
+export * from './input/pointer.ts';
+export * from './input/keyboard.ts';
+export * from './input/driver.ts';

@@ -84,6 +84,8 @@ export interface BrowserTarget {
   onCdpEvent(listener: CdpEventListener): () => void;
   /** Adapters that need an explicit debugger or connection may attach here (idempotent). */
   ensureAttached?(): void;
+  /** Optional: whether the adapter's CDP session is ready. */
+  isAttached?(): boolean;
   /** Notify when the host detaches the debugger or destroys the view; returns the unsubscribe. */
   onDetach?(listener: () => void): () => void;
   cookies(): Promise<BrowserCookie[]>;

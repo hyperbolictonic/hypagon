@@ -2,16 +2,9 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 439 files, 1278 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 436 files, 1146 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
-
-## Layouts (2)
-
-| File | Export | When to use |
-|---|---|---|
-| `main/browser/layout-viewport.ts` | `layoutViewport` | When to use: reading `Page.getLayoutMetrics` for the top-level viewport size. |
-| `main/browser/layout-viewport.ts` | `ViewportRect` *(type)* | A viewport rect in CSS pixels, origin at the top-left of the page. |
 
 ## Utils (6)
 
@@ -24,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (956)
+## Types (855)
 
 | File | Export | When to use |
 |---|---|---|
@@ -39,20 +32,11 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/boot/window-boot.ts` | `WindowBootSurface` | The shell-window boot sequence, bound once. |
 | `main/boot/window-boot.ts` | `DownloadNotice` *(type)* | A finished download, as the boot hook reports it. |
 | `main/boot/window-boot.ts` | `WindowBootDeps` *(type)* | Dependencies the boot sequence needs from the chassis surfaces. |
-| `main/browser/frame-eval.ts` | `evaluateInFrames` | Evaluate `expression` in the main frame and up to `maxFrames` child frames. |
-| `main/browser/frame-eval.ts` | `FrameEvalOptions` *(type)* | When to use: `evaluateInFrames` — the frame cap, the per-command timeout, blank-frame inclusion and an optional per-frame expression. |
-| `main/browser/frame-eval.ts` | `FrameEvalResult` *(type)* | When to use: one frame's evaluation reply — id, URL, depth/OOPIF and the value or error. |
-| `main/browser/frame-tree.ts` | `discoverFrames` | When to use: an operation that must reach inside iframes — enumerate the frame tree and open the sessions it needs. |
-| `main/browser/frame-tree.ts` | `FrameHandle` *(type)* | When to use: one child frame discovered by `discoverFrames` — id, depth, URL and the OOPIF session that can see it. |
-| `main/browser/frame-tree.ts` | `FrameContext` *(type)* | When to use: frame-aware evaluation and marks — the frame list plus the CDP session routing and release helpers. |
 | `main/browser/frames-inventory.ts` | `inventoryFrames` | When to use: the chassis frames route — walk the frame tree, attach control facts and per-frame screenshots. |
 | `main/browser/frames-inventory.ts` | `FrameInventoryResult` *(type)* | When to use: the frames result — one row per frame, with controls and screenshots attached. |
 | `main/browser/frames-inventory.ts` | `FramesInventoryDeps` *(type)* | When to use: the inventory reads through these two collaborators. |
 | `main/browser/frames-inventory.ts` | `FrameShot` *(type)* | One cropped frame screenshot, already encoded for the bridge response. |
 | `main/browser/frames-inventory.ts` | `FramesInventoryOptions` *(type)* | When to use: the inventory options, before settings and bounds are applied. |
-| `main/browser/frames.ts` | `listFrames` | List the main frame and its children with top-level content-box rects. |
-| `main/browser/frames.ts` | `FrameRect` *(type)* | When to use: a frame's box — top-level viewport coordinates as x/y/width/height. |
-| `main/browser/frames.ts` | `FrameInfo` *(type)* | When to use: `list_frames` — one frame's identity, geometry, visibility, cross-origin/OOPIF state and loader id. |
 | `main/browser/page-script-surface.ts` | `PageScriptSurface` | The script-evaluation and control-description surface over the active tab. |
 | `main/browser/page-script-surface.ts` | `PageScriptSurfaceDeps` *(type)* | Dependencies the page-script surface needs from the active tab. |
 | `main/capture/screenshot-jpeg.ts` | `captureScreenshotJpeg` | When to use: `decide(include_screenshot)` — a bounded baseline JPEG of the viewport. |
@@ -185,11 +169,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/harvest/screenshots.ts` | `ScreenshotStore` | When to use: the chassis — own screenshot persistence: directory, retention, capture retry and the encode/save tail. |
 | `main/harvest/screenshots.ts` | `ScreenshotStoreDeps` *(type)* | When to use: building the chassis — log and telemetry come from the chassis. |
 | `main/harvest/screenshots.ts` | `ScreenshotPayload` *(type)* | The screenshot payload both capture paths (live viewport and annotated marks) return. |
-| `main/harvester/dom-serializer.ts` | `captureComposedDom` | Serialise the active page's composed DOM (light + open shadow roots). |
-| `main/harvester/dom-serializer.ts` | `COMPOSE_DOM_SCRIPT` | JS evaluated in the page. Must stay self-contained: no imports, no template |
-| `main/harvester/dom-serializer.ts` | `ComposedDom` *(type)* | Composed-DOM serialisation for the Markdown harvester. |
-| `main/harvester/markdown.ts` | `ConstructHarvester` | When to use: `observe`/harvest — convert a DOM into one composed, budget-capped construct. |
-| `main/harvester/markdown.ts` | `HarvestStats` *(type)* | When to use: the harvest reply — how many shadow roots the composed-DOM serialiser inlined. |
 | `main/hil/hil-banner.ts` | `hilBannerScript` | When to use: `inject` — the banner markup, wired to the local resolve route. |
 | `main/hil/hil-banner.ts` | `hilBannerRemovalScript` | When to use: `remove` — drop the banner and its keyframes. |
 | `main/hil/hil-banner.ts` | `HilPageBanner` | When to use: `HilManager` — own the page banner for the active hand-off. |
@@ -224,12 +203,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/http/wrap-routes.ts` | `handleWrapRoutes` | When to use: the bridge request handler — dispatch `/wrap/*` (auth first). |
 | `main/http/wrap-routes.ts` | `WrapBridge` *(type)* | When to use: wiring the bridge — the wrapper core and the store it serves. |
 | `main/http/wrap-routes.ts` | `WrapRouteContext` *(type)* | When to use: building the wrap dispatcher — the wrapper core plus the raw headers its token lives in. |
-| `main/input/human-activity.ts` | `shouldCountAsHuman` | Pure decision used by the monitor and by tests. |
-| `main/input/human-activity.ts` | `humanListenerScript` | Self-contained listener. Idempotent: a second injection is a no-op. |
-| `main/input/human-activity.ts` | `SYNTHETIC_GRACE_MS` | How long after our own dispatch a trusted event is still considered synthetic. |
-| `main/input/human-activity.ts` | `HUMAN_CONSOLE_PREFIX` | Console prefix the page uses; anything else is ignored. |
-| `main/input/human-activity.ts` | `HumanActivityMonitor` | When to use: the input simulator and the bridge — decide whether trusted input is the human taking over. |
-| `main/input/human-activity.ts` | `HumanActivity` *(type)* | Human takeover detection. |
 | `main/input/human-control.ts` | `HumanControlSurface` | The explicit human-takeover latch and its activity monitor. |
 | `main/input/human-control.ts` | `HumanControlDeps` *(type)* | Dependencies the latch needs from the agent status and telemetry. |
 | `main/input/input-surface.ts` | `InputSurface` | The humanized input path shared by the primitive actions and the bridge routes. |
@@ -270,11 +243,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/jev/policy.ts` | `FunnelReason` *(type)* | JEV hard-funnel policy. |
 | `main/jev/policy.ts` | `FunnelInput` *(type)* | When to use: calling `decideFunnel` — the read shape and the page size it applies to. |
 | `main/jev/policy.ts` | `FunnelDecision` *(type)* | When to use: the funnel verdict a read primitive acts on — allowed plus the reason. |
-| `main/jev/read-contract.ts` | `PageReadRequest` *(type)* | A page read the agent asked for, before the JEV funnel judges it. |
-| `main/jev/read-contract.ts` | `PrecheckPageReadResult` *(type)* | Cheap pre-harvest check: refuse an obviously oversized read in ~30 ms. |
-| `main/jev/read-contract.ts` | `GuardPageReadInput` *(type)* | The guard adds the post-harvest facts (tokens, url, title, content). |
-| `main/jev/read-contract.ts` | `PageReadRefusal` *(type)* | What a refusal names: the page facts, the next call to make, the override. |
-| `main/jev/read-contract.ts` | `GuardPageReadResult` *(type)* | When to use: the JEV funnel's verdict for a page read — allowed plus the reason, note and refusal. |
 | `main/llm/probe-transport.ts` | `ProbeTransport` | When to use: any `llm_surface` request — well-known files, a HEAD, or a gated fetch. |
 | `main/llm/probe-transport.ts` | `ProbeResponse` *(type)* | What one probe request returned. |
 | `main/llm/probe-transport.ts` | `ProbeTransportDeps` *(type)* | When to use: constructing the transport — the session comes from the chassis. |
@@ -300,10 +268,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/llm/surface-types.ts` | `LlmSurfaceDeps` *(type)* | Everything `LlmSurface` needs from the chassis. |
 | `main/llm/surface-types.ts` | `OriginProbe` *(type)* | The origin-level probe shape (well-known files only). |
 | `main/llm/surface-types.ts` | `PageProbe` *(type)* | The page-level probe shape (live DOM alternates + one negotiation HEAD). |
-| `main/marks/inject-script.ts` | `marksInjectorScript` | When to use: `MarksOverlay.injectMarks` — renders the page-side Set-of-Marks scan. |
-| `main/marks/inject-script.ts` | `MarksInjectorOptions` *(type)* | When to use: building one mark scan — the sticky anchors and the two scope flags. |
-| `main/marks/marks-overlay.ts` | `MarksOverlay` | When to use: stamping and resolving marks on a view — the active set plus sticky structural anchors. |
-| `main/marks/marks-overlay.ts` | `MarkItem` *(type)* | When to use: one Set-of-Marks badge — geometry, text, role/state, actions, landmark and optional component/frame. |
 | `main/marks/marks-surface.ts` | `MarksSurface` | The agent-facing marks discovery surface over MarksOverlay. |
 | `main/marks/marks-surface.ts` | `MarksSurfaceDeps` *(type)* | Dependencies the marks surface needs from the active tab and policy. |
 | `main/media/binaries.ts` | `bundledYtDlpPath` | When to use: the packaged/dev lookup of the shipped yt-dlp, before any download. |
@@ -383,8 +347,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/navigation/navigation-surface.ts` | `NavigationSurfaceDeps` *(type)* | Dependencies the navigation surface needs from the active tab and chassis state. |
 | `main/navigation-error.ts` | `classifyNavigationFailure` | When to use: a failed `loadURL` — map it to the stable code and message the bridge returns. |
 | `main/navigation-error.ts` | `NavigationFailure` *(type)* | Turn Electron `loadURL` failures into stable, user-facing navigation errors. |
-| `main/network/cdp-events.ts` | `NetworkEvents` | When to use: `NetworkInterceptor` — dispatch every debugger message here. |
-| `main/network/cdp-events.ts` | `CdpEventDeps` *(type)* | When to use: `new NetworkInterceptor` — the buffers the events write into. |
 | `main/network/impersonate.ts` | `resolveCurlBinaryPath` | Resolve the pinned binary robustly. |
 | `main/network/impersonate.ts` | `hostPlatformHeaders` | The impersonate profile fixes the TLS/H2 fingerprint (and the Chrome major). The user agent and |
 | `main/network/impersonate.ts` | `impersonateAvailable` | When to use: the static fetch tier deciding whether the curl-impersonate binary is installed before trying it. |
@@ -394,60 +356,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/network/impersonate.ts` | `StaticFetchOutcome` *(type)* | When to use: the static tier's reply — ok, a detected challenge, an unavailable binary, or a transport error. |
 | `main/network/network-surface.ts` | `NetworkSurface` | The captured traffic, payloads and stream reads. |
 | `main/network/network-surface.ts` | `NetworkSurfaceDeps` *(type)* | Dependencies the network surface needs for directive logging. |
-| `main/network/stream-messages.ts` | `StreamMessages` | When to use: `NetworkInterceptor.messages` — one log per interceptor. |
-| `main/network/stream-messages.ts` | `FrameInput` *(type)* | One frame as the CDP router saw it, before the log stamps it. |
-| `main/network/types.ts` | `CapturedNetworkRequest` *(type)* | When to use: `get_traffic`, `get_api_payload` and the CDP request lifecycle. |
-| `main/network/types.ts` | `RealtimeStream` *(type)* | When to use: `get_streams` and the websocket/SSE lifecycle. |
-| `main/network/types.ts` | `StreamMessage` *(type)* | When to use: `get_stream_messages` — one websocket frame or one SSE event. |
-| `main/network/types.ts` | `NetworkFilter` *(type)* | When to use: `getTraffic` — narrow by URL, method, resource type, status and count. |
 | `main/prerender/types.ts` | `PrerenderItem` *(type)* | When to use: one warm background view in the prerender pool. |
 | `main/prerender/types.ts` | `PrerenderOptions` *(type)* | When to use: the `prerender_links` tool call. |
-| `main/primitives/act-address.ts` | `ActAddressResolver` | When to use: `ActController` — resolve whichever address the caller gave. |
-| `main/primitives/act-address.ts` | `ActPlan` *(type)* | The addressing decision `act` makes once, before it touches the page. |
-| `main/primitives/act-address.ts` | `ResolvedAddress` *(type)* | What resolving the address produced: the label, the centre and the control facts. |
-| `main/primitives/act-controller.ts` | `ActController` | When to use: `Primitives` — own the act flow and its evidence. |
-| `main/primitives/act-controller.ts` | `ActControllerDeps` *(type)* | When to use: the facade — the host and the readiness gate act may call. |
-| `main/primitives/act-target.ts` | `actSnapshot` | When to use: act — one cheap read of the identity it reports a delta against. |
-| `main/primitives/act-target.ts` | `ActTarget` | When to use: `ActController` — resolving a locator to page geometry and facts. |
-| `main/primitives/act-target.ts` | `ActSnapshot` *(type)* | When to use: act's delta — the cheap identity of the page at one moment. |
-| `main/primitives/contracts.ts` | `DEFAULT_MARKDOWN_BUDGET` | When to use: observe(markdown) — the default view size when the caller gives no budget. |
-| `main/primitives/contracts.ts` | `PrimitiveError` | When to use: every refusal the primitives raise — code, message and optional detail. |
-| `main/primitives/contracts.ts` | `PrimitivesHost` *(type)* | When to use: the chassis — what the primitives may ask of the active tab. |
-| `main/primitives/contracts.ts` | `PrimitiveErrorCode` *(type)* | When to use: a thrown primitive failure — the code the tool layer maps to a hint. |
-| `main/primitives/contracts.ts` | `ConditionResult` *(type)* | When to use: wait_for — one condition’s outcome and evidence. |
-| `main/primitives/contracts.ts` | `WaitResult` *(type)* | When to use: wait_for / expect — the whole poll result. |
-| `main/primitives/contracts.ts` | `PageState` *(type)* | When to use: page_state — the cheap identity snapshot diff() compares. |
-| `main/primitives/contracts.ts` | `ObserveOptions` *(type)* | When to use: observe() — the view, the region, the budget and the JEV switch. |
-| `main/primitives/contracts.ts` | `FindOptions` *(type)* | When to use: find() — the semantic query and the optional sources. |
-| `main/primitives/contracts.ts` | `ActOptions` *(type)* | When to use: act() — the address, the action and the awaited conditions. |
-| `main/primitives/control-facts.ts` | `controlFactsExpression` | Build the self-contained expression. Callers only ever pass plain JSON-able options. |
-| `main/primitives/control-facts.ts` | `parseControlFacts` | Parse the expression result into typed facts, tolerating an adapter that returned a string. |
-| `main/primitives/control-facts.ts` | `ControlAction` *(type)* | When to use: naming what a resolved control can do — click, type, hover, select, press or scroll. |
-| `main/primitives/control-facts.ts` | `ControlFacts` *(type)* | When to use: one inspected control — mark id, role, label, box, affordances and the addressing data. |
-| `main/primitives/control-facts.ts` | `ControlFactsOptions` *(type)* | When to use: limiting `controlFactsExpression` to one selector or scanning every interactive candidate. |
-| `main/primitives/dom-targeting.ts` | `elementExpr` | A page-side expression yielding the addressed element (shadow-aware for selectors). |
-| `main/primitives/dom-targeting.ts` | `targetBoxScript` | Resolve a locator to the box of the **control** to act on, scrolling it into view. |
-| `main/primitives/dom-targeting.ts` | `fieldFactsScript` | Typed facts about the control a locator addresses — the same shape as the previous |
-| `main/primitives/dom-targeting.ts` | `focusControlScript` | Focus the resolved control and report where focus actually ended up. |
-| `main/primitives/dom-targeting.ts` | `diagnosticsScript` | Page/window diagnostics including the **deepest** focused element. |
-| `main/primitives/dom-targeting.ts` | `inputProbeInstallScript` | Install a one-shot input probe around a typing action: snapshot the addressed control's |
-| `main/primitives/dom-targeting.ts` | `inputProbeReadScript` | Read and remove the probe installed by {@link inputProbeInstallScript}. |
-| `main/primitives/dom-targeting.ts` | `DEEP_DOM_HELPERS` | Shared helper functions, inlined into every script below. |
-| `main/primitives/dom-targeting.ts` | `TargetLocator` *(type)* | When to use: resolving an action target — mark id, selector or viewport point. |
-| `main/primitives/dom-targeting.ts` | `TargetBox` *(type)* | When to use: the resolved control box — coordinates, control flag, text and viewport facts. |
-| `main/primitives/frame-controls.ts` | `addressedFrameControls` | When to use: turning a `getFrames({ includeControls: true })` result into |
-| `main/primitives/frame-controls.ts` | `AddressedFrameControl` *(type)* | One addressable control plus the frame it lives in. |
-| `main/primitives/observe-controller.ts` | `ObserveController` | When to use: `Primitives` — own the observe projections. |
-| `main/primitives/observe-controller.ts` | `ObserveControllerDeps` *(type)* | When to use: `Primitives` — the host, the read tools and the read funnel. |
-| `main/primitives/options.ts` | `WaitCondition` *(type)* | When to use: wait_for and expect — one declarative readiness condition. |
-| `main/primitives/options.ts` | `ExtractOptions` *(type)* | When to use: extract() — which structure to read and where. |
-| `main/primitives/options.ts` | `CollectOptions` *(type)* | When to use: collect_all() — which container to scroll and how far. |
-| `main/primitives/text-target.ts` | `textTargetExpression` | Deepest visible element whose trimmed text matches. "Deepest" matters: a card <div> and its |
-| `main/primitives/text-target.ts` | `parseTextTargets` | When to use: turning the injected script's raw result into a `TextTargetResult`; a malformed result reads as no matches. |
-| `main/primitives/text-target.ts` | `resolveTextTargets` | Convenience for callers that already hold a WebContents. |
-| `main/primitives/text-target.ts` | `TextTargetOptions` *(type)* | When to use: text-anchored targeting — exact vs substring, case sensitivity, the candidate cap and optional component surface. |
-| `main/primitives/text-target.ts` | `TextTargetMatch` *(type)* | When to use: one resolved target — text, tag, viewport box, document-order index and optional component surface. |
-| `main/primitives/text-target.ts` | `TextTargetResult` *(type)* | When to use: the text-target reply — the query, ranked matches and whether one is unambiguous. |
 | `main/recipes/compile.ts` | `compileDriveSteps` | Map drive steps to recipe steps. Click steps always become `click`; a `type_text` step becomes a |
 | `main/recipes/compile.ts` | `DriveStepLike` *(type)* | When to use: `recipe_compile` — one verified drive step to turn into a recipe step. |
 | `main/recipes/compile.ts` | `CompileOptions` *(type)* | When to use: `recipe_compile` — the typed values that let a `type_text` step be replayed. |
@@ -588,10 +498,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/cdp.ts` | `contentRect` | When to use: turning a `DOM.getBoxModel` response into a drawable rect; null without a box. |
 | `main/shadow-walk/cdp.ts` | `cdpSend` | When to use: a CDP send that targets the root session when no session id is given. |
 | `main/shadow-walk/cdp.ts` | `ContentRect` *(type)* | The axis-aligned viewport rect a CDP box model describes. |
-| `main/shadow-walk/component-signature.ts` | `componentSignatureOf` | When to use: `observe` and recipe steps — derive the stable `tag:hash` component anchor. |
-| `main/shadow-walk/component-signature.ts` | `normalizeSurface` | When to use: parsing a page-reported component surface before signing it. |
-| `main/shadow-walk/component-signature.ts` | `COMPONENT_SIGNATURE_HELPERS` | Page-side helpers, inlined into the marks/observe and text-target scripts. |
-| `main/shadow-walk/component-signature.ts` | `ComponentSurface` *(type)* | Component signatures. |
 | `main/shadow-walk/force-open.ts` | `isForceOpenArmed` | When to use: deciding whether the Shadow Walk force-open overlay is armed for a view. |
 | `main/shadow-walk/force-open.ts` | `syncForceOpen` | Arm or disarm the document-start patch for one tab. |
 | `main/shadow-walk/force-open.ts` | `detectForceOpen` | Ask the current document what a fingerprinting script would see. |
@@ -667,26 +573,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/tabs/window-open-policy.ts` | `WindowOpenRequest` *(type)* | How a renderer's `window.open()` / `target="_blank"` request should be handled. |
 | `main/tabs/window-open-policy.ts` | `PopupSize` *(type)* | When to use: a sign-in popup — the window size parsed from its features string. |
 | `main/telemetry/action-ledger.ts` | `ActionLedger` | When to use: the primitives layer recording each action, and `/ledger` reading it back. |
-| `main/telemetry/action-ledger.ts` | `FieldFacts` *(type)* | Typed facts about the form control an action addressed. |
-| `main/telemetry/action-ledger.ts` | `TransitionTarget` *(type)* | When to use: a ledger record's target — mark id/selector plus the form-control facts when it was a field. |
-| `main/telemetry/action-ledger.ts` | `AddressMode` *(type)* | When to use: recording how an action addressed its target — mark id, selector, coordinates or none. |
-| `main/telemetry/action-ledger.ts` | `TransitionRecord` *(type)* | When to use: one ledger line — what was done, whether the page changed, and the evidence collected. |
-| `main/telemetry/action-ledger.ts` | `TypingOutcome` *(type)* | Evidence collected around a typing action (all in-page; the value itself never leaves the page). |
-| `main/telemetry/action-ledger.ts` | `TypingChannel` *(type)* | When to use: naming the input channel that produced (or was attempted for) a typed value. |
 | `main/telemetry/action-ledger.ts` | `ActionLedgerOptions` *(type)* | When to use: constructing the ledger — its directory, rotation size and log sink. |
-| `main/telemetry/chaos-kinematics.ts` | `generateChaosTrajectory` | Generates an advanced bio-kinematic trajectory incorporating chaos math, |
-| `main/telemetry/chaos-kinematics.ts` | `Point` *(type)* | Kuang Grade Mark Eleven — Bio-Kinematic Chaos & Neuromotor Mouse Engine |
-| `main/telemetry/chaos-kinematics.ts` | `PathStep` *(type)* | When to use: a generated pointer path — one point plus its delay, velocity and curvature. |
-| `main/telemetry/chaos-kinematics.ts` | `ChaosKinematicsOptions` *(type)* | When to use: tuning `generateChaosTrajectory` — step count, deviation, pacing and noise. |
 | `main/telemetry/host-fingerprint.ts` | `detectHostBrowserProfile` | Clean, zero-subprocess host browser profile detector. |
 | `main/telemetry/host-fingerprint.ts` | `HostBrowserProfile` *(type)* | When to use: telemetry and the static tier — the host browser's UA and client-hint profile. |
-| `main/telemetry/input/context.ts` | `InputState` | When to use: `HumanizedInputSimulator` — one state object per simulator. |
-| `main/telemetry/input/context.ts` | `InputTelemetryReporter` *(type)* | When to use: a caller that wants input telemetry (the HUD and the replay recorder). |
-| `main/telemetry/input/context.ts` | `HumanProfile` *(type)* | The human pacing knobs; replaced at runtime by Settings → INPUT. |
-| `main/telemetry/input-profile.ts` | `loadInputProfile` | Resolve the active profile: defaults, then the file, then env overrides. |
-| `main/telemetry/input-profile.ts` | `saveInputProfile` | Persist a (partial) profile, clamped, and return the profile that is now active. |
-| `main/telemetry/input-profile.ts` | `DEFAULT_INPUT_PROFILE` | When to use: Settings → Input's initial values and the fallback when no profile file exists. |
-| `main/telemetry/input-profile.ts` | `InputProfile` *(type)* | When to use: the human input simulator and Settings → Input — pointer speed, typing pace and click dwell. |
+| `main/telemetry/input-simulator.ts` | `HumanizedInputSimulator` | When to use: act/drive and the shield breaker — dispatch humanised pointer and keyboard input. |
+| `main/telemetry/input-simulator.ts` | `SimulatorPointer` *(type)* | The pointer methods that still take the app's `WebContents`. |
+| `main/telemetry/input-simulator.ts` | `SimulatorKeyboard` *(type)* | The keyboard methods that still take the app's `WebContents`. |
 | `main/telemetry/telemetry-surface.ts` | `TelemetrySurface` | The log ring, state broadcast and telemetry fan-out shared by every chassis surface. |
 | `main/telemetry/telemetry-surface.ts` | `LogEntry` *(type)* | One HUD log line; newest entries sit at the head of the ring. |
 | `main/telemetry/telemetry-surface.ts` | `TelemetrySurfaceDeps` *(type)* | Dependencies the telemetry surface needs from the chassis and its renderers. |
@@ -985,16 +877,13 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | When to use: the persisted zoom policy file. |
 | `shared/zoom.ts` | `ZoomState` *(type)* | When to use: the zoom readout, the status consumers and `browser_zoom`. |
 
-## Modules (314)
+## Modules (285)
 
 | File | Export | When to use |
 |---|---|---|
 | `main/boot/start-loops.ts` | `startLoops` | When to use: the chassis constructor — start the uptime tick and the HUD watchdog. |
 | `main/brand-icon.ts` | `brandIconPath` | When to use: a surface that needs the asset path itself (window icon). |
 | `main/brand-icon.ts` | `brandIcon` | When to use: a tray/HIL icon — the brand mark at the requested square size, |
-| `main/browser/frame-marks.ts` | `clearFrameMarks` | When to use: navigation or a new mark pass — drop the frame-id registry for a view. |
-| `main/browser/frame-marks.ts` | `registerFrameMarks` | When to use: after stamping child frames — remember which frame hosts each mark id (100+). |
-| `main/browser/frame-marks.ts` | `resolveFrameMark` | Resolve a frame mark to a live page-space target. Returns null when the frame navigated, the |
 | `main/browser/stealth.ts` | `stealthHeaders` | When to use: any request that must carry the host's client hints. |
 | `main/browser/stealth.ts` | `applyHostProfile` | When to use: a `WebContents` that must present as the host browser. |
 | `main/browser/stealth.ts` | `applyStealthHeaders` | When to use: a bare session (the research view) that only needs the headers. |
@@ -1023,6 +912,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/cortex/cortex-db.ts` | `cortex` | When to use: the app-wide Cortex handle the memory tools and services share. |
 | `main/cortex/cortex-db.ts` | `CortexDB` | When to use: the bookmarks, scripts and history stores — one connection over the Cortex data directory. |
 | `main/cortex/history-store.ts` | `HistoryStore` | When to use: constructing `CortexDB` — history reads bookmarks for suggestions. |
+| `main/cortex/script-identity.ts` | `scriptId` | When to use: saving a script — the id derived from its exact, trimmed name. |
+| `main/cortex/script-identity.ts` | `domainMatches` | When to use: `list_scripts`/recall — whether a stored domain covers the requested one. |
 | `main/cortex/script-store.ts` | `ScriptStore` | When to use: constructing `CortexDB` — the store shares the connection. |
 | `main/data-paths.ts` | `dataRoot` | When to use: resolving where runtime data lives — `HB_DATA_DIR`/`KUANG_DATA_DIR` or the Electron user data directory. |
 | `main/data-paths.ts` | `dataPath` | When to use: building a file path under the data root (settings, caches, logs). |
@@ -1073,7 +964,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/llm/surface-url.ts` | `kindScope` | Origin-level kinds cover the whole site; markdown/text cover one page. |
 | `main/llm/surface-url.ts` | `resolveSurfaceUrl` | The URL the caller meant: the explicit one, or the active tab's. Anything |
 | `main/llm/surface-url.ts` | `normalizeUrl` | Cache key: the URL without its hash or a trailing slash. |
-| `main/marks/format-mark.ts` | `formatMark` | Renders one Set-of-Marks entry as a compact, accessibility-aware line: |
 | `main/media/auth.ts` | `needsLogin` | Does yt-dlp's output say the site wants a signed-in session? |
 | `main/media/cookie-format.ts` | `toNetscape` | Netscape cookie-file text for yt-dlp's `--cookies`. |
 | `main/media/info-payload.ts` | `warningCodes` | stderr markers worth surfacing as warnings rather than failures. |
@@ -1093,33 +983,12 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/metrics.ts` | `snapshot` | When to use: diagnostics that need every counter — a copy without exposing the live map. |
 | `main/metrics.ts` | `summary` | Grouped summary for `bridge_health` — three numbers instead of a wall of keys. |
 | `main/metrics.ts` | `resetMetrics` | When to use: the diagnostics reset — zero the counters and report how long the window was. |
-| `main/network/network-interceptor.ts` | `NetworkInterceptor` | When to use: the chassis network surface — one interceptor per app. |
-| `main/network/stream-registry.ts` | `StreamRegistry` | When to use: `NetworkInterceptor.streams` — one registry per interceptor. |
-| `main/network/traffic-buffer.ts` | `TrafficBuffer` | When to use: `NetworkInterceptor.traffic` — one buffer per interceptor. |
 | `main/prerender/candidate-links.ts` | `extractCandidateLinks` | When to use: `prerender` without an explicit URL list — top outgoing links. |
 | `main/prerender/harvest.ts` | `harvestPrerenderedItem` | When to use: after a view is pooled — index it so the read is already warm. |
 | `main/prerender/pool.ts` | `PrerenderPool` | When to use: `PrerenderEngine` — one pool per process. |
 | `main/prerender/prerender-engine.ts` | `PrerenderEngine` | When to use: the chassis — own the warm views and the background harvest. |
 | `main/prerender/url.ts` | `normalizePrerenderUrl` | When to use: comparing a requested URL to a pooled one (query order-insensitive). |
 | `main/prerender/view-factory.ts` | `spawnPrerenderView` | When to use: `PrerenderEngine.prerender` — one warm view for `targetUrl`, |
-| `main/primitives/act-verdicts.ts` | `ActVerdicts` | When to use: `ActController` — the typing/verdict and gate-warning reads. |
-| `main/primitives/find-controller.ts` | `FindController` | When to use: `Primitives` — own the find merge. |
-| `main/primitives/net-controller.ts` | `NetController` | When to use: `Primitives` — the trafficSince / export_har surface. |
-| `main/primitives/page-scripts.ts` | `buildWaitProbe` | When to use: wait_for and expect — the declarative condition probe. |
-| `main/primitives/page-scripts.ts` | `buildExtractScript` | When to use: extract() and observe(list\|table\|app_data). |
-| `main/primitives/page-scripts.ts` | `buildCollectScript` | When to use: collect_all — the scroll-and-dedupe collector (bindings, then the loop). |
-| `main/primitives/page-scripts.ts` | `SIGNATURE_SCRIPT` | When to use: pageState and diff — one cheap signature round trip, no DOM mutation. |
-| `main/primitives/page-scripts.ts` | `STABILITY_SCRIPT` | When to use: the `stable` wait condition — the height/text/nodes triple it compares. |
-| `main/primitives/page-scripts.ts` | `PROBE_HELPERS` | When to use: every probe that needs clean / isVisible / accName / resolveRoot. |
-| `main/primitives/primitives.ts` | `Primitives` | When to use: the tool layer and the drive loop — the observe/act/wait/extract/collect facade over the chassis. |
-| `main/primitives/projection.ts` | `markLine` | When to use: any view that prints one mark — the shared badge format. |
-| `main/primitives/projection.ts` | `componentsText` | When to use: observe(components) — compact, region-grouped rendering of the table. |
-| `main/primitives/projection.ts` | `pageText` | When to use: every observe view — one envelope with the page identity, the |
-| `main/primitives/projection.ts` | `renderExtract` | When to use: observe(list\|table\|app_data) — the one-line preview of an extract. |
-| `main/primitives/read-controller.ts` | `ReadController` | When to use: `Primitives` — the read tools that are not page dumps. |
-| `main/primitives/read-funnel.ts` | `PageReadFunnel` | When to use: `ObserveController` — the read policy for unscoped page dumps. |
-| `main/primitives/state-controller.ts` | `StateController` | When to use: `Primitives` — the state()/diff() pair. |
-| `main/primitives/wait-controller.ts` | `WaitController` | When to use: `Primitives` — the wait_for / expect entry points. |
 | `main/remote/cloudflared.ts` | `findCloudflared` | Find cloudflared without installing or downloading it. |
 | `main/remote/ipc.ts` | `registerRemoteIpc` | When to use: main-process startup — register every `remote:*` channel. The |
 | `main/research/errors.ts` | `researchError` | When to use: a research failure an agent should see by code rather than by message. |
@@ -1145,14 +1014,8 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/tabs/tab-registry.ts` | `TabRegistry` | When to use: `TabManager` — one registry per window. |
 | `main/tabs/welcome-page.ts` | `welcomePagePath` | When to use: a tab with no URL, or the last tab being reset to the manual. |
 | `main/takeover-key.ts` | `isTakeoverShortcut` | When to use: a `before-input-event` handler that must fire the takeover toggle. |
-| `main/telemetry/bezier.ts` | `generateOrganicTrajectory` | Generates an organic, human-like trajectory between two coordinates. |
-| `main/telemetry/input/cdp-input.ts` | `CdpInput` | When to use: `HumanizedInputSimulator` — the pointer and keyboard controllers. |
-| `main/telemetry/input/cursor-overlay.ts` | `VISUAL_CURSOR_SCRIPT` | The in-page ghost cursor: a full-viewport canvas drawing the phosphor trail, the |
-| `main/telemetry/input/keyboard.ts` | `HumanKeyboard` | When to use: `HumanizedInputSimulator` — everything that presses keys. |
-| `main/telemetry/input/keys.ts` | `keyDescriptor` | Best-effort US-layout descriptor for a single typed character. |
-| `main/telemetry/input/keys.ts` | `keyEventParams` | The CDP `Input.dispatchKeyEvent` payload for a descriptor; `phase` picks down or up. |
-| `main/telemetry/input/pointer.ts` | `HumanPointer` | When to use: `HumanizedInputSimulator` — everything that moves the pointer. |
-| `main/telemetry/input-simulator.ts` | `HumanizedInputSimulator` | When to use: act/drive and the shield breaker — dispatch humanised pointer and keyboard input. |
+| `main/telemetry/input-profile.ts` | `loadInputProfile` | Resolve the active profile: defaults, then the file, then env overrides. |
+| `main/telemetry/input-profile.ts` | `saveInputProfile` | Persist a (partial) profile, clamped, and return the profile that is now active. |
 | `main/tools/ipc.ts` | `registerToolSettingsIpc` | Human-only writes over IPC. The bridge exposes a read-only config route to MCP processes. |
 | `main/tools/state.ts` | `sanitizeToolSettings` | When to use: loading or saving the tool settings — keep only advertised names and valid instructions. |
 | `main/tools/state.ts` | `buildToolManagerState` | When to use: the tools panel and `tools/list` — merge the saved order/disabled/instructions with the catalog. |

@@ -1,106 +1,195 @@
 /**
- * Humanized input over the active tab: the facade the chassis and the primitives hold.
+ * Humanized input over the active tab: the adapter the chassis and the primitives hold.
  *
- * Why this file is small: the CDP transport is `input/cdp-input.ts`, the pointer
- * choreography (glide, ghost cursor, click) is `input/pointer.ts`, the keyboard
- * (typing, insert/paste fallbacks, named keys, clear) is `input/keyboard.ts`, the
- * shared profile/gate/cursor state is `input/context.ts`, the key tables are
- * `input/keys.ts` and the in-page cursor overlay is `input/cursor-overlay.ts`.
- *
- * This class wires them and keeps the knobs the app sets at runtime: the cadence
- * profile, the human-takeover gate, the synthetic marker, and the emulation scale.
+ * The portable driver lives in `@hyperbolictonic/hypagon-stealth`: the CDP
+ * transport, the pointer choreography, the keyboard and the shared state. This
+ * module keeps the app's `WebContents`-shaped API, builds one `ElectronTarget` per
+ * web contents, and supplies the Electron fallbacks (native input, clipboard,
+ * window focus) plus the metrics counters.
  */
-import type { WebContents } from 'electron';
+import { BrowserWindow, clipboard, type WebContents } from 'electron';
+import type { BrowserTarget } from '../../../packages/browser/src/target.ts';
+import { ElectronTarget } from '../../../packages/electron/src/target.ts';
+import { HumanizedInput } from '../../../packages/stealth/src/input/driver.ts';
+import type { CdpInput } from '../../../packages/stealth/src/input/cdp-input.ts';
+import type {
+  ClipboardPort,
+  HumanProfile,
+  InputTelemetryReporter,
+  NativeInputPort,
+} from '../../../packages/stealth/src/input/context.ts';
+import type { ChaosKinematicsOptions, Point } from '../../../packages/stealth/src/movement/bezier.ts';
 import { bump } from '../metrics.js';
-import { CdpInput } from './input/cdp-input.js';
-import { InputState, type HumanProfile, type InputTelemetryReporter } from './input/context.js';
-import { HumanKeyboard } from './input/keyboard.js';
-import { HumanPointer } from './input/pointer.js';
 
-export type { HumanProfile, InputTelemetryReporter } from './input/context.js';
+export type { HumanProfile, InputTelemetryReporter } from '../../../packages/stealth/src/input/context.ts';
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/** One adapter per view, so the driver's per-target scale and cache stay valid. */
+const targets = new WeakMap<WebContents, ElectronTarget>();
+const pages = new WeakMap<ElectronTarget, WebContents>();
+
+function targetFor(wc: WebContents): ElectronTarget {
+  let target = targets.get(wc);
+  if (!target) {
+    target = new ElectronTarget(wc);
+    targets.set(wc, target);
+    pages.set(target, wc);
+  }
+  return target;
+}
+
+function wcFor(target: BrowserTarget): WebContents | undefined {
+  return pages.get(target as ElectronTarget);
+}
+
+/** Electron's `sendInputEvent` fallback, used only when CDP is unavailable. */
+const nativeInput: NativeInputPort = {
+  mouseMove(target, x, y, movementX, movementY) {
+    wcFor(target)?.sendInputEvent({ type: 'mouseMove', x, y, movementX, movementY } as any);
+  },
+  mouseButton(target, x, y, button, clickCount, phase) {
+    wcFor(target)?.sendInputEvent({
+      type: phase === 'down' ? 'mouseDown' : 'mouseUp',
+      x,
+      y,
+      button,
+      clickCount,
+    } as any);
+  },
+  wheel(target, x, y, deltaY) {
+    wcFor(target)?.sendInputEvent({ type: 'mouseWheel', x, y, deltaX: 0, deltaY, canScroll: true } as any);
+  },
+  key(target, phase, key, modifiers) {
+    const type = phase === 'down' ? 'keyDown' : phase === 'up' ? 'keyUp' : 'char';
+    wcFor(target)?.sendInputEvent({ type, keyCode: key, ...(modifiers ? { modifiers } : {}) } as any);
+  },
+  focus(target) {
+    const wc = wcFor(target);
+    if (!wc || wc.isDestroyed()) return;
+    try {
+      const win = BrowserWindow.fromWebContents(wc);
+      if (win && !win.isDestroyed() && win.isVisible() && !win.isFocused()) {
+        try {
+          win.show();
+        } catch {
+          // Windows can refuse to show a window mid-teardown.
+        }
+        try {
+          win.focus();
+        } catch {
+          // Same.
+        }
+      }
+    } catch {
+      // No window for this target.
+    }
+    try {
+      wc.focus();
+    } catch {
+      // Focus is best-effort.
+    }
+  },
+  paste(target) {
+    wcFor(target)?.paste();
+  },
+};
+
+const clipboardPort: ClipboardPort = {
+  readText: () => clipboard.readText(),
+  writeText: (text) => clipboard.writeText(text),
+};
+
+/** The pointer methods that still take the app's `WebContents`. */
+export interface SimulatorPointer {
+  moveMouseTo(wc: WebContents, point: Point, options?: ChaosKinematicsOptions): Promise<void>;
+  clickAt(
+    wc: WebContents,
+    point: Point,
+    options?: { button?: 'left' | 'right' | 'middle'; clickCount?: number },
+  ): Promise<void>;
+}
+
+/** The keyboard methods that still take the app's `WebContents`. */
+export interface SimulatorKeyboard {
+  typeText(wc: WebContents, text: string, options?: { baseSpeedWpm?: number }): Promise<void>;
+  insertText(wc: WebContents, text: string): Promise<boolean>;
+  pasteText(wc: WebContents, text: string): Promise<boolean>;
+  pressKey(wc: WebContents, key: string): Promise<void>;
+  clearFocusedField(wc: WebContents): Promise<void>;
+}
 
 /** When to use: act/drive and the shield breaker — dispatch humanised pointer and keyboard input. */
 export class HumanizedInputSimulator {
-  private readonly state: InputState;
+  private readonly driver: HumanizedInput;
 
   /** The CDP transport: availability, focus emulation and the emulation scale. */
   readonly cdp: CdpInput;
   /** Everything that moves the pointer or clicks. */
-  readonly pointer: HumanPointer;
+  readonly pointer: SimulatorPointer;
   /** Everything that presses keys. */
-  readonly keyboard: HumanKeyboard;
+  readonly keyboard: SimulatorKeyboard;
 
   constructor(reporter?: InputTelemetryReporter) {
-    this.state = new InputState(reporter);
-    this.cdp = new CdpInput(this.state);
-    this.pointer = new HumanPointer(this.state, this.cdp);
-    this.keyboard = new HumanKeyboard(this.state, this.cdp);
+    this.driver = new HumanizedInput({
+      reporter,
+      native: nativeInput,
+      clipboard: clipboardPort,
+      metrics: {
+        cdpInput: () => bump('cdp.input'),
+        click: () => bump('action.click'),
+        type: () => bump('action.type'),
+        scroll: () => bump('action.scroll'),
+      },
+    });
+    this.cdp = this.driver.cdp;
+    this.pointer = {
+      moveMouseTo: (wc, point, options) => this.driver.pointer.moveMouseTo(targetFor(wc), point, options),
+      clickAt: (wc, point, options) => this.driver.pointer.clickAt(targetFor(wc), point, options),
+    };
+    this.keyboard = {
+      typeText: (wc, text, options) => this.driver.keyboard.typeText(targetFor(wc), text, options),
+      insertText: (wc, text) => this.driver.keyboard.insertText(targetFor(wc), text),
+      pasteText: (wc, text) => this.driver.keyboard.pasteText(targetFor(wc), text),
+      pressKey: (wc, key) => this.driver.keyboard.pressKey(targetFor(wc), key),
+      clearFocusedField: (wc) => this.driver.keyboard.clearFocusedField(targetFor(wc)),
+    };
   }
 
   /** Replace the pacing knobs; non-finite values are ignored. */
   public setProfile(profile: Partial<HumanProfile>): void {
-    for (const key of Object.keys(this.state.profile) as Array<keyof HumanProfile>) {
-      const value = profile[key];
-      if (typeof value === 'number' && Number.isFinite(value)) this.state.profile[key] = value;
-    }
+    this.driver.setProfile(profile);
   }
 
   /** Called before every synthetic dispatch: return true to refuse input (human has the wheel). */
   public setHumanGate(gate: () => boolean): void {
-    this.state.humanGate = gate;
+    this.driver.setHumanGate(gate);
   }
 
   /** Called immediately before dispatching, so the monitor can tell our input from a human's. */
   public setSyntheticMarker(marker: (at: number) => void): void {
-    this.state.syntheticMarker = marker;
+    this.driver.setSyntheticMarker(marker);
   }
 
   /**
    * Which transport delivered the most recent input event: `cdp` (focus-independent,
-   * preferred) or `native` (`webContents.sendInputEvent`, needs OS window focus).
+   * preferred) or `native` (`sendInputEvent`, needs OS window focus).
    * Surfaced via `/health` so agents can tell whether input is focus-safe right now.
    */
   public get lastInputTransport(): 'cdp' | 'native' | null {
-    return this.state.lastInputTransport;
+    return this.driver.lastInputTransport;
   }
 
   /** Register the letterbox scale of a device-emulated tab (1 clears it). */
   public setViewportScale(webContents: WebContents, scale: number): void {
-    this.cdp.setViewportScale(webContents, scale);
+    this.driver.setViewportScale(targetFor(webContents), scale);
   }
 
   /** Where the ghost cursor last landed, in CSS pixels. */
   public getCursorPosition() {
-    return { ...this.state.cursor };
+    return this.driver.getCursorPosition();
   }
 
   /** Smoothly scrolls the page in incremental chunks simulating mousewheel inertia. */
   public async scrollPage(webContents: WebContents, deltaY: number, chunks: number = 8): Promise<void> {
-    this.cdp.ensureTarget(webContents);
-    bump('action.scroll');
-    const step = Math.round(deltaY / chunks);
-    for (let i = 0; i < chunks; i++) {
-      const viewCursor = this.cdp.toViewPoint(webContents, this.state.cursor);
-      await this.cdp.dispatch(
-        webContents,
-        'Input.dispatchMouseEvent',
-        { type: 'mouseWheel', x: viewCursor.x, y: viewCursor.y, deltaX: 0, deltaY: -step, pointerType: 'mouse' },
-        () => {
-          webContents.sendInputEvent({
-            type: 'mouseWheel',
-            x: viewCursor.x,
-            y: viewCursor.y,
-            deltaX: 0,
-            deltaY: -step,
-            canScroll: true,
-          });
-        },
-      );
-
-      this.state.reporter?.onScroll?.(step);
-      await sleep(25 + Math.random() * 20);
-    }
+    await this.driver.scrollPage(targetFor(webContents), deltaY, chunks);
   }
 }

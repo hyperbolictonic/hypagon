@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-439 modules, 1278 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+436 modules, 1146 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -13,12 +13,7 @@
 | `main/boot/window-boot.ts` | 3: WindowBootSurface, DownloadNotice, WindowBootDeps |
 | `main/brand-icon.ts` | 2: brandIconPath, brandIcon |
 | `main/browser-chassis.ts` | 1: BrowserChassis |
-| `main/browser/frame-eval.ts` | 3: evaluateInFrames, FrameEvalOptions, FrameEvalResult |
-| `main/browser/frame-marks.ts` | 3: clearFrameMarks, registerFrameMarks, resolveFrameMark |
-| `main/browser/frame-tree.ts` | 3: discoverFrames, FrameHandle, FrameContext |
 | `main/browser/frames-inventory.ts` | 5: inventoryFrames, FrameInventoryResult, FramesInventoryDeps, FrameShot, FramesInventoryOptions |
-| `main/browser/frames.ts` | 3: listFrames, FrameRect, FrameInfo |
-| `main/browser/layout-viewport.ts` | 2: layoutViewport, ViewportRect |
 | `main/browser/page-script-surface.ts` | 2: PageScriptSurface, PageScriptSurfaceDeps |
 | `main/browser/stealth.ts` | 3: stealthHeaders, applyHostProfile, applyStealthHeaders |
 | `main/capabilities.ts` | 1: BRIDGE_CAPABILITIES |
@@ -45,6 +40,7 @@
 | `main/cortex/cortex-db.ts` | 2: cortex, CortexDB |
 | `main/cortex/embedder.ts` | 9: registerEmbeddingProvider, listEmbeddingProviders, setEmbeddingProvider, getEmbeddingProvider, embedText, generateEmbedding, DEFAULT_PROVIDER_ID, EMBEDDING_DIM, … (9) |
 | `main/cortex/history-store.ts` | 1: HistoryStore |
+| `main/cortex/script-identity.ts` | 2: scriptId, domainMatches |
 | `main/cortex/script-store.ts` | 1: ScriptStore |
 | `main/cortex/types.ts` | 12: tokenizeQuery, toStringArray, bookmarkSearchText, cosineSimilarity, PageHistoryRow, BookmarkRow, RecallResult, HistoryItem, … (12) |
 | `main/crawl/crawler.ts` | 9: normalizeUrl, matchesAnyPattern, linksFromMarkdown, Crawler, HumanAssistInfo, CrawlOptions, CrawlPage, CrawlOutcome, … (9) |
@@ -74,8 +70,6 @@
 | `main/drive/driver.ts` | 5: driveTask, DriveStatus, DriveStep, DriveResult, DriveOptions |
 | `main/harvest/harvest-surface.ts` | 2: HarvestSurface, HarvestSurfaceDeps |
 | `main/harvest/screenshots.ts` | 3: ScreenshotStore, ScreenshotStoreDeps, ScreenshotPayload |
-| `main/harvester/dom-serializer.ts` | 3: captureComposedDom, COMPOSE_DOM_SCRIPT, ComposedDom |
-| `main/harvester/markdown.ts` | 2: ConstructHarvester, HarvestStats |
 | `main/hil/hil-banner.ts` | 4: hilBannerScript, hilBannerRemovalScript, HilPageBanner, HilPageBannerDeps |
 | `main/hil/hil-ipc.ts` | 2: registerHilIpc, HilIpcTarget |
 | `main/hil/hil-manager.ts` | 2: HilManager, HilManagerOptions |
@@ -113,7 +107,6 @@
 | `main/http/workspace-routes.ts` | 1: handleWorkspaceRoutes |
 | `main/http/wrap-routes.ts` | 3: handleWrapRoutes, WrapBridge, WrapRouteContext |
 | `main/input-actions.ts` | 3: InputActionsController, InputActionsStatus, InputActionsDeps |
-| `main/input/human-activity.ts` | 6: shouldCountAsHuman, humanListenerScript, SYNTHETIC_GRACE_MS, HUMAN_CONSOLE_PREFIX, HumanActivityMonitor, HumanActivity |
 | `main/input/human-control.ts` | 2: HumanControlSurface, HumanControlDeps |
 | `main/input/input-surface.ts` | 2: InputSurface, InputSurfaceDeps |
 | `main/ipc/collaboration-ipc.ts` | 2: registerCollaborationIpc, CollaborationIpcDeps |
@@ -126,7 +119,14 @@
 | `main/ipc/web-state-ipc.ts` | 1: registerWebStateIpc |
 | `main/ipc/wrap-ipc.ts` | 2: registerWrapIpc, WrapIpcDeps |
 | `main/jev/controller.ts` | 2: JevController, JevControllerDeps |
+| `main/jev/depth-store.ts` | 2: JevDepthStore, JevDepthStoreDeps |
+| `main/jev/engine.ts` | 5: JevEngine, JevSection, JevSession, JevStatus, JevSearchHit |
+| `main/jev/funnel.ts` | 2: JevFunnel, JevFunnelDeps |
+| `main/jev/policy-gate.ts` | 2: JevPolicyGate, JevPolicy |
+| `main/jev/policy.ts` | 6: decideFunnel, DEFAULT_FUNNEL_MIN_TOKENS, FunnelBreaker, FunnelReason, FunnelInput, FunnelDecision |
+| `main/llm/alternates.ts` | 1: readAlternates |
+| `main/llm/llm-surface.ts` | 1: LlmSurface |
 
-… and 314 more module(s) — grep the full index.
+… and 268 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.
