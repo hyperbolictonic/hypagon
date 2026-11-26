@@ -72,6 +72,12 @@ try {
   assert.equal(startedTunnel.tunnel.url, 'https://mcp.example.com');
   assert.match(service.getConfig(), /https:\/\/mcp\.example\.com\/mcp\/browser/);
 
+  // A credential rotation restarts the gateway; it must not look like a crash and take the tunnel down.
+  const beforeRotate = service.status();
+  assert.equal(beforeRotate.tunnel.enabled, true);
+  await service.access.rotateToken();
+  assert.equal(service.status().tunnel.enabled, true, 'a token rotation must keep the tunnel enabled');
+
   service.cloudflared.setUpdateMode('automatic');
   const automatic = service.status();
   assert.equal(automatic.cloudflared.updateMode, 'automatic');
@@ -79,6 +85,7 @@ try {
 
   const disconnected = await service.access.disconnectSessions();
   assert.equal(disconnected.running, true);
+  assert.equal(disconnected.tunnel.enabled, true, 'cycling sessions must keep the tunnel enabled');
 
   const stopped = await service.access.setEnabled(false);
   assert.equal(stopped.running, false);

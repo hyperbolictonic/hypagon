@@ -55,6 +55,8 @@ export interface RemoteGatewayDeps {
 export class RemoteGateway {
   private child: ChildProcess | null = null;
   private lastError = '';
+  /** True between stop() and the next start(): the exit we are about to see was requested. */
+  private stopping = false;
   private readonly deps: RemoteGatewayDeps;
 
   constructor(deps: RemoteGatewayDeps) {
@@ -77,6 +79,7 @@ export class RemoteGateway {
   /** Spawn the gateway and wait until its port answers. */
   async start(): Promise<void> {
     if (this.child) return;
+    this.stopping = false;
     this.deps.auth().ensure();
     if (this.deps.auth().mode() === 'oauth') this.deps.auth().oauthClient();
     if (!fs.existsSync(this.deps.serverPath)) {
@@ -118,7 +121,7 @@ export class RemoteGateway {
       if (code !== 0 && this.deps.isEnabled()) {
         this.lastError = `Remote gateway exited (${signal || code}).\n${this.lastError}`.slice(-4000);
       }
-      if (this.deps.isEnabled()) this.deps.onUnexpectedExit();
+      if (this.deps.isEnabled() && !this.stopping) this.deps.onUnexpectedExit();
       this.log(`gateway exited code=${code ?? 'null'} signal=${signal ?? 'null'}\n`);
     });
 
@@ -132,6 +135,7 @@ export class RemoteGateway {
 
   /** SIGTERM, then SIGKILL after the grace period. */
   async stop(): Promise<void> {
+    this.stopping = true;
     const child = this.child;
     this.child = null;
     if (!child || child.exitCode !== null) return;
