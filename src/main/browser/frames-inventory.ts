@@ -15,7 +15,7 @@
  */
 import type { WebContents } from 'electron';
 import { listFrames } from './frames.js';
-import { ElectronTarget } from '../../../packages/electron/src/target.ts';
+import { electronTargetFor } from './electron-targets.js';
 import { attachFrameControls as attachControls } from '../../../packages/browser/src/frames/inventory.ts';
 import type { ControlFacts } from '../primitives/control-facts.js';
 import { loadShadowWalkSettings } from '../shadow-walk/settings.js';
@@ -110,7 +110,7 @@ async function attachFrameControls(
   limits: FramesLimits,
   _viewport: { width: number; height: number },
 ): Promise<void> {
-  const controlled = await attachControls(new ElectronTarget(wc), out, {
+  const controlled = await attachControls(electronTargetFor(wc), out, {
     maxFrames: limits.maxFrames,
     selector: options.selector,
     limit: limits.maxControls,
@@ -131,7 +131,7 @@ export async function inventoryFrames(
   const limits = resolveLimits(options);
   deps.log('action', `MCP Directive: frames(controls=${limits.includeControls}, screenshots=${limits.wantScreenshots})`);
 
-  const frames = await listFrames(new ElectronTarget(wc), { maxFrames: limits.maxFrames });
+  const frames = await listFrames(electronTargetFor(wc), { maxFrames: limits.maxFrames });
   const main = frames.find((frame) => frame.depth === 0);
   const viewport = {
     width: main?.rect.width || 0,
