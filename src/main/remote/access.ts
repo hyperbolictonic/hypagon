@@ -24,8 +24,11 @@ export interface RemoteAccessDeps {
 /** When to use: `RemoteService` — one access state per service. */
 export class RemoteAccess {
   private enabled = false;
+  private readonly deps: RemoteAccessDeps;
 
-  constructor(private readonly deps: RemoteAccessDeps) {}
+  constructor(deps: RemoteAccessDeps) {
+    this.deps = deps;
+  }
 
   /** Whether the operator asked for remote access (independent of the child's health). */
   isEnabled(): boolean {

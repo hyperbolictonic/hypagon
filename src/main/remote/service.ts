@@ -16,11 +16,11 @@ import path from 'node:path';
 import { tokenPathIn } from '../security/capability-token.ts';
 import { oauthClientFile } from './oauth-client.ts';
 import { loadRemoteSettings, saveRemoteSettings } from './settings.ts';
-import { RemoteAccess } from './access.js';
-import { RemoteAuth } from './auth.js';
-import { CloudflaredPanel } from './cloudflared-panel.js';
-import { RemoteGateway } from './gateway-child.js';
-import { RemoteTunnel } from './tunnel.js';
+import { RemoteAccess } from './access.ts';
+import { RemoteAuth } from './auth.ts';
+import { CloudflaredPanel } from './cloudflared-panel.ts';
+import { RemoteGateway } from './gateway-child.ts';
+import { RemoteTunnel } from './tunnel.ts';
 import type { RemoteInfo, RemoteStatus } from '../../shared/remote.js';
 
 /** When to use: the app bootstrap — the paths, port and bridge the gateway fronts. */

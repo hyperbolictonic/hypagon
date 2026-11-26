@@ -49,8 +49,10 @@ export class RemoteTunnel {
   private enabled = false;
   private error: string | undefined;
   private hostnameValue: string;
+  private readonly deps: RemoteTunnelDeps;
 
-  constructor(private readonly deps: RemoteTunnelDeps) {
+  constructor(deps: RemoteTunnelDeps) {
+    this.deps = deps;
     this.hostnameValue = deps.hostname;
   }
 

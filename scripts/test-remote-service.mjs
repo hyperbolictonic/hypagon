@@ -38,18 +38,18 @@ try {
   assert.equal(initial.token.length, 64);
   assert.match(initial.config, /"httpUrl"/);
 
-  const oauthMode = await service.setAuthMode('oauth');
+  const oauthMode = await service.access.setAuthMode('oauth');
   assert.equal(oauthMode.authMode, 'oauth');
   assert.ok(service.getInfo().oauthClient?.clientId.startsWith('hg_'));
-  await service.setAuthMode('bearer');
+  await service.access.setAuthMode('bearer');
 
-  const enabled = await service.setEnabled(true);
+  const enabled = await service.access.setEnabled(true);
   assert.equal(enabled.running, true);
   assert.equal(enabled.url, `http://127.0.0.1:${port}/mcp/browser`);
 
   const client = new Client({ name: 'remote-service-test', version: '0.1.0' });
   const transport = new StreamableHTTPClientTransport(new URL(enabled.url), {
-    requestInit: { headers: { Authorization: `Bearer ${service.getToken()}` } },
+    requestInit: { headers: { Authorization: `Bearer ${service.auth.token()}` } },
   });
   await client.connect(transport);
   try {
@@ -60,25 +60,27 @@ try {
     await client.close();
   }
 
-  const rotated = await service.rotateToken();
+  const rotated = await service.access.rotateToken();
   assert.equal(rotated.running, true);
-  assert.notEqual(service.getToken(), initial.token);
+  assert.notEqual(service.auth.token(), initial.token);
 
-  await service.setTunnelConfig('mcp.example.com', 'test-tunnel-token');
-  const startedTunnel = await service.setTunnelEnabled(true);
+  await service.tunnel.configure('mcp.example.com', 'test-tunnel-token');
+  await service.tunnel.setEnabled(true);
+  const startedTunnel = service.status();
   assert.equal(startedTunnel.running, true);
   assert.equal(startedTunnel.tunnel.running, true);
   assert.equal(startedTunnel.tunnel.url, 'https://mcp.example.com');
   assert.match(service.getConfig(), /https:\/\/mcp\.example\.com\/mcp\/browser/);
 
-  const automatic = await service.setCloudflaredUpdateMode('automatic');
+  service.cloudflared.setUpdateMode('automatic');
+  const automatic = service.status();
   assert.equal(automatic.cloudflared.updateMode, 'automatic');
-  await service.setCloudflaredUpdateMode('manual');
+  service.cloudflared.setUpdateMode('manual');
 
-  const disconnected = await service.disconnectSessions();
+  const disconnected = await service.access.disconnectSessions();
   assert.equal(disconnected.running, true);
 
-  const stopped = await service.setEnabled(false);
+  const stopped = await service.access.setEnabled(false);
   assert.equal(stopped.running, false);
   assert.equal(stopped.tunnel.running, false);
   console.log('remote service test passed');

@@ -35,8 +35,10 @@ export class CloudflaredPanel {
   private mode: CloudflaredUpdateMode;
   private lastCheck: CloudflaredCheck | undefined;
   private error: string | undefined;
+  private readonly deps: CloudflaredPanelDeps;
 
-  constructor(private readonly deps: CloudflaredPanelDeps) {
+  constructor(deps: CloudflaredPanelDeps) {
+    this.deps = deps;
     this.manager = new CloudflaredManager({ dataDir: deps.dataDir });
     this.mode = deps.updateMode;
   }

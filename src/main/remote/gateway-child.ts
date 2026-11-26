@@ -55,8 +55,11 @@ export interface RemoteGatewayDeps {
 export class RemoteGateway {
   private child: ChildProcess | null = null;
   private lastError = '';
+  private readonly deps: RemoteGatewayDeps;
 
-  constructor(private readonly deps: RemoteGatewayDeps) {}
+  constructor(deps: RemoteGatewayDeps) {
+    this.deps = deps;
+  }
 
   running(): boolean {
     return Boolean(this.child);
