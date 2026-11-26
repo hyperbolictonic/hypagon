@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-436 modules, 1142 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
+437 modules, 1123 exports under `src/`. Full "When to use" descriptions live in [docs/COMPONENT_INDEX.md](COMPONENT_INDEX.md) — grep it by concept before creating a component, hook, or utility (see `reuse-before-create`).
 
 | Module | Exports |
 |---|---|
@@ -13,6 +13,7 @@
 | `main/boot/window-boot.ts` | 3: WindowBootSurface, DownloadNotice, WindowBootDeps |
 | `main/brand-icon.ts` | 2: brandIconPath, brandIcon |
 | `main/browser-chassis.ts` | 1: BrowserChassis |
+| `main/browser/electron-targets.ts` | 1: electronTargetFor |
 | `main/browser/frames-inventory.ts` | 5: inventoryFrames, FrameInventoryResult, FramesInventoryDeps, FrameShot, FramesInventoryOptions |
 | `main/browser/page-script-surface.ts` | 2: PageScriptSurface, PageScriptSurfaceDeps |
 | `main/browser/stealth.ts` | 3: stealthHeaders, applyHostProfile, applyStealthHeaders |
@@ -125,8 +126,7 @@
 | `main/jev/policy-gate.ts` | 2: JevPolicyGate, JevPolicy |
 | `main/jev/policy.ts` | 6: decideFunnel, DEFAULT_FUNNEL_MIN_TOKENS, FunnelBreaker, FunnelReason, FunnelInput, FunnelDecision |
 | `main/llm/alternates.ts` | 1: readAlternates |
-| `main/llm/llm-surface.ts` | 1: LlmSurface |
 
-… and 267 more module(s) — grep the full index.
+… and 262 more module(s) — grep the full index.
 
 > Capped at 120 modules so it can be loaded into every session; the full index is the source of truth.

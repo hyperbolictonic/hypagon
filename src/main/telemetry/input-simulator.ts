@@ -10,6 +10,7 @@
 import { BrowserWindow, clipboard, type WebContents } from 'electron';
 import type { BrowserTarget } from '../../../packages/browser/src/target.ts';
 import { ElectronTarget } from '../../../packages/electron/src/target.ts';
+import { electronTargetFor } from '../browser/electron-targets.js';
 import { HumanizedInput } from '../../../packages/stealth/src/input/driver.ts';
 import type { CdpInput } from '../../../packages/stealth/src/input/cdp-input.ts';
 import type {
@@ -23,17 +24,12 @@ import { bump } from '../metrics.js';
 
 export type { HumanProfile, InputTelemetryReporter } from '../../../packages/stealth/src/input/context.ts';
 
-/** One adapter per view, so the driver's per-target scale and cache stay valid. */
-const targets = new WeakMap<WebContents, ElectronTarget>();
+/** Reverse map so the native fallback can reach the view from the target it is handed. */
 const pages = new WeakMap<ElectronTarget, WebContents>();
 
 function targetFor(wc: WebContents): ElectronTarget {
-  let target = targets.get(wc);
-  if (!target) {
-    target = new ElectronTarget(wc);
-    targets.set(wc, target);
-    pages.set(target, wc);
-  }
+  const target = electronTargetFor(wc);
+  pages.set(target, wc);
   return target;
 }
 

@@ -7,14 +7,16 @@
  * contract supplies those surfaces without a copied deps literal.
  */
 import { activeWebContents, currentRevision, pageInfo } from './accessors.js';
-import type { WebContents } from 'electron';
 import { HilSurface } from '../hil/hil-surface.js';
 import { ActionLedger } from '../telemetry/action-ledger.js';
 import { Primitives } from '../primitives/primitives.js';
+import type { PrimitivesHost } from '../primitives/contracts.js';
 import { resolveFrameMark } from '../browser/frame-marks.js';
+import { electronTargetFor } from '../browser/electron-targets.js';
 import { setFrameCommandObserver } from '../browser/frame-tree.js';
+import { setSealedMetrics } from '../../../packages/stealth/src/shadow/metrics.ts';
 import { bump } from '../metrics.js';
-import { ElectronTarget } from '../../../packages/electron/src/target.ts';import { resolveSealedToken } from '../shadow-walk/sealed-targets.js';
+import { resolveSealedToken } from '../shadow-walk/sealed-targets.js';
 import { loadShadowWalkSettings } from '../shadow-walk/settings.js';
 import { dataPath } from '../data-paths.js';
 import { detectSensitiveGate } from '../decide/sensitive-gate.js';
@@ -29,10 +31,63 @@ export interface InteractionStack {
   actionLedger: ActionLedger;
 }
 
+/** Keep the shared counters honest when an SDK module does the CDP work. */
+function installSdkTelemetry(): void {
+  setFrameCommandObserver(() => bump('cdp.frame'));
+  setSealedMetrics({
+    cacheHit: () => bump('sealed.cacheHit'),
+    scan: () => bump('sealed.scan'),
+    nodes: (by) => bump('sealed.nodes', by ?? 1),
+    tokens: () => bump('sealed.tokens'),
+    pierce: () => bump('cdp.pierce'),
+    ax: () => bump('cdp.ax'),
+    styleLookups: (by) => bump('sealed.styleLookups', by ?? 1),
+  });
+}
+
+/** The chassis as the primitives see it: one host object, no copied deps literal. */
+function createPrimitivesHost(host: ChassisHost, ledger: ActionLedger): PrimitivesHost {
+  return {
+    webContents: () => activeWebContents(host),
+    log: host.log,
+    evaluate: (script) => host.page.quiet(script),
+    harvest: (opts) => host.harvest.harvestMarkdown(opts),
+    guardPageRead: (input) => host.jev.guardPageRead(input),
+    precheckPageRead: (input) => host.jev.precheckPageRead(input),
+    injectMarks: (opts) => host.marks.scan(activeWebContents(host), opts || {}),
+    removeMarks: () => host.marksOverlay.removeMarks(electronTargetFor(activeWebContents(host))),
+    getMarks: () => host.marks.getActive(),
+    getMarkTarget: (id) =>
+      Number(id) >= 100
+        ? resolveFrameMark(electronTargetFor(activeWebContents(host)), Number(id))
+        : host.marksOverlay.getMarkTarget(electronTargetFor(activeWebContents(host)), id),
+    getFrames: (opts) => host.shadow.getFrames(opts),
+    evaluateInFrames: (script, opts) => host.page.evaluateInFrames(script, opts),
+    resolveSealedToken: (token) => resolveSealedToken(activeWebContents(host), token),
+    clickMark: (id) => host.marks.clickMark(id),
+    typeMark: (id, text, opts) => host.marks.typeMark(id, text, opts),
+    clickElement: (selector, coords) => host.input.clickElement(selector, coords),
+    typeText: (text, selector, opts) => host.input.typeText(text, selector, opts),
+    findSealed: (opts) => host.marks.findSealed(opts),
+    componentSurfaceEnabled: () => loadShadowWalkSettings().shadow.componentSurface,
+    insertText: (text) => host.input.insertText(text),
+    pasteText: (text) => host.input.simulator.keyboard.pasteText(activeWebContents(host), text),
+    moveMouseTo: (target) => host.input.moveMouse(target),
+    pressKey: (key) => host.input.pressKey(key),
+    snapshotRenderedPage: (opts) => host.marks.snapshotRenderedPage(opts),
+    getNetworkTraffic: (filter) => host.network.traffic(filter),
+    getPageInfo: () => pageInfo(host),
+    revision: () => currentRevision(host),
+    windowFocused: () => host.window.isFocused(),
+    appIdentity: () => ({ name: BRAND.deck, version: APP_VERSION }),
+    detectSensitiveGate: (text, opts) => detectSensitiveGate(text, opts),
+    recordTransition: (record) => ledger.record(record),
+  };
+}
+
 /** When to use: the chassis constructor — build HIL, the ledger and primitives once. */
 export function createInteractionStack(host: ChassisHost): InteractionStack {
-  // Frame discovery sends CDP commands through the SDK sender; keep the shared cdp counter honest.
-  setFrameCommandObserver(() => bump('cdp.frame'));
+  installSdkTelemetry();
 
   const hil = new HilSurface({
     activeWebContents: () => {
@@ -71,42 +126,6 @@ export function createInteractionStack(host: ChassisHost): InteractionStack {
     log: host.log,
   });
 
-  const primitives = new Primitives({
-    webContents: () => activeWebContents(host),
-    log: host.log,
-    evaluate: (script) => host.page.quiet(script),
-    harvest: (opts) => host.harvest.harvestMarkdown(opts),
-    guardPageRead: (input) => host.jev.guardPageRead(input),
-    precheckPageRead: (input) => host.jev.precheckPageRead(input),
-    injectMarks: (opts) => host.marks.scan(activeWebContents(host), opts || {}),
-    removeMarks: () => host.marksOverlay.removeMarks(new ElectronTarget(activeWebContents(host))),
-    getMarks: () => host.marks.getActive(),
-    getMarkTarget: (id) =>
-      Number(id) >= 100
-        ? resolveFrameMark(new ElectronTarget(activeWebContents(host)), Number(id))
-        : host.marksOverlay.getMarkTarget(new ElectronTarget(activeWebContents(host)), id),
-    getFrames: (opts) => host.shadow.getFrames(opts),
-    evaluateInFrames: (script, opts) => host.page.evaluateInFrames(script, opts),
-    resolveSealedToken: (token) => resolveSealedToken(activeWebContents(host), token),
-    clickMark: (id) => host.marks.clickMark(id),
-    typeMark: (id, text, opts) => host.marks.typeMark(id, text, opts),
-    clickElement: (selector, coords) => host.input.clickElement(selector, coords),
-    typeText: (text, selector, opts) => host.input.typeText(text, selector, opts),
-    findSealed: (opts) => host.marks.findSealed(opts),
-    componentSurfaceEnabled: () => loadShadowWalkSettings().shadow.componentSurface,
-    insertText: (text) => host.input.insertText(text),
-    pasteText: (text) => host.input.simulator.keyboard.pasteText(activeWebContents(host), text),
-    moveMouseTo: (target) => host.input.moveMouse(target),
-    pressKey: (key) => host.input.pressKey(key),
-    snapshotRenderedPage: (opts) => host.marks.snapshotRenderedPage(opts),
-    getNetworkTraffic: (filter) => host.network.traffic(filter),
-    getPageInfo: () => pageInfo(host),
-    revision: () => currentRevision(host),
-    windowFocused: () => host.window.isFocused(),
-    appIdentity: () => ({ name: BRAND.deck, version: APP_VERSION }),
-    detectSensitiveGate: (text, opts) => detectSensitiveGate(text, opts),
-    recordTransition: (record) => actionLedger.record(record),
-  });
-
+  const primitives = new Primitives(createPrimitivesHost(host, actionLedger));
   return { hil, primitives, actionLedger };
 }

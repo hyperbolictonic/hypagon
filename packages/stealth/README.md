@@ -40,10 +40,11 @@ change.
 
 ## Status
 
-`0.1.0`, private. Extracted: the movement engine, key tables, ghost cursor,
-human-activity detection, profile pacing, the portable pointer/keyboard driver, the
-host browser fingerprint/profile probe and the consent-wall breaker. Still app-side:
-sealed (closed shadow root) scanning.
+`0.1.0`, private. M2 is complete here: movement, key tables, ghost cursor,
+human-activity detection, profile pacing, the pointer/keyboard driver, the host
+fingerprint, the consent-wall breaker and sealed (closed shadow root) discovery
+(scan, measure, cache/rate limit, tokens). The app keeps its `WebContents` adapters
+and supplies the Shadow Walk settings and metrics counters.
 
 ## Scripts
 

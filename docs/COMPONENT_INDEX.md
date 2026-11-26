@@ -2,7 +2,7 @@
 
 <!-- generated: run `node scripts/anti-slop/generate-component-index.mjs` to regenerate -->
 
-Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 436 files, 1142 exports.
+Inventory of shared layouts, components, hooks, services, and utilities under `src/`. 437 files, 1123 exports.
 
 > Rule of use: before creating any new component, hook, or utility, check this file first (see the `reuse-before-create` skill). When you add a shared abstraction, rerun the generator and fill in the "When to use" column.
 
@@ -17,7 +17,7 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/utils/json-query.ts` | `JsonQueryParams` *(type)* | The sources `query_json_data` can read. |
 | `main/utils/json-query.ts` | `JsonQueryDeps` *(type)* | Where the query reads its raw JSON from. |
 
-## Types (850)
+## Types (834)
 
 | File | Export | When to use |
 |---|---|---|
@@ -493,11 +493,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/settings/json-settings.ts` | `saveJsonSettings` | Normalize and atomically write; a write failure is reported in the result. |
 | `main/settings/json-settings.ts` | `settingsSource` | The object-shape guard every settings normalizer shares; null means "not an object". |
 | `main/settings/json-settings.ts` | `SettingsResult` *(type)* | The result every settings normalizer returns. |
-| `main/shadow-walk/cdp.ts` | `axProperty` | When to use: reading one accessibility property off a CDP AX node. |
-| `main/shadow-walk/cdp.ts` | `axRole` | When to use: reading an AX node's role as a lower-cased label. |
-| `main/shadow-walk/cdp.ts` | `contentRect` | When to use: turning a `DOM.getBoxModel` response into a drawable rect; null without a box. |
-| `main/shadow-walk/cdp.ts` | `cdpSend` | When to use: a CDP send that targets the root session when no session id is given. |
-| `main/shadow-walk/cdp.ts` | `ContentRect` *(type)* | The axis-aligned viewport rect a CDP box model describes. |
 | `main/shadow-walk/force-open.ts` | `isForceOpenArmed` | When to use: deciding whether the Shadow Walk force-open overlay is armed for a view. |
 | `main/shadow-walk/force-open.ts` | `syncForceOpen` | Arm or disarm the document-start patch for one tab. |
 | `main/shadow-walk/force-open.ts` | `detectForceOpen` | Ask the current document what a fingerprinting script would see. |
@@ -505,17 +500,6 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/shadow-walk/force-open.ts` | `ForceOpenDetection` *(type)* | When to use: the detection probe's reply — whether the overlay is armed and what was found. |
 | `main/shadow-walk/part-highlight-css.ts` | `buildPartHighlightCss` | When to use: the part-highlight screenshot lever — build the outline rules for the exported parts. |
 | `main/shadow-walk/part-highlight-css.ts` | `PartHost` *(type)* | Pure part-highlight rule builder. |
-| `main/shadow-walk/sealed-cdp.ts` | `sessionOf` | When to use: resolving a frame's OOPIF session; undefined means the parent session. |
-| `main/shadow-walk/sealed-cdp.ts` | `attachOopifSessions` | When to use: the start of a scan or a measurement — attach each OOPIF target |
-| `main/shadow-walk/sealed-cdp.ts` | `detachOopifSessions` | When to use: the finally block of a scan or a measurement. |
-| `main/shadow-walk/sealed-cdp.ts` | `MAX_TARGETS` | How many cross-process targets one sealed call may attach. |
-| `main/shadow-walk/sealed-cdp.ts` | `SealedSend` *(type)* | One session send: `sessionId` undefined targets the root frame. |
-| `main/shadow-walk/sealed-types.ts` | `SealedRect` *(type)* | When to use: any screen-space rect the sealed path reports. |
-| `main/shadow-walk/sealed-types.ts` | `SealedControl` *(type)* | When to use: one interactive control found under a closed shadow root. |
-| `main/shadow-walk/sealed-types.ts` | `SealedFindOptions` *(type)* | When to use: the `find(sealed:true)` filters. |
-| `main/shadow-walk/sealed-types.ts` | `SealedFindResult` *(type)* | When to use: the `find(sealed:true)` result. |
-| `main/shadow-walk/sealed-types.ts` | `SealedIdentity` *(type)* | One control as the AX tree describes it, before any geometry is measured. |
-| `main/shadow-walk/sealed-types.ts` | `SealedCacheEntry` *(type)* | When to use: the per-tab cache entry the scan writes and the next call reads. |
 | `main/shadow-walk/settings.ts` | `normalizeShadowWalkSettings` | When to use: loading or saving the file — coerce an untrusted object into the shape the guards read. |
 | `main/shadow-walk/settings.ts` | `loadShadowWalkSettings` | When to use: any Shadow Walk path — the levers with the two environment overrides applied. |
 | `main/shadow-walk/settings.ts` | `saveShadowWalkSettings` | When to use: Settings → Shadow Walk save (IPC only; there is no HTTP write route). |
@@ -872,13 +856,14 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `shared/zoom.ts` | `ZoomSettings` *(type)* | When to use: the persisted zoom policy file. |
 | `shared/zoom.ts` | `ZoomState` *(type)* | When to use: the zoom readout, the status consumers and `browser_zoom`. |
 
-## Modules (286)
+## Modules (283)
 
 | File | Export | When to use |
 |---|---|---|
 | `main/boot/start-loops.ts` | `startLoops` | When to use: the chassis constructor — start the uptime tick and the HUD watchdog. |
 | `main/brand-icon.ts` | `brandIconPath` | When to use: a surface that needs the asset path itself (window icon). |
 | `main/brand-icon.ts` | `brandIcon` | When to use: a tray/HIL icon — the brand mark at the requested square size, |
+| `main/browser/electron-targets.ts` | `electronTargetFor` | When to use: any app surface that needs the SDK target for a view. |
 | `main/browser/stealth.ts` | `stealthHeaders` | When to use: any request that must carry the host's client hints. |
 | `main/browser/stealth.ts` | `applyHostProfile` | When to use: a `WebContents` that must present as the host browser. |
 | `main/browser/stealth.ts` | `applyStealthHeaders` | When to use: a bare session (the research view) that only needs the headers. |
@@ -993,18 +978,14 @@ Inventory of shared layouts, components, hooks, services, and utilities under `s
 | `main/security/capability-token.ts` | `readCapabilityToken` | Read and validate a token file. A missing, malformed or empty file returns undefined. |
 | `main/security/private-file.ts` | `writePrivateFile` | When to use: any file that holds a secret — a token, a client secret, a key. |
 | `main/settings/experimental.ts` | `ExperimentalSettingsStore` | Experimental feature flags persisted next to the other user settings. |
-| `main/shadow-walk/ax-controls.ts` | `findSealedControls` | Find interactive controls inside closed shadow roots. |
+| `main/shadow-walk/ax-controls.ts` | `findSealedControls` | When to use: `find(sealed:true)` on the active view. |
 | `main/shadow-walk/guard.ts` | `assertShadowSurface` | When to use: before a surface that Settings → Shadow Walk can disable. |
 | `main/shadow-walk/part-highlight.ts` | `injectPartHighlight` | When to use: a screenshot with the part-highlight lever on — outline the exported parts. |
 | `main/shadow-walk/part-highlight.ts` | `removePartHighlight` | When to use: after that screenshot — remove the injected stylesheet. |
 | `main/shadow-walk/part-highlight.ts` | `withPartHighlight` | Run a screenshot capture with exported parts outlined when the lever is on. |
-| `main/shadow-walk/sealed-gate.ts` | `SealedRateLimitError` | When to use: caught by the tool layer to return a retry hint instead of a failure. |
-| `main/shadow-walk/sealed-gate.ts` | `SealedScanGate` | When to use: `findSealedControls` — one gate per call, shared state per tab. |
-| `main/shadow-walk/sealed-measure.ts` | `measureSealedControls` | When to use: after the identity filter — measures the matching controls, in |
-| `main/shadow-walk/sealed-scan.ts` | `SealedScanner` | When to use: `findSealedControls` — one scan of one frame set. |
 | `main/shadow-walk/sealed-targets.ts` | `clearSealedTokens` | When to use: a fresh sealed scan or a navigation — invalidate the tab's sealed tokens. |
 | `main/shadow-walk/sealed-targets.ts` | `issueSealedToken` | When to use: a sealed result — mint an opaque token that can scroll and measure the node later. |
-| `main/shadow-walk/sealed-targets.ts` | `resolveSealedToken` | Resolve a sealed token to a live top-level viewport centre, scrolling the real node into view. |
+| `main/shadow-walk/sealed-targets.ts` | `resolveSealedToken` | When to use: `act` with a sealed token — resolve it to a live top-level centre. |
 | `main/shield/shield-breaker.ts` | `ShieldBreaker` | When to use: a consent wall during navigation — answer it the way a person would. |
 | `main/tabs/tab-manager.ts` | `TabManager` | When to use: the window and the tab tools — create, switch, close and lay out the tab views. |
 | `main/tabs/tab-registry.ts` | `TabRegistry` | When to use: `TabManager` — one registry per window. |
